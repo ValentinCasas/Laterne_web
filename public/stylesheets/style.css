@@ -1,8 +1,296 @@
-body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+:root {
+  --principal-color: #ED2791;
 }
 
-a {
-  color: #00B7FF;
+* {
+  font-family: 'ITC Clearface Black';
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  background-color: #000000;
+}
+
+.banner {
+  width: 100%;
+  height: auto;
+}
+
+.navbar-nav li a {
+  text-transform: uppercase;
+  font-size: 20px;
+}
+
+.brand {
+  font-size: 30px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.brand-highlight {
+  color: var(--principal-color);
+}
+
+.point {
+  color: #04A958;
+}
+
+
+.navbar-nav .nav-item:hover .nav-link {
+  color: var(--principal-color) !important;
+}
+
+
+.father {
+  position: relative;
+  height: auto;
+  margin-bottom: 80px;
+  padding-top: 40px;
+}
+
+.son {
+  font-family: 'Anton', sans-serif;
+  ;
+  /* margin-top: 20px; */
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  word-wrap: break-word;
+  overflow: hidden;
+}
+
+.son h1 {
+  max-width: 100%;
+  text-transform: uppercase;
+  font-size: 65px;
+  color: #ff0088c3;
+  /* color: #f19ac8; */
+}
+
+.son p {
+  font-family: 'Overpass', sans-serif;
+  max-width: 100%;
+  width: auto;
+  font-size: 20px;
+  margin-top: 30px;
+}
+
+/* tablet */
+@media only screen and (max-width: 930px) {
+
+  .father {
+    padding-top: 100px;
+  }
+
+  .son {
+    max-width: 80%;
+    width: 80%;
+  }
+
+  .son h1 {
+    font-size: 50px;
+  }
+
+  .son p {
+    font-size: 18px;
+  }
+}
+
+/* celular */
+@media only screen and (max-width: 660px) {
+
+  .father {
+    padding-top: 0px;
+  }
+
+  .son {
+    max-width: 80%;
+    width: 80%;
+  }
+
+  .son h1 {
+    font-size: 40px;
+  }
+
+  .son p {
+    font-size: 15px;
+  }
+}
+
+@media only screen and (max-width: 480px) {
+
+  .father {
+    margin-top: 150px;
+    padding-top: 0px;
+  }
+
+  .son {
+    max-width: 80%;
+    width: 80%;
+  }
+
+  .son h1 {
+    font-size: 30px;
+  }
+
+  .son p {
+    font-size: 16px;
+  }
+}
+
+@media only screen and (max-width: 380px) {
+
+  .father {
+    padding-top: 0px;
+  }
+
+  .son {
+    max-width: 80%;
+    width: 80%;
+  }
+
+  .son h1 {
+    font-size: 25px;
+  }
+
+  .son p {
+    font-size: 10px;
+  }
+}
+
+.container-eventos {
+  background-color: #000000;
+
+}
+
+
+.contenedor-cards {
+  max-height: 90vh;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+.contenedor-cards::-webkit-scrollbar {
+  width: 0px;
+}
+
+
+
+
+/* *{
+  border:1px solid white;
+} */
+
+.card-evento {
+  /* padding-top: 10px; */
+  /* display: flex;  */
+  /* justify-content: space-between;  */
+  /* width: 100%; */
+  color: rgb(255, 255, 255);
+  background-color: #000000;
+  border-radius: 10px;
+  border-width: 2px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.831);
+  overflow: hidden;
+}
+
+.card-evento h1 {
+  font-size: 25px;
+
+}
+
+.card-evento p {
+  font-size: 18px;
+}
+
+.card-evento span {
+  font-family: 'Overpass', sans-serif;
+}
+
+.artist {
+  font-weight: bold;
+}
+
+.slider {
+  width: 75vw;
+  height: auto;
+  margin: auto;
+  overflow: hidden;
+}
+
+.slider .slide-track {
+  display: flex;
+  animation: scroll 40s linear infinite;
+  -webkit-animation: scroll 40s linear infinite;
+  width: calc(200px * 14);
+}
+
+.slideer .slide {
+  width: 200px;
+}
+
+.slider .slide img {
+  width: 100%;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+    -webkit-transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(calc(-200px * 7));
+    -webkit-transform: translateX(calc(-200px * 7));
+  }
+}
+
+.container-beers {
+  background-color: #ffffff;
+}
+
+.container-beers h1 {
+  padding-top: 30px;
+  padding-bottom: 0px;
+}
+
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ WHATSAPP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+.btn-wsp {
+  position: fixed;
+  width: 55px;
+  height: 55px;
+  line-height: 55px;
+  bottom: 30px;
+  right: 30px;
+  background-color: #01E776;
+  border-radius: 100%;
+  box-shadow: 0px 1px 10px rgba(0, 0, 0, 0.4);
+}
+
+.whatsapp-ico {
+  fill: white;
+  width: 50px;
+  height: 50px;
+  padding: 3px;
+  background-color: #4dc247;
+  border-radius: 50%;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
+.whatsapp-ico:hover {
+  box-shadow: 2px 2px 11px rgba(0, 0, 0, 0.7);
 }
