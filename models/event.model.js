@@ -17,11 +17,11 @@ const Event = connectionBD.define(
         },
         date: {
             type: DataTypes.DATE,
-            allowNull: false,
+            allowNull: true,
         },
         time: {
             type: DataTypes.TIME,
-            allowNull: false,
+            allowNull: true,
         },
         description: {
             type: DataTypes.STRING,
@@ -33,7 +33,7 @@ const Event = connectionBD.define(
         },
         imageUrl: {
             type: DataTypes.STRING,
-            allowNull: false,
+            allowNull: true,
         },
 
     },

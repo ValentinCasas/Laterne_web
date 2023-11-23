@@ -13,7 +13,7 @@ const OpeningHour = connectionBD.define(
         },
         dayOfWeek: {
             type: DataTypes.STRING,
-            allowNull: true,
+            allowNull: false,
         },
         morningStartTime: {
             type: DataTypes.TIME,

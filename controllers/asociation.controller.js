@@ -3,6 +3,7 @@ import Product from "../models/product.model.js";
 import ProductCategory from "../models/productCategory.model.js";
 
 
+
 export const getProductCategoryByProduct = async (req, res) => {
     const { productId } = req.params;
     try {

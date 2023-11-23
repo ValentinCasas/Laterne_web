@@ -17,6 +17,10 @@ import authRoutes from './routes/auth.routes.js';
 import productRoutes from './routes/product.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import asociationRoutes from './routes/asociation.routes.js';
+import eventRoutes from './routes/event.routes.js';
+import testimonialRoutes from './routes/testimonial.routes.js';
+import businessInfoRoutes from './routes/businessInfo.routes.js';
+import openingHourRoutes from './routes/openingHour.routes.js';
 
 const app = express();
 
@@ -36,6 +40,7 @@ app.use(express.static(path.join(__dirname, 'public/images/banners')));
 app.use(express.static(path.join(__dirname, 'public/images/image_defect')));
 app.use(express.static(path.join(__dirname, 'public/images/images_product')));
 app.use(express.static(path.join(__dirname, 'public/images/images_profile')));
+app.use(express.static(path.join(__dirname, 'public/images/images_event')));
 
 
 
@@ -52,6 +57,10 @@ app.use('/auth', authRoutes);
 app.use('/product', productRoutes);
 app.use('/category', categoryRoutes);
 app.use('/asociation', asociationRoutes);
+app.use('/event', eventRoutes);
+app.use('/testimonial', testimonialRoutes);
+app.use('/businessInfo', businessInfoRoutes);
+app.use('/openingHour', openingHourRoutes);
 
 
 
