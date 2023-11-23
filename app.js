@@ -16,6 +16,7 @@ import indexRoutes from './routes/index.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import productRoutes from './routes/product.routes.js';
 import categoryRoutes from './routes/category.routes.js';
+import asociationRoutes from './routes/asociation.routes.js';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/product', productRoutes);
 app.use('/category', categoryRoutes);
+app.use('/asociation', asociationRoutes);
 
 
 
