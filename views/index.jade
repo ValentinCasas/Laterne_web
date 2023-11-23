@@ -3,12 +3,12 @@ extends layout
 block content
 
   header
-    nav.navbar.navbar-expand-lg.bg-transparent.fixed-top
+    nav.navbar.navbar-expand-lg.bg-transparent
       .container-fluid
         a.navbar-brand.text-light.brand(href="#")
-          span.brand-highlight Laterne
-          | &
-          span.point .
+          span.brand-highlight Laterne 
+          span &
+          span.point  .
 
         button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
           span.navbar-toggler-icon
@@ -24,17 +24,22 @@ block content
             li.nav-item
               a.nav-link.text-light(href="#eventos") Eventos
 
-  .container-fluid.px-0.father
+  .container-fluid.px-0.father.py-0
     img.banner.img-fluid(src="/banner1.jpg" alt="")
     .son
-      h1 Laterne es birra
+      .wrapper
+        h1 Laterne es 
+        .words 
+          span BIRRA 
+          span AMIGOS 
+          span FAMILIA 
       p
         | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
 
-  .container-fluid.container-eventos.py-lg-5.py-md-5.py-xs-1.px-lg-5.px-md-5
-    h1#eventos.text-light.text-center.mt-5 EVENTOS
-    .contenedor-cards
-      each val in [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3
+    h1#eventos.text-light.text-center.mt-2.mb-2 EVENTOS
+    .contenedor-cards.px-4
+      each val in [1, 2, 3, 4]
         .row.my-3.p-3
           .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
             h1.m-0 Dic. 12, 2023
@@ -43,12 +48,18 @@ block content
               span La Punta, San Luis.
               span.artist.mx-2 YSY A
               span 23:00hs
-
-  .swiper-container
+  .container-fluid.px-0
+    img.img-fluid(src="/banner2.png", alt="")
+  .swiper-container.container-beer
+    h1.text-center.text-light.mx-3 NUESTRAS CERVEZAS
     .swiper-wrapper
-      each val in [1, 2, 3, 4]
-        .swiper-slide
-          img(src=`/blackrye.png`, alt=`Banner`)
+      each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
+        .swiper-slide.py-0
+          img(src=`${val}`, alt=`Beers`)
+  
+  //seccion feedback
+  //fotos qsy
+  //footer 
 
   a(href="whatsapp://send?phone=2665018537")
     svg(viewBox="0 0 32 32" class="whatsapp-ico")
