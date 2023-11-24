@@ -1,4 +1,23 @@
 import BusinessInfo from "../models/businessInfo.model.js";
+import OpeningHour from "../models/openingHour.model.js";
+
+
+export const goBusinessInfo = async (req, res) => {
+
+    try {
+        const businessInfo = await BusinessInfo.findAll();
+        const openingHour = await OpeningHour.findAll();
+
+        res.render("businessInfo",
+            {
+                BusinessInfo: businessInfo[0],
+                OpeningHour: openingHour
+            });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Error al traer info' });
+
+    }
+}
 
 export const getbusinessInfo = async (req, res) => {
     try {

@@ -2,11 +2,12 @@ import { Router } from "express";
 import {
     getTestimonials, getTestimonial,
     createTestimonial, deleteTestimonial,
-    updateTestimonial
+    updateTestimonial, goTestimonials
 } from "../controllers/testimonial.controller.js";
 
 const router = Router();
 
+router.get("/viw-testimonials", goTestimonials);
 
 router.post("/create-testimonial", createTestimonial);
 

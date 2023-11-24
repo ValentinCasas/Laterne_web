@@ -1,9 +1,16 @@
 import { Router } from "express";
-import { goIndex } from "../controllers/index.controller.js";
+import { goIndex, goHome, goCardVirtual } from "../controllers/index.controller.js";
+import {
+    authMiddleware,
+    adminMiddleware,
+    employeeMiddleware
+  } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
 
-router.get("/index", goIndex);
+router.get("/", goIndex);
+router.get("/home", authMiddleware,goHome);
+router.get("/card_virtual", goCardVirtual);
 
 export default router

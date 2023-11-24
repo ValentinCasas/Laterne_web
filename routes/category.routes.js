@@ -2,11 +2,14 @@ import { Router } from "express";
 import {
     createCategory, getCategories,
     getCategory, deleteCategory,
-    updateCategory
+    updateCategory, goCategories,
+    goEditCategories
 } from "../controllers/category.controller.js";
 
 const router = Router();
 
+router.get("/view-create-category", goCategories);
+router.get("/view-edit-category/:id", goEditCategories);
 
 router.post("/create-category", createCategory);
 

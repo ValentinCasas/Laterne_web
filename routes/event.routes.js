@@ -2,11 +2,13 @@ import { Router } from "express";
 import {
     getEvents, getEvent,
     createEvent, deleteEvent,
-    updateEvent
+    updateEvent, goEvents, goEditEvent
 } from "../controllers/event.controller.js";
 
 const router = Router();
 
+router.get("/view-create-event", goEvents);
+router.get("/view-edit-event/:id", goEditEvent);
 
 router.post("/create-event", createEvent);
 

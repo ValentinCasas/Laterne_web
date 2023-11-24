@@ -1,4 +1,5 @@
 import Product from "../models/product.model.js";
+import Category from "../models/category.model.js";
 import ProductCategory from "../models/productCategory.model.js";
 import { fileURLToPath } from 'url';
 import { v1 as uuid } from 'uuid';
@@ -7,6 +8,32 @@ import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+
+export const goProducts = async (req, res) => {
+    try {
+        const products = await Product.findAll();
+        const categories = await Category.findAll();
+
+        res.render("product_create", { Products: products, Categories: categories });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Error al traer productos' });
+    }
+}
+
+export const goEditProduct = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const product = await Product.findByPk(id);
+        const categories = await Category.findAll();
+
+        res.render("product_edit", { Product: product, Categories: categories });
+
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Error al traer producto' });
+    }
+}
+
 
 
 export const createProduct = async (req, res) => {

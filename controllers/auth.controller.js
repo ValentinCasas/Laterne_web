@@ -10,6 +10,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
+export const goLogin = async (req, res) => {
+    res.render("login");
+}
+
 export const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
@@ -53,7 +57,7 @@ export const login = async (req, res) => {
 
         const userFound = await User.findAll({ where: { email } });
 
-        if (!userFound) return res.status(400).json({ message: 'Usuario no encontrado' })
+        if (!userFound) return res.status(400).json({ message: 'Usuario no encontrado' });
 
         const isMatch = await bcrypt.compare(password, userFound[0].password);
 
@@ -62,15 +66,15 @@ export const login = async (req, res) => {
         const token = await createAccessToken({ id: userFound[0].id });
         const role = userFound[0].role;
 
-        res.cookie("token", token)
-        res.cookie("role", role)
-        res.json({ success: true, User: userFound[0] });
+        res.cookie("token", token);
+        res.cookie("role", role);
+        res.render("home");
 
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
+};
 
-}
 
 export const logout = (req, res) => {
     res.cookie('token', "", {
@@ -153,9 +157,9 @@ export const updateUser = async (req, res) => {
         user.email = email || user.email;
 
         //corroborar que no exista un usuario con ese mail (solo puede existir uno)
-        const existEmail = await User.findAll({where:{email:email}});
+        const existEmail = await User.findAll({ where: { email: email } });
 
-        if(existEmail.length > 1){
+        if (existEmail.length > 1) {
             return res.status(401).json({ message: 'Ya hay un usuario con ese email' });
         }
 

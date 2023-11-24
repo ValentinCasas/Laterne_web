@@ -2,6 +2,28 @@ import Category from "../models/category.model.js";
 import ProductCategory from "../models/productCategory.model.js";
 import { fileURLToPath } from 'url';
 
+
+
+export const goCategories = async (req, res) => {
+    try {
+        const categories = await Category.findAll();
+        res.render("category_create", { Categories: categories });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Error al traer categorias' });
+
+    }
+}
+
+export const goEditCategories = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const category = await Category.findByPk(id);
+        res.render("category_edit", { Category: category });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Error al traer categoria' });
+    }
+}
+
 export const createCategory = async (req, res) => {
     try {
         const { name, description, imageUrl } = req.body;

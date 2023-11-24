@@ -7,6 +7,12 @@ import fileUpload from 'express-fileupload';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+/* middlewares */
+import {
+  authMiddleware,
+  adminMiddleware,
+  employeeMiddleware
+} from "./middlewares/authMiddleware.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,6 +27,7 @@ import eventRoutes from './routes/event.routes.js';
 import testimonialRoutes from './routes/testimonial.routes.js';
 import businessInfoRoutes from './routes/businessInfo.routes.js';
 import openingHourRoutes from './routes/openingHour.routes.js';
+import userRoutes from './routes/user.routes.js';
 
 const app = express();
 
@@ -50,17 +57,18 @@ app.use(fileUpload());
 app.use(cookieParser());
 
 
-/* falta agregar la authorizacion a las rutas correspondientes */
+
 
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
-app.use('/product', productRoutes);
-app.use('/category', categoryRoutes);
-app.use('/asociation', asociationRoutes);
-app.use('/event', eventRoutes);
-app.use('/testimonial', testimonialRoutes);
-app.use('/businessInfo', businessInfoRoutes);
-app.use('/openingHour', openingHourRoutes);
+app.use('/product', authMiddleware, productRoutes);
+app.use('/category', authMiddleware, categoryRoutes);
+app.use('/user', authMiddleware, userRoutes);
+app.use('/asociation', authMiddleware, asociationRoutes);
+app.use('/event', authMiddleware, eventRoutes);
+app.use('/testimonial', authMiddleware, testimonialRoutes);
+app.use('/businessInfo', authMiddleware, adminMiddleware, businessInfoRoutes);
+app.use('/openingHour', authMiddleware, openingHourRoutes);
 
 
 

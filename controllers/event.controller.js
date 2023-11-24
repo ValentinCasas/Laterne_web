@@ -9,6 +9,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
+export const goEvents = async (req, res) => {
+    try {
+        const events = await Event.findAll();
+        res.render("event_create", { Events: events });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Error al traer evento' });
+    }
+}
+
+export const goEditEvent = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const event = await Event.findByPk(id);
+
+        res.render("event_edit", { Event: event });
+
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Error al traer evento' });
+    }
+}
+
 export const createEvent = async (req, res) => {
     try {
         const { name, date, time, description, location } = req.body;
@@ -139,6 +160,6 @@ export const updateEvent = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error al actualizar evento' + error.message});
+        res.status(500).json({ error: 'Error al actualizar evento' + error.message });
     }
 };

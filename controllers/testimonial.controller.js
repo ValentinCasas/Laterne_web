@@ -1,5 +1,15 @@
 import Testimonial from "../models/testimonial.model.js";
 
+export const goTestimonials = async (req, res) => {
+    try {
+        const testimonial = await Testimonial.findAll();
+        res.redner("testimonial",{ Testimonial: testimonial });
+
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Error al traer feedbacks' });
+    }
+}
+
 export const createTestimonial = async (req, res) => {
     try {
         const { description } = req.body;
@@ -10,7 +20,7 @@ export const createTestimonial = async (req, res) => {
             date: new Date(),
         });
 
-        res.status(201).json({ Testimonial: newTestimonial, message:"Gracias por dejar tu comentario!" });
+        res.status(201).json({ Testimonial: newTestimonial, message: "Gracias por dejar tu comentario!" });
 
     } catch (err) {
         res.status(500).json({ success: false, error: 'Error al crear el feedback' });
