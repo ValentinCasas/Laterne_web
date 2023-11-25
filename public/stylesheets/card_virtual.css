@@ -1,0 +1,28 @@
+body {
+    /* background-image: url("/banner-carta.png");
+    background-size: cover; */
+
+    background-color: rgb(112, 110, 110);
+}
+
+
+.info-card::-webkit-scrollbar {
+    width: 2px;
+}
+
+.info-card::-webkit-scrollbar-thumb {
+    background-color: gray; 
+    border-radius: 4px; 
+    transition: width 0.3s;
+    
+}
+
+.info-card::-webkit-scrollbar-track {
+    background-color: transparent;
+    margin-top: 8px; 
+}
+
+.info-card:hover::-webkit-scrollbar-thumb {
+    width: 5px;
+    background-color: #4b4848; 
+}

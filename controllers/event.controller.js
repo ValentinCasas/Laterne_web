@@ -34,7 +34,7 @@ export const createEvent = async (req, res) => {
     try {
         const { name, date, time, description, location } = req.body;
 
- 
+        const formattedDate = date ? moment.utc(date, 'YYYY/MM/DD').toDate() : null;
         const formattedTime = time ? moment.utc(time, 'HH:mm').toDate() : null;
 
         let imagePath = null;
@@ -49,7 +49,7 @@ export const createEvent = async (req, res) => {
 
         const newEvent = await Event.create({
             name,
-            date: date,
+            date: date ? formattedDate : null,
             time: formattedTime,
             description,
             location,
@@ -115,7 +115,6 @@ export const deleteEvent = async (req, res) => {
 };
 
 export const updateEvent = async (req, res) => {
-  
     const { name, date, time, description, location, id } = req.body;
 
     try {
@@ -126,31 +125,32 @@ export const updateEvent = async (req, res) => {
         }
 
         event.name = name || event.name;
-        event.date = date;
+
+        if (date) {
+            const formattedDate = moment.utc(date, 'YYYY/MM/DD').toDate();
+            event.date = formattedDate;
+        }
+
         event.time = time;
         event.description = description || event.description;
         event.location = location || event.location;
 
-        // Actualizar la imagen si se proporciona una nueva
         if (req.files && req.files.imageFile) {
             const newImage = req.files.imageFile;
             const newImagePath = uuid() + path.extname(newImage.name);
             const uploadPath = path.join(__dirname, '../public/images/images_event', newImagePath);
 
-            // Eliminar la imagen anterior si existe
-            if (event.imageUrl !== null) {
+            if (event.imageUrl) {
                 const oldImagePath = path.join(__dirname, '../public/images/images_event', event.imageUrl);
                 if (fs.existsSync(oldImagePath)) {
                     fs.unlinkSync(oldImagePath);
                 }
             }
 
-            // Guardar la nueva imagen
             await newImage.mv(uploadPath);
             event.imageUrl = newImagePath;
         }
 
-        // Guardar los cambios en la base de datos
         await event.save();
 
         res.status(200).json({

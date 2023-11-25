@@ -17,28 +17,137 @@ document.addEventListener("DOMContentLoaded", function () {
             if (response.ok) {
 
 
-                const hasDate = result.Event.date;
-                const hasTime = result.Event.time;
 
-                const eventTimeParts = hasTime ? result.Event.time.split(":") : null;
-                const eventDate = hasDate ? new Date(result.Event.date) : null;
-                const eventTime = hasTime ? new Date() : null;
+                const dateObject = new Date(result.Event.date);
+                const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
 
-                // Actualiza los elementos del DOM
-                const eventNameElement = document.getElementById("event-name");
-                const eventDescriptionElement = document.getElementById("event-description");
-                const eventDateElement = document.getElementById("event-date");
-                const eventTimeElement = document.getElementById("event-time");
-                const eventLocationElement = document.getElementById("event-location");
-                const eventImageElement = document.getElementById("event-image");
+
+                let eventTime = result.Event.time;
+
+                if (typeof eventTime === 'string') {
+                    // Divide la cadena de tiempo en horas y minutos
+                    let [hour, minute] = eventTime.split(':');
+
+                    // Crea una nueva fecha
+                    let date = new Date();
+                    date.setHours(parseInt(hour), parseInt(minute));
+
+                    eventTime = date;
+                }
+
+                let formatter = new Intl.DateTimeFormat('es-AR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'America/Argentina/Buenos_Aires'
+                });
+
+
+                let eventNameElement = document.getElementById("event-name");
+                let eventDescriptionElement = document.getElementById("event-description");
+                let eventDateElement = document.getElementById("event-date");
+                let eventTimeElement = document.getElementById("event-time");
+                let eventLocationElement = document.getElementById("event-location");
+                let eventImageElement = document.getElementById("event-image");
+                let card = document.getElementById(`card-${result.Event.id}`);
+
+                let contentDiv = document.getElementById(`card-child-${result.Event.id}`);
+
+
+                // Verifica si hay una imagen antes de actualizar el src
+                if (result.Event.imageUrl) {
+                    // Si existe, verifica si la img ya existe y actualiza el src
+                    if (eventImageElement) {
+                        eventImageElement.src = `/${result.Event.imageUrl}`;
+                    } else {
+                        // Si no existe, crea la img y establece el src
+                        const imgElement = document.createElement('img');
+                        imgElement.src = `/${result.Event.imageUrl}`;
+                        imgElement.alt = result.Event.name;
+                        imgElement.id = 'event-image';
+                        imgElement.className = 'w-1/3 h-48 object-contain';
+
+                        card.appendChild(imgElement);
+                    }
+                }
+
 
                 // Actualiza el contenido con los nuevos valores
-                eventNameElement.textContent = result.Event.name;
-                eventDescriptionElement.textContent = result.Event.description;
-                eventImageElement.src = `/${result.Event.imageUrl}`;
-                eventDateElement = `${eventDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
-                eventTimeElement = `${eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
-                eventLocationElement = result.Event.location;
+                if (result.Event.name) {
+    
+                    if (eventNameElement) {
+                        eventNameElement.textContent = result.Event.name;
+                    } else {
+                        eventNameElement = document.createElement('h3');
+                        eventNameElement.textContent = result.Event.name;
+                        eventNameElement.id = 'event-name';
+                        eventNameElement.className = 'text-lg font-bold mb-2';
+                        contentDiv.appendChild(eventNameElement);
+                    }
+                }
+                
+                if (result.Event.description) {
+
+                    if (eventDescriptionElement) {
+                        eventDescriptionElement.textContent = result.Event.description;
+                    } else {
+                        eventDescriptionElement = document.createElement('p');
+                        eventDescriptionElement.textContent = result.Event.description;
+                        eventDescriptionElement.id = 'event-description';
+                        eventDescriptionElement.className = 'text-gray-600';
+                        contentDiv.appendChild(eventDescriptionElement);
+                    }
+                }
+                
+                // Verifica y actualiza eventDateElement
+                if (result.Event.date) {
+                    const dateObject = new Date(result.Event.date);
+                    const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+                    if (eventDateElement) {
+                        eventDateElement.textContent = localDateString;
+                    } else {
+                        eventDateElement = document.createElement('p');
+                        eventDateElement.textContent = localDateString;
+                        eventDateElement.id = 'event-date';
+                        eventDateElement.className = 'text-gray-600';
+                        contentDiv.appendChild(eventDateElement);
+                    }
+                }
+                
+
+                // Verifica y actualiza eventTimeElement
+                if (result.Event.time) {
+                    let eventTimeParts = result.Event.time.split(":");
+                    let eventTime = new Date();
+                    eventTime.setHours(Number(eventTimeParts[0]));
+                    eventTime.setMinutes(Number(eventTimeParts[1]));
+                    if (eventTimeElement) {
+                        eventTimeElement.textContent = eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                    } else {
+                        let timeElement = document.createElement('p');
+                        timeElement.textContent = eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                        timeElement.id = 'event-time';
+                        timeElement.className = 'text-gray-600'
+                        contentDiv.appendChild(timeElement);
+                    }
+                }
+
+                // Verifica y actualiza eventLocationElement
+                if (result.Event.location) {
+                    if (eventLocationElement) {
+                        eventLocationElement.textContent = result.Event.location;
+                    } else {
+                        let locationElement = document.createElement('p');
+                        locationElement.textContent = result.Event.location;
+                        locationElement.id = 'event-location';
+                        
+                        locationElement.className = 'text-gray-600'
+                        contentDiv.appendChild(locationElement);
+                    }
+                }
+
+                
+                card.appendChild(contentDiv);
 
                 // Muestra Sweet Alert en caso de éxito
                 Swal.fire({

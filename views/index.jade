@@ -44,10 +44,11 @@ block content
           .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
 
             if event.date 
-              - const eventDate = new Date(event.date);
-              h1.m-0 #{eventDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              - const dateObject = new Date(event.date);
+              - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+              h1.m-0 #{localDateString}
             else
-              h1.m-0 Fecha a especificar  
+              h1.m-0 --  /  --  /  --- 
 
             if event.time
               - const eventTimeParts = event.time.split(":");
@@ -63,7 +64,7 @@ block content
               p.m-0
                 span=event.location
                 span.artist.mx-2=event.name
-                span Horario
+                span --:--
 
 
 

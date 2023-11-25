@@ -1,5 +1,4 @@
 
-
 /* crear producto */
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("form_event");
@@ -18,18 +17,35 @@ document.addEventListener("DOMContentLoaded", function () {
             const result = await response.json();
 
             if (response.ok) {
-                // Validar la existencia de result.Event.date y result.Event.time
-                const hasDate = result.Event.date;
-                const hasTime = result.Event.time;
 
-                const eventTimeParts = hasTime ? result.Event.time.split(":") : null;
-                const eventDate = hasDate ? new Date(result.Event.date) : null;
-                const eventTime = hasTime ? new Date() : null;
 
-                // Si no hay fecha o no hay hora, imprimir un mensaje en la consola
-                if (!hasDate || !hasTime) {
-                    console.warn('La fecha o la hora del evento no están disponibles.');
+                const dateObject = new Date(result.Event.date);
+                const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+
+
+                let eventTime = result.Event.time;
+
+                if (typeof eventTime === 'string') {
+                    // Divide la cadena de tiempo en horas y minutos
+                    let [hour, minute] = eventTime.split(':');
+                
+                    // Crea una nueva fecha
+                    let date = new Date();
+                    date.setHours(parseInt(hour), parseInt(minute));
+                
+                    eventTime = date;
                 }
+                
+                let formatter = new Intl.DateTimeFormat('es-AR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    hour12: false,
+                    timeZone: 'America/Argentina/Buenos_Aires' 
+                });
+                
+                const time = formatter.format(eventTime);
+                
+
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
@@ -41,8 +57,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div class="w-1/2 p-4">
                             <h3 class="text-lg font-bold mb-2">${result.Event.name}</h3>
                             <p class="text-gray-600">${result.Event.description}</p>
-                            ${hasDate ? `<p class="text-gray-600">${eventDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>` : ''}
-                            ${hasTime ? `<p class="text-gray-600">${eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</p>` : ''}
+                            ${`<p class="text-gray-600">${localDateString}</p>`}
+                            ${`<p class="text-gray-600">${time}</p>`}
                             <p class="text-gray-600">${result.Event.location}</p>
                             <div class="flex items-center justify-between mt-4">
                                 <a href="/event/view-edit-event/${result.Event.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Editar</a>
