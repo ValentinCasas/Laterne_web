@@ -3,13 +3,13 @@ import {
     createCategory, getCategories,
     getCategory, deleteCategory,
     updateCategory, goCategories,
-    goEditCategories
+    goEditCategory
 } from "../controllers/category.controller.js";
 
 const router = Router();
 
 router.get("/view-create-category", goCategories);
-router.get("/view-edit-category/:id", goEditCategories);
+router.get("/view-edit-category/:id", goEditCategory);
 
 router.post("/create-category", createCategory);
 
@@ -19,6 +19,6 @@ router.get("/get-category/:id", getCategory);
 
 router.delete("/delete-category/:id", deleteCategory);
 
-router.put("/update-category/:id", updateCategory);
+router.post("/update-category", updateCategory);
 
 export default router

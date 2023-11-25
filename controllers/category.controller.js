@@ -1,24 +1,70 @@
 import Category from "../models/category.model.js";
 import ProductCategory from "../models/productCategory.model.js";
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import path from 'path';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 export const goCategories = async (req, res) => {
     try {
         const categories = await Category.findAll();
-        res.render("category_create", { Categories: categories });
+
+        // Ruta a la carpeta que contiene las imágenes
+        const imagesFolderPath = path.join(process.cwd(), 'public', 'images', 'banners');
+
+        // Lee el contenido del directorio
+        fs.readdir(imagesFolderPath, (err, files) => {
+            if (err) {
+                console.error('Error al leer el directorio de imágenes:', err);
+                res.status(500).json({ success: false, error: 'Error al obtener imágenes' });
+            } else {
+                // Filtra solo los archivos de imagen (puedes ajustar según tus extensiones)
+                const imageFiles = files.filter(file => /\.(png|jpg|jpeg|gif)$/i.test(file));
+
+                // Construye la ruta completa de cada imagen
+                const images = imageFiles.map(file => ({
+                    name: file,
+                    path: path.join('/images/banners', file)
+                }));
+
+                res.render("category_create", { Categories: categories, Images: images });
+            }
+        });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'Error al traer categorias' });
-
+        console.error('Error al obtener categorías:', err);
+        res.status(500).json({ success: false, error: 'Error al traer categorías' });
     }
-}
+};
 
-export const goEditCategories = async (req, res) => {
+
+export const goEditCategory = async (req, res) => {
     try {
         const { id } = req.params;
         const category = await Category.findByPk(id);
-        res.render("category_edit", { Category: category });
+
+        const imagesFolderPath = path.join(process.cwd(), 'public', 'images', 'banners');
+
+        // Lee el contenido del directorio
+        fs.readdir(imagesFolderPath, (err, files) => {
+            if (err) {
+                res.status(500).json({ success: false, error: 'Error al obtener imágenes' });
+            } else {
+                // Filtra solo los archivos de imagen (puedes ajustar según tus extensiones)
+                const imageFiles = files.filter(file => /\.(png|jpg|jpeg|gif)$/i.test(file));
+
+                // Construye la ruta completa de cada imagen
+                const images = imageFiles.map(file => ({
+                    name: file,
+                    path: path.join('/images/banners', file)
+                }));
+
+                res.render("category_edit", { Category: category, Images: images });
+            }
+        });
+
     } catch (err) {
         res.status(500).json({ success: false, error: 'Error al traer categoria' });
     }
@@ -26,7 +72,7 @@ export const goEditCategories = async (req, res) => {
 
 export const createCategory = async (req, res) => {
     try {
-        const { name, description, imageUrl } = req.body;
+        const { name, description, selectedImage } = req.body;
 
         const categoryExists = await Category.findOne({ where: { name } });
 
@@ -37,7 +83,7 @@ export const createCategory = async (req, res) => {
         const newCategory = await Category.create({
             name,
             description,
-            imageUrl,
+            imageUrl: selectedImage,
         });
 
         res.status(201).json({ Category: newCategory });
@@ -93,8 +139,7 @@ export const deleteCategory = async (req, res) => {
 };
 
 export const updateCategory = async (req, res) => {
-    const { id } = req.params;
-    const { name, description, imageUrl } = req.body;
+    const { name, description, selectedImage, id } = req.body;
 
     try {
         const category = await Category.findByPk(id);
@@ -105,7 +150,7 @@ export const updateCategory = async (req, res) => {
 
         category.name = name || category.name;
         category.description = description || category.description;
-        category.imageUrl = imageUrl || category.imageUrl;
+        category.imageUrl = selectedImage || category.imageUrl;
 
 
         await category.save();

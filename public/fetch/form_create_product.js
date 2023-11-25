@@ -21,7 +21,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
-                <div class="card bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Product.productId}">
+                <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Product.id}">
+
+                <a href="/product/delete-product/${result.Product.id}" data-product-id="${result.Product.id}" class="delete-product absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Eliminar
+              </a>
+              
+
                 <img src="/${result.Product.imageUrl}" alt="${result.Product.name}" class="w-1/3 h-48 object-contain">
                 <div class="w-1/2 p-4">
                     <h3 class="text-lg font-bold mb-2">${result.Product.name}</h3>
@@ -33,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     <div class="flex items-center justify-between mt-4">
                     <a href="/product/view-edit-product/${result.Product.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Editar</a>
-                    <a href="/product/delete-product/${result.Product.id}" data-product-id=${result.Product.id} class="delete-product bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Eliminar</a>
+                    
                     </div>
 
                 </div>

@@ -7,7 +7,62 @@ block content
 
     head 
 
+        script(src="/form_edit_event.js" defer)
+        link(rel="stylesheet" href="event.css")
 
     body
 
-        h1 EDITAR EVENTO
+        form(id="form_edit_event" class="max-w-md mx-auto mb-8 mt-32 p-6 bg-white rounded shadow-2xl")
+            input(type="hidden" value=`${Event.id}` name="id")
+            div.mb-4
+                label(for="name" class="text-gray-700 font-bold mb-2 block") NOMBRE
+                input(type="text" name="name" value=`${Event.name}` placeholder=`${Event.name}` id="name" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="description" class="text-gray-700 font-bold mb-2 block") DESCRIPCION
+                input(type="text" name="description" value=`${Event.description}` placeholder=`${Event.description}` id="description" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="date" class="text-gray-700 font-bold mb-2 block") FECHA
+                input(type="date" name="date" id="date" value=Event.date placeholder=`${Event.date}` class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="time" class="text-gray-700 font-bold mb-2 block") HORA
+                input(type="time" name="time" value=`${Event.time}` placeholder=`${Event.time}` id="time" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="location" class="text-gray-700 font-bold mb-2 block") DIRECCION
+                input(type="text" name="location" value=`${Event.location}` placeholder=`${Event.location}` id="location" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+
+            div.mb-4
+                label(for="imageFile" class="text-gray-700 font-bold mb-2 block") IMAGEN
+                input(type="file" name="imageFile" id="imageFile" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.flex.items-center.justify-between
+                button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
+
+
+        #container-events.min-h-screen.max-h-screen.overlfow-auto
+                .card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.m-4.flex.border(id=`card-${Event.id}`)
+
+                    if Event.imageUrl
+                        img(src=`/${Event.imageUrl}`, id="event-image", alt=Event.name, class="w-1/3 h-48 object-contain")
+                    div(class="w-1/2 p-4")
+                        h3.text-lg.font-bold.mb-2#event-name #{Event.name}
+                        p.text-gray-600#event-description #{Event.description}
+
+                        if Event.date 
+                            - const eventDate = new Date(Event.date);
+                            p.text-gray-600#event-date #{eventDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+
+                        if Event.time
+                            - const eventTimeParts = Event.time.split(":");
+                            - const eventTime = new Date();
+
+                            - eventTime.setHours(Number(eventTimeParts[0]));
+                            - eventTime.setMinutes(Number(eventTimeParts[1]));
+                            p.text-gray-600#event-time #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+
+
+                        p.text-gray-600#event-location  #{Event.location}

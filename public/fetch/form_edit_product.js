@@ -30,9 +30,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 productImageElement.src = `/${result.Product.imageUrl}`;
 
                 // Actualiza las categorías
-                const categoriesHTML = result.ProductCategory.map(pc => `<span class="text-blue-500 font-semibold">${pc.Category.name + " "}</span> `).join(' - ');
+                if (Array.isArray(result.ProductCategory)) {
+                    const categoriesHTML = result.ProductCategory.map(pc => `<span class="text-blue-500 font-semibold">${pc.Category.name + " "}</span> `).join(' - ');
 
-                productCategoriesElement.innerHTML = categoriesHTML;
+                    productCategoriesElement.innerHTML = categoriesHTML;
+                } else {
+                    productCategoriesElement.innerHTML = ''; // Limpiar el contenido en caso de que no haya categorías
+                }
+
 
                 // Muestra Sweet Alert en caso de éxito
                 Swal.fire({

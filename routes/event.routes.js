@@ -18,6 +18,6 @@ router.get("/get-event/:id", getEvent);
 
 router.delete("/delete-event/:id", deleteEvent);
 
-router.put("/update-event/:id", updateEvent);
+router.post("/update-event", updateEvent);
 
 export default router

@@ -138,8 +138,12 @@ export const updateProduct = async (req, res) => {
     const { name, description, id, availavility, price, categoryIds } = req.body;
     var productCategory;
 
+    console.log(categoryIds);
+
     // Parsear categoryIds a un array si no lo es
     const parsedCategoryIds = Array.isArray(categoryIds) ? categoryIds : [categoryIds];
+
+    console.log(parsedCategoryIds);
 
     try {
         const product = await Product.findByPk(id);
@@ -156,20 +160,20 @@ export const updateProduct = async (req, res) => {
 
         const currentCategoryIds = currentCategories.map(category => category.categoryId);
 
-        // Determinar las nuevas categorías a agregar
-        const categoriesToAdd = parsedCategoryIds.filter(categoryId => !currentCategoryIds.includes(categoryId));
-
-        // Determinar las categorías a eliminar
-        const categoriesToRemove = parsedCategoryIds.filter(categoryId => !currentCategoryIds.includes(categoryId));
-
-        // Eliminar todas las asociaciones existentes si no hay categorías seleccionadas
-        if (!Array.isArray(parsedCategoryIds) || parsedCategoryIds.length === 0) {
+        // Eliminar todas las asociaciones existentes si no hay categorías nuevas para agregar
+        if (!parsedCategoryIds || parsedCategoryIds.length === 0 || (parsedCategoryIds.length === 1 && parsedCategoryIds[0] === undefined)) {
             await ProductCategory.destroy({
                 where: {
                     productId: product.id
                 }
             });
         } else {
+            // Determinar las nuevas categorías a agregar
+            const categoriesToAdd = parsedCategoryIds.filter(categoryId => !currentCategoryIds.includes(categoryId));
+
+            // Determinar las categorías a eliminar
+            const categoriesToRemove = currentCategoryIds.filter(categoryId => !parsedCategoryIds.includes(categoryId));
+
             // Eliminar las categorías deseleccionadas
             if (categoriesToRemove.length > 0) {
                 await ProductCategory.destroy({
@@ -181,29 +185,25 @@ export const updateProduct = async (req, res) => {
             }
 
             // Crear los nuevos ProductCategory
-            if (categoriesToAdd.length > 0) {
-                const newAssociations = categoriesToAdd.map(categoryId => ({
-                    productId: product.id,
-                    categoryId: categoryId
-                }));
+            const newAssociations = categoriesToAdd.map(categoryId => ({
+                productId: product.id,
+                categoryId: categoryId
+            }));
 
-                productCategory = await ProductCategory.bulkCreate(newAssociations);
-            }
+            productCategory = await ProductCategory.bulkCreate(newAssociations);
         }
 
         // Obtener todas las categorías asociadas al producto después de la actualización
         const updatedCategories = await ProductCategory.findAll({
             where: { productId: product.id },
-            include: [Category]  // Asegúrate de que la relación entre ProductCategory y Category esté definida
+            include: [Category]
         });
-
 
         // Actualizar el nombre, descripción, disponibilidad y precio
         product.name = name || product.name;
         product.description = description || product.description;
         product.availavility = availavility || product.availavility;
         product.price = price || product.price;
-
 
         // Actualizar la imagen si se proporciona una nueva
         if (req.files && req.files.imageFile) {

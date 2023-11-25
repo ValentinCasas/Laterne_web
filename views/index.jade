@@ -39,17 +39,37 @@ block content
   .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3
     h1#eventos.text-light.text-center.mt-2.mb-2 EVENTOS
     .contenedor-cards.px-4
-      each val in [1, 2, 3, 4]
+      each event in Events
         .row.my-3.p-3
           .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
-            h1.m-0 Dic. 12, 2023
 
-            p.m-0
-              span La Punta, San Luis.
-              span.artist.mx-2 YSY A
-              span 23:00hs
+            if event.date 
+              - const eventDate = new Date(event.date);
+              h1.m-0 #{eventDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            else
+              h1.m-0 Fecha a especificar  
+
+            if event.time
+              - const eventTimeParts = event.time.split(":");
+              - const eventTime = new Date();
+
+              - eventTime.setHours(Number(eventTimeParts[0]));
+              - eventTime.setMinutes(Number(eventTimeParts[1]));
+              p.m-0
+                span=event.location
+                span.artist.mx-2=event.name
+                span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+            else
+              p.m-0
+                span=event.location
+                span.artist.mx-2=event.name
+                span Horario
+
+
+
+
   .container-fluid.px-0
-    img.img-fluid(src="/banner2.png", alt="")
+    img.img-fluid(src="/banner2.png" alt="")
   .swiper-container.container-beer
     h1.text-center.text-light.mx-3 NUESTRAS CERVEZAS
     .swiper-wrapper
@@ -62,7 +82,7 @@ block content
           img(src=`${val}`, alt=`Beers`)
         .swiper-slide.py-0
           img(src=`${val}`, alt=`Beers`)      
-  
+
   //seccion feedback
   //fotos qsy
   //footer 
@@ -84,13 +104,13 @@ block content
                 a(href='#') Contáctanos 
               li 
                 a(href='#') +54 9 2665 018537
-                
+
           .col-sm-6.col-md-3.item
             h3 NOSOTROS
             ul
               li 
                 a(href='/auth/view-login') Soy Empleado
-                
+
           .col-md-6.item.text
             h3 MEDIOS DE PAGO
             ul

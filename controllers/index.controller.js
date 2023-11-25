@@ -1,7 +1,8 @@
-
+import Event from "../models/event.model.js";
 
 export const goIndex = async (req, res) => {
-    res.render("index")
+    const events = await Event.findAll();
+    res.render("index", {Events : events})
 };
 
 export const goCardVirtual = async (req, res) => {

@@ -34,8 +34,8 @@ export const createEvent = async (req, res) => {
     try {
         const { name, date, time, description, location } = req.body;
 
-        const formattedDate = moment(date, 'DD/MM/YYYY').toDate();
-        const formattedTime = moment.utc(time, 'HH:mm').toDate();
+ 
+        const formattedTime = time ? moment.utc(time, 'HH:mm').toDate() : null;
 
         let imagePath = null;
 
@@ -49,7 +49,7 @@ export const createEvent = async (req, res) => {
 
         const newEvent = await Event.create({
             name,
-            date: formattedDate,
+            date: date,
             time: formattedTime,
             description,
             location,
@@ -115,8 +115,8 @@ export const deleteEvent = async (req, res) => {
 };
 
 export const updateEvent = async (req, res) => {
-    const { id } = req.params;
-    const { name, date, time, description, location } = req.body;
+  
+    const { name, date, time, description, location, id } = req.body;
 
     try {
         const event = await Event.findByPk(id);
@@ -126,8 +126,8 @@ export const updateEvent = async (req, res) => {
         }
 
         event.name = name || event.name;
-        event.date = date ? moment(date, 'DD/MM/YYYY').toDate() : event.date;
-        event.time = time ? moment.utc(time, 'HH:mm').toDate() : event.time;
+        event.date = date;
+        event.time = time;
         event.description = description || event.description;
         event.location = location || event.location;
 
