@@ -1,0 +1,63 @@
+doctype html
+html(lang="en")
+    head
+
+        meta(charset="UTF-8")
+        meta(name="viewport" content="width=device-width, initial-scale=1.0")
+        meta(name="keywords" content="restaurante,la punta, Laterne")
+        meta(name="author" content="Laterne & .")
+        meta(name="copyright" content="Laterne & .")
+
+        link(href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet")
+
+        link(href="https://db.onlinewebfonts.com/c/6909bd43ba5cc7d91c36a25c548b00ed?family=ITC+Clearface+Black" rel="stylesheet")
+        link(rel="preconnect" href="https://fonts.googleapis.com")
+        link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
+        link(href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto&display=swap" rel="stylesheet")
+        link(rel="preconnect" href="https://fonts.googleapis.com")
+        link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
+        link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
+
+        link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css")
+        script(src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js", defer)
+
+        link(href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet")      
+
+        script(src="https://cdn.jsdelivr.net/npm/sweetalert2@10")
+
+        script(src="/swiper.js", defer)
+
+    body
+
+        if locals.isLoggedIn 
+            nav.flex.w-full.bg-gray-800.text-white.p-4.fixed.top-0
+
+
+                a(href="/" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4") Inicio
+                a(href="/card_virtual" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1") Carta
+
+
+                a(href="/home" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1 mr-4") Home
+
+                a(href="/product/view-products" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4") Productos
+                a(href="/category/view-create-category" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1 mr-4") Categorias
+
+                a(href="/testimonial/view-testimonials" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4") Feedback
+                a(href="/event/view-create-event" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1 mr-4") Eventos
+
+
+                a(href="/businessInfo/view-businessInfo" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4 ") Info
+                a(href="/user/view-profile" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1") Perfil
+
+                if locals.role === 1
+                    a(href="/user/view-users" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1 mr-4") Usuarios
+
+                a(href="/auth/logout" class="bg-red-600 p-1 rounded hover:text-gray-300 ml-4") Logout
+
+        if !locals.isLoggedIn     
+            nav.flex.w-full.bg-gray-800.text-white.p-4
+
+                a(href="/" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4") Inicio
+                a(href="/card_virtual" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1") Carta
+
+        block content

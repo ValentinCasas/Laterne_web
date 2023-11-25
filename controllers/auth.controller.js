@@ -57,18 +57,22 @@ export const login = async (req, res) => {
 
         const userFound = await User.findAll({ where: { email } });
 
-        if (!userFound) return res.status(400).json({ message: 'Usuario no encontrado' });
+        if (userFound.length === 0) {
+            return res.status(400).json({ message: 'Usuario no encontrado' });
+        }
 
         const isMatch = await bcrypt.compare(password, userFound[0].password);
 
-        if (!isMatch) return res.status(400).json({ message: 'Contraseña incorrecta' });
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Contraseña incorrecta' });
+        }
 
-        const token = await createAccessToken({ id: userFound[0].id });
+        const token = await createAccessToken({ id: userFound[0].id, role:userFound[0].role });
         const role = userFound[0].role;
+        req.session.userId = userFound[0].id;
 
         res.cookie("token", token);
-        res.cookie("role", role);
-        res.render("home");
+        res.redirect("/home");
 
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -76,12 +80,12 @@ export const login = async (req, res) => {
 };
 
 
+
 export const logout = (req, res) => {
     res.cookie('token', "", {
         expires: new Date(0),
     })
-    res.cookie('role', "")
-    return res.sendStatus(200);
+    return res.render("login");
 }
 
 export const getUsers = async (req, res) => {

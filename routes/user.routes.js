@@ -13,7 +13,7 @@ import {
 
 const router = Router();
 
-router.get("/view-profile/:id", goProfile);
+router.get("/view-profile", goProfile);
 
 router.get("/view-users", adminMiddleware, goUsers);
 router.get("/view-edit-users/:id", adminMiddleware, goEditUser);

@@ -17,6 +17,6 @@ router.get("/get-product/:id", getProduct);
 
 router.delete("/delete-product/:id", deleteProduct);
 
-router.put("/update-product/:id", updateProduct);
+router.post("/update-product", updateProduct);
 
 export default router

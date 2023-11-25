@@ -10,6 +10,6 @@ router.get("/view-businessInfo", goBusinessInfo);
 
 router.get("/get-businessInfo", getbusinessInfo);
 
-router.put("/update-businessInfo", updateBusinessInfo);
+router.post("/update-businessInfo", updateBusinessInfo);
 
 export default router

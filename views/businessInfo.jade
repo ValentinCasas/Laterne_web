@@ -1,0 +1,68 @@
+extends layout_tailwind
+
+
+block content
+
+    title Info
+
+    head 
+        link(rel="stylesheet" href="/info.css")
+        script(src="/form_info.js" defer)
+
+
+    body(class="bg-cream text-charcoal min-h-screen font-sans leading-normal overflow-x-hidden lg:overflow-auto")
+
+        main(class="flex-1 md:p-0 lg:pt-8 lg:px-8 md:ml-24 flex flex-col")
+            section(class="bg-cream-lighter p-4 shadow ")
+                div(class="md:flex mt-20")
+                    h2(class="md:w-1/3 uppercase tracking-wide text-sm sm:text-lg mb-6") Información del negocio
+                
+                form(id="form_info" action="/businessInfo/update-businessInfo" method="POST")
+                    div(class="md:flex mb-8")
+                        div(class="md:w-1/3")
+                            legend(class="uppercase tracking-wide text-sm") Dirección
+                            p(class="text-xs font-light text-red") Importante | requerido.
+                        div(class="md:flex-1 mt-2 mb:mt-0 md:px-3")
+
+                            div(class="md:flex mb-4")
+                                
+                                div(class="md:flex-1 md:pl-3")
+                                    label(class="block uppercase tracking-wide text-charcoal-darker text-xs font-bold") Descripción dirección
+                                    input(class="w-full shadow-inner p-4 border-0" value=`${BusinessInfo.adress}` type="text" name="address" placeholder=`${BusinessInfo.adress}`)
+                                    span(class="text-xs mb-4 font-thin") Campo requerido para mayor certeza.
+                            div(class="md:flex mb-4")
+                                div(class="md:flex-1 md:pr-3")
+                                    label(class="block uppercase tracking-wide text-charcoal-darker text-xs font-bold") Latitud
+                                    input(class="w-full shadow-inner p-4 border-0" type="text" value=`${BusinessInfo.latitude}` name="latitude" placeholder=`${BusinessInfo.latitude}`)
+                                div(class="md:flex-1 md:pl-3")
+                                    label(class="block uppercase tracking-wide text-charcoal-darker text-xs font-bold") Longitud
+                                    input(class="w-full shadow-inner p-4 border-0" type="text" value=`${BusinessInfo.longitude}` name="longitude" placeholder=`${BusinessInfo.longitude}`)
+                    div(class="md:flex mb-8")
+                        div(class="md:w-1/3")
+                            legend(class="uppercase tracking-wide text-sm") Contacto
+                        div(class="md:flex-1 mt-2 mb:mt-0 md:px-3")
+                            div(class="mb-4")
+                                label(class="block uppercase tracking-wide text-xs font-bold") Telefono
+                                input(class="w-full shadow-inner p-4 border-0" value=`${BusinessInfo.phoneNumber}` type="tel" name="phoneNumber" placeholder=`${BusinessInfo.phoneNumber}`)
+                            div(class="mb-4")
+                                label(class="block uppercase tracking-wide text-charcoal-darker text-xs font-bold") Email
+                                input(class="w-full shadow-inner p-4 border-0" type="email" value=`${BusinessInfo.email}` name="email" placeholder=`${BusinessInfo.email}`)
+                    div(class="md:flex")
+                        div(class="md:w-1/3")
+                            legend(class="uppercase tracking-wide text-sm") Redes sociales
+                        div(class="md:flex-1 mt-2 mb:mt-0 md:px-3")
+                            div(class="md:flex mb-4")
+                                div(class="md:flex-1 md:pr-3")
+                                    label(class="block uppercase tracking-wide text-charcoal-darker text-xs font-bold") Facebook
+                                    div(class="w-full flex")
+                                        input(class="flex-1 shadow-inner p-4 border-0" type="text" value=`${BusinessInfo.facebookUrl}` name="facebookUrl" placeholder=`${BusinessInfo.facebookUrl}`)
+                            div(class="md:flex mb-4")
+                                div(class="md:flex-1 md:pr-3")
+                                    label(class="block uppercase tracking-wide text-charcoal-darker text-xs font-bold") Instagram
+                                    div(class="w-full flex")
+                                        input(class="flex-1 shadow-inner p-4 border-0" type="text" value=`${BusinessInfo.instagramUrl}` name="instagramUrl" placeholder=`${BusinessInfo.instagramUrl}`)
+
+                    
+                    div(class="md:flex my-6 border.border-t-1.border-b-0.border-x-0.border-cream-dark")
+                            button(class="text-cream-lighter bg-brick hover:bg-brick-dark px-4 py-2 rounded" type="submit") Modificar
+

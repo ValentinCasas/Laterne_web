@@ -6,6 +6,8 @@ import cors from 'cors';
 import fileUpload from 'express-fileupload';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import session from "express-session";
+import { SECRET_KEY_SESSION } from "./config.js";
 
 /* middlewares */
 import {
@@ -31,6 +33,12 @@ import userRoutes from './routes/user.routes.js';
 
 const app = express();
 
+app.use(session({
+  secret: SECRET_KEY_SESSION,
+  resave: false,
+  saveUninitialized: true,
+}));
+
 app.set('view engine', 'jade');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -41,6 +49,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(express.static(path.join(__dirname, 'public/javascripts')));
 app.use(express.static(path.join(__dirname, 'public/stylesheets')));
+app.use(express.static(path.join(__dirname, 'public/fetch')));
 app.use(express.static(path.join(__dirname, 'public/svg')));
 
 app.use(express.static(path.join(__dirname, 'public/images/banners')));

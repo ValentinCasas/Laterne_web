@@ -3,7 +3,7 @@ import Testimonial from "../models/testimonial.model.js";
 export const goTestimonials = async (req, res) => {
     try {
         const testimonial = await Testimonial.findAll();
-        res.redner("testimonial",{ Testimonial: testimonial });
+        res.render("testimonial",{ Testimonial: testimonial });
 
     } catch (err) {
         res.status(500).json({ success: false, error: 'Error al traer feedbacks' });

@@ -32,7 +32,7 @@ export const getbusinessInfo = async (req, res) => {
 
 export const updateBusinessInfo = async (req, res) => {
 
-    const { description, latitude,
+    const {  latitude,
         longitude, address,
         email, phoneNumber,
         instagramUrl, facebookUrl } = req.body;
@@ -44,7 +44,6 @@ export const updateBusinessInfo = async (req, res) => {
             return res.status(404).json({ message: 'Información de negocio no encontrada' });
         }
 
-        businessInfo[0].description = description || businessInfo[0].description;
         businessInfo[0].latitude = latitude || businessInfo[0].latitude;
         businessInfo[0].longitude = longitude || businessInfo[0].longitude;
         businessInfo[0].address = address || businessInfo[0].address;

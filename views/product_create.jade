@@ -1,0 +1,63 @@
+extends layout_tailwind
+
+
+block content
+
+    title Productos
+
+    head 
+        script(src="/form_create_product.js" defer)
+        link(rel="stylesheet", href="product.css")
+
+    body
+ 
+
+        form(id="form_product" class="max-w-md mx-auto mb-8 mt-32 p-6 bg-white rounded shadow-2xl")
+            div.mb-4
+                label(for="name" class="text-gray-700 font-bold mb-2 block") NOMBRE
+                input(type="text" name="name" id="name" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="description" class="text-gray-700 font-bold mb-2 block") DESCRIPCION
+                input(type="text" name="description" id="description" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+
+            div.mb-3
+                label(for="availavility" class="text-gray-700 font-bold") DISPONIBILIDAD
+                select(name="availavility" id="availavility" class="dark:border-white-400/20 dark:scale-100 transition-all duration-500 ease-in-out dark:hover:scale-110 dark:checked:scale-100 w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+                    option(value="agotado") Agotado
+                    option(value="disponible") Disponible
+
+            div.mb-3
+                label(for="categoryId" class="text-gray-700 font-bold") CATEGORIAS
+                select(name='categoryId'  class="dark:border-white-400/20 dark:scale-100 transition-all duration-500 ease-in-out dark:hover:scale-110 dark:checked:scale-100 w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+                    each category in Categories
+                        option(value=category.id) #{category.name}
+
+            div.mb-6
+                label(for="price" class="text-gray-700 font-bold mb-2 w-full block") PRECIO
+                input(type="number" name="price" id="price" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-4
+                label(for="imageFile" class="text-gray-700 font-bold mb-2 block") IMAGEN
+                input(type="file" name="imageFile" id="imageFile" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.flex.items-center.justify-between
+                button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
+
+
+        #container-products.min-h-screen.max-h-screen.overlfow-auto
+            each product in Products
+                .card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.m-4.flex.border(id=`card-${product.id}`)
+                    a(href=`/product/delete-product/${product.id}`, data-product-id=product.id, class="delete-product absolute top-0 right-0  bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Eliminar
+
+
+                    img(src=`/${product.imageUrl}`, alt=product.name, class="w-1/3 h-48 object-contain")
+                    div(class="w-1/2 p-4")
+                        h3.text-lg.font-bold.mb-2 #{product.name}
+                        p.text-gray-600 #{product.description}
+                        p.text-gray-600  #{product.availavility}
+                        p.text-gray-600  $ #{product.price}
+                        div.flex.items-center.justify-between.mt-4
+                            a(href=`/product/view-edit-product/${product.id}` class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar
+                            

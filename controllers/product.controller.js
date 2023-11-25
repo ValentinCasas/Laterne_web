@@ -26,19 +26,22 @@ export const goEditProduct = async (req, res) => {
     try {
         const product = await Product.findByPk(id);
         const categories = await Category.findAll();
+        const productCategory = await ProductCategory.findAll({
+            where: { productId: id },
+            include: [Product, Category]
+        });
 
-        res.render("product_edit", { Product: product, Categories: categories });
+
+        res.render("product_edit", { Product: product, Categories: categories, ProductCategory: productCategory });
 
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Error al traer producto' });
+        res.status(500).json({ success: false, error: 'Error al traer producto' + error });
     }
 }
 
-
-
 export const createProduct = async (req, res) => {
     try {
-        const { name, description, availavility, price } = req.body;
+        const { name, description, availavility, price, categoryId } = req.body;
 
         const productExists = await Product.findOne({ where: { name } });
 
@@ -56,6 +59,7 @@ export const createProduct = async (req, res) => {
             await productImage.mv(uploadPath);
         }
 
+
         const newProduct = await Product.create({
             name,
             description,
@@ -64,7 +68,14 @@ export const createProduct = async (req, res) => {
             imageUrl: imagePath,
         });
 
-        res.status(201).json({ Product: newProduct });
+        const nameCategory = await Category.findByPk(categoryId)
+
+        await ProductCategory.create({
+            productId: newProduct.id,
+            categoryId,
+        });
+
+        res.status(201).json({ Product: newProduct, NameCategory: nameCategory, message: "Producto creado exitosamente" });
 
     } catch (err) {
         res.status(500).json({ success: false, error: 'Error al crear el producto' });
@@ -124,8 +135,11 @@ export const deleteProduct = async (req, res) => {
 };
 
 export const updateProduct = async (req, res) => {
-    const { id } = req.params;
-    const { name, description, availavility, price } = req.body;
+    const { name, description, id, availavility, price, categoryIds } = req.body;
+    var productCategory;
+
+    // Parsear categoryIds a un array si no lo es
+    const parsedCategoryIds = Array.isArray(categoryIds) ? categoryIds : [categoryIds];
 
     try {
         const product = await Product.findByPk(id);
@@ -134,11 +148,62 @@ export const updateProduct = async (req, res) => {
             return res.status(404).json({ message: 'Producto no encontrado' });
         }
 
+        // Obtener las categorías asociadas actuales
+        const currentCategories = await ProductCategory.findAll({
+            where: { productId: product.id },
+            attributes: ['categoryId']
+        });
+
+        const currentCategoryIds = currentCategories.map(category => category.categoryId);
+
+        // Determinar las nuevas categorías a agregar
+        const categoriesToAdd = parsedCategoryIds.filter(categoryId => !currentCategoryIds.includes(categoryId));
+
+        // Determinar las categorías a eliminar
+        const categoriesToRemove = parsedCategoryIds.filter(categoryId => !currentCategoryIds.includes(categoryId));
+
+        // Eliminar todas las asociaciones existentes si no hay categorías seleccionadas
+        if (!Array.isArray(parsedCategoryIds) || parsedCategoryIds.length === 0) {
+            await ProductCategory.destroy({
+                where: {
+                    productId: product.id
+                }
+            });
+        } else {
+            // Eliminar las categorías deseleccionadas
+            if (categoriesToRemove.length > 0) {
+                await ProductCategory.destroy({
+                    where: {
+                        productId: product.id,
+                        categoryId: categoriesToRemove
+                    }
+                });
+            }
+
+            // Crear los nuevos ProductCategory
+            if (categoriesToAdd.length > 0) {
+                const newAssociations = categoriesToAdd.map(categoryId => ({
+                    productId: product.id,
+                    categoryId: categoryId
+                }));
+
+                productCategory = await ProductCategory.bulkCreate(newAssociations);
+            }
+        }
+
+        // Obtener todas las categorías asociadas al producto después de la actualización
+        const updatedCategories = await ProductCategory.findAll({
+            where: { productId: product.id },
+            include: [Category]  // Asegúrate de que la relación entre ProductCategory y Category esté definida
+        });
+
+
         // Actualizar el nombre, descripción, disponibilidad y precio
         product.name = name || product.name;
         product.description = description || product.description;
         product.availavility = availavility || product.availavility;
         product.price = price || product.price;
+
 
         // Actualizar la imagen si se proporciona una nueva
         if (req.files && req.files.imageFile) {
@@ -164,11 +229,12 @@ export const updateProduct = async (req, res) => {
 
         res.status(200).json({
             Product: product,
+            ProductCategory: updatedCategories,
             success: true,
             message: "Producto actualizado exitosamente"
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error al actualizar producto' });
+        res.status(500).json({ error: 'Error al actualizar producto' + error });
     }
 };

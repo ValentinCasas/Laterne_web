@@ -22,7 +22,7 @@ const ProductCategory = connectionBD.define(
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "Categoriy", 
+                model: "Category", 
                 key: "id",        
             },
         },

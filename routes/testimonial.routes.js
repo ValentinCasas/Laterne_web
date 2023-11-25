@@ -7,7 +7,7 @@ import {
 
 const router = Router();
 
-router.get("/viw-testimonials", goTestimonials);
+router.get("/view-testimonials", goTestimonials);
 
 router.post("/create-testimonial", createTestimonial);
 

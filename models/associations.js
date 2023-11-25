@@ -19,8 +19,8 @@ import ProductCategory from './productCategory.model.js'
               con las tablas principales.
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+ProductCategory.belongsTo(Product, { foreignKey: 'productId' });
+ProductCategory.belongsTo(Category, { foreignKey: 'categoryId' });
 
-Product.belongsToMany(Category, { through: ProductCategory, foreignKey: 'productId' });
-
-Category.belongsToMany(Product, { through: ProductCategory, foreignKey: 'categoryId' });
-
+Product.hasMany(ProductCategory, { foreignKey: 'productId' });
+Category.hasMany(ProductCategory, { foreignKey: 'categoryId' });

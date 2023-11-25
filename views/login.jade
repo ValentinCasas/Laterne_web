@@ -1,0 +1,37 @@
+extends layout_tailwind
+
+
+block content
+
+    title Login
+
+    head 
+        script(src="/form_login.js" defer)
+
+
+    body 
+
+        div.flex.min-h-screen
+            div(class="flex flex-1 flex-col justify-center px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24")
+                div(class=" mx-auto w-full max-w-sm lg:w-96")
+
+                        form.bg-white.p-6.rounded-md.shadow-lg(action="/auth/login")#form_login
+                            h1.text-3xl.font-bold.text-black.text-center.mb-4 Inicio de sesión
+
+                            input(type="email" placeholder="Email" name="email" class="w-full bg-white border text-gray-800 px-4 py-5 rounded-md my-2 focus:outline-none focus:ring focus:border-blue-300")
+
+                            input(type="password" placeholder="Contraseña" name="password" class="w-full bg-white border text-gray-800 px-4 py-5 rounded-md my-2 focus:outline-none focus:ring focus:border-blue-300")
+
+
+                            div.flex.gap-x-2.justify-end.items-center.mt-4
+                                button(type="submit" class="bg-blue-500 text-white px-6 py-3 mt-6 rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300") Login
+
+                        div.relative.mt-6
+                            div.absolute.inset-0.flex.items-center(aria-hidden="true")
+                                div.w-full.border-t.border-gray-300
+                            div.relative.flex.justify-center.text-sm
+                                span.bg-white.px-2.text-gray-500 Laterne empleados
+
+
+            div(class="relative hidden w-0 flex-1 md:block lg:block")
+                img.absolute.inset-0.h-full.w-full.object-cover(src="/banner-carta.png" alt="")
