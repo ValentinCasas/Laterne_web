@@ -3,7 +3,8 @@ import {
     login, register,
     logout, getUsers,
     getUser, updateUser,
-    deleteUser, goLogin
+    deleteUser, goLogin,
+    updateUserAdmin
 } from "../controllers/auth.controller.js";
 
 import {
@@ -24,7 +25,9 @@ router.get("/get-users", authMiddleware, adminMiddleware, getUsers)
 router.get("/get-user", authMiddleware, getUser)
 
 
-router.put("/update-user/:id", authMiddleware, updateUser)
+router.post("/update-user", authMiddleware, updateUser)
+
+router.put("/update-user-admin/:id", authMiddleware, adminMiddleware, updateUserAdmin)
 
 router.delete("/delete-user/:id", authMiddleware, adminMiddleware, deleteUser)
 

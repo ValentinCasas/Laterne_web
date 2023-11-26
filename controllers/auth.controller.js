@@ -137,9 +137,77 @@ export const deleteUser = async (req, res) => {
     }
 };
 
-export const updateUser = async (req, res) => {
+export const updateUserAdmin = async (req, res) => {
     const { id } = req.params;
     const { name, email, currentPassword, newPassword } = req.body;
+
+    try {
+        const user = await User.findByPk(id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        // Verificar la contraseña actual si se proporciona
+        if (currentPassword) {
+            const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+            if (!isPasswordValid) {
+                return res.status(401).json({ message: 'La contraseña "antigua" no coincide con la vigente' });
+            }
+        }
+
+        // Actualizar el nombre y el correo electrónico
+        user.name = name || user.name;
+        user.email = email || user.email;
+
+        //corroborar que no exista un usuario con ese mail (solo puede existir uno)
+        const existEmail = await User.findAll({ where: { email: email } });
+
+        if (existEmail.length > 1) {
+            return res.status(401).json({ message: 'Ya hay un usuario con ese email' });
+        }
+
+        // Actualizar la contraseña si se proporciona una nueva
+        if (newPassword) {
+            const newPasswordHash = await bcrypt.hash(newPassword, 10);
+            user.password = newPasswordHash;
+        }
+
+        // Actualizar la imagen si se proporciona una nueva
+        if (req.files && req.files.imageFile) {
+            const newImage = req.files.imageFile;
+            const newImagePath = uuid() + path.extname(newImage.name);
+            const uploadPath = path.join(__dirname, '../public/images/images_profile', newImagePath);
+
+            // Eliminar la imagen anterior si existe
+            if (user.imageUrl !== 'avatar_profile_default.png') {
+                const oldImagePath = path.join(__dirname, '../public/images/images_profile', user.imageUrl);
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlinkSync(oldImagePath);
+                }
+            }
+
+            // Guardar la nueva imagen
+            await newImage.mv(uploadPath);
+            user.imageUrl = newImagePath;
+        }
+
+        // Guardar los cambios en la base de datos
+        await user.save();
+
+        res.status(200).json({
+            User: user,
+            success: true,
+            message: "Usuario actualizado exitosamente"
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al actualizar usuario' });
+    }
+};
+
+export const updateUser = async (req, res) => {
+    const { name, email, currentPassword, newPassword,id } = req.body;
 
     try {
         const user = await User.findByPk(id);

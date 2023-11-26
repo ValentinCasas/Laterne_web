@@ -49,6 +49,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(express.static(path.join(__dirname, 'public/javascripts')));
 app.use(express.static(path.join(__dirname, 'public/stylesheets')));
+app.use(express.static(path.join(__dirname, 'public/stylesheets/dist')));
+app.use(express.static(path.join(__dirname, 'public/css_bootsrap')));
 app.use(express.static(path.join(__dirname, 'public/fetch')));
 app.use(express.static(path.join(__dirname, 'public/svg')));
 

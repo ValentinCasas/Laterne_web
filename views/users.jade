@@ -7,8 +7,56 @@ block content
 
     head 
 
-
+        script(src="/users_fetch.js" defer)
 
     body
 
-        h1 USERS DONDE PUEDEN ENTRAR LOS ADMIN NOMAS
+
+        form(id="form_user" class="max-w-md mx-auto mb-2 mt-20 p-6 bg-white rounded shadow-2xl")
+            div.mb-4
+                label(for="name" class="text-gray-700 font-bold mb-2 block") NOMBRE
+                input(type="text" name="name" id="name" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="email" class="text-gray-700 font-bold mb-2 block") EMAIL
+                input(type="email" name="email" id="email" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.mb-6
+                label(for="password" class="text-gray-700 font-bold mb-2 block") CONTRASEÑA
+                input(type="password" name="password" id="password" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+
+            div.mb-3
+                label(for="role" class="text-gray-700 font-bold") ROL
+                select(name="role" id="role" class="dark:border-white-400/20 dark:scale-100 transition-all duration-500 ease-in-out dark:hover:scale-110 dark:checked:scale-100 w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+                    option(value="1") Administrador
+                    option(value="2") Empleado
+
+            div.mb-4
+                label(for="imageFile" class="text-gray-700 font-bold mb-2 block") IMAGEN
+                input(type="file" name="imageFile" id="imageFile" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+
+            div.flex.items-center.justify-between
+                button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
+
+
+        .bg-white
+            .mx-auto.max-w-7xl.py-12.px-6(class='lg:px-8 lg:py-24')
+                .space-y-12
+                    .space-y-5(class='sm:space-y-4 md:max-w-xl lg:max-w-3xl xl:max-w-none')
+                        h2.text-3xl.font-bold.tracking-tight(class='sm:text-4xl') Team Laterne
+                        p.text-xl.text-gray-500
+                            | Vista especificamente para administradores.
+                    ul.space-y-12#container-users(role='list' class='sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-3 lg:gap-x-8')
+                        each user in Users
+                            li(id=`card-${user.id}`)
+                                .space-y-4
+                                    .aspect-w-3.aspect-h-2
+                                        img.rounded-lg.object-cover.shadow-lg.h-80.border(src=`${user.imageUrl == "avatar_profile_default.png" ? "/avatar_profile_default.png" : "/" + user.imageUrl}` ,  alt='')
+                                    .space-y-2
+                                        .space-y-1.text-lg.font-medium.leading-6
+                                            h3=user.name
+                                            p=user.role == 1 ? "Admin" : "Empleado"
+                                            div.flex.justify-between
+                                                a(href=`/user/view-edit-users/${user.id}`).text-indigo-600 editar perfil
+                                                a(href=`/auth/delete-user/${user.id}` data-user-id=user.id, class="delete-user bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") ELIMINAR
