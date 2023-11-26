@@ -7,11 +7,11 @@ export const goProfile = async (req, res) => {
 
         const user = await User.findByPk(id);
         if (!user) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
+            res.render("login");
         }
         res.render("profile", { User: user });
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return res.status(500).json({ error: err.message });
     }
 }
 
