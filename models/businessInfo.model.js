@@ -19,7 +19,7 @@ const BusinessInfo = connectionBD.define(
             type: DataTypes.STRING,
             allowNull: true,
         },
-        adress: {
+        address: {
             type: DataTypes.STRING,
             allowNull: true,
         },
