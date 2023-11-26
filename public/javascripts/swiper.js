@@ -50,10 +50,12 @@ var swiper = new Swiper('.swiper-container-categories', {
 
 var swiper = new Swiper('.swiper-container-categories-card', {
     loop: true,
-    autoplay: false, 
-    slidesPerView: 'auto', // Mostrar el número de imágenes según el tamaño de la pantalla
+    autoplay: false,
+    slidesPerView: 'auto',
     spaceBetween: 20,
-    speed: 500, // Ajustar la velocidad del desplazamiento (en milisegundos)
+    speed: 500,
+    centeredSlides: true, // Centrar los slides activos
+    loopAdditionalSlides: 2, // Añadir slides adicionales para el bucle (debe ser igual o más grande que slidesPerView)
     pagination: {
         el: '.swiper-pagination',
         clickable: true,
@@ -63,17 +65,56 @@ var swiper = new Swiper('.swiper-container-categories-card', {
         prevEl: '.swiper-button-prev',
     },
     breakpoints: {
-        768: {
+        300: {
             slidesPerView: 2,
-            spaceBetween: 10, // Ajustar el espacio entre las imágenes en pantallas más pequeñas
+            spaceBetween: 10,
+        },
+        480: {
+            slidesPerView: 2,
+            spaceBetween: 10,
+        },
+        576: {
+            slidesPerView: 4,
+            spaceBetween: 10,
+        },
+        768: {
+            slidesPerView: 5,
+            spaceBetween: 15,
         },
         1024: {
-            slidesPerView: 3,
-            spaceBetween: 15, // Puedes ajustar este espacio según tus preferencias
+            slidesPerView: 5,
+            spaceBetween: 15,
         },
         1200: {
             slidesPerView: 5,
-            spaceBetween: 20, // Puedes ajustar este espacio según tus preferencias
+            spaceBetween: 20,
         },
     },
 });
+
+
+
+ // Agrega este código al final de tu archivo JavaScript
+ function openModal(imageUrl) {
+    console.log('Modal abierto con la imagen:', imageUrl);
+
+    const modal = document.getElementById("productModal");
+    const modalImage = document.getElementById("modalImage");
+
+    modalImage.src = imageUrl;
+    modal.style.display = "block";
+}
+
+
+function closeModal() {
+    const modal = document.getElementById("productModal");
+    modal.style.display = "none";
+}
+
+// Cierra el modal si se hace clic fuera de él
+window.onclick = function (event) {
+    const modal = document.getElementById("productModal");
+    if (event.target === modal) {
+        closeModal();
+    }
+};

@@ -249,3 +249,50 @@ body {
     transform: translateY(0);
   }
 }
+
+
+#modal{
+  display: none;
+}
+
+#modal.modal-container {
+  background-color: rgba(0, 0, 0, 0.979); /* Cambiado para agregar un fondo semitransparente */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  z-index:100;
+}
+
+.modal-content {
+  background-color: rgb(255, 255, 255);
+  border-radius: 2rem;
+  padding: 5px; /* Ajustado para mayor espacio de contenido */
+  text-align: center; /* Alineado el contenido al centro */
+  width: 95vw; /* Ajustado para un ancho máximo del contenido */
+  height: 95vh; /* Ajustado para una altura máxima del contenido */
+}
+
+#modalImage {
+  object-fit: contain;
+  width: 100%;
+
+  height: 100%; /* Mantén la proporción de la imagen */
+  border-radius: 2rem;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px; /* Ajustado para que quepa mejor en el modal */
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#ion-icon-image{
+  font-size: 20px;
+}

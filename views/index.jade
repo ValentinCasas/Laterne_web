@@ -38,35 +38,50 @@ block content
 
   .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3
     h1#eventos.text-light.text-center.mt-2.mb-2 EVENTOS
-    .contenedor-cards.px-4
-      each event in Events
+    .contenedor-cards.px-
+      if Events.length > 0
+        each event in Events
+          .row.my-3.p-3
+            .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
+
+              if event.date 
+                - const dateObject = new Date(event.date);
+                - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+                h1.m-0 #{localDateString}
+
+              else
+                h1.m-0 --  /  --  /  --- 
+
+              if event.time
+                - const eventTimeParts = event.time.split(":");
+                - const eventTime = new Date();
+
+                - eventTime.setHours(Number(eventTimeParts[0]));
+                - eventTime.setMinutes(Number(eventTimeParts[1]));
+                p.m-0
+                  if event.imageUrl
+                    span
+                      ion-icon(name="document-attach-outline" onclick=`openModal('${event.imageUrl}')`).text-white.mx-2#ion-icon-image
+                  span.mx-2=event.location
+                  span.artist.mx-2=event.name
+                  span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+              else
+                p.m-0
+                  span=event.location
+                  span.artist.mx-2=event.name
+                  span --:--
+
+
+      else 
         .row.my-3.p-3
           .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
+            h1.m-0 Proximamente...
 
-            if event.date 
-              - const dateObject = new Date(event.date);
-              - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
-              h1.m-0 #{localDateString}
-            else
-              h1.m-0 --  /  --  /  --- 
+  #modal.modal-container.hidden
+    div.modal-content
 
-            if event.time
-              - const eventTimeParts = event.time.split(":");
-              - const eventTime = new Date();
-
-              - eventTime.setHours(Number(eventTimeParts[0]));
-              - eventTime.setMinutes(Number(eventTimeParts[1]));
-              p.m-0
-                span=event.location
-                span.artist.mx-2=event.name
-                span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-            else
-              p.m-0
-                span=event.location
-                span.artist.mx-2=event.name
-                span --:--
-
-
+      ion-icon(name="chevron-down-outline" onclick=`closeModal()`).close-btn
+      img#modalImage(alt="Large Image")
 
 
   .container-fluid.px-0

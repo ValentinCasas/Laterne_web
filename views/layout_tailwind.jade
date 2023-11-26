@@ -35,6 +35,8 @@ html(lang="en")
         link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
         //tailwind elements js 
         script(src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/tw-elements.umd.min.js",defer)
+
+
     body
 
         if locals.isLoggedIn 
@@ -79,10 +81,7 @@ html(lang="en")
 
                             li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                                 a.p-0.text-black.font-bold(href='/' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INICIO
-                            
-                            li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                a.p-0.text-black.font-bold(href='/home' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HOME
-
+   
                             li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                                 a.p-0.text-black.font-bold(href='/card_virtual' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CARTA    
         block content

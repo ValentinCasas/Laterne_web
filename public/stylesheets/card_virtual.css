@@ -1,8 +1,13 @@
-body {
-    /* background-image: url("/banner-carta.png");
-    background-size: cover; */
+:root {
+    --principal-color: #ED2791;
+}
 
-    background-color: rgb(112, 110, 110);
+body {
+    background-color: white;
+}
+
+* {
+    scroll-behavior: smooth;
 }
 
 
@@ -11,18 +16,159 @@ body {
 }
 
 .info-card::-webkit-scrollbar-thumb {
-    background-color: gray; 
-    border-radius: 4px; 
+    background-color: gray;
+    border-radius: 4px;
     transition: width 0.3s;
-    
+
 }
 
 .info-card::-webkit-scrollbar-track {
     background-color: transparent;
-    margin-top: 8px; 
+    margin-top: 8px;
 }
 
 .info-card:hover::-webkit-scrollbar-thumb {
     width: 5px;
-    background-color: #4b4848; 
+    background-color: #4b4848;
 }
+
+
+
+
+.swiper-slide {
+    min-width: 200px !important;
+}
+
+
+
+#portada {
+    width: 100%;
+    height: 200px;
+    background-image: url("/banner-carta.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+
+.brand {
+    font-size: 50px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.brand-highlight {
+    color: var(--principal-color);
+}
+
+.ampersant, .brand-highlight, .point{
+    font-family: 'ITC Clearface Black';
+}
+
+
+
+.point {
+    color: #04A958;
+}
+
+
+
+/* ORDERER CLIENT */
+
+.modal-content{
+    height: 100%;
+}
+
+/* Estilos generales para la tarjeta de producto en el carrito */
+.producto-carrito {
+    display: flex;
+    background-color: white;
+    max-height: 200px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+/* Estilos para la imagen del producto en la tarjeta */
+.producto-carrito img {
+    width: 80px; 
+    height: auto;
+    margin-right: 10px;
+}
+
+/* Estilos para el contenedor de información (nombre y precio) */
+.info-producto {
+    flex-grow: 1;
+}
+
+/* Estilos para el nombre del producto */
+.info-producto h4 {
+    margin: 0;
+    font-size: 16px;
+    color: #333; 
+}
+
+/* Estilos para el precio del producto */
+.info-producto p {
+    margin: 5px 0 0;
+    font-size: 14px;
+    color: #888; 
+}
+
+/* Estilos para el precio total en el modal del carrito */
+#modal-carrito .precio-total {
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333; 
+}
+
+
+/* Estilos para el precio total en el modal del carrito */
+#modal-carrito .precio-total {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333; 
+}
+
+/* Estilos para el botón de cerrar en el modal del carrito */
+#modal-carrito #cerrar-modal-carrito {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #fff; 
+    background-color: #333;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#modal-carrito #cerrar-modal-carrito:hover {
+    background-color: #555; 
+}
+
+
+
+
+
+
+.boton-eliminar {
+    background-color: #ec2222e7; 
+    color: #ffffff; 
+    border: none; 
+    border-radius: 5px;
+    padding: 5px 10px; 
+    margin-top: 10px;
+    cursor: pointer;
+  }
+  
+  .boton-eliminar:hover {
+    background-color: #cc0000; 
+  }
+  
