@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: formData,
             });
 
-            const result = await response.json();  // Mueve esta línea aquí
+            const result = await response.json(); 
 
             if (response.ok) {
                 Swal.fire({

@@ -8,14 +8,17 @@ block content
     head 
 
         script(src="/users_fetch.js" defer)
+        script(src="/drag_and_drop.js" defer)
+
+        link(rel="stylesheet" href="/dist/drag_and_drop.css")
 
     body
 
 
         form(id="form_user" class="max-w-md mx-auto mb-2 mt-20 p-6 bg-white rounded shadow-2xl")
             div.mb-4
-                label(for="name" class="text-gray-700 font-bold mb-2 block") NOMBRE
-                input(type="text" name="name" id="name" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+                    label(for="name" class="text-gray-700 font-bold mb-2 block") NOMBRE
+                    input(type="text" name="name" id="name" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
 
             div.mb-6
                 label(for="email" class="text-gray-700 font-bold mb-2 block") EMAIL
@@ -32,9 +35,30 @@ block content
                     option(value="1") Administrador
                     option(value="2") Empleado
 
-            div.mb-4
-                label(for="imageFile" class="text-gray-700 font-bold mb-2 block") IMAGEN
-                input(type="file" name="imageFile" id="imageFile" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+            div.mb-3.container
+                .header
+                    svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
+                        g#SVGRepo_bgCarrier(stroke-width="0")
+                        g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
+                        g#SVGRepo_iconCarrier
+                            path(d="M7 10V9C7 6.23858 9.23858 4 12 4C14.7614 4 17 6.23858 17 9V10C19.2091 10 21 11.7909 21 14C21 15.4806 20.1956 16.8084 19 17.5M7 10C4.79086 10 3 11.7909 3 14C3 15.4806 3.8044 16.8084 5 17.5M7 10C7.43285 10 7.84965 10.0688 8.24006 10.1959" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round")
+                    p imagen
+                label.footer(for="imageFile")
+                    svg(fill="#000000" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg")
+                        g#SVGRepo_bgCarrier(stroke-width="0")
+                        g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
+                        g#SVGRepo_iconCarrier
+                            path(d="M15.331 6H8.5v20h15V14.154h-8.169")
+                            path(d="M18.153 6h-.009v5.342H23.5v-.002")
+                    p Nada seleccionado
+                    svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
+                        g#SVGRepo_bgCarrier(stroke-width="0")
+                        g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
+                        g#SVGRepo_iconCarrier
+                            path(d="M5.16565 10.1534C5.07629 8.99181 5.99473 8 7.15975 8H16.8402C18.0053 8 18.9237 8.9918 18.8344 10.1534L18.142 19.1534C18.0619 20.1954 17.193 21 16.1479 21H7.85206C6.80699 21 5.93811 20.1954 5.85795 19.1534L5.16565 10.1534Z" stroke="#000000" stroke-width="2")
+                            path(d="M19.5 5H4.5" stroke="#000000" stroke-width="2" stroke-linecap="round")
+                            path(d="M10 3C10 2.44772 10.4477 2 11 2H13C13.5523 2 14 2.44772 14 3V5H10V3Z" stroke="#000000" stroke-width="2")
+                input#file(type="file" name="imageFile" accept=".jpg, .jpeg, .png, .webp, ")
 
             div.flex.items-center.justify-between
                 button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
@@ -49,14 +73,14 @@ block content
                             | Vista especificamente para administradores.
                     ul.space-y-12#container-users(role='list' class='sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-3 lg:gap-x-8')
                         each user in Users
-                            li(id=`card-${user.id}`)
+                            li(id=`card-${user.id}`).shadow-lg
                                 .space-y-4
                                     .aspect-w-3.aspect-h-2
-                                        img.rounded-lg.object-cover.shadow-lg.h-80.border(src=`${user.imageUrl == "avatar_profile_default.png" ? "/avatar_profile_default.png" : "/" + user.imageUrl}` ,  alt='')
-                                    .space-y-2
+                                        img.rounded-lg.object-cover.shadow-lg.h-80.w-full.border(src=`${user.imageUrl == "avatar_profile_default.png" ? "/avatar_profile_default.png" : "/" + user.imageUrl}` ,  alt='')
+                                    .space-y-2.p-3
                                         .space-y-1.text-lg.font-medium.leading-6
                                             h3=user.name
                                             p=user.role == 1 ? "Admin" : "Empleado"
                                             div.flex.justify-between
-                                                a(href=`/user/view-edit-users/${user.id}`).text-indigo-600 editar perfil
+                                                a(href=`/user/view-edit-users/${user.id}`).text-indigo-600 EDITAR
                                                 a(href=`/auth/delete-user/${user.id}` data-user-id=user.id, class="delete-user bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") ELIMINAR

@@ -7,8 +7,88 @@ block content
 
     head 
 
-
+        script(src="/form_edit_profile.js" defer)
+        script(src="/drag_and_drop.js" defer)
+        link(rel="stylesheet" href="/dist/profile.css")
+        link(rel="stylesheet" href="/dist/drag_and_drop.css")
 
     body
 
-        h1 EDITR PERFIL
+        form.space-y-8.divide-y.divide-gray-200.p-8#form-update-profile
+            input(type="hidden" name="id" value=User.id)
+            .space-y-8.divide-y.divide-gray-200(class='sm:space-y-5').border.rounded-md.p-4
+                .space-y-6(class='sm:space-y-5')
+                    div
+                        h3.text-lg.font-medium.leading-6.text-gray-900 Perfil
+                        p.mt-1.max-w-2xl.text-sm.text-gray-500 This information will be displayed publicly so be careful what you share.
+                    .space-y-6(class='sm:space-y-5')
+                        div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
+                            label.block.text-sm.font-medium.text-gray-700(for='name' class='sm:mt-px sm:pt-2') Nombre
+                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                                .flex.max-w-lg.rounded-md.shadow-sm
+                                    span.inline-flex.items-center.rounded-l-md.border.border-r-0.border-gray-300.bg-gray-50.px-3.text-gray-500(class='sm:text-sm') Se llama/
+                                    input#name.block.w-full.min-w-0.flex-1.rounded-none.rounded-r-md.border-gray-300.text-black.px-2(type='text' name='name' placeholder=User.name autocomplete='username' class='focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm')
+                        div(class='sm:grid sm:grid-cols-3 sm:items-center sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
+                            label.block.text-sm.font-medium.text-gray-700(for='photo') Foto
+                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                                .flex.items-center
+                                    span.h-12.w-12.overflow-hidden.rounded-full.bg-gray-100.border
+                                        img(src=`/${User.imageUrl}`).h-full
+
+                        div(class='sm:grid sm:grid-cols-3 sm:items-center sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
+
+                            label.block.text-sm.font-medium.text-gray-700(for='photo') Cambiar imagen
+                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                                div.mb-3.container
+
+                                    .header
+                                        svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
+                                            g#SVGRepo_bgCarrier(stroke-width="0")
+                                            g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
+                                            g#SVGRepo_iconCarrier
+                                                path(d="M7 10V9C7 6.23858 9.23858 4 12 4C14.7614 4 17 6.23858 17 9V10C19.2091 10 21 11.7909 21 14C21 15.4806 20.1956 16.8084 19 17.5M7 10C4.79086 10 3 11.7909 3 14C3 15.4806 3.8044 16.8084 5 17.5M7 10C7.43285 10 7.84965 10.0688 8.24006 10.1959" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round")
+                                        p imagen
+                                    label.footer(for="imageFile")
+                                        svg(fill="#000000" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg")
+                                            g#SVGRepo_bgCarrier(stroke-width="0")
+                                            g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
+                                            g#SVGRepo_iconCarrier
+                                                path(d="M15.331 6H8.5v20h15V14.154h-8.169")
+                                                path(d="M18.153 6h-.009v5.342H23.5v-.002")
+                                        p Nada seleccionado
+                                        svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
+                                            g#SVGRepo_bgCarrier(stroke-width="0")
+                                            g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
+                                            g#SVGRepo_iconCarrier
+                                                path(d="M5.16565 10.1534C5.07629 8.99181 5.99473 8 7.15975 8H16.8402C18.0053 8 18.9237 8.9918 18.8344 10.1534L18.142 19.1534C18.0619 20.1954 17.193 21 16.1479 21H7.85206C6.80699 21 5.93811 20.1954 5.85795 19.1534L5.16565 10.1534Z" stroke="#000000" stroke-width="2")
+                                                path(d="M19.5 5H4.5" stroke="#000000" stroke-width="2" stroke-linecap="round")
+                                                path(d="M10 3C10 2.44772 10.4477 2 11 2H13C13.5523 2 14 2.44772 14 3V5H10V3Z" stroke="#000000" stroke-width="2")
+                                    input#file(type="file" name="imageFile" accept=".jpg, .jpeg, .png, .webp, ")
+                .space-y-6.pt-8(class='sm:space-y-5 sm:pt-10')
+                    div
+                        if User.role == 1
+                            h3.text-lg.font-medium.leading-6.text-gray-900 Información del Administrador
+                        else
+                            h3.text-lg.font-medium.leading-6.text-gray-900 Información del Empelado
+                        p.mt-1.max-w-2xl.text-sm.text-gray-500 Use a permanent address where you can receive mail.
+                    .space-y-6(class='sm:space-y-5')
+
+                        div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
+                            label.block.text-sm.font-medium.text-gray-700(for='email' class='sm:mt-px sm:pt-2') Email 
+                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                                input#email.block.w-full.max-w-lg.rounded-md.border-gray-300.shadow-sm(name='email' type='email' placeholder=User.email autocomplete='email' class='focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm')
+                        div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
+                            label.block.text-sm.font-medium.text-gray-700(for='currentPassword' class='sm:mt-px sm:pt-2') Contraseña actual
+                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                                input#currentPassword.block.w-full.max-w-lg.rounded-md.border-gray-300.shadow-sm(type='password' name='currentPassword' class='focus:border-indigo-500 focus:ring-indigo-500 sm:max-w-xs sm:text-sm')
+                        div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
+                            label.block.text-sm.font-medium.text-gray-700(for='currentPassword' class='sm:mt-px sm:pt-2') Nueva contraseña
+                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                                input#newPassword.block.w-full.max-w-lg.rounded-md.border-gray-300.shadow-sm(type='password' name='newPassword' class='focus:border-indigo-500 focus:ring-indigo-500 sm:max-w-xs sm:text-sm')
+
+
+
+
+            .pt-5
+                .flex.justify-end
+                    button.ml-3.inline-flex.justify-center.rounded-md.border.border-transparent.bg-indigo-600.py-2.px-4.text-sm.font-medium.text-white.shadow-sm(type='submit' class='hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2') Editar
