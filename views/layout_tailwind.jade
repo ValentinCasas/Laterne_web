@@ -27,10 +27,18 @@ html(lang="en")
 
         script(src="/swiper.js", defer)
 
+        //tailwind elements css
+        link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/tw-elements.min.css")
+        //tailwind
+        script(src="https://cdn.tailwindcss.com")
+        //font titles
+        link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
+        //tailwind elements js 
+        script(src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/tw-elements.umd.min.js",defer)
     body
 
         if locals.isLoggedIn 
-            nav.flex.w-full.bg-gray-800.text-white.p-4.fixed.top-0
+            nav.flex.w-full.bg-white.text-black.p-4.fixed.top-0
 
 
                 a(href="/" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4") Inicio
@@ -55,9 +63,26 @@ html(lang="en")
                 a(href="/auth/logout" class="bg-red-600 p-1 rounded hover:text-gray-300 ml-4") Logout
 
         if !locals.isLoggedIn     
-            nav.flex.w-full.bg-gray-800.text-white.p-4
 
-                a(href="/" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-4") Inicio
-                a(href="/card_virtual" class="bg-gray-600 p-1 rounded hover:text-gray-300 ml-1") Carta
+            nav.bg-white.rounded-xl.flex.w-full.flex-nowrap.items-center.justify-between.py-2.shadow-xl(class='lg:flex-wrap lg:justify-start lg:py-4' data-te-navbar-ref='').flex.w-full.flex-wrap.items-center.justify-between.px-3
+                .flex.w-full.flex-wrap.items-center.justify-between.px-3
+                   button.text-black.block.border-0.bg-transparent.px-2.text-neutral-500(class='hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 lg:hidden' type='button' data-te-collapse-init='' data-te-target='#navbarSupportedContent13' aria-controls='navbarSupportedContent13' aria-expanded='false' aria-label='Toggle navigation')
+                        span
+                            svg.h-7.w-7(xmlns='http://www.w3.org/2000/svg' style='color:black' viewbox='0 0 24 24' fill='currentColor')
+                                path(fill-rule='evenodd' d='M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z' clip-rule='evenodd')
 
+                    .hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' <='' body='')#navbarSupportedContent13.hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' data-te-collapse-item='')
+                        a.ml-2.text-xl.text-neutral-800.brand(href='#')
+                            img.w-20.h-10(src='/brand.png' alt='')
+
+                        ul.my-3.mr-5.ml-auto.mr-2.list-style-none.flex.flex-col.pl-0(class='lg:mt-1 lg:flex-row' data-te-navbar-nav-ref='')
+
+                            li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                                a.p-0.text-black.font-bold(href='/' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INICIO
+                            
+                            li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                                a.p-0.text-black.font-bold(href='/home' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HOME
+
+                            li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                                a.p-0.text-black.font-bold(href='/card_virtual' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CARTA    
         block content
