@@ -2,10 +2,12 @@ import Event from "../models/event.model.js";
 import Category from "../models/category.model.js";
 import ProductCategory from "../models/productCategory.model.js";
 import Product from './../models/product.model.js';
+import BusinessInfo from './../models/businessInfo.model.js';
 
 export const goIndex = async (req, res) => {
     const events = await Event.findAll();
-    res.render("index", {Events : events})
+    const businessInfo = await BusinessInfo.findAll();
+    res.render("index", {Events : events, BusinessInfo : businessInfo[0]})
 };
 
 export const goCardVirtual = async (req, res) => {

@@ -1,0 +1,105 @@
+extends layout_tailwind
+
+
+block content
+
+    title Productos
+
+    head 
+
+        script(src="/form_create_openingHour.js" defer)
+        link(rel="stylesheet" href="/dist/openingHour.css")
+
+
+    body
+
+        .flex.items-center.justify-center.w-full.my-20.px-2
+            .flex.bg-white.rounded-md.shadow-xl
+                div
+                    .flex.flex-col.px-6.pt-5.pb-6
+                        .flex.items-center.justify-center
+
+                            .text-sm.font-semibold.py-10 SEMANA
+
+                        form
+                            .grid.grid-cols-5.text-xs.text-center.text-gray-900.gap-6
+
+                                span.flex.items-center.justify-center.w-10.h-10.rounded-lg.font-semibold 
+                                span.flex.items-center.justify-center.w-10.h-10.rounded-lg.font-semibold mañana apertura
+                                span.flex.items-center.justify-center.w-10.h-10.rounded-lg.font-semibold mañana cierre
+                                span.flex.items-center.justify-center.w-10.h-10.rounded-lg.font-semibold noche apertura
+                                span.flex.items-center.justify-center.w-10.h-10.rounded-lg.font-semibold noche cierre
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold LUN
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="lunMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="lunMorningEndTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="lunEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white')
+                                    input(type="time" name="lunEveningStartTime")
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold MAR
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="marMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="marMorningEndTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="marEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="marEveningStartTime")
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold MIE
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="mierMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="mierMorningEndTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="mierEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="mierEveningStartTime")
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold JUE
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="jueMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="jueMorningEndTime")
+                                span.flex.items-center.justify-cente.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="jueEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="jueEveningStartTime")
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold VIE
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="vieMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="vieMorningEndTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="vieEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="vieEveningStartTime")
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold SAB
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="sabMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="sabMorningEndTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="sabEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="sabEveningStartTime")
+
+                                span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold DOM
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="domMorningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="domMorningEndTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="domEveningStartTime")
+                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" name="domEveningStartTime")
+
+                            .h-20.w-full.my-4.p-4.flex.justify-center
+                                button.bg-indigo-400.rounded-md.px-4.text-white(class="hover:bg-indigo-600") Editar
+

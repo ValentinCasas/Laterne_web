@@ -78,7 +78,7 @@ app.use('/user', authMiddleware, userRoutes);
 app.use('/asociation', authMiddleware, asociationRoutes);
 app.use('/event', authMiddleware, eventRoutes);
 app.use('/testimonial', authMiddleware, testimonialRoutes);
-app.use('/businessInfo', authMiddleware, adminMiddleware, businessInfoRoutes);
+app.use('/businessInfo', businessInfoRoutes);
 app.use('/openingHour', authMiddleware, openingHourRoutes);
 
 

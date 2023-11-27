@@ -106,7 +106,11 @@ html(lang="en")
                                 // Link
                                 li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                                   a.p-0.text-black.font-bold(href='/user/view-profile' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CUENTA
+
+                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                                  a.p-0.text-black.font-bold(href='/openingHour/view-opening-hour' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HORARIOS
               
+
                             if locals.role === 1
                                 li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                                         a.p-0.text-black.font-bold(href='/auth/logout'  data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'"     onmouseout="this.style.color='#000'") SALIR

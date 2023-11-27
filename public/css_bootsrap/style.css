@@ -15,10 +15,6 @@ body {
   background-color: #000000;
 }
 
-.banner {
-  width: 100%;
-  height: auto;
-}
 
 .navbar-nav li a {
   text-transform: uppercase;
@@ -43,33 +39,62 @@ body {
   color: var(--principal-color) !important;
 }
 
+/* imagen de inicio */
 
 .father {
   position: relative;
-  height: auto;
-  margin-bottom: 80px;
-  padding-top: 40px;
+  height: 80vh;
+
 }
+
+.banner {
+  width: 100%;
+  height: 100%;
+}
+
 
 .son {
   font-family: 'Anton', sans-serif;
-  ;
-  /* margin-top: 20px; */
-
   position: absolute;
-  top: 50%;
+  top: 220px;
+  display:grid;
+  grid-template-columns: repeat(1, 1fr);
   left: 50%;
   transform: translate(-50%, -50%);
+  width: 100%;
   text-align: center;
   color: white;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
 }
 
+.son * {
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+}
+
+.son h1 {
+  text-transform: uppercase;
+  font-size: 3.5vw;
+  color: #f19ac8;
+  margin: 0;
+}
+
+.son p {
+  font-family: 'Overpass', sans-serif;
+  font-size: 2vw;
+  margin-top: 2vw;
+  margin-bottom: 0;
+  padding:10px;
+  color: black;
+}
+
+
 .son h1 {
   max-width: 100%;
   text-transform: uppercase;
   font-size: 60px;
-   color: #f19ac8; 
+  color: #f19ac8;
 }
 
 .son p {
@@ -77,8 +102,109 @@ body {
   max-width: 100%;
   width: auto;
   font-size: 20px;
+  color:white;
   margin-top: 30px;
 }
+
+
+
+.wrapper {
+  width: auto;
+  box-sizing: content-box;
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  
+  white-space: nowrap;
+}
+
+
+.wrapper h1 {
+  margin-top: 10px;
+  text-align: end; 
+}
+
+.words {
+  color: #f19ac8;
+  height: 100px;
+  overflow: hidden;
+}
+
+.words span {
+  width: auto;
+  font-size: 60px;
+  padding-top: 50px;
+  display: block;
+  padding-top: 0;
+  text-align: left; /* Alinea el texto a la izquierda */
+  margin-left:10px;
+  animation: spin-words 12s infinite;
+}
+
+@media screen and (max-width: 1024px) {
+  
+  .father {
+    position: relative;
+    height: 80vh;
+  
+  }
+
+  
+  .banner {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .wrapper {
+    grid-template-columns: 1fr; /* Cambia a una columna en pantallas pequeñas */
+  }
+
+  .wrapper h1 {
+    text-align: center; 
+  }
+  
+  .father {
+    position: relative;
+    width: 100%;
+    height: 70vh;
+  }
+
+  .banner {
+    width: 100%;
+    height: 45%;
+  }
+
+  .words span {
+    text-align: center; 
+  
+  }
+}
+
+
+@media screen and (max-width: 480px) {
+  
+  .father {
+    position: relative;
+    width: 100%;
+    height: 55vh;
+  }
+  
+  .banner {
+    width: 100%;
+    height: 40%;
+  }
+}
+
+
+
+
+
+
+
+
+
+
 
 .container-eventos {
   background-color: #000000;
@@ -189,6 +315,7 @@ body {
   background-color: #01E776;
   border-radius: 100%;
   box-shadow: 0px 1px 10px rgba(0, 0, 0, 0.4);
+  z-index: 100;
 }
 
 .whatsapp-ico {
@@ -202,61 +329,44 @@ body {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 10;
+  z-index: 1000;
 }
 
 .whatsapp-ico:hover {
   box-shadow: 2px 2px 11px rgba(0, 0, 0, 0.7);
 }
-.wrapper{
-  width: 100%;
-  box-sizing: content-box;
-  display: flex;
-  white-space: nowrap;
-}
-.wrapper h1{
-    margin-top: 10px;
-    padding-left: 10px;
 
-}
-.words span{
-  width: 100%;
-  font-size: 60px;
-  padding-top: 50px;
-  display: block;
-  padding-top: 0;
-  padding-left: 10px;
-  padding-right: 10px;
-  animation: spin-words 12s infinite;
-}
-.words{
-  color: #f19ac8;
-  height: 100px;
-  overflow: hidden;
-  align-items: center;
-}
 @keyframes spin-words {
-  0%, 20% {
+
+  0%,
+  20% {
     transform: translateY(0);
   }
-  25%, 45% {
+
+  25%,
+  45% {
     transform: translateY(-100%);
   }
-  50%, 70% {
+
+  50%,
+  70% {
     transform: translateY(-200%);
   }
-  75%, 100% {
+
+  75%,
+  100% {
     transform: translateY(0);
   }
 }
 
 
-#modal{
+#modal {
   display: none;
 }
 
 #modal.modal-container {
-  background-color: rgba(0, 0, 0, 0.979); /* Cambiado para agregar un fondo semitransparente */
+  background-color: rgba(0, 0, 0, 0.979);
+  /* Cambiado para agregar un fondo semitransparente */
   position: fixed;
   top: 0;
   left: 0;
@@ -264,23 +374,28 @@ body {
   height: 100vh;
   justify-content: center;
   align-items: center;
-  z-index:100;
+  z-index: 1010;
 }
 
 .modal-content {
   background-color: rgb(255, 255, 255);
   border-radius: 2rem;
-  padding: 5px; /* Ajustado para mayor espacio de contenido */
-  text-align: center; /* Alineado el contenido al centro */
-  width: 95vw; /* Ajustado para un ancho máximo del contenido */
-  height: 95vh; /* Ajustado para una altura máxima del contenido */
+  padding: 5px;
+  /* Ajustado para mayor espacio de contenido */
+  text-align: center;
+  /* Alineado el contenido al centro */
+  width: 95vw;
+  /* Ajustado para un ancho máximo del contenido */
+  height: 95vh;
+  /* Ajustado para una altura máxima del contenido */
 }
 
 #modalImage {
   object-fit: contain;
   width: 100%;
 
-  height: 100%; /* Mantén la proporción de la imagen */
+  height: 100%;
+  /* Mantén la proporción de la imagen */
   border-radius: 2rem;
 }
 
@@ -288,11 +403,25 @@ body {
   position: absolute;
   top: 10px;
   right: 10px;
-  font-size: 24px; /* Ajustado para que quepa mejor en el modal */
+  font-size: 24px;
+  /* Ajustado para que quepa mejor en el modal */
   font-weight: bold;
   cursor: pointer;
 }
 
-#ion-icon-image{
+#ion-icon-image {
   font-size: 20px;
+}
+
+
+
+
+
+
+#map {
+  height: 50vh;
+  width: 100%;
+  border-radius: 0;
+  border: .1px solid rgb(170, 170, 173);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
