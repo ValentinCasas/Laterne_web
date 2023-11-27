@@ -21,26 +21,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 const cardHTML = `
                 <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Category.id}">
-                <a href="/category/delete-category/${result.Category.id}" data-category-id="${result.Category.id}" class="delete-category absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Eliminar
-                </a>
-
-
-                <img src="/${result.Category.imageUrl}" alt="${result.Category.name}" class="w-1/3 h-48 object-contain">
-                <div class="w-1/2 p-4">
-                    <h3 class="text-lg font-bold mb-2">${result.Category.name}</h3>
-                    <p class="text-gray-600">${result.Category.description}</p>
-
-
-                    <div class="flex items-center justify-between mt-4">
-                    <a href="/category/view-edit-category/${result.Category.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Editar</a>
-                    
-                    </div>
-
-                </div>
-            </div>
+                    <div class="flex">
+                        <img src="/${result.Category.imageUrl}" alt="${result.Category.name}" class="w-1/3 h-48 object-contain">
+                        <div class="w-2/3 p-4">
+                            <h3 class="text-lg font-bold mb-2">${result.Category.name}</h3>
+                            <p class="text-gray-600">${result.Category.description}</p>
             
-                `;
+                            <div class="flex justify-between items-center mt-4">
+                                <a href="/category/view-edit-category/${result.Category.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                    Editar
+                                </a>
+                                <a href="/category/delete-category/${result.Category.id}" data-category-id="${result.Category.id}" class="delete-category bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                    Eliminar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+
 
                 const container = document.getElementById("container-categories");
                 container.insertAdjacentHTML('beforeend', cardHTML);

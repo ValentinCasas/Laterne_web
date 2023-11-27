@@ -4,7 +4,8 @@
 
 
 .selectable-image.selected {
-    border: 2px solid #3498db;
-    box-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
+    border: 2px solid rgb(194, 52, 219);
+    box-shadow: 0 0 10px rgba(188, 52, 219, 0.7);
     transition: border 0.3s ease, box-shadow 0.3s ease; 
+
 }

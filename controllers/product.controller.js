@@ -15,6 +15,7 @@ export const goProducts = async (req, res) => {
         const products = await Product.findAll();
         const categories = await Category.findAll();
 
+
         res.render("product_create", { Products: products, Categories: categories });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Error al traer productos' });

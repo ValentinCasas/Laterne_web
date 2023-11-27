@@ -14,7 +14,7 @@ block content
 
     body
 
-        form.space-y-8.divide-y.divide-gray-200.p-8#form-update-profile
+        form.space-y-8.divide-y.divide-gray-200.py-8.px-2#form-update-profile
             input(type="hidden" name="id" value=User.id)
             .space-y-8.divide-y.divide-gray-200(class='sm:space-y-5').border.rounded-md.p-4
                 .space-y-6(class='sm:space-y-5')
@@ -26,21 +26,19 @@ block content
                             label.block.text-sm.font-medium.text-gray-700(for='name' class='sm:mt-px sm:pt-2') Nombre
                             .mt-1(class='sm:col-span-2 sm:mt-0')
                                 .flex.max-w-lg.rounded-md.shadow-sm
-                                    span.inline-flex.items-center.rounded-l-md.border.border-r-0.border-gray-300.bg-gray-50.px-3.text-gray-500(class='sm:text-sm') Se llama/
-                                    input#name.block.w-full.min-w-0.flex-1.rounded-none.rounded-r-md.border-gray-300.text-black.px-2(type='text' name='name' placeholder=User.name autocomplete='username' class='focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm')
+                                    span.inline-flex.items-center.rounded-l-md.border.border-r-0.border-gray-300.bg-gray-50.px-3.text-gray-500(class='sm:text-sm') Me llamo/
+                                    input#name.block.w-full.min-w-0.flex-1.rounded-md.border.h-10.p-2(type='text' name='name' placeholder=User.name autocomplete='username' )
                         div(class='sm:grid sm:grid-cols-3 sm:items-center sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
                             label.block.text-sm.font-medium.text-gray-700(for='photo') Foto
                             .mt-1(class='sm:col-span-2 sm:mt-0')
-                                .flex.items-center
-                                    span.h-12.w-12.overflow-hidden.rounded-full.bg-gray-100.border
-                                        img(src=`/${User.imageUrl}`).h-full
+                                img(src=`/${User.imageUrl}`).w-32.h-32.object-cover.rounded-md.bg-gray-100.border
+
 
                         div(class='sm:grid sm:grid-cols-3 sm:items-center sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
 
                             label.block.text-sm.font-medium.text-gray-700(for='photo') Cambiar imagen
-                            .mt-1(class='sm:col-span-2 sm:mt-0')
+                            .mt-1(class='sm:col-span-2 sm:mt-0  ')
                                 div.mb-3.container
-
                                     .header
                                         svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
                                             g#SVGRepo_bgCarrier(stroke-width="0")
@@ -73,15 +71,15 @@ block content
                         div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
                             label.block.text-sm.font-medium.text-gray-700(for='email' class='sm:mt-px sm:pt-2') Email 
                             .mt-1(class='sm:col-span-2 sm:mt-0')
-                                input#email.block.w-full.max-w-lg.rounded-md.border-gray-300.shadow-sm(name='email' type='email' placeholder=User.email autocomplete='email' class='focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm')
+                                input#email.block.w-full.max-w-lg.rounded-md.border.h-10.p-2(name='email' type='email' placeholder=User.email autocomplete='email' )
                         div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
                             label.block.text-sm.font-medium.text-gray-700(for='currentPassword' class='sm:mt-px sm:pt-2') Contraseña actual
                             .mt-1(class='sm:col-span-2 sm:mt-0')
-                                input#currentPassword.block.w-full.max-w-lg.rounded-md.border-gray-300.shadow-sm(type='password' name='currentPassword' class='focus:border-indigo-500 focus:ring-indigo-500 sm:max-w-xs sm:text-sm')
+                                input#currentPassword.block.w-full.max-w-lg.rounded-md.border.h-10.p-2(type='password' name='currentPassword')
                         div(class='sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-200 sm:pt-5')
                             label.block.text-sm.font-medium.text-gray-700(for='currentPassword' class='sm:mt-px sm:pt-2') Nueva contraseña
                             .mt-1(class='sm:col-span-2 sm:mt-0')
-                                input#newPassword.block.w-full.max-w-lg.rounded-md.border-gray-300.shadow-sm(type='password' name='newPassword' class='focus:border-indigo-500 focus:ring-indigo-500 sm:max-w-xs sm:text-sm')
+                                input#newPassword.block.w-full.max-w-lg.rounded-md.border.h-10.p-2(type='password' name='newPassword' )
 
 
 

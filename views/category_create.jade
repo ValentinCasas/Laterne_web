@@ -12,46 +12,49 @@ block content
 
     body
 
-        form(id="form_category" class="max-w-md mx-auto mb-8 mt-32 p-6 bg-white rounded shadow-2xl")
-            div.mb-4
-                label(for="name" class="text-gray-700 font-bold mb-2 block") NOMBRE
-                input(type="text" name="name" id="name" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+        div(class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-2 p-4 ")
 
-            div.mb-6
-                label(for="description" class="text-gray-700 font-bold mb-2 block") DESCRIPCION
-                input(type="text" name="description" id="description" class="w-full px-3 py-2 leading-tight border rounded appearance-none focus:outline-none focus:shadow-outline")
+            form(id="form_category" class="h-full  p-6 shadow-2xl overflow-hidden")
 
-            div.flex.mb-4.max-h-screen.overflow-y-scroll
-                label(for="selectedImage" class="text-gray-700 font-bold mb-2 block") IMAGEN
+                .w-full.my-5
+                    .relative.h-10.w-full(class='min-w-[200px]')
+                        input.peer.h-full.w-full.border.border-blue-gray-200.bg-transparent.px-3.font-sans.text-sm.font-normal.text-blue-gray-700.outline.outline-0.transition-all(type="text" name="name" id="name" class='rounded-[7px] py-6 placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200 focus:border-2 focus:border-pink-500 focus:border-t-transparent focus:outline-0 disabled:border-0 disabled:bg-blue-gray-50' placeholder=' ')
+                        label.pointer-events-none.absolute.left-0.flex.h-full.w-full.select-none.font-normal.leading-tight.text-blue-gray-400.transition-all(class="before:content[' '] after:content[' '] -top-1.5 text-[11px] before:pointer-events-none before:mt-[6.5px] before:mr-1 before:box-border before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-t before:border-l before:border-blue-gray-200 before:transition-all after:pointer-events-none after:mt-[6.5px] after:ml-1 after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow after:rounded-tr-md after:border-t after:border-r after:border-blue-gray-200 after:transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-blue-gray-500 peer-placeholder-shown:before:border-transparent peer-placeholder-shown:after:border-transparent peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-pink-500 peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:border-pink-500 peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:border-pink-500 peer-disabled:text-transparent peer-disabled:before:border-transparent peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500")
+                            | NOMBRE
 
-            div.w-full.mb-4.max-h-screen.overflow-hidden
-                .swiper-container-categories.container-beer
-                    .swiper-wrapper
-                        each image in Images
-                            .swiper-slide.py-0.flex.justify-center.border.rounded-md
-                                img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto", data-name=image.name)
+                .w-full.my-5
+                    .relative.h-10.w-full(class='min-w-[200px]')
+                        input.peer.h-full.w-full.border.border-blue-gray-200.bg-transparent.px-3.font-sans.text-sm.font-normal.text-blue-gray-700.outline.outline-0.transition-all(type="text" name="description" id="description" class='rounded-[7px] py-6 placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200 focus:border-2 focus:border-pink-500 focus:border-t-transparent focus:outline-0 disabled:border-0 disabled:bg-blue-gray-50' placeholder=' ')
+                        label.pointer-events-none.absolute.left-0.flex.h-full.w-full.select-none.font-normal.leading-tight.text-blue-gray-400.transition-all(class="before:content[' '] after:content[' '] -top-1.5 text-[11px] before:pointer-events-none before:mt-[6.5px] before:mr-1 before:box-border before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-t before:border-l before:border-blue-gray-200 before:transition-all after:pointer-events-none after:mt-[6.5px] after:ml-1 after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow after:rounded-tr-md after:border-t after:border-r after:border-blue-gray-200 after:transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-blue-gray-500 peer-placeholder-shown:before:border-transparent peer-placeholder-shown:after:border-transparent peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-pink-500 peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:border-pink-500 peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:border-pink-500 peer-disabled:text-transparent peer-disabled:before:border-transparent peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500")
+                            | DESCRIPCION
 
 
-            input(type="hidden" name="selectedImage" id="selectedImage")
+                div.w-full.mb-4.max-h-screen.overflow-hidden
+                    .swiper-container-categories.container-beer
+                        .swiper-wrapper
+                            each image in Images
+                                .swiper-slide.py-0.flex.justify-center.border.rounded-md
+                                    img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto", data-name=image.name)
 
 
-            div.flex.items-center.justify-between
-                button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
+                input(type="hidden" name="selectedImage" id="selectedImage")
+
+
+                div.flex.items-center.justify-between
+                    button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
 
 
 
+            #container-categories.h-screen.overflow-auto
+                each category in Categories
+                    .card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.m-4.flex.border(id=`card-${category.id}`)
 
+                        div(class="flex")
+                            img(src=`/${category.imageUrl}`, alt=category.name, class="w-1/3 h-48 object-contain")
+                            div(class="w-2/3 p-4")
+                                h3.text-lg.font-bold.mb-2 #{category.name}
+                                p.text-gray-600 #{category.description}
 
-
-        #container-categories.min-h-screen.max-h-screen.overlfow-auto
-            each category in Categories
-                .card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.m-4.flex.border(id=`card-${category.id}`)
-                    a(href=`/category/delete-category/${category.id}`, data-category-id=category.id, class="delete-category absolute top-0 right-0  bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Eliminar
-
-
-                    img(src=`/${category.imageUrl}`, alt=category.name, class="w-1/3 h-48 object-contain")
-                    div(class="w-1/2 p-4")
-                        h3.text-lg.font-bold.mb-2 #{category.name}
-                        p.text-gray-600 #{category.description}
-                        div.flex.items-center.justify-between.mt-4
-                            a(href=`/category/view-edit-category/${category.id}` class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar
+                                div(class="flex justify-between items-center mt-4")
+                                    a(href=`/category/view-edit-category/${category.id}` class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar
+                                    a(href=`/category/delete-category/${category.id}`, data-category-id=category.id, class="delete-category bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Eliminar

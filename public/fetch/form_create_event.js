@@ -28,43 +28,49 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (typeof eventTime === 'string') {
                     // Divide la cadena de tiempo en horas y minutos
                     let [hour, minute] = eventTime.split(':');
-                
+
                     // Crea una nueva fecha
                     let date = new Date();
                     date.setHours(parseInt(hour), parseInt(minute));
-                
+
                     eventTime = date;
                 }
-                
-                let formatter = new Intl.DateTimeFormat('es-AR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
+
+                let formatter = new Intl.DateTimeFormat('es-AR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
                     hour12: false,
-                    timeZone: 'America/Argentina/Buenos_Aires' 
+                    timeZone: 'America/Argentina/Buenos_Aires'
                 });
-                
+
                 const time = formatter.format(eventTime);
-                
+
 
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
-                    <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Event.id}">
-                        <a href="/event/delete-event/${result.Event.id}" data-event-id="${result.Event.id}" class="delete-event absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                            Eliminar
-                        </a>
-                        ${result.Event.imageUrl ? `<img src="/${result.Event.imageUrl}" alt="${result.Event.name}" class="w-1/3 h-48 object-contain">` : ''}
-                        <div class="w-1/2 p-4">
-                            <h3 class="text-lg font-bold mb-2">${result.Event.name}</h3>
-                            <p class="text-gray-600">${result.Event.description}</p>
-                            ${`<p class="text-gray-600">${localDateString}</p>`}
-                            ${`<p class="text-gray-600">${time}</p>`}
-                            <p class="text-gray-600">${result.Event.location}</p>
-                            <div class="flex items-center justify-between mt-4">
-                                <a href="/event/view-edit-event/${result.Event.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Editar</a>
-                            </div>
-                        </div>
-                    </div>`;
+  <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Event.id}">
+ 
+    ${result.Event.imageUrl ? `<img src="/${result.Event.imageUrl}" alt="${result.Event.name}" class="w-full h-48 object-cover mr-2 rounded-l-lg">` : ''}
+    <div class="flex flex-col justify-between w-full">
+      <div>
+        <h3 class="text-lg font-bold my-2">${result.Event.name}</h3>
+        <p class="text-gray-600">${result.Event.description}</p>
+        ${result.Event.date ? `<p class="text-gray-600">${localDateString}</p>` : ''}
+        ${result.Event.time ? `<p class="text-gray-600">${time}</p>` : ''}
+        <p class="text-gray-600">${result.Event.location}</p>
+      </div>
+      <div class="flex items-center justify-end mt-4">
+        <a href="/event/view-edit-event/${result.Event.id}" class="mr-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+          Editar
+        </a>
+        <a href="/event/delete-event/${result.Event.id}" data-event-id="${result.Event.id}" class="delete-event bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+          Eliminar
+        </a>
+      </div>
+    </div>
+  </div>`;
+
 
                 const container = document.getElementById("container-events");
                 container.insertAdjacentHTML('beforeend', cardHTML);
