@@ -21,7 +21,7 @@ block content
 
                             .text-sm.font-semibold.py-10 SEMANA
 
-                        form
+                        form#form-openingHour
                             .grid.grid-cols-5.text-xs.text-center.text-gray-900.gap-6
 
                                 span.flex.items-center.justify-center.w-10.h-10.rounded-lg.font-semibold 
@@ -32,73 +32,73 @@ block content
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold LUN
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="lunMorningStartTime")
+                                    input(type="time" value=OpeningHour[0].morningStartTime name="lunMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="lunMorningEndTime")
+                                    input(type="time" value=OpeningHour[0].morningEndTime name="lunMorningEndTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="lunEveningStartTime")
+                                    input(type="time" value=OpeningHour[0].eveningStartTime name="lunEveningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white')
-                                    input(type="time" name="lunEveningStartTime")
+                                    input(type="time" value=OpeningHour[0].eveningEndTime name="lunEveningEndTime")
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold MAR
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="marMorningStartTime")
+                                    input(type="time" value=OpeningHour[1].morningStartTime name="marMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="marMorningEndTime")
+                                    input(type="time" value=OpeningHour[1].morningEndTime name="marMorningEndTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="marEveningStartTime")
+                                    input(type="time" value=OpeningHour[1].eveningStartTime name="marEveningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="marEveningStartTime")
+                                    input(type="time" value=OpeningHour[1].eveningEndTime name="marEveningEndTime")
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold MIE
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="mierMorningStartTime")
+                                    input(type="time" value=OpeningHour[2].morningStartTime name="mierMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="mierMorningEndTime")
+                                    input(type="time" value=OpeningHour[2].morningEndTime name="mierMorningEndTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="mierEveningStartTime")
+                                    input(type="time" value=OpeningHour[2].eveningStartTime name="mierEveningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="mierEveningStartTime")
+                                    input(type="time" value=OpeningHour[2].eveningEndTime name="mierEveningEndTime")
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold JUE
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="jueMorningStartTime")
+                                    input(type="time" value=OpeningHour[3].morningStartTime name="jueMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="jueMorningEndTime")
+                                    input(type="time" value=OpeningHour[3].morningEndTime name="jueMorningEndTime")
                                 span.flex.items-center.justify-cente.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="jueEveningStartTime")
-                                span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="jueEveningStartTime")
+                                    input(type="time" value=OpeningHour[3].eveningStartTime name="jueEveningStartTime")
+                                span.flex.items-center.jusify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
+                                    input(type="time" value=OpeningHour[3].eveningEndTime name="jueEveningEndTime")
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold VIE
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="vieMorningStartTime")
+                                    input(type="time" value=OpeningHour[4].morningStartTime name="vieMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="vieMorningEndTime")
+                                    input(type="time" value=OpeningHour[4].morningEndTime name="vieMorningEndTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="vieEveningStartTime")
+                                    input(type="time" value=OpeningHour[4].eveningStartTime name="vieEveningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="vieEveningStartTime")
+                                    input(type="time" value=OpeningHour[4].eveningEndTime name="vieEveningEndTime")
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold SAB
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="sabMorningStartTime")
+                                    input(type="time" value=OpeningHour[5].morningStartTime name="sabMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="sabMorningEndTime")
+                                    input(type="time" value=OpeningHour[5].morningEndTime name="sabMorningEndTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="sabEveningStartTime")
+                                    input(type="time" value=OpeningHour[5].eveningStartTime name="sabEveningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="sabEveningStartTime")
+                                    input(type="time" value=OpeningHour[5].eveningEndTime name="sabEveningEndTime")
 
                                 span.flex.items-center.justify-center.w-5.h-5.rounded-lg.font-semibold DOM
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="domMorningStartTime")
+                                    input(type="time" value=OpeningHour[6].morningStartTime name="domMorningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="domMorningEndTime")
+                                    input(type="time" value=OpeningHour[6].morningEndTime name="domMorningEndTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="domEveningStartTime")
+                                    input(type="time" value=OpeningHour[6].eveningStartTime name="domEveningStartTime")
                                 span.flex.items-center.justify-center.w-16.h-5.rounded-xl(class='hover:bg-indigo-400 hover:text-white') 
-                                    input(type="time" name="domEveningStartTime")
+                                    input(type="time" value=OpeningHour[6].eveningEndTime name="domEveningEndTime")
 
                             .h-20.w-full.my-4.p-4.flex.justify-center
                                 button.bg-indigo-400.rounded-md.px-4.text-white(class="hover:bg-indigo-600") Editar

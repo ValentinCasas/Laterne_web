@@ -3,9 +3,42 @@ import moment from 'moment';
 import { Op } from 'sequelize'
 
 
+
 export const goOpeningHour = async (req, res) => {
-    const openingHour = await OpeningHour.findAll();
-    res.render("openingHour_create", { OpeningHour: openingHour });
+    const daysOfWeek = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
+    let openingHours = await OpeningHour.findAll();
+
+    if (openingHours.length === 0) {
+        // Si el array está vacío, crear un nuevo array con objetos nulos para cada día de la semana
+        openingHours = daysOfWeek.map(day => ({
+            dayOfWeek: day,
+            morningStartTime: null,
+            morningEndTime: null,
+            eveningStartTime: null,
+            eveningEndTime: null,
+        }));
+    } else {
+        // Crear un mapa para acceder fácilmente a las horas existentes por día
+        const existingHoursMap = new Map(openingHours.map(hour => [hour.dayOfWeek, hour]));
+
+        // Iterar sobre los días de la semana
+        for (const day of daysOfWeek) {
+            // Verificar si el día ya existe en la base de datos
+            if (!existingHoursMap.has(day)) {
+                // Si no existe, agregar un nuevo objeto con todos los valores a null al array openingHours
+                openingHours.push({
+                    dayOfWeek: day,
+                    morningStartTime: null,
+                    morningEndTime: null,
+                    eveningStartTime: null,
+                    eveningEndTime: null,
+                });
+            }
+        }
+    }
+
+    // Enviar openingHours al render
+    res.render("openingHour_create", { OpeningHour: openingHours });
 }
 
 export const createOpeningHour = async (req, res) => {
@@ -20,61 +53,154 @@ export const createOpeningHour = async (req, res) => {
         } = req.body;
 
 
-        const lunOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Lunes",
-            morningStartTime: lunMorningStartTime ? moment.utc(lunMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: lunMorningEndTime ? moment.utc(lunMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: lunEveningStartTime ? moment.utc(lunEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: lunEveningEndTime ? moment.utc(lunEveningEndTime, 'HH:mm').toDate() : null,
+        // Lunes
+        const [lunOpeningHour, lunCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Lunes" },
+            defaults: {
+                dayOfWeek: "Lunes",
+                morningStartTime: lunMorningStartTime ? moment.utc(lunMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: lunMorningEndTime ? moment.utc(lunMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: lunEveningStartTime ? moment.utc(lunEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: lunEveningEndTime ? moment.utc(lunEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
 
-        const marOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Martes",
-            morningStartTime: marMorningStartTime ? moment.utc(marMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: marMorningEndTime ? moment.utc(marMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: marEveningStartTime ? moment.utc(marEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: marEveningEndTime ? moment.utc(marEveningEndTime, 'HH:mm').toDate() : null,
+        if (!lunCreated) {
+            await lunOpeningHour.update({
+                morningStartTime: lunMorningStartTime ? moment.utc(lunMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: lunMorningEndTime ? moment.utc(lunMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: lunEveningStartTime ? moment.utc(lunEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: lunEveningEndTime ? moment.utc(lunEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+        // Martes
+        const [marOpeningHour, marCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Martes" },
+            defaults: {
+                dayOfWeek: "Martes",
+                morningStartTime: marMorningStartTime ? moment.utc(marMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: marMorningEndTime ? moment.utc(marMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: marEveningStartTime ? moment.utc(marEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: marEveningEndTime ? moment.utc(marEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
 
-        const mierOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Miercoles",
-            morningStartTime: mierMorningStartTime ? moment.utc(mierMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: mierMorningEndTime ? moment.utc(mierMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: mierEveningStartTime ? moment.utc(mierEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: mierEveningEndTime ? moment.utc(mierEveningEndTime, 'HH:mm').toDate() : null,
+        if (!marCreated) {
+            await marOpeningHour.update({
+                morningStartTime: marMorningStartTime ? moment.utc(marMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: marMorningEndTime ? moment.utc(marMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: marEveningStartTime ? moment.utc(marEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: marEveningEndTime ? moment.utc(marEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+        // Miércoles
+        const [mierOpeningHour, mierCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Miércoles" },
+            defaults: {
+                dayOfWeek: "Miércoles",
+                morningStartTime: mierMorningStartTime ? moment.utc(mierMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: mierMorningEndTime ? moment.utc(mierMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: mierEveningStartTime ? moment.utc(mierEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: mierEveningEndTime ? moment.utc(mierEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
 
-        const jueOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Jueves",
-            morningStartTime: jueMorningStartTime ? moment.utc(jueMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: jueMorningEndTime ? moment.utc(jueMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: jueEveningStartTime ? moment.utc(jueEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: jueEveningEndTime ? moment.utc(jueEveningEndTime, 'HH:mm').toDate() : null,
+        if (!mierCreated) {
+            await mierOpeningHour.update({
+                morningStartTime: mierMorningStartTime ? moment.utc(mierMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: mierMorningEndTime ? moment.utc(mierMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: mierEveningStartTime ? moment.utc(mierEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: mierEveningEndTime ? moment.utc(mierEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+        // Jueves
+        const [jueOpeningHour, jueCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Jueves" },
+            defaults: {
+                dayOfWeek: "Jueves",
+                morningStartTime: jueMorningStartTime ? moment.utc(jueMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: jueMorningEndTime ? moment.utc(jueMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: jueEveningStartTime ? moment.utc(jueEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: jueEveningEndTime ? moment.utc(jueEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
 
-        const vieOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Viernes",
-            morningStartTime: vieMorningStartTime ? moment.utc(vieMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: vieMorningEndTime ? moment.utc(vieMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: vieEveningStartTime ? moment.utc(vieEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: vieEveningEndTime ? moment.utc(vieEveningEndTime, 'HH:mm').toDate() : null,
+        if (!jueCreated) {
+            await jueOpeningHour.update({
+                morningStartTime: jueMorningStartTime ? moment.utc(jueMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: jueMorningEndTime ? moment.utc(jueMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: jueEveningStartTime ? moment.utc(jueEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: jueEveningEndTime ? moment.utc(jueEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+        // Viernes
+        const [vieOpeningHour, vieCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Viernes" },
+            defaults: {
+                dayOfWeek: "Viernes",
+                morningStartTime: vieMorningStartTime ? moment.utc(vieMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: vieMorningEndTime ? moment.utc(vieMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: vieEveningStartTime ? moment.utc(vieEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: vieEveningEndTime ? moment.utc(vieEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
 
-        const sabOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Sabado",
-            morningStartTime: sabMorningStartTime ? moment.utc(sabMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: sabMorningEndTime ? moment.utc(sabMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: sabEveningStartTime ? moment.utc(sabEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: sabEveningEndTime ? moment.utc(sabEveningEndTime, 'HH:mm').toDate() : null,
+        if (!vieCreated) {
+            await vieOpeningHour.update({
+                morningStartTime: vieMorningStartTime ? moment.utc(vieMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: vieMorningEndTime ? moment.utc(vieMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: vieEveningStartTime ? moment.utc(vieEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: vieEveningEndTime ? moment.utc(vieEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+        // Sábado
+        const [sabOpeningHour, sabCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Sábado" },
+            defaults: {
+                dayOfWeek: "Sábado",
+                morningStartTime: sabMorningStartTime ? moment.utc(sabMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: sabMorningEndTime ? moment.utc(sabMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: sabEveningStartTime ? moment.utc(sabEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: sabEveningEndTime ? moment.utc(sabEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
 
-        const domOpeningHour = await OpeningHour.findOrCreate({
-            where: dayOfWeek === "Domingo",
-            morningStartTime: domMorningStartTime ? moment.utc(domMorningStartTime, 'HH:mm').toDate() : null,
-            morningEndTime: domMorningEndTime ? moment.utc(domMorningEndTime, 'HH:mm').toDate() : null,
-            eveningStartTime: domEveningStartTime ? moment.utc(domEveningStartTime, 'HH:mm').toDate() : null,
-            eveningEndTime: domEveningEndTime ? moment.utc(domEveningEndTime, 'HH:mm').toDate() : null,
+        if (!sabCreated) {
+            await sabOpeningHour.update({
+                morningStartTime: sabMorningStartTime ? moment.utc(sabMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: sabMorningEndTime ? moment.utc(sabMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: sabEveningStartTime ? moment.utc(sabEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: sabEveningEndTime ? moment.utc(sabEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+        // Domingo
+        const [domOpeningHour, domCreated] = await OpeningHour.findOrCreate({
+            where: { dayOfWeek: "Domingo" },
+            defaults: {
+                dayOfWeek: "Domingo",
+                morningStartTime: domMorningStartTime ? moment.utc(domMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: domMorningEndTime ? moment.utc(domMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: domEveningStartTime ? moment.utc(domEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: domEveningEndTime ? moment.utc(domEveningEndTime, 'HH:mm').toDate() : null,
+            },
         });
+
+        if (!domCreated) {
+            await domOpeningHour.update({
+                morningStartTime: domMorningStartTime ? moment.utc(domMorningStartTime, 'HH:mm').toDate() : null,
+                morningEndTime: domMorningEndTime ? moment.utc(domMorningEndTime, 'HH:mm').toDate() : null,
+                eveningStartTime: domEveningStartTime ? moment.utc(domEveningStartTime, 'HH:mm').toDate() : null,
+                eveningEndTime: domEveningEndTime ? moment.utc(domEveningEndTime, 'HH:mm').toDate() : null,
+            });
+        }
+
+
 
         res.status(201).json({ lunOpeningHour, marOpeningHour, mierOpeningHour, jueOpeningHour, vieOpeningHour, sabOpeningHour, domOpeningHour });
 
