@@ -16,7 +16,7 @@ block content
           span &
           span.point  .
 
-        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
+        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="true" aria-label="Toggle navigation")
           span.navbar-toggler-icon
 
         .collapse.navbar-collapse#navbarSupportedContent
@@ -56,7 +56,7 @@ block content
                 h1.m-0 #{localDateString}
 
               else
-                h1.m-0 --  /  --  /  --- 
+                h1.m-0 --  /  --  /  ----
 
               if event.time
                 - const eventTimeParts = event.time.split(":");
@@ -64,13 +64,14 @@ block content
 
                 - eventTime.setHours(Number(eventTimeParts[0]));
                 - eventTime.setMinutes(Number(eventTimeParts[1]));
-                p.m-0
-                  if event.imageUrl
-                    span
-                      ion-icon(name="document-attach-outline" onclick=`openModal('${event.imageUrl}')`).text-white.mx-2#ion-icon-image
+                div.d-flex.align-items-center
                   span.mx-2=event.location
                   span.artist.mx-2=event.name
                   span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                  if event.imageUrl
+                    span.d-flex.align-items-center
+                      ion-icon(name="image-outline" onclick=`openModal('${event.imageUrl}')`).text-white.mx-2.my-0#ion-icon-image
+
               else
                 p.m-0
                   span=event.location
@@ -103,7 +104,10 @@ block content
         .swiper-slide.py-10
           img(src=`${val}`, alt=`Beers`)
         .swiper-slide.py-10
-          img(src=`${val}`, alt=`Beers`)      
+          img(src=`${val}`, alt=`Beers`) 
+
+  .container-fluid.px-0
+    img.img-fluid.rotate-180(src="/banner2.png" alt="")     
 
   //seccion feedback
   //fotos qsy
@@ -111,8 +115,8 @@ block content
 
 
 
-  #map
-
+  .contain-map.mt-5
+    #map
 
   .footer-dark
     footer

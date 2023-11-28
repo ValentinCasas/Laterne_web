@@ -15,6 +15,15 @@ body {
   background-color: #000000;
 }
 
+.rotate-180 {
+  transform: rotate(180deg);
+  margin-top: -1px;
+}
+
+
+.navbar-toggler{
+  z-index:10;
+}
 
 .navbar-nav li a {
   text-transform: uppercase;
@@ -65,6 +74,7 @@ body {
   text-align: center;
   color: white;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  padding-top: 100px;
 }
 
 .son * {
@@ -73,21 +83,8 @@ body {
   word-wrap: break-word;
 }
 
-.son h1 {
-  text-transform: uppercase;
-  font-size: 3.5vw;
-  color: #f19ac8;
-  margin: 0;
-}
 
-.son p {
-  font-family: 'Overpass', sans-serif;
-  font-size: 2vw;
-  margin-top: 2vw;
-  margin-bottom: 0;
-  padding:10px;
-  color: black;
-}
+
 
 
 .son h1 {
@@ -101,9 +98,12 @@ body {
   font-family: 'Overpass', sans-serif;
   max-width: 100%;
   width: auto;
-  font-size: 20px;
+  font-size: 30px;
   color:white;
   margin-top: 30px;
+  padding-left: 50px;
+  padding-right: 50px;
+  padding-top: 30px;
 }
 
 
@@ -113,7 +113,7 @@ body {
   box-sizing: content-box;
   display:grid;
   grid-template-columns: repeat(2, 1fr);
-  
+  margin-left: 150px;
   white-space: nowrap;
 }
 
@@ -127,6 +127,7 @@ body {
   color: #f19ac8;
   height: 100px;
   overflow: hidden;
+
 }
 
 .words span {
@@ -140,18 +141,40 @@ body {
   animation: spin-words 12s infinite;
 }
 
+.container-eventos {
+  background-color: #000000;
+  margin-top: 20px;
+}
+
+
 @media screen and (max-width: 1024px) {
   
   .father {
     position: relative;
-    height: 80vh;
+    height: 75vh;
   
   }
+
+  .container-eventos {
+    margin-top: 100px;
+  }
+  
+  .wrapper{
+    margin-left: 120px;
+  }
+
+  .son p {
+    font-size: 25px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  
 
   
   .banner {
     width: 100%;
     height: 100%;
+    object-fit: cover;
   }
 }
 
@@ -163,6 +186,21 @@ body {
   .wrapper h1 {
     text-align: center; 
   }
+
+  .wrapper{
+    margin-left: 0px;
+  }
+
+  .container-eventos {
+    margin-top: 25px;
+  }
+  
+  .son p {
+    font-size: 20px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  
   
   .father {
     position: relative;
@@ -172,7 +210,8 @@ body {
 
   .banner {
     width: 100%;
-    height: 45%;
+    height: 80%;
+    object-fit: cover;
   }
 
   .words span {
@@ -189,10 +228,23 @@ body {
     width: 100%;
     height: 55vh;
   }
+
+  .container-eventos {
+    margin-top: 100px;
+  }
+
+  .son p {
+    font-size: 20px;
+
+    padding-left: 20px;
+    padding-right: 20px;
+  }
   
+
   .banner {
     width: 100%;
-    height: 40%;
+    height: 55%;
+    object-fit: cover;
   }
 }
 
@@ -202,14 +254,6 @@ body {
 
 
 
-
-
-
-
-.container-eventos {
-  background-color: #000000;
-
-}
 
 
 .contenedor-cards {
@@ -410,18 +454,26 @@ body {
 }
 
 #ion-icon-image {
-  font-size: 20px;
+  font-size: 25px;
+  cursor: pointer;
 }
 
 
 
 
 
+.contain-map{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 
 #map {
   height: 50vh;
-  width: 100%;
+  width: 98%;
   border-radius: 0;
   border: .1px solid rgb(170, 170, 173);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
 }
+

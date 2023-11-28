@@ -1,138 +1,144 @@
 doctype html
 html(lang="en")
-    head
+  head
 
-        meta(charset="UTF-8")
-        meta(name="viewport" content="width=device-width, initial-scale=1.0")
-        meta(name="keywords" content="restaurante,la punta, Laterne")
-        meta(name="author" content="Laterne & .")
-        meta(name="copyright" content="Laterne & .")
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    meta(name="keywords" content="restaurante,la punta, Laterne")
+    meta(name="author" content="Laterne & .")
+    meta(name="copyright" content="Laterne & .")
 
-        //link(href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet")
+    //link(href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet")
 
-        link(href="https://db.onlinewebfonts.com/c/6909bd43ba5cc7d91c36a25c548b00ed?family=ITC+Clearface+Black" rel="stylesheet")
-        link(rel="preconnect" href="https://fonts.googleapis.com")
-        link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
-        link(href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto&display=swap" rel="stylesheet")
-        link(rel="preconnect" href="https://fonts.googleapis.com")
-        link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
-        link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
+    link(href="https://db.onlinewebfonts.com/c/6909bd43ba5cc7d91c36a25c548b00ed?family=ITC+Clearface+Black" rel="stylesheet")
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto&display=swap" rel="stylesheet")
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
 
-        link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css")
-        script(src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js", defer)
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css")
+    script(src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js", defer)
 
-        //link(href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet")      
+    //link(href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet")      
 
-        script(src="https://cdn.jsdelivr.net/npm/sweetalert2@10")
+    script(src="https://cdn.jsdelivr.net/npm/sweetalert2@10")
 
-        script(src="/swiper.js", defer)
+    script(src="/swiper.js", defer)
 
-        //tailwind elements css
-        link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/tw-elements.min.css")
-        //tailwind
-        script(src="https://cdn.tailwindcss.com")
-        //font titles
-        link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
-        //tailwind elements js 
-        script(src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/tw-elements.umd.min.js",defer)
+    //tailwind elements css
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/tw-elements.min.css")
+    //tailwind
+    script(src="https://cdn.tailwindcss.com")
+    //font titles
+    link(href="https://fonts.googleapis.com/css2?family=Overpass:wght@100&display=swap" rel="stylesheet")
+    //tailwind elements js 
+    script(src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/tw-elements.umd.min.js",defer)
 
-        link(rel="stylesheet" href="/dist/tw.css")
-
-    body
-
-        if error 
-            script.
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error || "Error desconocido"
-                });
-
-        if locals.isLoggedIn 
-            nav.bg-white.rounded-xl.flex.w-full.flex-nowrap.items-center.justify-between.py-2.shadow-xl(class='lg:flex-wrap lg:justify-start lg:py-4' data-te-navbar-ref='').flex.w-full.flex-wrap.items-center.justify-between.px-3
-                .flex.w-full.flex-wrap.items-center.justify-between.px-3
-                   button.text-black.block.border-0.bg-transparent.px-2.text-neutral-500(class='hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 lg:hidden' type='button' data-te-collapse-init='' data-te-target='#navbarSupportedContent13' aria-controls='navbarSupportedContent13' aria-expanded='false' aria-label='Toggle navigation')
-                        span
-                            svg.h-7.w-7(xmlns='http://www.w3.org/2000/svg' style='color:black' viewbox='0 0 24 24' fill='currentColor')
-                                path(fill-rule='evenodd' d='M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z' clip-rule='evenodd')
-
-                    .hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' <='' body='')#navbarSupportedContent13.hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' data-te-collapse-item='')
-                        a.ml-2.text-xl.text-neutral-800.brand(href='#')
-                            img.w-20.h-10(src='/brand.png' alt='')
-
-                        ul.my-3.mr-5.ml-auto.mr-2.list-style-none.flex.flex-col.pl-0(class='lg:mt-1 lg:flex-row' data-te-navbar-nav-ref='')
-                           
-                            li.mb-2.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                a.p-0.text-black.font-bold(href='/' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INICIO
-
-                            li.mb-2.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                a.p-0.text-black.font-bold(href='/home' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HOME 
+    link(rel="stylesheet" href="/dist/tw.css")
 
 
-                            // Dropdown
-                            .relative(data-te-dropdown-ref='')
-                              a#dropdownMenuButton2.text-black.font-bold.flex.items-center.pl-2.pb-2.transition.duration-200(class='motion-reduce:transition-none lg:px-2' href='#' type='button' data-te-dropdown-toggle-ref='' aria-expanded='false') ADMINISTRACIÓN
-                                span.ml-2.w-2
-                                  svg.h-5.w-5(xmlns='http://www.w3.org/2000/svg' viewbox='0 0 20 20' fill='currentColor')
-                                    path(fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd')
-                              ul.w-36.absolute.m-0.hidden.min-w-max.list-none.overflow-hidden.rounded-lg.border-none.bg-white.bg-clip-padding.shadow-lg(class='z-[1000] [&[data-te-dropdown-show]]:block' aria-labelledby='dropdownMenuButton2' data-te-dropdown-menu-ref='')
-                                // Link
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/product/view-products' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") PRODUCTOS
-                                // Link
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/category/view-create-category' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CATEGORIAS
-                                // Link
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/testimonial/view-testimonials' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") FEEDBACK
-                                // Link
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/event/view-create-event' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") EVENTOS 
-                                if locals.role === 1
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                    a.p-0.text-black.font-bold(href='/user/view-users'  data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'"     onmouseout="this.style.color='#000'") USUARIOS
+  body
 
-                                
-                            // Dropdown
-                            .relative(data-te-dropdown-ref='')
-                              a#dropdownMenuButton2.text-black.font-bold.flex.items-center.pl-2.pb-2.transition.duration-200(class='motion-reduce:transition-none lg:px-2' href='#' type='button' data-te-dropdown-toggle-ref='' aria-expanded='false') CONFIGURACION
-                                span.ml-2.w-2
-                                  svg.h-5.w-5(xmlns='http://www.w3.org/2000/svg' viewbox='0 0 20 20' fill='currentColor')
-                                    path(fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd')
-                              ul.w-36.absolute.m-0.hidden.min-w-max.list-none.overflow-hidden.rounded-lg.border-none.bg-white.bg-clip-padding.shadow-lg(class='z-[1000] [&[data-te-dropdown-show]]:block' aria-labelledby='dropdownMenuButton2' data-te-dropdown-menu-ref='')
-                                // Link
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/businessInfo/view-businessInfo' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INFO LATERNE
-                                // Link
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/user/view-profile' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CUENTA
+    if error 
+      script.
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error || "Error desconocido"
+        });
 
-                                li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                  a.p-0.text-black.font-bold(href='/openingHour/view-opening-hour' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HORARIOS
-              
+    if locals.isLoggedIn 
+      nav.bg-white.rounded-xl.flex.w-full.flex-nowrap.items-center.justify-between.py-2.shadow-xl(class='lg:flex-wrap lg:justify-start lg:py-4' data-te-navbar-ref='').flex.w-full.flex-wrap.items-center.justify-between.px-3
+        .flex.w-full.flex-wrap.items-center.justify-between.px-3
+          button.text-black.block.border-0.bg-transparent.px-2.text-neutral-500(class='hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 lg:hidden' type='button' data-te-collapse-init='' data-te-target='#navbarSupportedContent13' aria-controls='navbarSupportedContent13' aria-expanded='false' aria-label='Toggle navigation')
+            span
+              svg.h-7.w-7(xmlns='http://www.w3.org/2000/svg' style='color:black' viewbox='0 0 24 24' fill='currentColor')
+                path(fill-rule='evenodd' d='M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z' clip-rule='evenodd')
 
-                            if locals.role === 1
-                                li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                        a.p-0.text-black.font-bold(href='/auth/logout'  data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'"     onmouseout="this.style.color='#000'") SALIR
+          .hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' <='' body='')#navbarSupportedContent13.hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' data-te-collapse-item='')
+            a.ml-2(href='/')
+              img.w-20.h-10(src='/brand.png' alt='')
 
-        if !locals.isLoggedIn     
+            ul.my-3.mr-5.ml-auto.list-style-none.flex.flex-col.pl-0(class='lg:mt-1 lg:flex-row' data-te-navbar-nav-ref='')
 
-            nav.bg-white.rounded-xl.flex.w-full.flex-nowrap.items-center.justify-between.py-2.shadow-xl(class='lg:flex-wrap lg:justify-start lg:py-4' data-te-navbar-ref='').flex.w-full.flex-wrap.items-center.justify-between.px-3
-                .flex.w-full.flex-wrap.items-center.justify-between.px-3
-                    button.text-black.block.border-0.bg-transparent.px-2.text-neutral-500(class='hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 lg:hidden' type='button' data-te-collapse-init='' data-te-target='#navbarSupportedContent13' aria-controls='navbarSupportedContent13' aria-expanded='false' aria-label='Toggle navigation')
-                        span
-                            svg.h-7.w-7(xmlns='http://www.w3.org/2000/svg' style='color:black' viewbox='0 0 24 24' fill='currentColor')
-                                path(fill-rule='evenodd' d='M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z' clip-rule='evenodd')
+              li.mb-2.mx-3(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                a.text-black.font-bold(href='/' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INICIO
 
-                    .hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' <='' body='')#navbarSupportedContent13.hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' data-te-collapse-item='')
-                        a.ml-2.text-xl.text-neutral-800.brand(href='#')
-                            img.w-20.h-10(src='/brand.png' alt='')
+              li.mb-2.mx-3(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                a.text-black.font-bold(href='/card_virtual' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CARTA 
 
-                        ul.my-3.mr-5.ml-auto.mr-2.list-style-none.flex.flex-col.pl-0(class='lg:mt-1 lg:flex-row' data-te-navbar-nav-ref='')
 
-                            li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                a.p-0.text-black.font-bold(href='/' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INICIO
+              li.mb-2.mx-3(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                a.text-black.font-bold(href='/home' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HOME 
 
-                            li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                                a.p-0.text-black.font-bold(href='/card_virtual' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CARTA    
-        block content
+
+              // Dropdown
+              .relative(data-te-dropdown-ref='')
+                a#dropdownMenuButton2.text-black.font-bold.flex.items-center.mx-3.pb-2.transition.duration-200(class='motion-reduce:transition-none lg:px-2' href='#' type='button' data-te-dropdown-toggle-ref='' aria-expanded='false') ADMINISTRACIÓN
+                  span.ml-2.w-2
+                    svg.h-5.w-5(xmlns='http://www.w3.org/2000/svg' viewbox='0 0 20 20' fill='currentColor')
+                      path(fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd')
+                ul.ml-2.px-10.w-36.absolute.m-0.hidden.min-w-max.list-none.overflow-hidden.rounded-lg.border-none.bg-white.bg-clip-padding.shadow-lg(class='z-[1000] [&[data-te-dropdown-show]]:block' aria-labelledby='dropdownMenuButton2' data-te-dropdown-menu-ref='')
+                  // Link
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/product/view-products' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") PRODUCTOS
+                  // Link
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/category/view-create-category' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CATEGORIAS
+                  // Link
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/testimonial/view-testimonials' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") FEEDBACK
+                  // Link
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/event/view-create-event' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") EVENTOS 
+                  if locals.role === 1
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/user/view-users' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") USUARIOS
+
+
+              // Dropdown
+              .relative(data-te-dropdown-ref='')
+                a#dropdownMenuButton2.text-black.font-bold.flex.items-center.mx-3.pb-2.transition.duration-200(class='motion-reduce:transition-none lg:px-2' href='#' type='button' data-te-dropdown-toggle-ref='' aria-expanded='false') CONFIGURACION
+                  span.ml-2.w-2
+                    svg.h-5.w-5(xmlns='http://www.w3.org/2000/svg' viewbox='0 0 20 20' fill='currentColor')
+                      path(fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd')
+                ul.ml-2.px-10.w-36.absolute.m-0.hidden.min-w-max.list-none.overflow-hidden.rounded-lg.border-none.bg-white.bg-clip-padding.shadow-lg(class='z-[1000] [&[data-te-dropdown-show]]:block' aria-labelledby='dropdownMenuButton2' data-te-dropdown-menu-ref='')
+                  // Link
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/businessInfo/view-businessInfo' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INFO 
+                  // Link
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/openingHour/view-opening-hour' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HORARIOS
+                  
+                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                    a.p-0.text-black.font-bold(href='/user/view-profile' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CUENTA
+
+
+
+              if locals.role === 1
+                li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                  a.p-0.text-black.font-bold(href='/auth/logout' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") SALIR
+
+    if !locals.isLoggedIn     
+
+      nav.bg-white.rounded-xl.flex.w-full.flex-nowrap.items-center.justify-between.py-2.shadow-xl(class='lg:flex-wrap lg:justify-start lg:py-4' data-te-navbar-ref='').flex.w-full.flex-wrap.items-center.justify-between.px-3
+        .flex.w-full.flex-wrap.items-center.justify-between.px-3
+          button.text-black.block.border-0.bg-transparent.px-2.text-neutral-500(class='hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 lg:hidden' type='button' data-te-collapse-init='' data-te-target='#navbarSupportedContent13' aria-controls='navbarSupportedContent13' aria-expanded='false' aria-label='Toggle navigation')
+            span
+              svg.h-7.w-7(xmlns='http://www.w3.org/2000/svg' style='color:black' viewbox='0 0 24 24' fill='currentColor')
+                path(fill-rule='evenodd' d='M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z' clip-rule='evenodd')
+
+          .hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' <='' body='')#navbarSupportedContent13.hidden.flex-grow.items-center.container-nav(class='!visible basis-[100%] lg:mt-0 lg:!flex lg:basis-auto' data-te-collapse-item='')
+            a.ml-2.text-xl.text-neutral-800.brand(href='#')
+              img.w-20.h-10(src='/brand.png' alt='')
+
+            ul.my-3.mr-5.ml-auto.mr-2.list-style-none.flex.flex-col.pl-0(class='lg:mt-1 lg:flex-row' data-te-navbar-nav-ref='')
+
+              li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                a.p-0.text-black.font-bold(href='/' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INICIO
+
+              li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                a.p-0.text-black.font-bold(href='/card_virtual' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CARTA    
+    block content

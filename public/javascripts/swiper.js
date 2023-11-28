@@ -55,7 +55,6 @@ var swiper = new Swiper('.swiper-container-categories-card', {
     spaceBetween: 20,
     speed: 500,
     centeredSlides: true, // Centrar los slides activos
-    loopAdditionalSlides: 2, // Añadir slides adicionales para el bucle (debe ser igual o más grande que slidesPerView)
     pagination: {
         el: '.swiper-pagination',
         clickable: true,
