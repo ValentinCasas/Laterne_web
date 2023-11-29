@@ -59,6 +59,7 @@ app.use(express.static(path.join(__dirname, 'public/images/image_defect')));
 app.use(express.static(path.join(__dirname, 'public/images/images_product')));
 app.use(express.static(path.join(__dirname, 'public/images/images_profile')));
 app.use(express.static(path.join(__dirname, 'public/images/images_event')));
+app.use(express.static(path.join(__dirname, 'public/images/images_categories')));
 
 
 

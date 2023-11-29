@@ -85,6 +85,10 @@ block content
                        
                         if event.imageUrl
                             img(src=`/${event.imageUrl}`, alt=event.name, class="w-full h-48 object-cover mr-2 rounded-l-lg")
+                        else
+                            .w-full.h-48.mr-2.flex.justify-center.items-center.border.rounder-lg
+                                
+                                p sin foto
 
                         div(class=" flex flex-col justify-between w-full")
                             div

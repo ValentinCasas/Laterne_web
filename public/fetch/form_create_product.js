@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
       Eliminar
     </a>
 
-    <img src="/${result.Product.imageUrl}" alt="${result.Product.name}" class="w-full h-48 object-cover rounded-t-lg">
+    <img src="/${result.Product.imageUrl}" alt="${result.Product.name}" class="w-full h-48 object-contain rounded-t-lg">
 
     <div class="p-4 flex flex-col justify-between w-full">
       <div>
@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 Swal.fire({
                     icon: "error",
                     title: "Error",
-                    text: result.message || "Error desconocido",
+                    text: result.error || "Error desconocido",
                 });
             }
         } catch (error) {

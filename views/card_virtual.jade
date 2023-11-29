@@ -40,14 +40,21 @@ html
                 span.ampersant.text-white &
                 span.point  .
 
-        .sticky.top-0.w-full.h-48.pb-5.overflow-hidden.contain-swiper.z-10.bg-white
+        .sticky.top-0.w-full.h-40.pb-5.overflow-hidden.contain-swiper.z-10.bg-white
             .swiper-container-categories-card.container-beer
                 .swiper-wrapper.p-2
-                    each group in GroupedProducts
-                        .swiper-slide.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
-                            a(href=`#category-${group.category.id}`)  
-                                img(src=group.category.imageUrl, alt=group.category.name, class="selectable-image max-h-24 w-auto")
-                            a(href=`#category-${group.category.id}`).text-black.px-3.cursor-pointer #{group.category.name} 
+                    if GroupedProducts.length > 0
+                        each group in GroupedProducts
+                            .swiper-slide.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
+                                a(href=`#category-${group.category.id}`)  
+                                    img(src=group.category.imageUrl, alt=group.category.name, class="selectable-image max-h-24 w-auto")
+                                a(href=`#category-${group.category.id}`).text-black.px-3.cursor-pointer #{group.category.name} 
+                    else
+                        each index in [1,2,3,4,5,6,7,8,9,10,11,12]
+                            .swiper-slide.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
+                                img(src="/amber-tapa.png" class="selectable-image max-h-24 w-auto")
+                                p categoria ejemplo #{index}
+
 
 
         // Contenedor principal
@@ -56,18 +63,18 @@ html
             // Iteración sobre las categorías y productos
             each group in GroupedProducts
                 // Mostrar la categoría como encabezado
-                h2(class="text-2xl font-bold mx-4 mb-4 w-1/2" id=`category-${group.category.id}`) #{group.category.name}
+                h2(class="text-2xl font-bold mx-5 mb-4  w-2/3" id=`category-${group.category.id}`) #{group.category.name}
 
                 // Contenedor de productos
-                div(class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 px-4 py-4")
+                div(class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-5 px-4 py-4")
 
                     // Iteración sobre los productos
                     each product in group.products
                         // Tarjeta de producto
-                        div(class="product-card relative grid xs-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 bg-white shadow-md xl:max-h-50 rounded-lg mb-4")
+                        div(class="product-card relative grid xs-cols-2 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-2xl xl:max-h-60 rounded-lg mb-4")
                             // Contenido de la tarjeta
-                            div(class="p-1 grid place-items-center relative")
-                                img(class="h-40 sm:h-40 lg:h-40 object-cover w-full rounded-md", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                            div(class="p-1 flex justify-center items-start relative")
+                                img(class="lg:w-full md:w-full sm:h-full  object-cover rounded-md", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
 
                                 // Mensaje de "agotado"
                                 if product.availavility === "agotado"

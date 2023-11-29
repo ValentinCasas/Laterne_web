@@ -90,7 +90,7 @@ block content
             #container-products.h-screen.overflow-auto
                 .grid.grid-cols-1.card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.mb-4.flex.border(id=`card-${Product.id}`)
 
-                    img(src=`/${Product.imageUrl}`, alt=Product.name, class="w-full h-48 object-cover rounded-t-lg")#product-image
+                    img(src=`/${Product.imageUrl}`, alt=Product.name, class="w-full h-48 object-contain rounded-t-lg")#product-image
 
                     div(class="w-full p-4")
                         h3.text-lg.font-bold.mb-2.ml-2#product-name #{Product.name}

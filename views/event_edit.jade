@@ -85,21 +85,21 @@ block content
 
             #container-events.h-screen.overflow-auto
                 .card.relative.p-1.bg-white.rounded-lg.overflow-hidden.shadow-2xl.m-4.flex.border(id=`card-${Event.id}`)
-                     if Event.imageUrl
-                       img(src=`/${Event.imageUrl}`, id="event-image", alt=Event.name, class="w-full h-48 object-cover mr-2 rounded-l-lg")
-                     div(class="flex flex-col justify-between w-full" id=`card-child-${Event.id}`)
-                       div
-                         h3.text-lg.font-bold.my-2#event-name #{Event.name}
-                         p.text-gray-600#event-description #{Event.description}
-                         if Event.date
-                           - const dateObject = new Date(Event.date);
-                           - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
-                           p.text-gray-600#event-date #{localDateString}
-                         if Event.time
-                           - const eventTimeParts = Event.time.split(":");
-                           - const eventTime = new Date();
-                           - eventTime.setHours(Number(eventTimeParts[0]));
-                           - eventTime.setMinutes(Number(eventTimeParts[1]));
-                           p.text-gray-600#event-time #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                         p.text-gray-600#event-location #{Event.location}
-                      
+                    if Event.imageUrl
+                        img(src=`/${Event.imageUrl}`, id="event-image", alt=Event.name, class="w-full h-48 object-cover mr-2 rounded-l-lg")
+                    
+                    div(class="flex flex-col justify-between w-full" id=`card-child-${Event.id}`)
+                        div
+                            h3.text-lg.font-bold.my-2#event-name #{Event.name}
+                            p.text-gray-600#event-description #{Event.description}
+                            if Event.date
+                                - const dateObject = new Date(Event.date);
+                                - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+                                p.text-gray-600#event-date #{localDateString}
+                            if Event.time
+                                - const eventTimeParts = Event.time.split(":");
+                                - const eventTime = new Date();
+                                - eventTime.setHours(Number(eventTimeParts[0]));
+                                - eventTime.setMinutes(Number(eventTimeParts[1]));
+                                p.text-gray-600#event-time #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                            p.text-gray-600#event-location #{Event.location}

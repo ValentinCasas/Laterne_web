@@ -13,7 +13,7 @@ export const goCategories = async (req, res) => {
         const categories = await Category.findAll();
 
         // Ruta a la carpeta que contiene las imágenes
-        const imagesFolderPath = path.join(process.cwd(), 'public', 'images', 'banners');
+        const imagesFolderPath = path.join(process.cwd(), 'public', 'images', 'images_categories');
 
         // Lee el contenido del directorio
         fs.readdir(imagesFolderPath, (err, files) => {
@@ -27,7 +27,7 @@ export const goCategories = async (req, res) => {
                 // Construye la ruta completa de cada imagen
                 const images = imageFiles.map(file => ({
                     name: file,
-                    path: path.join('/images/banners', file)
+                    path: path.join('/images/images_categories', file)
                 }));
 
                 res.render("category_create", { Categories: categories, Images: images });
@@ -45,7 +45,7 @@ export const goEditCategory = async (req, res) => {
         const { id } = req.params;
         const category = await Category.findByPk(id);
 
-        const imagesFolderPath = path.join(process.cwd(), 'public', 'images', 'banners');
+        const imagesFolderPath = path.join(process.cwd(), 'public', 'images', 'images_categories');
 
         // Lee el contenido del directorio
         fs.readdir(imagesFolderPath, (err, files) => {
@@ -58,7 +58,7 @@ export const goEditCategory = async (req, res) => {
                 // Construye la ruta completa de cada imagen
                 const images = imageFiles.map(file => ({
                     name: file,
-                    path: path.join('/images/banners', file)
+                    path: path.join('/images/images_categories', file)
                 }));
 
                 res.render("category_edit", { Category: category, Images: images });

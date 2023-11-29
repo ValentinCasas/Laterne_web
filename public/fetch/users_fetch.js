@@ -21,22 +21,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
-                <li id="card-${result.User.id}" class="space-y-4">
-    <div class="aspect-w-3 aspect-h-2">
-        <img src="${result.User.imageUrl == 'avatar_profile_default.png' ? '/avatar_profile_default.png' : '/' + result.User.imageUrl}" alt="" class="rounded-lg object-cover shadow-lg h-80 border">
-    </div>
-    <div class="space-y-2">
-        <div class="space-y-1 text-lg font-medium leading-6">
-            <h3>${result.User.name}</h3>
-            <div class="flex justify-between">
-                <a href="/user/view-edit-users/${result.User.id}" class="text-indigo-600">editar perfil</a>
-                <a href="/auth/delete-user/${result.User.id}" data-user-id="${result.User.id}" class="delete-user bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">ELIMINAR</a>
-            </div>
-        </div>
-    </div>
-</li>
-
-                `;
+                <li id="card-${result.User.id}" class="shadow-lg space-y-4">
+                    <div class="aspect-w-3 aspect-h-2">
+                        <img src="${result.User.imageUrl == 'avatar_profile_default.png' ? '/avatar_profile_default.png' : '/' + result.User.imageUrl}" alt="" class="rounded-lg object-cover shadow-lg w-full h-80 border">
+                    </div>
+                    <div class="space-y-2 p-3">
+                        <div class="space-y-1 text-lg font-medium leading-6">
+                            <h3>${result.User.name}</h3>
+                            <p>${result.User.role == 1 ? 'Admin' : 'Empleado'}</p>
+                            <div class="flex justify-between">
+                                <a href="/user/view-edit-users/${result.User.id}" class="text-indigo-600">EDITAR</a>
+                                <a href="/auth/delete-user/${result.User.id}" data-user-id="${result.User.id}" class="delete-user bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">ELIMINAR</a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            `;
 
                 const container = document.getElementById("container-users");
                 container.insertAdjacentHTML('beforeend', cardHTML);

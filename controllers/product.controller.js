@@ -71,10 +71,12 @@ export const createProduct = async (req, res) => {
 
         const nameCategory = await Category.findByPk(categoryId)
 
-        await ProductCategory.create({
-            productId: newProduct.id,
-            categoryId,
-        });
+        if (categoryId) {
+            await ProductCategory.create({
+                productId: newProduct.id,
+                categoryId,
+            });
+        }
 
         res.status(201).json({ Product: newProduct, NameCategory: nameCategory, message: "Producto creado exitosamente" });
 
