@@ -59,4 +59,9 @@
 
 
 
+@media (min-width: 320px){
 
+    .container {
+        max-width: 100% !important;
+    }
+}

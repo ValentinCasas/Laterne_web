@@ -46,14 +46,14 @@ block content
 
 
                 div.flex.items-center.justify-end
-                    button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar 
+                    button(type="submit" class="bg-blue-500 hover:bg-blue-700  mt-4 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar 
 
 
 
             #container-categories.h-screen.overflow-auto
 
                 .card.relative.p-1.bg-white.rounded-lg.overflow-hidden.shadow-2xl.m-4.flex.border(id=`card-${Category.id}`)
-                    img(src=`/${Category.imageUrl}`, id="category-image", alt=Category.name, class="w-full h-48 object-cover mr-2 rounded-l-lg")
+                    img(src=`/${Category.imageUrl}`, id="category-image", alt=Category.name, class="h-20 object-contain mr-2 rounded-l-lg")
                     div(class="flex flex-col justify-between w-full")
                         div
                             h3.text-lg.font-bold.mb-2#category-name #{Category.name}

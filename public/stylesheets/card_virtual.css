@@ -38,7 +38,9 @@ body {
 }
 
 
-
+/* *{
+    border:1px solid black;
+} */
 
 .swiper-slide {
     min-width: 200px !important;
@@ -63,6 +65,11 @@ body {
 .brand-highlight {
     color: var(--principal-color);
 }
+
+h2{
+    color: var(--principal-color) ;
+    background-color: #e562a870;
+    }
 
 .ampersant, .brand-highlight, .point{
     font-family: 'ITC Clearface Black';

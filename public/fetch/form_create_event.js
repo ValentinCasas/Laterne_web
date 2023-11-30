@@ -49,9 +49,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
-  <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Event.id}">
+  <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl my-4 flex border" id="card-${result.Event.id}">
  
-    ${result.Event.imageUrl ? `<img src="/${result.Event.imageUrl}" alt="${result.Event.name}" class="w-full h-48 object-cover mr-2 rounded-l-lg">` : ''}
+    ${result.Event.imageUrl ? `<img src="/${result.Event.imageUrl}" alt="${result.Event.name}" class="w-1/3 h-48 object-contain mr-2 rounded-l-lg">` : ''}
     <div class="flex flex-col justify-between w-full">
       <div>
         <h3 class="text-lg font-bold my-2">${result.Event.name}</h3>

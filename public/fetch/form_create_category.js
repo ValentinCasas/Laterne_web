@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
                 const cardHTML = `
-                <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl m-4 flex border" id="card-${result.Category.id}">
+                <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl my-4 flex border" id="card-${result.Category.id}">
                     <div class="flex">
                         <img src="/${result.Category.imageUrl}" alt="${result.Category.name}" class="w-1/3 h-48 object-contain">
                         <div class="w-2/3 p-4">

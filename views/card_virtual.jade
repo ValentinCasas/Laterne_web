@@ -31,6 +31,8 @@ html
 
         link(rel="stylesheet" href="/dist/card_virtual.css")
 
+
+
     body
 
 
@@ -40,15 +42,15 @@ html
                 span.ampersant.text-white &
                 span.point  .
 
-        .sticky.top-0.w-full.h-40.pb-5.overflow-hidden.contain-swiper.z-10.bg-white
+        .sticky.top-0.w-full.pb-2.overflow-hidden.contain-swiper.z-10.bg-white(style="height:100px")
             .swiper-container-categories-card.container-beer
-                .swiper-wrapper.p-2
+                .swiper-wrapper.w-full.h-full.p-1
                     if GroupedProducts.length > 0
                         each group in GroupedProducts
-                            .swiper-slide.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
+                            .swiper-slide.h-full.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
                                 a(href=`#category-${group.category.id}`)  
-                                    img(src=group.category.imageUrl, alt=group.category.name, class="selectable-image max-h-24 w-auto")
-                                a(href=`#category-${group.category.id}`).text-black.px-3.cursor-pointer #{group.category.name} 
+                                    img(src=group.category.imageUrl, alt=group.category.name, class="selectable-image h-12 w-auto")
+                                a(href=`#category-${group.category.id}`).text-sm.text-black.px-3.cursor-pointer.text-center #{group.category.name} 
                     else
                         each index in [1,2,3,4,5,6,7,8,9,10,11,12]
                             .swiper-slide.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
@@ -58,23 +60,25 @@ html
 
 
         // Contenedor principal
-        div(class="grid grid-cols-1 mt-20 overflow-x-hidden relative")
+        div(class="grid grid-cols-1 mt-20 mb-10 overflow-x-hidden relative")
 
             // Iteración sobre las categorías y productos
             each group in GroupedProducts
                 // Mostrar la categoría como encabezado
-                h2(class="text-2xl font-bold mx-5 mb-4  w-2/3" id=`category-${group.category.id}`) #{group.category.name}
+
+                h2(class=`rounded-md py-2 text-3xl text-center font-bold mx-5 mb-4 w-[calc(100vw - 5px)]` id=`category-${group.category.id}`) #{group.category.name}
 
                 // Contenedor de productos
-                div(class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-5 px-4 py-4")
+                div(class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5 px-4 py-4")
 
                     // Iteración sobre los productos
                     each product in group.products
                         // Tarjeta de producto
-                        div(class="product-card relative grid xs-cols-2 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-2xl xl:max-h-60 rounded-lg mb-4")
+                        div(class="product-card relative grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-2xl rounded-lg mb-4")
+
                             // Contenido de la tarjeta
-                            div(class="p-1 flex justify-center items-start relative")
-                                img(class="lg:w-full md:w-full sm:h-full  object-cover rounded-md", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                            div(class="p-1 flex justify-center xl:h-full max-h-60 items-start relative")
+                                img(class="h-full object-contain rounded-lg sm:h-full md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
 
                                 // Mensaje de "agotado"
                                 if product.availavility === "agotado"
@@ -82,15 +86,18 @@ html
                                         | AGOTADO
 
                             // Información del producto
-                            div(class="w-full p-1 flex flex-col justify-start max-h-80 overflow-x-hidden info-card")
+                            div(class="w-full p-1 flex flex-col justify-start max-h-60 overflow-x-hidden info-card")
                                 .p-4
                                     h3(class="text-dark mb-1 lg:text-lg") #{product.name}
                                     .text-sm.flex.items-center
                                         p #{product.description}
                                     span.text-lg.text-dark.price $ #{product.price}
 
-                            // Botón para agregar al carrito
-                            button.absolute.bottom-2.right-4.bg-white.text-black.py-1.px-3.rounded-md.border.shadow-lg(class="hover:bg-green-200 transition-all" onclick=`agregarAlCarrito(${JSON.stringify(product)})`) +
+
+
+                                    if product.availavility !== "agotado"
+                                        // Botón para agregar al carrito
+                                        button.absolute.bottom-2.right-4.bg-white.text-black.py-1.px-3.rounded-md.border.shadow-lg(class="hover:bg-green-200 transition-all" onclick=`agregarAlCarrito(${JSON.stringify(product)})`) +
 
 
 
