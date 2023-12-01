@@ -5,18 +5,25 @@ import {
     updateTestimonial, goTestimonials
 } from "../controllers/testimonial.controller.js";
 
+import {
+    authMiddleware,
+    adminMiddleware,
+    employeeMiddleware
+  } from "../middlewares/authMiddleware.js";
+
+
 const router = Router();
 
-router.get("/view-testimonials", goTestimonials);
+router.get("/view-testimonials", authMiddleware, goTestimonials);
 
 router.post("/create-testimonial", createTestimonial);
 
-router.get("/get-testimonials", getTestimonials);
+router.get("/get-testimonials", authMiddleware, getTestimonials);
 
-router.get("/get-testimonial/:id", getTestimonial);
+router.get("/get-testimonial/:id", authMiddleware, getTestimonial);
 
-router.delete("/delete-testimonials/:id", deleteTestimonial);
+router.delete("/delete-testimonial/:id", authMiddleware, deleteTestimonial);
 
-router.put("/update-testimonials/:id", updateTestimonial);
+router.post("/update-testimonial", authMiddleware, updateTestimonial);
 
 export default router

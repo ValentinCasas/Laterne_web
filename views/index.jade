@@ -1,149 +1,171 @@
 extends layout
 
+
 block content
 
-  header
+  head 
+
+    script(src="/swiper.js", defer)
+    script(src="/index.js", defer)
+
+  body
 
     a(href='whatsapp://send?phone=' + BusinessInfo.phoneNumber)
       svg(viewBox="0 0 32 32" class="whatsapp-ico")
         path(d="M19.11 17.205c-.372 0-1.088 1.39-1.518 1.39a.63.63 0 0 1-.315-.1c-.802-.402-1.504-.817-2.163-1.447-.545-.516-1.146-1.29-1.46-1.963a.426.426 0 0 1-.073-.215c0-.33.99-.945.99-1.49 0-.143-.73-2.09-.832-2.335-.143-.372-.214-.487-.6-.487-.187 0-.36-.043-.53-.043-.302 0-.53.115-.746.315-.688.645-1.032 1.318-1.06 2.264v.114c-.015.99.472 1.977 1.017 2.78 1.23 1.82 2.506 3.41 4.554 4.34.616.287 2.035.888 2.722.888.817 0 2.15-.515 2.478-1.318.13-.33.244-.73.244-1.088 0-.058 0-.144-.03-.215-.1-.172-2.434-1.39-2.678-1.39zm-2.908 7.593c-1.747 0-3.48-.53-4.942-1.49L7.793 24.41l1.132-3.337a8.955 8.955 0 0 1-1.72-5.272c0-4.955 4.04-8.995 8.997-8.995S25.2 10.845 25.2 15.8c0 4.958-4.04 8.998-8.998 8.998zm0-19.798c-5.96 0-10.8 4.842-10.8 10.8 0 1.964.53 3.898 1.546 5.574L5 27.176l5.974-1.92a10.807 10.807 0 0 0 16.03-9.455c0-5.958-4.842-10.8-10.802-10.8z" fill-rule="evenodd")
 
+    header
+      nav.navbar.navbar-expand-lg.bg-transparent
+        .container-fluid
+          a.navbar-brand.text-light.brand(href="#")
+            span.brand-highlight Laterne 
+            span &
+            span.point  .
 
-    nav.navbar.navbar-expand-lg.bg-transparent
-      .container-fluid
-        a.navbar-brand.text-light.brand(href="#")
-          span.brand-highlight Laterne 
-          span &
-          span.point  .
+          button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="true" aria-label="Toggle navigation")
+            span.navbar-toggler-icon
 
-        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="true" aria-label="Toggle navigation")
-          span.navbar-toggler-icon
+          .collapse.navbar-collapse.z-index-10#navbarSupportedContent
+            ul.navbar-nav.mb-2.mb-lg-0.ms-auto.mx-5
 
-        .collapse.navbar-collapse.z-index-10#navbarSupportedContent
-          ul.navbar-nav.mb-2.mb-lg-0.ms-auto.mx-5
-            li.nav-item
-              a.nav-link.text-light.mx-2(href="#") Home
+              li.nav-item
+                a.nav-link.text-light.mx-2(href="/card_virtual") Carta
 
-            li.nav-item
-              a.nav-link.text-light.mx-2(href="/card_virtual") Carta
+              li.nav-item
+                a.nav-link.text-light.mx-2(href="#eventos") Eventos
 
-            li.nav-item
-              a.nav-link.text-light.mx-2(href="#eventos") Eventos
+    .container-fluid.px-0.father
+      img.banner.img-fluid(src="/banner1.jpg" alt="")
+      .son
+        .wrapper
+          h1 Laterne es 
+          .words 
+            span BIRRA 
+            span AMIGOS 
+            span FAMILIA 
+        p
+          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
 
-  .container-fluid.px-0.father
-    img.banner.img-fluid(src="/banner1.jpg" alt="")
-    .son
-      .wrapper
-        h1 Laterne es 
-        .words 
-          span BIRRA 
-          span AMIGOS 
-          span FAMILIA 
-      p
-        | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
+    .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3
+      h1#eventos.text-light.text-center.mt-2.mb-2 EVENTOS
+      .contenedor-cards.px-
+        if Events.length > 0
+          each event in Events
+            .row.my-3.p-3
+              .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
 
-  .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3
-    h1#eventos.text-light.text-center.mt-2.mb-2 EVENTOS
-    .contenedor-cards.px-
-      if Events.length > 0
-        each event in Events
+                if event.date 
+                  - const dateObject = new Date(event.date);
+                  - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+                  h1.m-0 #{localDateString}
+
+                else
+                  h1.m-0 --  /  --  /  ----
+
+                if event.time
+                  - const eventTimeParts = event.time.split(":");
+                  - const eventTime = new Date();
+
+                  - eventTime.setHours(Number(eventTimeParts[0]));
+                  - eventTime.setMinutes(Number(eventTimeParts[1]));
+                  div.d-flex.align-items-center
+                    span.mx-2=event.location
+                    span.artist.mx-2=event.name
+                    span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                    if event.imageUrl
+                      span.d-flex.align-items-center
+                        ion-icon(name="image-outline" onclick=`openModal('${event.imageUrl}')`).text-white.mx-2.my-0#ion-icon-image
+
+                else
+                  p.m-0
+                    span=event.location
+                    span.artist.mx-2=event.name
+                    span --:--
+
+
+        else 
           .row.my-3.p-3
             .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
+              h1.m-0 Proximamente...
 
-              if event.date 
-                - const dateObject = new Date(event.date);
-                - const localDateString = dateObject.toLocaleDateString('es-AR', { timeZone: 'UTC' });
-                h1.m-0 #{localDateString}
+    #modal.modal-container.hidden
+      div.modal-content
 
-              else
-                h1.m-0 --  /  --  /  ----
-
-              if event.time
-                - const eventTimeParts = event.time.split(":");
-                - const eventTime = new Date();
-
-                - eventTime.setHours(Number(eventTimeParts[0]));
-                - eventTime.setMinutes(Number(eventTimeParts[1]));
-                div.d-flex.align-items-center
-                  span.mx-2=event.location
-                  span.artist.mx-2=event.name
-                  span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                  if event.imageUrl
-                    span.d-flex.align-items-center
-                      ion-icon(name="image-outline" onclick=`openModal('${event.imageUrl}')`).text-white.mx-2.my-0#ion-icon-image
-
-              else
-                p.m-0
-                  span=event.location
-                  span.artist.mx-2=event.name
-                  span --:--
+        ion-icon(name="chevron-down-outline" onclick=`closeModal()`).close-btn
+        img#modalImage(alt="Large Image")
 
 
-      else 
-        .row.my-3.p-3
-          .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
-            h1.m-0 Proximamente...
-
-  #modal.modal-container.hidden
-    div.modal-content
-
-      ion-icon(name="chevron-down-outline" onclick=`closeModal()`).close-btn
-      img#modalImage(alt="Large Image")
-
-
-  .container-fluid.px-0
-    img.img-fluid(src="/banner2.png" alt="")
-  .swiper-container.container-beer.py-10
-    h1.text-center.text-light.mx-3 NUESTRAS CERVEZAS
-    .swiper-wrapper
-      each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
-        .swiper-slide.py-10
-          img(src=`${val}`, alt=`Beers`)
-
-
-  .container-fluid.px-0
-    img.img-fluid.rotate-180(src="/banner2.png" alt="")     
+    .container-fluid.px-0
+      img.img-fluid(src="/banner2.png" alt="")
+    .swiper-container.container-beer.py-10
+      h1.text-center.text-light.mx-3 NUESTRAS CERVEZAS
+      .swiper-wrapper
+        each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
+          .swiper-slide.py-10
+            img(src=`${val}`, alt=`Beers`)
+    .container-fluid.px-0
+      img.img-fluid.rotate-180(src="/banner2.png" alt="")     
 
 
 
+    .testimonial-reel
+      each testimonial, index in Testimonials
+        - const imageUrlIndex = index % ImagesUrls.length;
+        div 
+          .box
+            figure.image
+              img.img-fluid.rounded-circle(src=`${ImagesUrls[imageUrlIndex]}`)
+            div.test-component
+              article.test-title
+                h4= testimonial.date
+              article.test-content
+                p= testimonial.description
 
-  .contain-map.mt-5
-    #map
+    form.form.container.d-flex.px-4.my-4(id="form-testimonial")
+      input.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
+      button.btn.btn-primary(type="submit" class="bg-black text-white border-white p-3") Enviar
 
-  .footer-dark
-    footer
-      .container
-        .row
-          .col-sm-6.col-md-3.item
-            h3 SOPORTE
-            ul
-              li
-                a(href='#') Preguntas Frecuentes
-              li
-                a(href='#')=BusinessInfo.address  
-              li
-                a(href="#")=BusinessInfo.email 
-              li 
-                a(href='#')=BusinessInfo.phoneNumber
 
-          .col-sm-6.col-md-3.item
-            h3 NOSOTROS
-            ul
-              li 
-                a(href='/auth/view-login') Soy Empleado
 
-          .col-md-6.item.text
-            h3 MEDIOS DE PAGO
-            ul
-              li 
-                a Mercado Pago
-              li
-                a VISA
-              li
-                a MasterCard
-          .col.item.social
-            a(href=BusinessInfo.instagramUrl)
-              i.bi.bi-instagram
-            a(href=BusinessInfo.facebookUrl)
-              i.bi.bi-facebook
-        p.copyright Laterne & . © 2023 - Valen Casas & Gino Paoletti
+    .contain-map.mt-5
+      #map
+
+
+
+    .footer-dark
+      footer
+        .container
+          .row
+            .col-sm-6.col-md-3.item
+              h3 SOPORTE
+              ul
+                li
+                  a(href='#') Preguntas Frecuentes
+                li
+                  a(href='#')=BusinessInfo.address  
+                li
+                  a(href="#")=BusinessInfo.email 
+                li 
+                  a(href='#')=BusinessInfo.phoneNumber
+
+            .col-sm-6.col-md-3.item
+              h3 NOSOTROS
+              ul
+                li 
+                  a(href='/auth/view-login') Soy Empleado
+
+            .col-md-6.item.text
+              h3 MEDIOS DE PAGO
+              ul
+                li 
+                  a Mercado Pago
+                li
+                  a VISA
+                li
+                  a MasterCard
+            .col.item.social
+              a(href=BusinessInfo.instagramUrl)
+                i.bi.bi-instagram
+              a(href=BusinessInfo.facebookUrl)
+                i.bi.bi-facebook
+          p.copyright Laterne & . © 2023 - Valen Casas & Gino Paoletti

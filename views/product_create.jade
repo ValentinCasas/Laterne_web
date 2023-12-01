@@ -9,6 +9,7 @@ block content
         script(src="/form_create_product.js" defer)
         link(rel="stylesheet" href="/dist/product.css")
         script(src="/drag_and_drop.js" defer)
+        script(src="/product_create.js" defer)
         link(rel="stylesheet" href="/dist/drag_and_drop.css")
 
     body
@@ -81,7 +82,8 @@ block content
                 div.flex.items-center.justify-end
                     button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mt-4 rounded focus:outline-none focus:shadow-outline") Crear 
 
-            #container-products.h-screen.overflow-auto
+            #container-products.h-screen.overflow-auto.mt-4
+                input#search-input(type="text" placeholder="Buscar productos..." class="p-2 mb-4 border w-full  border-gray-300 rounded-md")
                 each product in Products
                     .grid.grid-cols-1.card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.mb-4.flex.border(id=`card-${product.id}`)
                         a(href=`/product/delete-product/${product.id}`, data-product-id=product.id, class="delete-product absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Eliminar
@@ -98,8 +100,6 @@ block content
 
                                 p.text-gray-600 #{product.availability}
                                 p.text-gray-600 $ #{product.price}
-
-
 
                             div.flex.items-center.justify-end.mt-4
                                 a(href=`/product/view-edit-product/${product.id}`, class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar

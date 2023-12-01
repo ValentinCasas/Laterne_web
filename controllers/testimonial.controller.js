@@ -2,8 +2,13 @@ import Testimonial from "../models/testimonial.model.js";
 
 export const goTestimonials = async (req, res) => {
     try {
-        const testimonial = await Testimonial.findAll();
-        res.render("testimonial",{ Testimonial: testimonial });
+        const testimonialsAcepted = await Testimonial.findAll({ where: { state: 1 } });
+        const testimonialsNoAcepted = await Testimonial.findAll({ where: { state: 0 } });
+        res.render("testimonial",
+            {
+                TestimonialsAcepted: testimonialsAcepted,
+                TestimonialsNoAcepted: testimonialsNoAcepted
+            });
 
     } catch (err) {
         res.status(500).json({ success: false, error: 'Error al traer feedbacks' });
@@ -20,7 +25,7 @@ export const createTestimonial = async (req, res) => {
             date: new Date(),
         });
 
-        res.status(201).json({ Testimonial: newTestimonial, message: "Gracias por dejar tu comentario!" });
+        res.status(201).json({ Testimonial: newTestimonial, message: "¡Gracias por tu comentario! Está siendo revisado actualmente" });
 
     } catch (err) {
         res.status(500).json({ success: false, error: 'Error al crear el feedback' });
@@ -72,8 +77,7 @@ export const deleteTestimonial = async (req, res) => {
 };
 
 export const updateTestimonial = async (req, res) => {
-    const { id } = req.params;
-    const { description, state } = req.body;
+    const { description, state, id } = req.body;
 
     try {
         const testimonial = await Testimonial.findByPk(id);

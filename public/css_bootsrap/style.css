@@ -483,5 +483,77 @@ nav{
   border: .1px solid rgb(170, 170, 173);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 5px;
+  margin-top: 80px;
 }
 
+
+/* Feedback  */
+
+
+
+.testimonial-reel {
+
+  background-image: url('/wave8.svg');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+
+
+  
+}
+
+.box {
+  margin-top: 80px;
+}
+
+.testimonial-reel .box {
+  position: relative;
+  margin-bottom: 10px;
+  
+}
+
+.testimonial-reel .box .image {
+  margin: 0 auto -45px;
+  text-align: center;
+}
+
+.testimonial-reel .box .image img {
+  height: 130px;
+  margin: 0 auto;
+}
+
+.testimonial-reel .box .test-component {
+  background-color: #fff;
+  padding: 1rem 2.5rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  min-height: 200px;
+}
+
+.testimonial-reel .box .test-title {
+  font-family: "Open Sans", sans-serif;
+  color: #f96d02;
+  text-align: center;
+  margin-top: 3.3rem;
+  margin-bottom: 15px;
+}
+
+.testimonial-reel .box .test-content {
+  text-align: center;
+}
+
+.testimonial-reel .slick-slide {
+  opacity: 0.3;
+  transition: opacity 0.3s;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.testimonial-reel .slick-slide.slick-cloned {
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.testimonial-reel .slick-slide.slick-current.slick-active {
+  opacity: 1;
+  transition: opacity 0.3s;
+}

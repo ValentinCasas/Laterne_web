@@ -243,12 +243,19 @@ export const deleteOpeningHour = async (req, res) => {
             return res.status(404).json({ message: 'Horario de apertura no encontrado' });
         }
 
-        await openingHour.destroy();
-        res.status(200).json({ success: true, message: 'Horario de apertura eliminado exitosamente' });
+        openingHour.morningStartTime = null;
+        openingHour.morningEndTime = null;
+        openingHour.eveningStartTime = null;
+        openingHour.eveningEndTime = null;
+
+
+        await openingHour.save();
+
+        res.status(200).json({ success: true, message: 'Horario de apertura reseteado exitosamente' });
 
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, error: 'Error al eliminar el horario de apertura' });
+        res.status(500).json({ success: false, error: 'Error al resetear el horario de apertura' });
     }
 };
 

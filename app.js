@@ -56,6 +56,7 @@ app.use(express.static(path.join(__dirname, 'public/svg')));
 
 app.use(express.static(path.join(__dirname, 'public/images/banners')));
 app.use(express.static(path.join(__dirname, 'public/images/image_defect')));
+app.use(express.static(path.join(__dirname, 'public/images/avatars_defect')));
 app.use(express.static(path.join(__dirname, 'public/images/images_product')));
 app.use(express.static(path.join(__dirname, 'public/images/images_profile')));
 app.use(express.static(path.join(__dirname, 'public/images/images_event')));
@@ -78,7 +79,7 @@ app.use('/category', authMiddleware, categoryRoutes);
 app.use('/user', authMiddleware, userRoutes);
 app.use('/asociation', authMiddleware, asociationRoutes);
 app.use('/event', authMiddleware, eventRoutes);
-app.use('/testimonial', authMiddleware, testimonialRoutes);
+app.use('/testimonial', testimonialRoutes);
 app.use('/businessInfo', businessInfoRoutes);
 app.use('/openingHour', authMiddleware, openingHourRoutes);
 

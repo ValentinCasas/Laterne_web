@@ -9,6 +9,8 @@ block content
 
         script(src="/form_create_category.js" defer)
         link(rel="stylesheet" href="/dist/category.css")
+        script(src="/product_create.js" defer)
+        script(src="/swiper.js", defer)
 
     body
 
@@ -45,7 +47,8 @@ block content
 
 
 
-            #container-categories.h-screen.overflow-auto
+            #container-categories.h-screen.overflow-auto.mt-4
+                input#search-input(type="text" placeholder="Buscar categorias..." class="p-2 mb-4 border w-full  border-gray-300 rounded-md")
                 each category in Categories
                     .card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.my-4.flex.border(id=`card-${category.id}`)
 

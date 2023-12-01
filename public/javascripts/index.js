@@ -12,6 +12,47 @@ function closeModal() {
 }
 
 
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("form-testimonial");
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch("/testimonial/create-testimonial", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+
+
+                Swal.fire({
+                    title: 'Éxito',
+                    text: result.message,
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    timer: 3000,
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: result.error || "Error desconocido",
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Error en la solicitud: " + error,
+            });
+        }
+    });
+});
 
 
 

@@ -78,7 +78,11 @@ html
 
                             // Contenido de la tarjeta
                             div(class="p-1 flex justify-center xl:h-full max-h-60 items-start relative")
-                                img(class="h-full object-contain rounded-lg sm:h-full md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                                if product.imageUrl !== "product_default.png"
+                                    img(class="h-full w-full object-cover cursor-pointer transition-transform transform hover:scale-105 rounded-lg sm:h-full md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                                else 
+                                    img(class="h-full object-contain rounded-lg sm:h-full md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full",  src=product.imageUrl)
+
 
                                 // Mensaje de "agotado"
                                 if product.availavility === "agotado"
