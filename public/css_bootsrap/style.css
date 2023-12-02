@@ -18,6 +18,7 @@ body {
   margin-top: -1px;
 }
 
+
 nav{
   z-index: 1000;
 }
@@ -491,16 +492,7 @@ nav{
 
 
 
-.testimonial-reel {
 
-  background-image: url('/wave8.svg');
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center center;
-
-
-  
-}
 
 .box {
   margin-top: 80px;
