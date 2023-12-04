@@ -7,6 +7,7 @@ block content
 
     script(src="/swiper.js", defer)
     script(src="/index.js", defer)
+    script(src="/testimonial_swiper.js" defer) 
 
   body
 
@@ -23,7 +24,12 @@ block content
             span.point  .
 
           button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="true" aria-label="Toggle navigation")
-            span.navbar-toggler-icon
+            input.label-check#label-check(type="checkbox")
+            label.hamburger-label(for="label-check")
+              div.line1
+              div.line2
+              div.line3
+
 
           .collapse.navbar-collapse.z-index-10#navbarSupportedContent
             ul.navbar-nav.mb-2.mb-lg-0.ms-auto.mx-5
@@ -33,6 +39,12 @@ block content
 
               li.nav-item
                 a.nav-link.text-light.mx-2(href="#eventos") Eventos
+
+              li.nav-item
+                a.nav-link.text-light.mx-2(href="#redes") Redes
+
+              li.nav-item
+                a.nav-link.text-light.mx-2(href="#openingHour") Horarios
 
     .container-fluid.px-0.father
       img.banner.img-fluid(src="/banner1.jpg" alt="")
@@ -97,12 +109,14 @@ block content
 
     .container-fluid.px-0
       img.img-fluid(src="/banner2.png" alt="")
-    .swiper-container.container-beer.py-10
+      
+    .swiper-container.container-beers.py-10
       h1.text-center.text-light.mx-3 NUESTRAS CERVEZAS
       .swiper-wrapper
         each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
           .swiper-slide.py-10
             img(src=`${val}`, alt=`Beers`)
+
     .container-fluid.px-0
       img.img-fluid.rotate-180(src="/banner2.png" alt="")     
 
@@ -135,6 +149,25 @@ block content
       #map
 
 
+    section#openingHour.mt-5.p-4.d-flex.flex-column.align-items-center.justify-content-center
+      each key in GroupedOpeningHours
+        if key.morningStartTime || key.morningEndTime || key.eveningStartTime || key.eveningEndTime
+          div.container
+            if key.days
+              h2.days.text-white.mb-1.text-center.text-uppercase= key.days
+            div.row
+              div.col-12
+                p.color-primary.text-center.mb-4
+
+                  | #{key.morningStartTime ? "De " + key.morningStartTime.substring(0, 5) + " a " : ""} 
+                  | #{key.morningEndTime ?  key.morningEndTime.substring(0, 5) + "  y  " : ""} 
+                  | #{key.eveningStartTime ? "de " + key.eveningStartTime.substring(0, 5) + " a " : ""} 
+                  | #{key.eveningEndTime ?  key.eveningEndTime.substring(0, 5) : " cierre"}
+
+
+
+
+
 
     .footer-dark
       footer
@@ -143,14 +176,13 @@ block content
             .col-sm-6.col-md-3.item
               h3 SOPORTE
               ul
+       
                 li
-                  a(href='#') Preguntas Frecuentes
+                  a=BusinessInfo.address  
                 li
-                  a(href='#')=BusinessInfo.address  
-                li
-                  a(href="#")=BusinessInfo.email 
+                  a=BusinessInfo.email 
                 li 
-                  a(href='#')=BusinessInfo.phoneNumber
+                  a=BusinessInfo.phoneNumber
 
             .col-sm-6.col-md-3.item
               h3 NOSOTROS
@@ -167,9 +199,13 @@ block content
                   a VISA
                 li
                   a MasterCard
-            .col.item.social
+            .col.item.social#redes
               a(href=BusinessInfo.instagramUrl)
                 i.bi.bi-instagram
               a(href=BusinessInfo.facebookUrl)
                 i.bi.bi-facebook
           p.copyright Laterne & . © 2023 - Valen Casas & Gino Paoletti
+
+
+
+

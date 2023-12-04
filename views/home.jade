@@ -2,4 +2,46 @@ extends layout_tailwind
 
 block content
 
-    h1 HOME
+
+
+
+
+
+    .relative.bg-gray-900
+        .absolute.bottom-0.h-80.w-full(class='xl:inset-0 xl:h-full')
+            .h-full.w-full(class='xl:grid xl:grid-cols-2')
+                .h-full(class='xl:relative xl:col-start-2')
+                    img.h-full.w-full.object-cover.opacity-25(class='xl:absolute xl:inset-0' src='https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=2830&q=80&sat=-100' alt='Personas trabajando en laptops')
+                    .absolute.inset-x-0.top-0.h-32.bg-gradient-to-b.from-gray-900(aria-hidden='true' class='xl:inset-y-0 xl:left-0 xl:h-full xl:w-32 xl:bg-gradient-to-r')
+        .mx-auto.max-w-4xl.px-6(class='lg:max-w-7xl lg:px-8 xl:grid xl:grid-flow-col-dense xl:grid-cols-2 xl:gap-x-8')
+            .relative.pt-12.pb-64(class='sm:pt-24 sm:pb-64 xl:col-start-1 xl:pb-24')
+                h2.text-base.font-semibold.text-indigo-300 Herramientas Estratégicas
+                p.mt-3.text-3xl.font-bold.tracking-tight.text-white Obtén datos clave para impulsar el crecimiento de tu negocio
+                p.mt-5.text-lg.text-gray-300
+                    | Accede a datos esenciales para entender mejor tu empresa. Conoce la cantidad de productos disponibles, la variedad de categorías, la comunidad de usuarios, los testimonios de clientes y los eventos relevantes. Una visión rápida para tomar decisiones informadas.
+                .mt-12.grid.grid-cols-1.gap-y-12.gap-x-6(class='sm:grid-cols-2')
+                    p
+                        span.block.text-2xl.font-bold.text-white #{productCount}
+                        span.mt-1.block.text-base.text-gray-300
+                            span.font-medium.text-white Productos en el Catálogo
+                            |  disponibles para tus clientes.
+                    p
+                        span.block.text-2xl.font-bold.text-white #{categoryCount}
+                        span.mt-1.block.text-base.text-gray-300
+                            span.font-medium.text-white Categorías de Productos
+                            |  para organizar tu oferta.
+                    p
+                        span.block.text-2xl.font-bold.text-white #{userCount}
+                        span.mt-1.block.text-base.text-gray-300
+                            span.font-medium.text-white Usuarios Registrados
+                            |  que forman parte de tu plataforma.
+                    p
+                        span.block.text-2xl.font-bold.text-white #{testimonialCount}
+                        span.mt-1.block.text-base.text-gray-300
+                            span.font-medium.text-white Testimonios de Clientes
+                            |  que respaldan tu negocio.
+                    p
+                        span.block.text-2xl.font-bold.text-white #{eventCount}
+                        span.mt-1.block.text-base.text-gray-300
+                            span.font-medium.text-white Eventos
+                            |  disponibles para disfrutar.

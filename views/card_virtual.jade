@@ -54,14 +54,14 @@ html
                     else
                         each index in [1,2,3,4,5,6,7,8,9,10,11,12]
                             .swiper-slide.bg-white.shadow-md.p-0.grid.grid-cols-1.place-items-center.border.rounded-md.border
-                                img(src="/amber-tapa.png" class="selectable-image max-h-24 w-auto")
+                                img(src="/bottle-1-svgrepo-com.png" class="selectable-image h-12 w-auto")
                                 p categoria ejemplo #{index}
 
 
 
         // Contenedor principal
-        div(class="grid grid-cols-1 mt-20 mb-10 overflow-x-hidden relative")
 
+        div(class="grid grid-cols-1 mt-20 mb-10 overflow-x-hidden relative")
             // Iteración sobre las categorías y productos
             each group in GroupedProducts
                 // Mostrar la categoría como encabezado
@@ -69,20 +69,19 @@ html
                 h2(class=`rounded-md py-2 text-3xl text-center font-bold mx-5 mb-4 w-[calc(100vw - 5px)]` id=`category-${group.category.id}`) #{group.category.name}
 
                 // Contenedor de productos
-                div(class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5 px-4 py-4")
+                div(class="contain-products grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2  px-3 py-4")
 
                     // Iteración sobre los productos
                     each product in group.products
                         // Tarjeta de producto
-                        div(class="product-card relative grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-2xl rounded-lg mb-4")
+                        div(class="product-card relative grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-lg rounded-lg mb-4")
 
                             // Contenido de la tarjeta
-                            div(class="p-1 flex justify-center xl:h-full max-h-60 items-start relative")
+                            div(class="p-1 flex justify-center h-40 max-h-60 items-start relative")
                                 if product.imageUrl !== "product_default.png"
-                                    img(class="h-full w-full object-cover cursor-pointer transition-transform transform hover:scale-105 rounded-lg sm:h-full md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                                    img(class="h-full w-full object-contain cursor-pointer transition-transform transform hover:scale-105 rounded-2xl md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
                                 else 
-                                    img(class="h-full object-contain rounded-lg sm:h-full md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full",  src=product.imageUrl)
-
+                                    img(class="object-contain w-full h-32 rounded-lg", src=product.imageUrl)
 
                                 // Mensaje de "agotado"
                                 if product.availavility === "agotado"
@@ -90,9 +89,10 @@ html
                                         | AGOTADO
 
                             // Información del producto
-                            div(class="w-full p-1 flex flex-col justify-start max-h-60 overflow-x-hidden info-card")
+                            div(class="w-full p-1 flex flex-col justify-start h-40 max-h-60 overflow-x-hidden info-card")
                                 .p-4
-                                    h3(class="text-dark mb-1 lg:text-lg") #{product.name}
+                                    h3(class="text-dark mb-1 lg:text-lg font-bold") #{product.name}
+
                                     .text-sm.flex.items-center
                                         p #{product.description}
                                     span.text-lg.text-dark.price $ #{product.price}

@@ -15,6 +15,9 @@ body {
     scroll-behavior: smooth;
 }
 
+.contain-products{
+    gap:10px;
+}  
 
 .info-card::-webkit-scrollbar {
     width: 2px;
@@ -66,12 +69,14 @@ body {
     color: var(--principal-color);
 }
 
-h2{
-    color: var(--principal-color) ;
-    background-color: #e562a870;
-    }
+h2 {
+    color: #ce5696;
+    background-color: #f6bad8;
+}
 
-.ampersant, .brand-highlight, .point{
+.ampersant,
+.brand-highlight,
+.point {
     font-family: 'ITC Clearface Black';
 }
 
@@ -85,7 +90,7 @@ h2{
 
 /* ORDERER CLIENT */
 
-.modal-content{
+.modal-content {
     height: 100%;
 }
 
@@ -101,7 +106,7 @@ h2{
 
 /* Estilos para la imagen del producto en la tarjeta */
 .producto-carrito img {
-    width: 80px; 
+    width: 80px;
     height: auto;
     margin-right: 10px;
 }
@@ -115,14 +120,14 @@ h2{
 .info-producto h4 {
     margin: 0;
     font-size: 16px;
-    color: #333; 
+    color: #333;
 }
 
 /* Estilos para el precio del producto */
 .info-producto p {
     margin: 5px 0 0;
     font-size: 14px;
-    color: #888; 
+    color: #888;
 }
 
 /* Estilos para el precio total en el modal del carrito */
@@ -130,7 +135,7 @@ h2{
     margin-top: 10px;
     font-size: 18px;
     font-weight: bold;
-    color: #333; 
+    color: #333;
 }
 
 
@@ -142,7 +147,7 @@ h2{
     margin: 10px;
     font-size: 18px;
     font-weight: bold;
-    color: #333; 
+    color: #333;
 }
 
 /* Estilos para el botón de cerrar en el modal del carrito */
@@ -153,7 +158,7 @@ h2{
     margin: 10px;
     padding: 8px 12px;
     font-size: 14px;
-    color: #fff; 
+    color: #fff;
     background-color: #333;
     border: none;
     border-radius: 4px;
@@ -162,7 +167,7 @@ h2{
 }
 
 #modal-carrito #cerrar-modal-carrito:hover {
-    background-color: #555; 
+    background-color: #555;
 }
 
 
@@ -171,16 +176,15 @@ h2{
 
 
 .boton-eliminar {
-    background-color: #ec2222e7; 
-    color: #ffffff; 
-    border: none; 
+    background-color: #ec2222e7;
+    color: #ffffff;
+    border: none;
     border-radius: 5px;
-    padding: 5px 10px; 
+    padding: 5px 10px;
     margin-top: 10px;
     cursor: pointer;
-  }
-  
-  .boton-eliminar:hover {
-    background-color: #cc0000; 
-  }
-  
+}
+
+.boton-eliminar:hover {
+    background-color: #cc0000;
+}
