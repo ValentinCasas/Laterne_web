@@ -31,8 +31,7 @@ html
 
         link(rel="stylesheet" href="/dist/card_virtual.css")
 
-
-
+  
     body
 
 
@@ -59,49 +58,48 @@ html
 
 
 
-        // Contenedor principal
 
-        div(class="grid grid-cols-1 mt-20 mb-10 overflow-x-hidden relative")
-            // Iteración sobre las categorías y productos
-            each group in GroupedProducts
-                // Mostrar la categoría como encabezado
+        each group in GroupedProducts
+            // Mostrar la categoría como encabezado
 
-                h2(class=`rounded-md py-2 text-3xl text-center font-bold mx-5 mb-4 w-[calc(100vw - 5px)]` id=`category-${group.category.id}`) #{group.category.name}
+            h2(class=`py-2 sticky-personalizado z-${group.category.id}  text-xl  text-center font-bold mb-4 w-full`) #{group.category.name}
+            a(id=`category-${group.category.id}`) 
+            
+            
+            // Contenedor de productos
+            div(class="contain-products grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2  px-3 py-4")
 
-                // Contenedor de productos
-                div(class="contain-products grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2  px-3 py-4")
+                // Iteración sobre los productos
+                each product in group.products
+                    // Tarjeta de producto
+                    div(class="product-card grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-lg rounded-lg mb-4")
 
-                    // Iteración sobre los productos
-                    each product in group.products
-                        // Tarjeta de producto
-                        div(class="product-card relative grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-lg rounded-lg mb-4")
+                        // Contenido de la tarjeta
+                        div(class="p-1 flex justify-center h-40 max-h-60 items-start relative")
+                            if product.imageUrl !== "product_default.png"
+                                img(class="h-full w-full object-contain cursor-pointer transition-transform transform hover:scale-105 rounded-2xl md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                            else 
+                                img(class="object-contain w-full h-32 rounded-lg", src=product.imageUrl)
 
-                            // Contenido de la tarjeta
-                            div(class="p-1 flex justify-center h-40 max-h-60 items-start relative")
-                                if product.imageUrl !== "product_default.png"
-                                    img(class="h-full w-full object-contain cursor-pointer transition-transform transform hover:scale-105 rounded-2xl md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
-                                else 
-                                    img(class="object-contain w-full h-32 rounded-lg", src=product.imageUrl)
+                            // Mensaje de "agotado"
+                            if product.availavility === "agotado"
+                                div(class="absolute inset-0 my-10 flex items-center justify-center text-2xl font-bold mx-2 bg-white bg-opacity-50 rounded-md")
+                                    | AGOTADO
 
-                                // Mensaje de "agotado"
-                                if product.availavility === "agotado"
-                                    div(class="absolute inset-0 my-10 flex items-center justify-center text-2xl font-bold mx-2 bg-white bg-opacity-50 rounded-md")
-                                        | AGOTADO
+                        // Información del producto
+                        div(class="w-full p-1 flex flex-col justify-start h-40 max-h-60 overflow-x-hidden info-card")
+                            .p-4.relative
+                                h3(class="text-dark mb-1 lg:text-lg font-bold") #{product.name}
 
-                            // Información del producto
-                            div(class="w-full p-1 flex flex-col justify-start h-40 max-h-60 overflow-x-hidden info-card")
-                                .p-4
-                                    h3(class="text-dark mb-1 lg:text-lg font-bold") #{product.name}
-
-                                    .text-sm.flex.items-center
-                                        p #{product.description}
-                                    span.text-lg.text-dark.price $ #{product.price}
-
+                                .text-sm.flex.items-center
+                                    p #{product.description}
+                                span.text-lg.text-dark.price $ #{product.price}
 
 
-                                    if product.availavility !== "agotado"
-                                        // Botón para agregar al carrito
-                                        button.absolute.bottom-2.right-4.bg-white.text-black.py-1.px-3.rounded-md.border.shadow-lg(class="hover:bg-green-200 transition-all" onclick=`agregarAlCarrito(${JSON.stringify(product)})`) +
+
+                                if product.availavility !== "agotado"
+                                    // Botón para agregar al carrito
+                                    button.absolute.bottom-2.right-4.bg-white.text-black.py-1.px-3.rounded-md.border.shadow-lg(class="hover:bg-green-200 transition-all" onclick=`agregarAlCarrito(${JSON.stringify(product)})`) +
 
 
 
@@ -109,7 +107,7 @@ html
             span#cantidad-productos.text-lg.font-bold 0
 
 
-        #modal-carrito.modal(class="fixed inset-0 hidden z-20 flex items-center justify-center bg-black bg-opacity-50 ")
+        #modal-carrito.modal(class="fixed inset-0 hidden  items-center justify-center bg-black bg-opacity-50 ")
             div.modal-content(class="bg-white  w-screen overflow-auto py-20 px-5 rounded-lg text-center relative")
 
                 .item-carrito
@@ -120,7 +118,7 @@ html
                 button#cerrar-modal-carrito.absolute.top-0.right-0(onclick="cerrarModalCarrito()") CERRAR
 
 
-        div#productModal.modal(class="fixed shadow-2xl p-8 inset-0 hidden z-20 rounded-lg flex items-center justify-center bg-black bg-opacity-50 " onclick="closeModal()")
+        div#productModal.modal(class="fixed shadow-2xl p-8 inset-0 hidden z-20 rounded-lg  items-center justify-center bg-black bg-opacity-50 " onclick="closeModal()")
             div.modal-content(class="bg-white p-4  rounded-lg text-center relative h-full  cursor-auto" onclick="event.stopPropagation()")
                 span.close-modal(class="absolute top-1  right-2 text-3xl cursor-pointer" onclick="closeModal()") &times;
                 img#modalImage(src="" alt="Modal Image" class="object-contain rounded-3xl h-full mx-auto")

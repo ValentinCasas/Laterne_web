@@ -19,6 +19,16 @@ body {
     gap:10px;
 }  
 
+.sticky-personalizado{
+    position:sticky;
+    top:100px;
+    z-index:32;
+}
+
+#modal-carrito{
+    z-index:1000;
+}
+
 .info-card::-webkit-scrollbar {
     width: 2px;
 }
