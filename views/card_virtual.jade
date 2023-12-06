@@ -31,7 +31,9 @@ html
 
         link(rel="stylesheet" href="/dist/card_virtual.css")
 
-  
+    
+            
+
     body
 
 
@@ -64,15 +66,15 @@ html
 
             h2(class=`py-2 sticky-personalizado z-${group.category.id}  text-xl  text-center font-bold mb-4 w-full`) #{group.category.name}
             a(id=`category-${group.category.id}`) 
-            
-            
+
+
             // Contenedor de productos
             div(class="contain-products grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2  px-3 py-4")
 
                 // Iteración sobre los productos
                 each product in group.products
                     // Tarjeta de producto
-                    div(class="product-card grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-lg rounded-lg mb-4")
+                    div(class="product-card relative grid xs-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 bg-white shadow-lg rounded-lg mb-4")
 
                         // Contenido de la tarjeta
                         div(class="p-1 flex justify-center h-40 max-h-60 items-start relative")
@@ -87,8 +89,8 @@ html
                                     | AGOTADO
 
                         // Información del producto
-                        div(class="w-full p-1 flex flex-col justify-start h-40 max-h-60 overflow-x-hidden info-card")
-                            .p-4.relative
+                        div(class="w-full  p-1 flex flex-col justify-start h-40 max-h-60 overflow-x-hidden info-card")
+                            .p-4
                                 h3(class="text-dark mb-1 lg:text-lg font-bold") #{product.name}
 
                                 .text-sm.flex.items-center
@@ -99,7 +101,7 @@ html
 
                                 if product.availavility !== "agotado"
                                     // Botón para agregar al carrito
-                                    button.absolute.bottom-2.right-4.bg-white.text-black.py-1.px-3.rounded-md.border.shadow-lg(class="hover:bg-green-200 transition-all" onclick=`agregarAlCarrito(${JSON.stringify(product)})`) +
+                                    button.absolute.bottom-2.right-4.bg-white.text-black.py-1.px-3.rounded-md.border.shadow-lg(class="hover:bg-green-200  transition-transform transform hover:scale-105" onclick=`agregarAlCarrito(${JSON.stringify(product)})`) +
 
 
 
@@ -118,7 +120,7 @@ html
                 button#cerrar-modal-carrito.absolute.top-0.right-0(onclick="cerrarModalCarrito()") CERRAR
 
 
-        div#productModal.modal(class="fixed shadow-2xl p-8 inset-0 hidden z-20 rounded-lg  items-center justify-center bg-black bg-opacity-50 " onclick="closeModal()")
+        div#productModal.modal(class="fixed shadow-2xl p-8 inset-0 hidden  rounded-lg  items-center justify-center bg-black bg-opacity-50 " onclick="closeModal()")
             div.modal-content(class="bg-white p-4  rounded-lg text-center relative h-full  cursor-auto" onclick="event.stopPropagation()")
                 span.close-modal(class="absolute top-1  right-2 text-3xl cursor-pointer" onclick="closeModal()") &times;
                 img#modalImage(src="" alt="Modal Image" class="object-contain rounded-3xl h-full mx-auto")

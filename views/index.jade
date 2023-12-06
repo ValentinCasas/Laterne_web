@@ -60,7 +60,7 @@ block content
 
     .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3
       h1#eventos.text-light.text-center.mt-2.mb-2 EVENTOS
-      .contenedor-cards.px-
+      .contenedor-cards
         if Events.length > 0
           each event in Events
             .row.my-3.p-3
@@ -81,7 +81,7 @@ block content
                   - eventTime.setHours(Number(eventTimeParts[0]));
                   - eventTime.setMinutes(Number(eventTimeParts[1]));
                   div.d-flex.align-items-center
-                    span.mx-2=event.location
+                    span.mr-2=event.location
                     span.artist.mx-2=event.name
                     span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                     if event.imageUrl

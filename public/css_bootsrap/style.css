@@ -4,6 +4,7 @@
 
 .color-primary {
   color: #df4f9b;
+  font-family: 'ITC Clearface Black';
 }
 
 html {
@@ -370,15 +371,8 @@ nav {
 
 
 
-/* *{
-  border:1px solid white;
-} */
 
 .card-evento {
-  /* padding-top: 10px; */
-  /* display: flex;  */
-  /* justify-content: space-between;  */
-  /* width: 100%; */
   color: rgb(255, 255, 255);
   background-color: #000000;
   border-radius: 10px;
@@ -387,6 +381,7 @@ nav {
   border-color: rgba(255, 255, 255, 0.831);
   overflow: hidden;
 }
+
 
 .card-evento h1 {
   font-size: 25px;
@@ -646,7 +641,7 @@ nav {
 /* openingHour */
 
 #openingHour {
-  min-height: 50vh;
+ 
   width: 100vw;
 }
 
