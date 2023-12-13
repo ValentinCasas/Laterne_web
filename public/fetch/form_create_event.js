@@ -49,9 +49,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
-  <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl my-4 flex border" id="card-${result.Event.id}">
+  <div class="card relative overflow-hidden my-4 flex border bg-white shadow-xl rounded-3xl" id="card-${result.Event.id}">
  
-    ${result.Event.imageUrl ? `<img src="/${result.Event.imageUrl}" alt="${result.Event.name}" class="w-1/3 h-48 object-contain mr-2 rounded-l-lg">` : ''}
+    ${result.Event.imageUrl ? `<img src="/${result.Event.imageUrl}" alt="${result.Event.name}" class="w-1/3  h-40 mb-10 object-contain mr-2 rounded-l-t-lg">` : ''}
     <div class="flex flex-col justify-between w-full">
       <div>
         <h3 class="text-lg font-bold my-2">${result.Event.name}</h3>
@@ -61,10 +61,10 @@ document.addEventListener("DOMContentLoaded", function () {
         <p class="text-gray-600">${result.Event.location}</p>
       </div>
       <div class="flex items-center justify-end mt-4">
-        <a href="/event/view-edit-event/${result.Event.id}" class="mr-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        <a href="/event/view-edit-event/${result.Event.id}" class="w-1/2 absolute bottom-0 left-0 bg-gray-100 text-center hover:bg-gray-500  text-gray-500 hover:text-gray-100 transition-all font-bold py-2 px-2  focus:outline-none focus:shadow-outline">
           Editar
         </a>
-        <a href="/event/delete-event/${result.Event.id}" data-event-id="${result.Event.id}" class="delete-event bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        <a href="/event/delete-event/${result.Event.id}" data-event-id="${result.Event.id}" class="delete-event w-1/2 absolute text-center bottom-0 right-0 bg-gray-400 text-gray-700 hover:bg-gray-700 hover:text-gray-400 font-bold py-2 px-2 transition-all  focus:outline-none focus:shadow-outline">
           Eliminar
         </a>
       </div>

@@ -16,7 +16,7 @@ block content
 
         div(class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-2 p-4 ")
 
-            form(id="form_product" class="h-full  p-6  overflow-hidden")
+            form(id="form_product" class="h-full p-6 overflow-hidden rounder-md ")
 
                 .w-full
                     .relative.h-10.w-full(class='min-w-[200px]')
@@ -82,24 +82,29 @@ block content
                 div.flex.items-center.justify-end
                     button(type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mt-4 rounded focus:outline-none focus:shadow-outline") Crear 
 
-            #container-products.h-screen.overflow-auto.mt-4
-                input#search-input(type="text" placeholder="Buscar productos..." class="p-2 mb-4 border w-full  border-gray-300 rounded-md")
-                each product in Products
-                    .grid.grid-cols-1.card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.mb-4.flex.border(id=`card-${product.id}`)
-                        a(href=`/product/delete-product/${product.id}`, data-product-id=product.id, class="delete-product absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Eliminar
 
-                        img(src=`/${product.imageUrl}`, alt=product.name, class="w-full h-48 object-contain rounded-t-lg")
+
+            #container-products.h-screen.overflow-auto.mt-4(class="xl:px-6 lg:px-6")
+                input#search-input(type="text" placeholder="Buscar productos..." class="p-3 mb-4 sticky top-0 z-10 border w-full  border-gray-300 rounded-md")
+                each product in Products
+                    .grid.grid-cols-1.card.relative.overflow-hidden.mb-10.flex.border.bg-white.shadow-xl.rounded-3xl(id=`card-${product.id}`)
+
+                        if product.imageUrl === "product_default.png"
+                            img(src=`/`, alt=product.name, class="h-0")
+                        else
+                            img(src=`/${product.imageUrl}`, alt=product.name, class="w-full h-48 object-contain rounded-t-lg")
 
                         div(class="p-4 flex flex-col justify-between w-full")
                             div
-                                h3.text-lg.font-bold.mb-2 #{product.name}
+                                h3.text-lg.font-bold.mb-2.ml-2 #{product.name}
                                 details(class="border rounded-md overflow-hidden shadow-md bg-white my-2")
                                     summary(class="bg-gray-200 p-4 cursor-pointer") Descripción del Producto
                                     div(class="p-4")
                                         p.text-gray-600 #{product.description}
 
-                                p.text-gray-600 #{product.availability}
-                                p.text-gray-600 $ #{product.price}
+                                p.text-gray-600.ml-2 #{product.availavility}
+                                p.text-gray-600.ml-2.mb-10 $ #{product.price}
 
-                            div.flex.items-center.justify-end.mt-4
-                                a(href=`/product/view-edit-product/${product.id}`, class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar
+
+                            a(href=`/product/view-edit-product/${product.id}`, class="w-1/2 absolute bottom-0 left-0 bg-gray-100 text-center hover:bg-gray-500  text-gray-500 hover:text-gray-100 transition-all font-bold py-3 px-2  focus:outline-none focus:shadow-outline") Editar
+                            a(href=`/product/delete-product/${product.id}`, data-product-id=product.id, class="delete-product w-1/2 absolute text-center bottom-0 right-0  bg-gray-400 text-gray-700 hover:bg-gray-700 hover:text-gray-400 font-bold py-3 px-2 transition-all  focus:outline-none focus:shadow-outline") Eliminar

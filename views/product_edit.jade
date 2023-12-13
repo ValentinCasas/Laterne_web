@@ -87,8 +87,8 @@ block content
                     button(type="submit" class="bg-blue-500 hover:bg-blue-700 mt-4 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Editar 
 
 
-            #container-products.h-screen.overflow-auto
-                .grid.grid-cols-1.card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.mb-4.flex.border(id=`card-${Product.id}`)
+            #container-products.h-screen.overflow-auto(class="px-3 xl:px-6 lg:px-6")
+                .grid.grid-cols-1.card.relative.overflow-hidden.mb-10.flex.border.bg-white.shadow-xl.rounded-3xl(id=`card-${Product.id}`)
 
                     img(src=`/${Product.imageUrl}`, alt=Product.name, class="w-full h-48 object-contain rounded-t-lg")#product-image
 

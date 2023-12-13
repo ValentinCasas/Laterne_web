@@ -36,7 +36,7 @@ block content
                         .swiper-wrapper
                             each image in Images
                                 .swiper-slide.py-0.flex.justify-center.border.rounded-md
-                                    img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto", data-name=image.name)
+                                    img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto p-4", data-name=image.name)
 
 
                 input(type="hidden" name="selectedImage" id="selectedImage")
@@ -47,17 +47,27 @@ block content
 
 
 
-            #container-categories.h-screen.overflow-auto.mt-4
-                input#search-input(type="text" placeholder="Buscar categorias..." class="p-2 mb-4 border w-full  border-gray-300 rounded-md")
+            #container-categories.h-screen.overflow-auto.mt-4(class="xl:px-6 lg:px-6")
+                input#search-input(type="text" placeholder="Buscar categorias..." class="p-3 mb-4 border w-full sticky top-0 z-10 border-gray-300 rounded-md")
                 each category in Categories
-                    .card.relative.bg-white.rounded-lg.overflow-hidden.shadow-2xl.my-4.flex.border(id=`card-${category.id}`)
+                    .card.relative.overflow-hidden.mb-10.flex.border.bg-white.shadow-xl.rounded-3xl(id=`card-${category.id}`)
 
                         div(class="flex")
-                            img(src=`/${category.imageUrl}`, alt=category.name, class="w-1/3 h-48 object-contain")
+                            
+                            img(src=`/${category.imageUrl}`, alt=category.name, class="w-1/3 h-40 mb-10 object-contain p-4")
                             div(class="w-2/3 p-4")
                                 h3.text-lg.font-bold.mb-2 #{category.name}
                                 p.text-gray-600 #{category.description}
 
-                                div(class="flex justify-between w-full items-center mt-4")
-                                    a(href=`/category/view-edit-category/${category.id}` class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded focus:outline-none focus:shadow-outline") Editar
-                                    a(href=`/category/delete-category/${category.id}`, data-category-id=category.id, class="delete-category bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-2 rounded focus:outline-none focus:shadow-outline") Eliminar
+                                
+                                a(href=`/category/view-edit-category/${category.id}` class="w-1/2 absolute bottom-0 left-0 bg-gray-100 text-center hover:bg-gray-500  text-gray-500 hover:text-gray-100 transition-all font-bold py-2 px-2  focus:outline-none focus:shadow-outline") Editar
+                                a(href=`/category/delete-category/${category.id}`, data-category-id=category.id, class="w-1/2 absolute text-center bottom-0 right-0 delete-category bg-gray-400 text-gray-700 hover:bg-gray-700 hover:text-gray-400 font-bold py-2 px-2 transition-all  focus:outline-none focus:shadow-outline") Eliminar
+
+
+
+
+
+
+
+
+

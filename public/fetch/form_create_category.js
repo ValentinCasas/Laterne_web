@@ -1,5 +1,5 @@
 
-/* crear producto */
+/* crear categoria */
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("form_category");
 
@@ -20,26 +20,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
                 const cardHTML = `
-                <div class="card relative bg-white rounded-lg overflow-hidden shadow-2xl my-4 flex border" id="card-${result.Category.id}">
+                <div class="card relative bg-white rounded-3xl overflow-hidden shadow-xl mb-10 flex border" id="card-${result.Category.id}">
                     <div class="flex">
-                        <img src="/${result.Category.imageUrl}" alt="${result.Category.name}" class="w-1/3 h-48 object-contain">
+                        <img src="/${result.Category.imageUrl}" alt="${result.Category.name}" class="w-1/3 h-40 mb-10 object-contain p-4">
                         <div class="w-2/3 p-4">
                             <h3 class="text-lg font-bold mb-2">${result.Category.name}</h3>
                             <p class="text-gray-600">${result.Category.description}</p>
             
-                            <div class="flex justify-between items-center mt-4">
-                                <a href="/category/view-edit-category/${result.Category.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                            
+                                <a href="/category/view-edit-category/${result.Category.id}" class="w-1/2 absolute bottom-0 left-0 bg-gray-100 text-center hover:bg-gray-500  text-gray-500 hover:text-gray-100 transition-all font-bold py-2 px-2  focus:outline-none focus:shadow-outline">
                                     Editar
                                 </a>
-                                <a href="/category/delete-category/${result.Category.id}" data-category-id="${result.Category.id}" class="delete-category bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                <a href="/category/delete-category/${result.Category.id}" data-category-id="${result.Category.id}" class="w-1/2 absolute text-center bottom-0 right-0 delete-category bg-gray-400 text-gray-700 hover:bg-gray-700 hover:text-gray-400 font-bold py-2 px-2 transition-all  focus:outline-none focus:shadow-outline">
                                     Eliminar
                                 </a>
-                            </div>
+                            
                         </div>
                     </div>
                 </div>
             `;
-            
+
 
 
                 const container = document.getElementById("container-categories");

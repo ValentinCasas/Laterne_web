@@ -38,9 +38,9 @@ block content
                             each image in Images
                                 .swiper-slide.py-0.flex.justify-center.border.rounded-md
                                     if image.name === Category.imageUrl
-                                        img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto selected", data-name=image.name)
+                                        img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto p-4 selected", data-name=image.name)
                                     else
-                                        img(src=image.path, alt=image.name, class="selectable-image max-h-24 w-auto", data-name=image.name)
+                                        img(src=image.path, alt=image.name, class="selectable-image max-h-24 p-4 w-auto", data-name=image.name)
 
                 input(type="hidden" value=`${Category.imageUrl}`  name="selectedImage" id="selectedImage")
                 input(type="hidden" value=`${Category.id}`  name="id" )

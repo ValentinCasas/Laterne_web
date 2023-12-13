@@ -21,11 +21,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Crear la tarjeta y agregarla al contenedor
                 const cardHTML = `
-  <div class="grid grid-cols-1 card relative bg-white rounded-lg overflow-hidden shadow-2xl mb-4 flex border" id="card-${result.Product.id}">
+  <div class="grid grid-cols-1 card relative bg-white shadow-xl rounded-3xl overflow-hidden mb-10 flex border" id="card-${result.Product.id}">
 
-    <a href="/product/delete-product/${result.Product.id}" data-product-id="${result.Product.id}" class="delete-product absolute top-0 right-0 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-      Eliminar
-    </a>
+    
 
     <img src="/${result.Product.imageUrl}" alt="${result.Product.name}" class="w-full h-48 object-contain rounded-t-lg">
 
@@ -39,12 +37,15 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
         </details>
         <p class="text-gray-600">${result.Product.availavility}</p>
-        <p class="text-gray-600">$ ${result.Product.price}</p>
+        <p class="text-gray-600 pb-10">$ ${result.Product.price}</p>
       </div>
 
-      <div class="flex items-center justify-end mt-4">
-        <a href="/product/view-edit-product/${result.Product.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Editar</a>
-      </div>
+      
+        <a href="/product/view-edit-product/${result.Product.id}" class="w-1/2 absolute bottom-0 left-0 bg-gray-100 text-center hover:bg-gray-500  text-gray-500 hover:text-gray-100 transition-all font-bold py-3 px-2  focus:outline-none focus:shadow-outline">Editar</a>
+        <a href="/product/delete-product/${result.Product.id}" data-product-id="${result.Product.id}" class="delete-product w-1/2 absolute text-center bottom-0 right-0  bg-gray-400 text-gray-700 hover:bg-gray-700 hover:text-gray-400 font-bold py-3 px-2 transition-all  focus:outline-none focus:shadow-outline">
+        Eliminar
+      </a>
+
     </div>
   </div>
 `;

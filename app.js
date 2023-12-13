@@ -87,12 +87,12 @@ app.use('/openingHour', authMiddleware, openingHourRoutes);
 
 
 app.use((req, res, next) => {
-  res.status(404).json({ message: 'Not Found' });
+  res.status(404).render("error");
 });
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ message: 'Internal Server Error' });
+  res.status(500).render("error");
 });
 
 export default app;
