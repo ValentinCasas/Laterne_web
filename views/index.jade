@@ -109,18 +109,16 @@ block content
         img#modalImage(alt="Large Image")
 
 
-    .container-fluid.px-0
-      img.img-fluid(src="/banner2.png" alt="")
+    
       
     .swiper-container.container-beers.py-10
-      h1.text-center.text-light.mx-3 NUESTRAS CERVEZAS
+      h1.text-center.text-dark.mx-3.my-5 NUESTRAS CERVEZAS
       .swiper-wrapper
         each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
           .swiper-slide.py-10
             img(src=`${val}`, alt=`Beers`)
 
-    .container-fluid.px-0
-      img.img-fluid.rotate-180(src="/banner2.png" alt="")     
+     
 
 
 

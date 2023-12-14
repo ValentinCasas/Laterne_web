@@ -1,13 +1,12 @@
 .swiper-container {
     width: 100%;
     overflow: hidden;
-    background-image: url('/images/banners/banner-beers.png');
+    background-image: url('/images/banners/banner-section-beer.png');
     background-size: cover;
 }
 
 .swiper-slide {
-    width: 100%; 
-    padding: 20px;
+    height: 20%; 
     text-align: center;
     font-size: 18px;
     display: flex;

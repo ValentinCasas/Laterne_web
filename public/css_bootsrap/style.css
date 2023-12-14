@@ -430,6 +430,11 @@ nav {
 
 
 
+.container-beers{
+  width: 500px;
+  height: 500px;
+  font-family: 'ITC Clearface Black';
+}
 .container-beers h1 {
   padding-top: 30px;
   padding-bottom: 30px;
