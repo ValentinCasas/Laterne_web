@@ -61,7 +61,7 @@ nav {
 }
 
 .navbar-toggler-icon {
-  background-color: #000000b1;
+  background-color: #ffffff;
   border-radius: 4px;
   height: 35px;
   width: 35px;
@@ -81,7 +81,7 @@ nav {
 .hamburger-label div {
   width: 30px;
   height: 2px;
-  background-color: #000000;
+  background-color: #ffffff;
   position: absolute;
 }
 
@@ -129,7 +129,7 @@ nav {
 .son {
   font-family: 'ITC Clearface Black';
   position: absolute;
-  top: 40%; 
+  top: 35%; 
   left: 0; /* Alineado a la izquierda del padre */
   transform: translate(0, -50%); /* Corrige la posición vertical centrada */
   width: 100%;
@@ -206,8 +206,13 @@ nav {
 
 
 .container-eventos {
-  background-color: #000000;
+  background-image: url("./images/banners/banner-eventos2.png");
+  background-size: cover;
   margin-top: 20px;
+  width: 100%; height: 100vh
+}
+.container-eventos h1{
+  font-family: 'ITC Clearface Black';
 }
 
 
@@ -333,7 +338,6 @@ nav {
 
   .son p {
     font-size: 15px;
-
     padding-left: 20px;
     padding-right: 20px;
     padding-top: 0px;
@@ -346,14 +350,6 @@ nav {
     object-fit: cover;
   }
 }
-
-
-
-
-
-
-
-
 
 .contenedor-cards {
   max-height: 90vh;
@@ -370,14 +366,15 @@ nav {
 
 
 .card-evento {
-  color: rgb(255, 255, 255);
-  background-color: #000000;
+  color: rgb(0, 0, 0);
+  background-color: #EFA4F9;
   border-radius: 10px;
   border-width: 2px;
   border-style: solid;
-  border-color: rgba(255, 255, 255, 0.831);
+  border-color: rgba(0, 0, 0, 0.831);
   overflow: hidden;
 }
+
 
 
 .card-evento h1 {
@@ -644,4 +641,17 @@ nav {
 
 .days {
   overflow-wrap: break-word;
+}
+
+.animation {
+  animation: reveal 12s infinite;
+}
+
+@keyframes reveal {
+  0%, 100% {
+    opacity: 0;
+  }
+  20%, 80% {
+    opacity: 1;
+  }
 }
