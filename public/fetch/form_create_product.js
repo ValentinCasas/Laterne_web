@@ -116,3 +116,76 @@ document.addEventListener("click", async function (event) {
         }
     }
 });
+
+
+/* actualizar precio */
+document.addEventListener("DOMContentLoaded", async function (event) {
+    const form = document.getElementById("form-percentaje");
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const checkedProducts = document.querySelectorAll('input[type="checkbox"]:checked');
+        const checkedProductsArray = Array.from(checkedProducts);
+
+        if (checkedProductsArray.length === 0) {
+            Swal.fire({
+                icon: "info",
+                title: "Info",
+                text: "Selecciona al menos un producto para actualizar el precio.",
+            });
+            return;
+        }
+
+        try {
+            const formData = new FormData(form);
+
+            checkedProductsArray.forEach((checkbox) => {
+                const productId = checkbox.id.split("-")[1];
+                formData.append('checkedProducts', productId);
+            });
+            
+
+            const response = await fetch("/product/update-prices", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Actualizar visualmente las tarjetas
+                updateCardPrices(result.updatedProducts);
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: result.error || "Error desconocido",
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Error en la solicitud: " + error,
+            });
+        }
+    });
+
+
+    // Función para actualizar visualmente las tarjetas con los precios actualizados
+    function updateCardPrices(updatedProducts) {
+        updatedProducts.forEach((updatedProduct) => {
+            const cardElement = document.getElementById(`card-${updatedProduct.id}`);
+
+            if (cardElement) {
+                // Actualizar el precio en el elemento de la tarjeta
+                const priceElement = cardElement.querySelector('#price-element');
+                if (priceElement) {
+                    priceElement.textContent = `$ ${updatedProduct.price}`;
+                }
+            }
+        });
+    }
+
+});

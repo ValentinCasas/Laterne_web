@@ -241,3 +241,35 @@ export const updateProduct = async (req, res) => {
         res.status(500).json({ error: 'Error al actualizar producto' + error });
     }
 };
+export const updatePrices = async (req, res) => {
+    try {
+        const { operation, percentage, checkedProducts } = req.body;
+
+        // Asegúrate de que checkedProducts sea un array
+        const checkedProductsArray = Array.isArray(checkedProducts) ? checkedProducts : [checkedProducts];
+
+        // Actualizar precios de manera secuencial
+        const updatedProducts = [];
+        for (const productId of checkedProductsArray) {
+            const product = await Product.findByPk(productId);
+            if (product) {
+                // Asegurarse de que el precio es un número
+                product.price = parseFloat(product.price);
+                if (operation === "sum") {
+                    // Aumentar el porcentaje del precio actual
+                    product.price += (product.price * percentage) / 100;
+                } else if (operation === "res") {
+                    // Disminuir el porcentaje del precio actual
+                    product.price -= (product.price * percentage) / 100;
+                }
+                updatedProducts.push(await product.save());
+            }
+        }
+
+        res.json({ success: true, updatedProducts });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error al actualizar los precios: " + error.message });
+    }
+};
+
