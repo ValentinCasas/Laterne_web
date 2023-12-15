@@ -18,16 +18,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
   const btnSelectProducts = document.getElementById("btn-select-products");
-  
+
   btnSelectProducts.addEventListener("click", function () {
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
- 
-      checkboxes.forEach(function (cbx) {
-          cbx.checked = !cbx.checked;
-      });
-  
-      const allChecked = Array.from(checkboxes).every((checkbox) => checkbox.checked);
-      btnSelectProducts.innerHTML = allChecked ? "Deseleccionar Todo" : "Seleccionar Todo";
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const isSelectAll = btnSelectProducts.innerHTML === "Seleccionar Todo";
+
+    checkboxes.forEach(function (cbx) {
+      cbx.checked = isSelectAll;
+    });
+
+    btnSelectProducts.innerHTML = isSelectAll ? "Deseleccionar Todo" : "Seleccionar Todo";
   });
-  
+
 });
