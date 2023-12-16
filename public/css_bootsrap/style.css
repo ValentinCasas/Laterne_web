@@ -500,7 +500,10 @@ nav {
 
 #modal {
   display: none;
+  z-index: 2010 !important;
 }
+
+
 
 #modal.modal-container {
   background-color: rgba(0, 0, 0, 0.979);
@@ -512,7 +515,6 @@ nav {
   height: 100vh;
   justify-content: center;
   align-items: center;
-  z-index: 1010;
 }
 
 .modal-content {

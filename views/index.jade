@@ -8,7 +8,8 @@ block content
     script(src="/swiper.js", defer)
     script(src="/index.js", defer)
     script(src="/testimonial_swiper.js" defer) 
-    
+    link(rel="stylesheet" href="/carrousel.css")
+
 
   body
 
@@ -109,8 +110,8 @@ block content
         img#modalImage(alt="Large Image")
 
 
-    
-      
+
+
     .swiper-container.container-beers.py-10
       h1.text-center.text-dark.mx-3.my-5 NUESTRAS CERVEZAS
       .swiper-wrapper
@@ -118,7 +119,67 @@ block content
           .swiper-slide.py-10
             img(src=`${val}`, alt=`Beers`)
 
-     
+
+    main.intro-section.py-5.bg-white
+      .container.pr-5
+        .grid
+          .column-xs-12
+            ul.slider
+              each img in ["https://source.unsplash.com/cddaZDt6uRw", "https://source.unsplash.com/Pz3EHf-KJfc", "https://source.unsplash.com/peYW3VwICpE"]
+
+                if img == "https://source.unsplash.com/cddaZDt6uRw"
+                  li.slider-item.active
+
+                    .grid.vertical
+                      .column-xs-12.column-md-2.hide-mobile
+                        .intro
+                          a(href='#')
+                            h1.title
+                              span.underline Laterne
+                      .column-xs-12.column-md-10
+                        .image-holder
+                          img(src=img).img-carrousel
+                        .grid
+                          .column-xs-12.column-md-9
+                            .intro.show-mobile
+                              a(href='#')
+                                h1.title
+                                  span.underline Laterne
+                            p.description
+                              | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple.
+
+                else
+                  li.slider-item
+                    .grid.vertical
+                      .column-xs-12.column-md-2.hide-mobile
+                        .intro
+                          a(href='#')
+                            h1.title
+                              span.underline Laterne
+                      .column-xs-12.column-md-10
+                        .image-holder
+                          img(src=img).img-carrousel
+                        .grid
+                          .column-xs-12.column-md-9
+                            .intro.show-mobile
+                              a(href='#')
+                                h1.title
+                                  span.underline Laterne
+                            p.description
+                              | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. 
+
+
+            .grid
+              .column-xs-12
+                .controls
+                  button.previous
+                    span.visually-hidden Previous
+                    span.icon.arrow-left(aria-hidden='true')
+                  button.next
+                    span.visually-hidden Next
+                    span.icon.arrow-right(aria-hidden='true')
+
+
 
 
 
@@ -138,7 +199,7 @@ block content
                 h4= testimonial.date
               article.test-content
                 p= testimonial.description
-    
+
     form.form.container.d-flex.px-4.my-4(id="form-testimonial")
       input.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
       button.btn.btn-primary(type="submit" class="bg-black text-white border-white p-3") Enviar
@@ -176,7 +237,7 @@ block content
             .col-sm-6.col-md-3.item
               h3 SOPORTE
               ul
-       
+
                 li
                   a=BusinessInfo.address  
                 li
