@@ -1,21 +1,25 @@
 .swiper-container {
-    width: 100%;
+    width: 100vw;
     overflow: hidden;
     background-image: url('/images/banners/banner-section-beer.png');
     background-size: cover;
+    padding-top: 100px;
 }
 
 .swiper-slide {
-    height: 20%; 
+    height: 20%;
     text-align: center;
     font-size: 18px;
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-top: 40px;
+}
+
+.swiper-wrapper {
+    height: auto;
 }
 
 .swiper-slide img {
     width: 150px;
 }
-
-
