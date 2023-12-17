@@ -61,8 +61,6 @@ block content
           p
             | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
 
-
-
     .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3.my-0.pt-5
       h1#eventos.text-black.text-center.mb-2.pt-3 EVENTOS
       .contenedor-cards
@@ -98,12 +96,12 @@ block content
                     span=event.location
                     span.artist.mx-2=event.name
                     span --:--
+
+
         else 
           .row.my-3.p-3
             .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
               h1.m-0 Proximamente...
-
-
 
     #modal.modal-container.hidden
       div.modal-content
@@ -113,7 +111,6 @@ block content
 
 
 
-    img(src="/banner2.png" style="width:100vw")
 
     .swiper-container.container-beers.py-10
       h1.text-center.text-dark.mx-2 NUESTRAS CERVEZAS
@@ -121,8 +118,6 @@ block content
         each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
           .swiper-slide.py-10
             img(src=`${val}`, alt=`Beers`)
-
-    img(src="/banner2.png" class="rotate-180" style="width:100vw")        
 
 
     main.intro-section.py-5.bg-black.mt-1
@@ -149,7 +144,7 @@ block content
                             h1.title
                               span.underline Laterne
                         p.description.text-white
-                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal.
+                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple.
 
               li.slider-item
                 .grid.vertical
@@ -221,8 +216,8 @@ block content
                   p= testimonial.description
 
       form.form.container.d-flex.px-4.my-4(id="form-testimonial")
-        input.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-white mx-1  p-3")
-        button.btn.btn-primary(type="submit" class="bg-white text-black border-white p-3") Enviar
+        textarea.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
+        button.btn.btn-primary(type="submit" class="bg-black text-white border-white p-3") Enviar
 
 
 
