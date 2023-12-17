@@ -49,7 +49,7 @@ block content
                 a.nav-link.text-white.mx-2(href="#openingHour") Horarios
 
     .container-fluid.px-0.father
-      img.banner.img-fluid(src="/new_banner2.jpg" alt="")
+      img.banner.img-fluid(src="/new_banner2_750.jpg" alt="")
       .son
         .wrapper
           h1 Laterne es 
@@ -61,8 +61,8 @@ block content
           p
             | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
 
-    .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3.my-0.pt-5.mt-1
-      h1#eventos.text-black.text-center.mb-2 EVENTOS
+    .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3.my-0.pt-5
+      h1#eventos.text-black.text-center.mb-2.pt-3 EVENTOS
       .contenedor-cards
         if Events.length > 0
           each event in Events
@@ -112,8 +112,8 @@ block content
 
 
 
-    .swiper-container.container-beers.py-10.mt-1
-      h1.text-center.text-dark.mx-3 NUESTRAS CERVEZAS
+    .swiper-container.container-beers.py-10
+      h1.text-center.text-dark.mx-2 NUESTRAS CERVEZAS
       .swiper-wrapper
         each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
           .swiper-slide.py-10
@@ -149,8 +149,7 @@ block content
                             h1.title
                               span.underline Laterne
                         p.description.text-white
-                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple.
-
+                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal.
               li.slider-item
                 .grid.vertical
                   .column-xs-12.column-md-2.hide-mobile
@@ -202,9 +201,9 @@ block content
 
 
 
-    .col.col-md-12.bg-black.pt-5.mt-5
-      .px-5.d-flex.justify-content-center
-        h3.text-white.text-center ESTO ES LO QUE OPINA LA GENTE DE NOSOTROS
+    .col.col-md-12.bg-black.container-testimonial
+      .px-5.d-flex.justify-content-center.testimonial
+          h1.text-white.text-center.itc ESTO ES LO QUE OPINA LA GENTE DE NOSOTROS
 
 
       .testimonial-reel
@@ -221,7 +220,7 @@ block content
                   p= testimonial.description
 
       form.form.container.d-flex.px-4.my-4(id="form-testimonial")
-        textarea.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
+        input.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
         button.btn.btn-primary(type="submit" class="bg-black text-white border-white p-3") Enviar
 
 

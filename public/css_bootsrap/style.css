@@ -123,12 +123,11 @@ nav {
 
 .father {
   position: relative;
-  height: 110vh;
+  height: 100%;
 
 }
 
 .banner {
-
   width: 100%;
   height: 100%;
 }
@@ -195,6 +194,7 @@ nav {
   width: auto;
   display: flex;
   margin-left: 40px;
+  gap:20px;
 }
 
 
@@ -225,10 +225,10 @@ nav {
 .container-eventos {
   background-image: url("./images/banners/banner-eventos2.png");
   background-size: cover;
-
   width: 100%;
-  height: 100vh
+  height: 100%;
 }
+
 
 .container-eventos h1 {
   font-family: 'ITC Clearface Black';
@@ -249,9 +249,7 @@ nav {
     object-fit: cover;
   }
 
-  .container-eventos {}
-
-  .wrapper {}
+  
 
 
 
@@ -292,10 +290,9 @@ nav {
 
   .wrapper {
     margin-left: 0px;
+    gap: 0;
 
   }
-
-  .container-eventos {}
 
   .son p {
     font-size: 20px;
@@ -327,8 +324,6 @@ nav {
 @media screen and (max-width: 480px) {
 
 
-  .wrapper {}
-
   .wrapper h1 {
     font-size: 12vw;
   }
@@ -342,7 +337,7 @@ nav {
     font-size: 12vw;
   }
 
-  .container-eventos {}
+
 
   .son p {
     font-size: 15px;
@@ -445,7 +440,7 @@ nav {
 
 .container-beers {
   width: 500px;
-  height: 80vh;
+  height: 90vh;
   font-family: 'ITC Clearface Black';
 
 
@@ -693,4 +688,17 @@ nav {
   80% {
     opacity: 1;
   }
+}
+.itc{
+  font-family: 'ITC Clearface Black';
+}
+
+.container-testimonial{
+  background-image: url("./images/banners/banner_testimonial.png");
+  background-size: cover;
+  width: 100%;
+  height: 800px;
+}
+.testimonial{
+  padding-top: 200px ;
 }
