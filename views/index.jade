@@ -61,8 +61,8 @@ block content
           p
             | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
 
-    .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3.my-0
-      h1#eventos.text-black.text-center.mt-3.mb-2 EVENTOS
+    .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3.my-0.pt-5.mt-1
+      h1#eventos.text-black.text-center.mb-2 EVENTOS
       .contenedor-cards
         if Events.length > 0
           each event in Events
@@ -112,62 +112,82 @@ block content
 
 
 
-    .swiper-container.container-beers.py-10
-      h1.text-center.text-dark.mx-3.my-5 NUESTRAS CERVEZAS
+    .swiper-container.container-beers.py-10.mt-1
+      h1.text-center.text-dark.mx-3 NUESTRAS CERVEZAS
       .swiper-wrapper
         each val in ['/neipa-tapa.png', 'amber-tapa.png', 'apa-tapa.png', 'american-amber-tapa.png']
           .swiper-slide.py-10
             img(src=`${val}`, alt=`Beers`)
 
 
+<<<<<<< HEAD
     main.intro-section.py-5.bg-white
       .container
+=======
+    main.intro-section.py-5.bg-black.mt-1
+      .container.pr-5
+>>>>>>> production
         .grid
           .column-xs-12
             ul.slider
-              each img in ["https://source.unsplash.com/cddaZDt6uRw", "https://source.unsplash.com/Pz3EHf-KJfc", "https://source.unsplash.com/peYW3VwICpE"]
 
-                if img == "https://source.unsplash.com/cddaZDt6uRw"
-                  li.slider-item.active
+              li.slider-item.active
 
-                    .grid.vertical
-                      .column-xs-12.column-md-2.hide-mobile
-                        .intro
+                .grid.vertical
+                  .column-xs-12.column-md-2.hide-mobile
+                    .intro
+                      a(href='#')
+                        h1.title
+                          span.underline Laterne
+                  .column-xs-12.column-md-10
+                    .image-holder
+                      img(src="/laterne2.jpg").img-carrousel
+                    .grid
+                      .column-xs-12.column-md-9
+                        .intro.show-mobile
                           a(href='#')
                             h1.title
                               span.underline Laterne
-                      .column-xs-12.column-md-10
-                        .image-holder
-                          img(src=img).img-carrousel
-                        .grid
-                          .column-xs-12.column-md-9
-                            .intro.show-mobile
-                              a(href='#')
-                                h1.title
-                                  span.underline Laterne
-                            p.description
-                              | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple.
+                        p.description.text-white
+                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple.
 
-                else
-                  li.slider-item
-                    .grid.vertical
-                      .column-xs-12.column-md-2.hide-mobile
-                        .intro
+              li.slider-item
+                .grid.vertical
+                  .column-xs-12.column-md-2.hide-mobile
+                    .intro
+                      a(href='#')
+                        h1.title
+                          span.underline Laterne
+                  .column-xs-12.column-md-10
+                    .image-holder
+                      img(src="/laterne2.jpg").img-carrousel
+                    .grid
+                      .column-xs-12.column-md-9
+                        .intro.show-mobile
                           a(href='#')
                             h1.title
                               span.underline Laterne
-                      .column-xs-12.column-md-10
-                        .image-holder
-                          img(src=img).img-carrousel
-                        .grid
-                          .column-xs-12.column-md-9
-                            .intro.show-mobile
-                              a(href='#')
-                                h1.title
-                                  span.underline Laterne
-                            p.description
-                              | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. 
+                        p.description.text-white
+                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. 
 
+              li.slider-item
+                .grid.vertical
+                  .column-xs-12.column-md-2.hide-mobile
+                    .intro
+                      a(href='#')
+                        h1.title
+                          span.underline Laterne
+                  .column-xs-12.column-md-10
+                    .image-holder
+                      img(src="/laterne2.jpg").img-carrousel
+                    .grid
+                      .column-xs-12.column-md-9
+                        .intro.show-mobile
+                          a(href='#')
+                            h1.title
+                              span.underline Laterne
+                        p.description.text-white
+                          | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. 
 
             .grid
               .column-xs-12
@@ -182,27 +202,27 @@ block content
 
 
 
+    .col.col-md-12.bg-black.pt-5.mt-5
+      .px-5.d-flex.justify-content-center
+        h3.text-white.text-center ESTO ES LO QUE OPINA LA GENTE DE NOSOTROS
 
-    .mt-5.px-5.d-flex.justify-content-center
-      h3.text-white.text-center ESTO ES LO QUE OPINA LA GENTE DE NOSOTROS
 
+      .testimonial-reel
+        each testimonial, index in Testimonials
+          - const imageUrlIndex = index % ImagesUrls.length;
+          div 
+            .box
+              figure.image
+                img.img-fluid.rounded-circle(src=`${ImagesUrls[imageUrlIndex]}`)
+              div.test-component
+                article.test-title
+                  h4= testimonial.date
+                article.test-content
+                  p= testimonial.description
 
-    .testimonial-reel
-      each testimonial, index in Testimonials
-        - const imageUrlIndex = index % ImagesUrls.length;
-        div 
-          .box
-            figure.image
-              img.img-fluid.rounded-circle(src=`${ImagesUrls[imageUrlIndex]}`)
-            div.test-component
-              article.test-title
-                h4= testimonial.date
-              article.test-content
-                p= testimonial.description
-
-    form.form.container.d-flex.px-4.my-4(id="form-testimonial")
-      input.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
-      button.btn.btn-primary(type="submit" class="bg-black text-white border-white p-3") Enviar
+      form.form.container.d-flex.px-4.my-4(id="form-testimonial")
+        textarea.form-control(type="text" name="description" placeholder="Ingrese una opinión (anónimo)" required class="bg-black text-white mx-1 border-white p-3")
+        button.btn.btn-primary(type="submit" class="bg-black text-white border-white p-3") Enviar
 
 
 
@@ -218,7 +238,7 @@ block content
               h2.days.text-white.mb-1.text-center.text-uppercase= key.days
             div.row
               div.col-12
-                p.color-primary.text-center.mb-4
+                p.color-primary.text-center.mb-4.p-hours
 
                   | #{key.morningStartTime ? "De " + key.morningStartTime.substring(0, 5) + " a " : ""} 
                   | #{key.morningEndTime ?  key.morningEndTime.substring(0, 5) + "  y  " : ""} 
