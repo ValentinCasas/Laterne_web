@@ -226,7 +226,7 @@ nav {
   background-image: url("./images/banners/banner-eventos2.png");
   background-size: cover;
   width: 100%;
-  height: 100%;
+  height: 100vh;
 }
 
 
@@ -440,7 +440,7 @@ nav {
 
 .container-beers {
   width: 500px;
-  height: 90vh;
+  height: 80vh;
   font-family: 'ITC Clearface Black';
 
 
@@ -572,14 +572,15 @@ nav {
 
 
 .contain-map {
-  width: 100%;
+  
   display: flex;
   justify-content: center;
+
 }
 
 #map {
   height: 50vh;
-  width: 98%;
+  width: 90%;
 
   border: .1px solid rgb(170, 170, 173);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
@@ -593,7 +594,9 @@ nav {
 
 
 
-
+.testimonial-extremo{
+  width: 100vw;
+}
 
 .box {
   margin-top: 60px;
@@ -657,10 +660,6 @@ nav {
 
 /* openingHour */
 
-#openingHour {
-
-  width: 100vw;
-}
 
 .days {
   overflow-wrap: break-word;
@@ -697,8 +696,239 @@ nav {
   background-image: url("./images/banners/banner_testimonial.png");
   background-size: cover;
   width: 100%;
-  height: 800px;
+  min-height: 100vh;
 }
 .testimonial{
   padding-top: 200px ;
+}
+
+
+
+/* btn testimonial */
+
+.search-bar {
+  display: flex;
+}
+
+.search-bar input,
+.search-btn, 
+.search-btn:before, 
+.search-btn:after {
+  transition: all 0.25s ease-out;
+}
+
+.search-bar input,
+.search-btn {
+  width: 3em;
+  height: 3em;
+}
+
+.search-bar input:invalid:not(:focus),
+.search-btn {
+  cursor: pointer;
+}
+
+.search-bar,
+.search-bar input:focus,
+.search-bar input:valid {
+  width: 100%;
+}
+
+.search-bar input:focus,
+.search-bar input:not(:focus) + .search-btn:focus {
+  outline: transparent;
+}
+
+.search-bar {
+  margin: auto;
+  padding: 1.5em;
+  justify-content: center;
+  max-width: 30em;
+}
+
+.search-bar input {
+  position: relative;
+  background: transparent;
+  border: none;
+  box-shadow: 0 0 0 0.4em #ffffff inset;
+  padding: 0.75em;
+  transform: translate(0.5em, 0.5em) scale(0.5);
+  transform-origin: 100% 0;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 50px;
+}
+
+.search-bar::before {
+  content: "+";
+  position: absolute;
+  font-size: 1.5em;
+  margin-top: 2px;
+  margin-right: 8px;
+  color: white;
+}
+
+
+
+.search-bar input::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+
+
+.search-bar input:focus,
+.search-bar input:valid {
+  background: #fff;
+  border-radius: 0.375em 0 0 0.375em;
+  box-shadow: 0 0 0 0.1em #d9d9d9 inset;
+  transform: scale(1);
+}
+
+.search-btn {
+  border-radius: 0 0.75em 0.75em 0 / 0 1.5em 1.5em 0;
+  padding: 0.75em;
+  position: relative;
+  transform: translate(0em, 0em) scale(0, 0);
+  transform-origin: 0 50%;
+}
+
+
+.search-btn:before,
+.search-btn:after {
+  content: "";
+  display: block;
+  opacity: 0;
+  position: absolute;
+}
+.search-btn:before {
+  border-radius: 0.25em; /* Cambiado de 50% a 0.25em para que se vea como un "+" */
+  box-shadow: 0 0 0 0.2em #f1f1f1 inset;
+  top: 1em; /* Ajustado para centrar el símbolo de "+" verticalmente */
+  left: 0.875em; /* Ajustado para centrar el símbolo de "+" horizontalmente */
+  width: 1em; /* Ajustado para que el símbolo de "+" sea más delgado */
+  height: 0.25em;
+  transform: translateX(-1px) translateY(2px) ;
+}
+
+.search-btn:after {
+  background: #f1f1f1;
+  border-radius: 0.25em; /* Cambiado de 50% a 0.25em para que se vea como un "+" */
+  top: 50%;
+  left: 50%;
+  width: 0.25em;
+  height: 1em; /* Ajustado para que el símbolo de "+" sea más largo */
+  transform: translateX(-2px) translateY(-10px) rotate(0deg);
+  transform-origin: 0 50%;
+}
+
+.search-btn span {
+  display: inline-block;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+}
+
+/* Active state */
+.search-bar input:focus + .search-btn,
+.search-bar input:valid + .search-btn {
+  background: #df4f9b;
+  border-radius: 0 0.375em 0.375em 0;
+  transform: scale(1);
+}
+
+.search-bar input:focus + .search-btn:before, 
+.search-bar input:focus + .search-btn:after,
+.search-bar input:valid + .search-btn:before, 
+.search-bar input:valid + .search-btn:after {
+  opacity: 1;
+}
+
+.search-bar input:focus + .search-btn:hover,
+.search-bar input:valid + .search-btn:hover,
+.search-bar input:valid:not(:focus) + .search-btn:focus {
+  background: rgb(195, 65, 251);
+}
+
+.search-bar input:focus + .search-btn:active,
+.search-bar input:valid + .search-btn:active {
+  transform: translateY(1px);
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  input {
+    color: #000000;
+  }
+
+  .search-bar input {
+    box-shadow: 0 0 0 0.4em #f1f1f1 inset;
+  }
+
+  .search-bar input:focus,
+	.search-bar input:valid {
+    background: #ffffff;
+
+  }
+
+  .search-btn {
+    background: #f1f1f1;
+  }
+}
+
+
+
+/* card */
+
+.page {
+  position: relative;
+  box-sizing: border-box;
+  width: 90%;
+  font-size: 20px;
+  border-radius: 10px;
+  background: #fff;
+  background-image: linear-gradient(#f5f5f0 1.1rem, #ccc 1.2rem);
+  background-size: 100% 1.2rem;
+  line-height: 1.2rem;
+  padding: 1.4rem 0.5rem 0.3rem 6.5rem;
+
+}
+
+.page::before,
+.page::after {
+  position: absolute;
+  content: "";
+  bottom: 10px;
+  width: 40%;
+  height: 10px;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.7);
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+.page::before {
+  left: 15px;
+  transform: skew(-5deg) rotate(-5deg);
+}
+
+.page::after {
+  right: 15px;
+  transform: skew(5deg) rotate(5deg);
+}
+
+.page:hover::before,
+.page:hover::after {
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+}
+
+.margin {
+  position: absolute;
+  border-left: 1px solid #d88;
+  height: 100%;
+  left: 3.3rem;
+  top: 0;
+}
+
+.page p {
+  margin: 0;
+  padding-bottom: 1.2rem;
 }
