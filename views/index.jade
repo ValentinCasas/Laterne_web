@@ -49,7 +49,7 @@ block content
                 a.nav-link.text-white.mx-2(href="#openingHour") Horarios
 
     .container-fluid.px-0.father
-      img.banner.img-fluid(src="/new_banner2_750.jpg" alt="")
+      img.banner.img-fluid(src="/banner-carta.png" alt="")
       .son
         .wrapper
           h1 Laterne es 
@@ -62,7 +62,7 @@ block content
             | Hace muchos años que Laterne es sinónimo de birra, de amistad, de momentos compartidos y de buena cerveza artesanal. Los cambios que hemos vivido nos han dejado en un lugar mas simple. Como con quienes decidimos compartir lo que hacemos.
 
     .container-fluid.container-eventos.pt-lg-3.pt-md-3.pt-xs-1.px-lg-5.px-md-5.pb-3.my-0.pt-5
-      h1#eventos.text-black.text-center.mb-2.pt-3 EVENTOS
+      h1#eventos.text-center.mb-2.pt-3.principal EVENTOS
       .contenedor-cards
         if Events.length > 0
           each event in Events
@@ -85,7 +85,7 @@ block content
                   - eventTime.setMinutes(Number(eventTimeParts[1]));
                   div.d-flex.align-items-center
                     span.mr-2=event.location
-                    span.artist.mx-2=event.name
+                    span.artist.mx-2.principal=event.name
                     span #{eventTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                     if event.imageUrl
                       span.d-flex.align-items-center

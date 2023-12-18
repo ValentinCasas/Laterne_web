@@ -223,8 +223,7 @@ nav {
 
 
 .container-eventos {
-  background-image: url("./images/banners/banner-eventos2.png");
-  background-size: cover;
+  background-color: #101010;
   width: 100%;
   height: 100vh;
 }
@@ -233,7 +232,9 @@ nav {
 .container-eventos h1 {
   font-family: 'ITC Clearface Black';
 }
-
+.principal{
+  color: var(--principal-color)!important;
+}
 
 @media screen and (max-width: 1024px) {
 
@@ -376,11 +377,11 @@ nav {
 
 .card-evento {
   color: rgb(0, 0, 0);
-  background-color: #EFA4F9;
+  background-color: #101010;
   border-radius: 10px;
   border-width: 2px;
   border-style: solid;
-  border-color: rgba(0, 0, 0, 0.831);
+  border-color: rgba(255, 255, 255, 0.831);
   overflow: hidden;
 }
 
@@ -388,19 +389,23 @@ nav {
 
 .card-evento h1 {
   font-size: 25px;
+  color: white;
 
 }
 
 .card-evento p {
   font-size: 18px;
+  color: #f1f1f1;
 }
 
 .card-evento span {
   font-family: 'Overpass', sans-serif;
+  color: white;
 }
 
 .artist {
   font-weight: bold;
+  color: white;
 }
 
 .slider {
@@ -700,7 +705,7 @@ nav {
 .testimonial{
   padding-top: 200px ;
 }
-<<<<<<< Updated upstream
+
 
 
 
@@ -932,5 +937,3 @@ nav {
   margin: 0;
   padding-bottom: 1.2rem;
 }
-=======
->>>>>>> Stashed changes
