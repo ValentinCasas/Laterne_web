@@ -2,8 +2,8 @@
 .footer-dark {
     padding: 50px 0;
     color: #f0f9ff;
-    background-color: #000000;
-    border: .1px solid rgba(96, 94, 94, 0.353);
+    background-color: #111111;
+    border: .1px solid rgba(77, 77, 77, 0.353);
 
   }
   
@@ -12,6 +12,8 @@
     margin-bottom: 12px;
     font-weight: bold;
     font-size: 16px;
+    color: var(--principal-color);
+
   }
   
   .footer-dark ul {
@@ -57,7 +59,7 @@
   }
   
   .footer-dark .item.social {
-    text-align: center;
+    text-align: right;
   }
   
   @media (max-width: 991px) {
@@ -68,29 +70,29 @@
   }
   
   .footer-dark .item.social > a {
-    font-size: 20px;
+    font-size: 22px;
     width: 36px;
     height: 36px;
     line-height: 36px;
     display: inline-block;
     text-align: center;
-    border-radius: 50%;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
-    margin: 0 8px;
-    color: #fff;
+    margin: 0 4px;
+    color: var(--principal-color);
     opacity: 0.75;
   }
   
   .footer-dark .item.social > a:hover {
     opacity: 0.9;
+    color: #f845a4
+    
   }
   
   .footer-dark .copyright {
     font-family:  'Overpass', sans-serif;
-    text-align: center;
+    text-align: left;
     padding-top: 24px;
     opacity: 0.3;
     font-size: 13px;
     margin-bottom: 0;
+    padding-top: 0;
   }
-  
