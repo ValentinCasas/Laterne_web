@@ -440,7 +440,7 @@ nav {
 
 .container-beers {
   width: 500px;
-  height: 80vh;
+  height: 100vh;
   font-family: 'ITC Clearface Black';
 
 
@@ -656,9 +656,6 @@ nav {
   transition: opacity 0.3s;
 }
 
-.beer-extremo{
-  width: 100vw;
-}
 
 /* openingHour */
 
