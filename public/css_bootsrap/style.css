@@ -656,7 +656,9 @@ nav {
   transition: opacity 0.3s;
 }
 
-
+.beer-extremo{
+  width: 100vw;
+}
 
 /* openingHour */
 
