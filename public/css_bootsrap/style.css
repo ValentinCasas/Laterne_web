@@ -223,7 +223,7 @@ nav {
 
 
 .container-eventos {
-  background-color: #101010;
+  background-image: url("./images/banners/banner_evento.png");
   width: 100%;
   height: 100vh;
 }

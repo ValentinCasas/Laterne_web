@@ -96,3 +96,15 @@
     margin-bottom: 0;
     padding-top: 0;
   }
+  .footer-icon{
+    width: 25px;
+    height: 25px;
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.6;
+  }
+  .footer-icon:hover{
+    opacity: 0.8;
+  }
+ 
+  
