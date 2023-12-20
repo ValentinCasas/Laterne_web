@@ -314,16 +314,16 @@ block content
       #map
 
     section#openingHour.mt-5.py-5.d-flex.flex-column.align-items-center.justify-content-center.reveal-top
-      .page
-        .margin
-        each key in GroupedOpeningHours
-          if key.morningStartTime || key.morningEndTime || key.eveningStartTime || key.eveningEndTime
-            p.color-primary= key.days
-            p
-              | #{key.morningStartTime ? "De " + key.morningStartTime.substring(0, 5) + " a " : ""} 
-              | #{key.morningEndTime ?  key.morningEndTime.substring(0, 5) + "  y  " : ""} 
-              | #{key.eveningStartTime ? "de " + key.eveningStartTime.substring(0, 5) + " a " : ""} 
-              | #{key.eveningEndTime ?  key.eveningEndTime.substring(0, 5) : " cierre"}
+      
+      h1.neonText.secondaryfont Horarios
+      each key in GroupedOpeningHours
+        if key.morningStartTime || key.morningEndTime || key.eveningStartTime || key.eveningEndTime
+          p.neonTextSecondary.secondaryfont= key.days
+          p.neonTextSecondary.secondaryfont
+            | #{key.morningStartTime ? "De " + key.morningStartTime.substring(0, 5) + " a " : ""} 
+            | #{key.morningEndTime ?  key.morningEndTime.substring(0, 5) + "  y  " : ""} 
+            | #{key.eveningStartTime ? "de " + key.eveningStartTime.substring(0, 5) + " a " : ""} 
+            | #{key.eveningEndTime ?  key.eveningEndTime.substring(0, 5) : " cierre"}
 
 
     .footer-dark.reveal-top

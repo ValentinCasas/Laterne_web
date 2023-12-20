@@ -1,6 +1,9 @@
 :root {
   --principal-color: #ED2791;
+  --neon-text-color: #f40;
+  --neon-border-color: #08f;
 }
+@import url('https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap');
 
 .color-primary {
   color: #df4f9b;
@@ -925,7 +928,6 @@ nav {
 
 .margin {
   position: absolute;
-  border-left: 1px solid #d88;
   height: 100%;
   left: 3.3rem;
   top: 0;
@@ -1058,3 +1060,36 @@ nav {
   width: 200px;
   height: 250px;
 }
+
+
+
+
+
+.neonText {
+  text-shadow:
+  0 0 4px #fff,
+  0 0 11px #fff,
+  0 0 19px #fff,
+  0 0 40px #ED2791,
+  0 0 80px #ED2791,
+  0 0 90px #ED2791,
+  0 0 100px #ED2791,
+  0 0 150px #ED2791;
+  color: #fff;
+  font-size: 50px;
+}
+.neonTextSecondary {
+  color: #fff;
+  font-size: 20px;
+  text-shadow:
+      0 0 4px #fff,
+      0 0 11px #fff,
+      0 0 19px #fff,
+      0 0 40px #0fa,
+      0 0 80px #0fa,
+      0 0 90px #0fa,
+      0 0 100px #0fa,
+      0 0 150px #0fa;
+    }
+
+
