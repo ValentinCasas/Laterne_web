@@ -318,8 +318,8 @@ block content
       h1.color-primary.secondaryfont Horarios
       each key in GroupedOpeningHours
         if key.morningStartTime || key.morningEndTime || key.eveningStartTime || key.eveningEndTime
-          p.color-primary.secondaryfont= key.days
-          p.secondaryfont
+          p.color-primary.secondaryfont.text-center= key.days
+          p.secondaryfont.text-white.text-center
             | #{key.morningStartTime ? "De " + key.morningStartTime.substring(0, 5) + " a " : ""} 
             | #{key.morningEndTime ?  key.morningEndTime.substring(0, 5) + "  y  " : ""} 
             | #{key.eveningStartTime ? "de " + key.eveningStartTime.substring(0, 5) + " a " : ""} 
