@@ -15,12 +15,12 @@ body {
     scroll-behavior: smooth;
 }
 
-.contain-products{
-    gap:10px;
-}  
+.contain-products {
+    gap: 10px;
+}
 
-#productModal{
-    z-index:1001;
+#productModal {
+    z-index: 1001;
 }
 
 img {
@@ -35,27 +35,27 @@ img {
     animation-range: entry 25% cover 50%;
 }
 
-    @keyframes show {
-        from {
-            opacity: 0;
-            scale: 25%;
-        }
-
-        to {
-            opacity: 1;
-            scale: 100%;
-        }
+@keyframes show {
+    from {
+        opacity: 0;
+        scale: 25%;
     }
 
-
-.sticky-personalizado{
-    position:sticky;
-    top:100px;
-    z-index:32;
+    to {
+        opacity: 1;
+        scale: 100%;
+    }
 }
 
-#modal-carrito{
-    z-index:1000;
+
+.sticky-personalizado {
+    position: sticky;
+    top: 100px;
+    z-index: 32;
+}
+
+#modal-carrito {
+    z-index: 1000;
 }
 
 .info-card::-webkit-scrollbar {
@@ -109,8 +109,9 @@ img {
 }
 
 h2 {
-    color: #ce5696;
-    background-color: #f6bad8;
+    color: #ED2791;
+    background: rgb(246, 186, 221);
+    background: linear-gradient(144deg, rgba(246, 186, 221, 1) 53%, rgb(227, 82, 181) 100%);
 }
 
 .ampersant,

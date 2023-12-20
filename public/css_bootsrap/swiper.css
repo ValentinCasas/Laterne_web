@@ -1,23 +1,33 @@
 .swiper-container {
-    width: 100vw;
+    width: 100%;
     overflow: hidden;
-    background-image: url('/images/banners/banner_beers.png');
-    background-size: cover;
-    padding-top: 100px;
 }
 
 .swiper-slide {
-    height: 20%;
-    text-align: center;
-    font-size: 18px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 40px;
+    height: auto;
 }
 
-.swiper-wrapper {
-    height: auto;
+
+.swiper-pagination{
+    bottom: 0;
+}
+
+/* Cambiar color del botón activo */
+.swiper-pagination-bullet-active {
+    background-color: #ED2791;
+    
+    /* Cambiar a tu color preferido */
+}
+
+.swiper-pagination-bullet:not(.swiper-pagination-bullet-active) {
+    background-color: #ffffff;
+    /* Cambiar a tu color preferido para fondo de botones inactivos */
+}
+
+/* Cambiar color del texto del botón */
+.swiper-pagination-bullet {
+    color: #ffffff;
+    /* Cambiar a tu color preferido */
 }
 
 .swiper-slide img {

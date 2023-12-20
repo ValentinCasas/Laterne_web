@@ -15,9 +15,23 @@ block content
     link(rel="stylesheet" href="/carrousel.css")
     link(rel="stylesheet" href="/beers.css")
     script(src="/scroll_reveal.js", defer)
-    
 
 
+  script.
+    document.addEventListener('DOMContentLoaded', function () {
+      var mySwiper = new Swiper('.swiper-container', {
+        loop: true, // Habilita el scroll infinito
+        autoplay: false, // Desactiva el autoplay
+        navigation: {
+          nextEl: '.swiper-button-next',
+          prevEl: '.swiper-button-prev',
+        },
+        pagination: {
+          el: '.swiper-pagination',
+          clickable: true,
+        },
+      });
+    });
 
 
   body
@@ -106,8 +120,6 @@ block content
                     span.artist.mx-2=event.name
                     span --:--
 
-
-
         else 
           .row.my-3.p-3
             .card.card-evento.p-3.justify-content-between.d-flex.flex-md-row.flex-column
@@ -128,7 +140,7 @@ block content
           .swiper-slide.py-10
             img(src=`${val}`, alt=`Beers`)
     //
-    .container-fluid.pt-5
+    //.container-fluid.pt-5
       h1.principal.itc.text-center.pb-5.reveal-top BIRRAS
       section.row.reveal-top
         .col-12.col-md-6
@@ -147,6 +159,56 @@ block content
           p.secondaryfont.text-white Ingredientes: Malta Pale Ale, Malta Caramelo 55, Malta Carapils Malta Chocolate, Avena
           hr.text-white
           p.secondaryfont.text-white IBU:65, AVL: 8,3%
+
+    .container-fluid.pt-5
+      h1.principal.itc.text-center.pb-5.reveal-top BIRRAS
+      .swiper-container.reveal-top
+        .swiper-wrapper.pb-5
+          .swiper-slide
+            section.reveal-top.row
+              .col-12.col-md-6
+                h2.col-6.principal.itc American Amber
+                p.secondaryfont.text-white Es un estilo americano moderno, popularizado en el norte de California, se caracteriza por un apreciable sabor a malta, con una sensación dulce al principio y acaramelada después, el amargor es moderado pero suficiente para equilibrar. Levadura ale típica de este estilo produce notas limpias, con muy bajos ésteres frutales, los lúpulos aromáticos seleccionados imparten ligeras notas cítricas y tropicales.
+                hr.text-white
+                p.secondaryfont.text-white Ingredientes: Malta Pale Ale, Malta Amber, Malta Caramelo 55, Avena.
+                hr.text-white
+                p.secondaryfont.text-white IBU:17, AVL: 5,1%
+            section.reveal-top.row
+              .col-12.col-md-6
+              .col-12.col-md-6
+                h2.col-6.principal.itc Doble IPA
+                p.secondaryfont.text-white Es el nombre que se le da a una Imperial Ipa recargada y es una cerveza definitivamente poderosa, plena de amargor, sabor, cuerpo, cremosidad y aroma. Desarrollo reciente de la nueva generación de cerveceros, expresa muy bien la personalidad que el lúpulo es capaz de entregar, con notas a papaya, guayaba, piña y durazno, además de un amargo muy intenso, casi de gusto adquirido.
+                hr.text-white
+                p.secondaryfont.text-white Ingredientes: Malta Pale Ale, Malta Caramelo 55, Malta Carapils Malta Chocolate, Avena
+                hr.text-white
+                p.secondaryfont.text-white IBU:65, AVL: 8,3%
+          .swiper-slide
+            section.reveal-top.row
+              .col-12.col-md-6
+                h2.col-6.principal.itc American Amber 2
+                p.secondaryfont.text-white Es un estilo americano moderno, popularizado en el norte de California, se caracteriza por un apreciable sabor a malta, con una sensación dulce al principio y acaramelada después, el amargor es moderado pero suficiente para equilibrar. Levadura ale típica de este estilo produce notas limpias, con muy bajos ésteres frutales, los lúpulos aromáticos seleccionados imparten ligeras notas cítricas y tropicales.
+                hr.text-white
+                p.secondaryfont.text-white Ingredientes: Malta Pale Ale, Malta Amber, Malta Caramelo 55, Avena.
+                hr.text-white
+                p.secondaryfont.text-white IBU:17, AVL: 5,1%
+            section.reveal-top.row
+              .col-12.col-md-6
+              .col-12.col-md-6
+                h2.col-6.principal.itc Doble IPA 2
+                p.secondaryfont.text-white Es el nombre que se le da a una Imperial Ipa recargada y es una cerveza definitivamente poderosa, plena de amargor, sabor, cuerpo, cremosidad y aroma. Desarrollo reciente de la nueva generación de cerveceros, expresa muy bien la personalidad que el lúpulo es capaz de entregar, con notas a papaya, guayaba, piña y durazno, además de un amargo muy intenso, casi de gusto adquirido.
+                hr.text-white
+                p.secondaryfont.text-white Ingredientes: Malta Pale Ale, Malta Caramelo 55, Malta Carapils Malta Chocolate, Avena
+                hr.text-white
+                p.secondaryfont.text-white IBU:65, AVL: 8,3%
+
+        .swiper-pagination
+          
+          
+
+
+
+
+
 
 
 
@@ -237,7 +299,7 @@ block content
               .animation-card_image
                 img(src=`${ImagesUrls[imageUrlIndex]}` alt='')
               .animation-card_content
-                h4.secondaryfont.animation-card_content_title.title-2 Cliente anonimo
+                h4.secondaryfont.animation-card_content_title.title-2 Reseña anonima
                 p.secondaryfont.animation-card_content_description.p-2= testimonial.description
                 p.secondaryfont.animation-card_content_city=testimonial.date
 
@@ -247,32 +309,6 @@ block content
           span Enviar
 
 
-
-    //.col.col-md-12.bg-black.container-testimonial
-      .px-5.d-flex.justify-content-center.testimonial
-        h2.text-white.text-center.itc ESTO ES LO QUE OPINA LA GENTE DE NOSOTROS
-
-      .testimonial-reel
-        each testimonial, index in Testimonials
-          - const imageUrlIndex = index % ImagesUrls.length;
-          div 
-            .box
-              figure.image
-                img.img-fluid.rounded-circle(src=`${ImagesUrls[imageUrlIndex]}`)
-              div.test-component
-                article.test-title
-                  h4= testimonial.date
-                article.test-content
-                  p= testimonial.description
-
-
-
-      form.search-bar(id="form-testimonial")
-        input.search-input(required='' name="description" type="text" autocomplete='off')
-        button.search-btn(type='submit')
-          span Enviar
-
-    
 
     .contain-map.mt-5.reveal-top
       #map
