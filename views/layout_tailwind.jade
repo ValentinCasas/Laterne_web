@@ -94,8 +94,8 @@ html(lang="en")
                   li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                     a.p-0.text-black.font-bold(href='/event/view-create-event' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") EVENTOS 
                   if locals.role === 1
-                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                    a.p-0.text-black.font-bold(href='/user/view-users' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") USUARIOS
+                    li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                      a.p-0.text-black.font-bold(href='/user/view-users' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") USUARIOS
 
 
               // Dropdown
@@ -105,19 +105,20 @@ html(lang="en")
                     svg.h-5.w-5(xmlns='http://www.w3.org/2000/svg' viewbox='0 0 20 20' fill='currentColor')
                       path(fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd')
                 ul.ml-2.px-10.w-36.absolute.m-0.hidden.min-w-max.list-none.overflow-hidden.rounded-lg.border-none.bg-white.bg-clip-padding.shadow-lg(class='z-[1000] [&[data-te-dropdown-show]]:block' aria-labelledby='dropdownMenuButton2' data-te-dropdown-menu-ref='')
-                  // Link
-                  li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
-                    a.p-0.text-black.font-bold(href='/businessInfo/view-businessInfo' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INFO 
+                  if locals.role === 1
+                    // Link
+                    li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
+                      a.p-0.text-black.font-bold(href='/businessInfo/view-businessInfo' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") INFO 
                   // Link
                   li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                     a.p-0.text-black.font-bold(href='/openingHour/view-opening-hour' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") HORARIOS
-                  
+
                   li.mb-4.py-2.text-center(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                     a.p-0.text-black.font-bold(href='/user/view-profile' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") CUENTA
 
 
 
-              if locals.role === 1
+              if locals.isLoggedIn 
                 li.mb-4.pl-2.mx-2(class='lg:mb-0 lg:pl-0 lg:pr-1' data-te-nav-item-ref='')
                   a.p-0.text-black.font-bold(href='/auth/logout' data-te-nav-link-ref='' onmouseover="this.style.color='#ED2791'" onmouseout="this.style.color='#000'") SALIR
 
