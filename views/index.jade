@@ -302,6 +302,7 @@ block content
                 h4.secondaryfont.animation-card_content_title.title-2 Reseña anonima
                 p.secondaryfont.animation-card_content_description.p-2= testimonial.description
                 p.secondaryfont.animation-card_content_city=testimonial.date
+        
 
       form.search-bar(id="form-testimonial")
         input.search-input.secondaryfont(required='' name="description" type="text" autocomplete='off')
@@ -315,7 +316,7 @@ block content
 
     section#openingHour.mt-5.py-5.d-flex.flex-column.align-items-center.justify-content-center.px-3
       
-      h1.color-primary.secondaryfont Horarios
+      h1.color-primary Horarios
       each key in GroupedOpeningHours
         if key.morningStartTime || key.morningEndTime || key.eveningStartTime || key.eveningEndTime
           p.color-primary.secondaryfont.text-center= key.days

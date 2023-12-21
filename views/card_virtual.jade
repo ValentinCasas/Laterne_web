@@ -64,7 +64,7 @@ html
         each group in GroupedProducts
             // Mostrar la categoría como encabezado
 
-            h2(class=`py-2 sticky-personalizado z-${group.category.id}  text-xl  text-center font-bold mb-4 w-full`) #{group.category.name}
+            h2(class=`py-2 sticky-personalizado z-${group.category.id} xs:text-md md:text-md lg:text-xl xl:text-xl  text-center font-bold mb-4 w-full`) #{group.category.name}
             a(id=`category-${group.category.id}`) 
 
 

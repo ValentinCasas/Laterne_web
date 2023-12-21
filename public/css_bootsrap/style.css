@@ -671,6 +671,10 @@ nav {
 
 
 /* openingHour */
+#openingHour h1{
+  font-weight: 900;
+    font-family: 'ITC Clearface Black';
+}
 
 
 .days {

@@ -92,8 +92,6 @@ gsap.registerPlugin(MotionPathPlugin);
 
 
 
-
-
 var modalContainer = document.getElementById('modal');
 var modalImage = document.getElementById('modalImage');
 
