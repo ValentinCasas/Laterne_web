@@ -73,7 +73,14 @@ function actualizarCarrito() {
 
     // Actualizar el contador del carrito
     const cantidadTotal = carrito.reduce((total, producto) => total + producto.cantidad, 0);
+
     contadorCarrito.textContent = cantidadTotal;
+
+    if (cantidadTotal > 0) {
+        contadorCarrito.style.display = 'block';
+    }else{
+        contadorCarrito.style.display = 'none';
+    }
 
     // Calcular y mostrar el precio total
     const total = carrito.reduce((total, producto) => {

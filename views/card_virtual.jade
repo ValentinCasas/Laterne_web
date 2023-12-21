@@ -32,8 +32,7 @@ html
 
         link(rel="stylesheet" href="/dist/card_virtual.css")
 
-    
-            
+
 
     body
 
@@ -80,9 +79,9 @@ html
                         // Contenido de la tarjeta
                         div(class="p-1 flex justify-center h-40 max-h-60 items-start relative")
                             if product.imageUrl !== "product_default.png"
-                                img(class="h-full w-full object-contain cursor-pointer transition-transform transform hover:scale-105 rounded-2xl md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
+                                img(class="img-card h-full w-full object-contain cursor-pointer transition-transform transform hover:scale-105 rounded-2xl md:w-full md:h-full lg:w-full lg:h-full xl:w-full xl:h-full", src=product.imageUrl, alt="", onclick=`openModal('${product.imageUrl}')`)
                             else 
-                                img(class="object-contain w-full h-32 rounded-lg", src=product.imageUrl)
+                                img(class="img-card object-contain w-full h-32 rounded-lg", src=product.imageUrl)
 
                             // Mensaje de "agotado"
                             if product.availavility === "agotado"
@@ -92,11 +91,11 @@ html
                         // Información del producto
                         div(class="w-full  p-1 flex flex-col justify-start h-40 max-h-60 overflow-x-hidden info-card")
                             .p-4
-                                h3(class="text-dark mb-1 lg:text-lg font-bold") #{product.name}
+                                h3(class="text-dark mb-1 lg:text-md font-bold") #{product.name}
 
+                                span.text-lg.text-dark.mb-1.price $ #{product.price}
                                 .text-sm.flex.items-center
                                     p #{product.description}
-                                span.text-lg.text-dark.price $ #{product.price}
 
 
 
@@ -106,12 +105,17 @@ html
 
 
 
-        div#contador-carrito.fixed.bottom-4.right-4.bg-white.text-black.py-3.px-5.rounded-md.border.shadow-lg.cursor-pointer(class="hover:bg-blue-600" onclick="abrirModalCarrito()")
-            span#cantidad-productos.text-lg.font-bold 0
+        //div#contador-carrito.fixed.bottom-4.right-4.bg-white.text-black.p-5.rounded-md.border.shadow-lg.cursor-pointer(class="hover:bg-blue-600" onclick="abrirModalCarrito()")
+            span#cantidad-productos.text-lg.font-bold.absolute.top-0.right-0 0
+
+        .carrito#contador-carrito.fixed.bottom-4.right-4(onclick="abrirModalCarrito()")
+            img(src="/waiter2.png")
+            span.texto-carrito#cantidad-productos 0
+    
 
 
-        #modal-carrito.modal(class="fixed inset-0 hidden  items-center justify-center bg-black bg-opacity-50 ")
-            div.modal-content(class="bg-white  w-screen overflow-auto py-20 px-5 rounded-lg text-center relative")
+        #modal-carrito.modal(class="fixed inset-0 hidden  items-center justify-center bg-black bg-opacity-50")
+            div.modal-content(class="bg-white  w-[calc(100vw - 10px)] overflow-auto py-20 px-5 rounded-lg text-center relative")
 
                 .item-carrito
                     p -
