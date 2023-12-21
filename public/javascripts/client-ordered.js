@@ -11,10 +11,7 @@ function agregarAlCarrito(product) {
         carrito.push(carritoMap[product.id]);
     }
 
-    // Actualizar el contador del carrito
     actualizarContadorCarrito();
-
-    // Actualizar la visualización del carrito
     actualizarCarrito();
 }
 
@@ -27,8 +24,8 @@ function actualizarCarrito() {
     // Limpiar la lista de productos en el carrito
     listaProductos.innerHTML = '';
 
-    // Iterar sobre los productos en el carrito
     carrito.forEach(producto => {
+
         // Crear el contenedor de la tarjeta del producto
         const tarjetaProducto = document.createElement('div');
         tarjetaProducto.classList.add('producto-carrito');
@@ -53,10 +50,9 @@ function actualizarCarrito() {
         // Crear el botón de eliminación
         const botonEliminar = document.createElement('button');
         botonEliminar.textContent = 'Eliminar';
-        botonEliminar.id = `eliminar-${producto.id}`; // Puedes personalizar el ID según tus necesidades
-        botonEliminar.classList.add('boton-eliminar'); // Clase para aplicar estilos comunes
+        botonEliminar.id = `eliminar-${producto.id}`; 
+        botonEliminar.classList.add('boton-eliminar'); 
         botonEliminar.addEventListener('click', () => eliminarProducto(producto.id));
-
 
         // Agregar la imagen, nombre, precio y botón al contenedor de información
         infoProducto.appendChild(nombreProducto);
@@ -71,9 +67,7 @@ function actualizarCarrito() {
         listaProductos.appendChild(tarjetaProducto);
     });
 
-    // Actualizar el contador del carrito
     const cantidadTotal = carrito.reduce((total, producto) => total + producto.cantidad, 0);
-
     contadorCarrito.textContent = cantidadTotal;
 
     if (cantidadTotal > 0) {
@@ -120,15 +114,10 @@ function eliminarProducto(productoId) {
     }
 }
 
-
 function abrirModalCarrito() {
-    // Verificar si hay productos en el carrito antes de abrir el modal
-
     const modalCarrito = document.getElementById('modal-carrito');
     modalCarrito.classList.remove('hidden');
-
 }
-
 
 function cerrarModalCarrito() {
     const modalCarrito = document.getElementById('modal-carrito');
