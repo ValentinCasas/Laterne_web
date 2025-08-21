@@ -1,88 +1,96 @@
 extends layout_tailwind
 
-
 block content
-
     title Feedbacks
 
-    head 
-
+    head
         link(rel="stylesheet" href="/dist/testimonial.css")
-        script(src="/testimonial.js" defer) 
-        script(src="/delete_testimonial.js" defer) 
+        script(src="/testimonial.js" defer)
+        script(src="/delete_testimonial.js" defer)
 
     body
+        // ====== CONTENEDOR ======
+        div(class="max-w-7xl mx-auto px-4 lg:px-8 py-6")
 
-        .app.mt-5
-            main.project.bg-gray-100
-                .flex
-                    .foro-verde.bg-success.m-2.d-inline-block(style="width: auto; height: auto;")
-                        p.m-2 Aceptado
-                .flex        
-                    .foro-rojo.bg-danger.m-2.d-inline-block(style="width: auto; height: auto;")
-                        p.m-2 en espera
+            // ====== HEADER STICKY + BUSCADOR ======
+            div(class="sticky top-0 z-20 bg-white/90 backdrop-blur rounded-2xl shadow-sm p-4 mb-6")
+                div(class="flex flex-col md:flex-row md:items-center md:justify-between gap-3")
+                    h1(class="text-xl font-semibold text-slate-800") Feedback de clientes
+                    div(class="flex items-center gap-2")
+                        // leyenda de estados
+                        span(class="inline-flex items-center gap-2 text-sm")
+                            span(class="inline-flex items-center gap-1")
+                                span(class="rounded-full bg-rose-500 w-3 h-3 inline-block")
+                                | En espera
+                            span(class="inline-flex items-center gap-1 ml-4")
+                                span(class="rounded-full bg-emerald-500 w-3 h-3 inline-block")
+                                | Aceptado
+                // buscador
+                input#search-feedback(type="text" placeholder="Buscar feedback…" class="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-600")
 
+            // ====== LISTAS ======
+            div(class="space-y-10 app mt-5")
 
-                .project-tasks
-                    each testimonial in TestimonialsNoAcepted
-                        .task(draggable='true' id=`testimonial-${testimonial.id}`)
-                            button.btn-borrar(type="button" data-url=`/testimonial/delete-testimonial/${testimonial.id}` onclick=`deleteTestimonial(event,${testimonial.id})`)
-                                svg.icon(viewBox="0 0 15 17.5" height="17.5" width="15" xmlns="http://www.w3.org/2000/svg")
-                                    path#Fill(transform="translate(-2.5 -1.25)" d="M15,18.75H5A1.251,1.251,0,0,1,3.75,17.5V5H2.5V3.75h15V5H16.25V17.5A1.251,1.251,0,0,1,15,18.75ZM5,5V17.5H15V5Zm7.5,10H11.25V7.5H12.5V15ZM8.75,15H7.5V7.5H8.75V15ZM12.5,2.5h-5V1.25h5V2.5Z")
+                // ---------- EN ESPERA ----------
+                section#pending
+                    header(class="flex items-center justify-between mb-3")
+                        h2(class="text-base font-semibold text-slate-700 flex items-center gap-2")
+                            span(class="rounded-full bg-rose-500 w-2.5 h-2.5 inline-block")
+                            | En espera
+                    div(class="project bg-gray-50 rounded-2xl p-3")
+                        div(class="project-tasks grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5")
+                            each testimonial in TestimonialsNoAcepted
+                                div(draggable="true" id=`testimonial-${testimonial.id}` data-id=testimonial.id data-state="pending" class="task relative bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-3")
+                                    button.btn-borrar(type="button" aria-label="Eliminar feedback" data-url=`/testimonial/delete-testimonial/${testimonial.id}` onclick=`deleteTestimonial(event, ${testimonial.id})` class="absolute top-2 right-2")
+                                        svg.icon(viewBox="0 0 15 17.5" height="18" width="16" xmlns="http://www.w3.org/2000/svg")
+                                            path#Fill(transform="translate(-2.5 -1.25)" d="M15,18.75H5A1.251,1.251,0,0,1,3.75,17.5V5H2.5V3.75h15V5H16.25V17.5A1.251,1.251,0,0,1,15,18.75ZM5,5V17.5H15V5Zm7.5,10H11.25V7.5H12.5V15ZM8.75,15H7.5V7.5H8.75V15ZM12.5,2.5h-5V1.25h5V2.5Z")
+                                    p(id=`description-${testimonial.id}` class="text-slate-800 text-sm leading-6 max-h-40 overflow-auto")= testimonial.description
+                                    div(class="task__stats flex items-center justify-between text-xs text-slate-500")
+                                        span(class="flex items-center gap-2")
+                                            i.ion-icon(name="calendar")
+                                            time(datetime=testimonial.date)= testimonial.date
+                                        span(id=`task_owner-${testimonial.id}` class="task__owner bg-danger rounded-full w-3 h-3 inline-block")
+                                    div(class="flex justify-end")
+                                        // uso JSON.stringify para no romper si la descripción trae comillas
+                                        button(type="button" class="btn border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm rounded-md px-3 py-1.5 info" onclick=`openModal(${testimonial.id}, ${JSON.stringify(testimonial.description)}, ${testimonial.state})`) + info
 
-                            .task__tags
+                // ---------- ACEPTADOS ----------
+                section#accepted
+                    header(class="flex items-center justify-between mb-3")
+                        h2(class="text-base font-semibold text-slate-700 flex items-center gap-2")
+                            span(class="rounded-full bg-emerald-500 w-2.5 h-2.5 inline-block")
+                            | Aceptado
+                    div(class="project bg-gray-50 rounded-2xl p-3")
+                        div(class="project-tasks grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5")
+                            each testimonial in TestimonialsAcepted
+                                div(draggable="true" id=`testimonial-${testimonial.id}` data-id=testimonial.id data-state="accepted" class="task relative bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-3")
+                                    button.btn-borrar(type="button" aria-label="Eliminar feedback" data-url=`/testimonial/delete-testimonial/${testimonial.id}` onclick=`deleteTestimonial(event, ${testimonial.id})` class="absolute top-2 right-2")
+                                        svg.icon(viewBox="0 0 15 17.5" height="18" width="16" xmlns="http://www.w3.org/2000/svg")
+                                            path#Fill(transform="translate(-2.5 -1.25)" d="M15,18.75H5A1.251,1.251,0,0,1,3.75,17.5V5H2.5V3.75h15V5H16.25V17.5A1.251,1.251,0,0,1,15,18.75ZM5,5V17.5H15V5Zm7.5,10H11.25V7.5H12.5V15ZM8.75,15H7.5V7.5H8.75V15ZM12.5,2.5h-5V1.25h5V2.5Z")
+                                    p(id=`description-${testimonial.id}` class="text-slate-800 text-sm leading-6 max-h-40 overflow-auto")= testimonial.description
+                                    div(class="task__stats flex items-center justify-between text-xs text-slate-500")
+                                        span(class="flex items-center gap-2")
+                                            i.ion-icon(name="calendar")
+                                            time(datetime=testimonial.date)= testimonial.date
+                                        span(id=`task_owner-${testimonial.id}` class="task__owner bg-success rounded-full w-3 h-3 inline-block")
+                                    div(class="flex justify-end")
+                                        button(type="button" class="btn border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm rounded-md px-3 py-1.5 info" onclick=`openModal(${testimonial.id}, ${JSON.stringify(testimonial.description)}, ${testimonial.state})`) + info
 
-                            p(id=`description-${testimonial.id}`)= testimonial.description
-                            .task__stats
-                                span
-                                    time(datetime="2021-11-24T20:00:00")
-                                span
-                                    i.ion-icon(name="flag")= testimonial.date
-
-                                span.task__owner.bg-danger(id=`task_owner-${testimonial.id}`) 
-
-                                button.btn.border.border-secondary.info(type="button" onclick=`openModal(${testimonial.id}, '${testimonial.description}', ${testimonial.state})`) + info
-
-                .project-tasks
-                    each testimonial in TestimonialsAcepted
-                        .task(draggable='true' id=`testimonial-${testimonial.id}`)
-                            button.btn-borrar(type="button" data-url=`/testimonial/delete-testimonial/${testimonial.id}` onclick=`deleteTestimonial(event,${testimonial.id})`)
-                                svg.icon(viewBox="0 0 15 17.5" height="17.5" width="15" xmlns="http://www.w3.org/2000/svg")
-                                    path#Fill(transform="translate(-2.5 -1.25)" d="M15,18.75H5A1.251,1.251,0,0,1,3.75,17.5V5H2.5V3.75h15V5H16.25V17.5A1.251,1.251,0,0,1,15,18.75ZM5,5V17.5H15V5Zm7.5,10H11.25V7.5H12.5V15ZM8.75,15H7.5V7.5H8.75V15ZM12.5,2.5h-5V1.25h5V2.5Z")
-
-                            .task__tags
-
-                            p(id=`description-${testimonial.id}`)= testimonial.description
-                            .task__stats
-                                span
-                                    time(datetime="2021-11-24T20:00:00")
-                                span
-                                    i.ion-icon(name="flag")= testimonial.date
-                                span.task__owner.bg-success(id=`task_owner-${testimonial.id}`) 
-
-                                button.btn.border.border-secondary.info(type="button" onclick=`openModal(${testimonial.id}, '${testimonial.description}', ${testimonial.state})`) + info
-
-
-
+        // ====== MODAL ======
         #myModal.hidden.modal.fixed.inset-0.z-50.h-screen.overflow-auto.bg-gray-800.bg-opacity-75.flex.justify-center.items-center.px-2
-            .modal-dialog.mx-auto.mt-16.w-full
-                .modal-content.bg-white.p-8.rounded-lg.shadow-lg
-                    .modal-header.bg-blue-500.text-white.py-4.rounded-t-lg
-                        h5.modal-title#exampleModalLabela.text-lg.font-bold.text-center Actualizar FeedBack
-
-                    .modal-body
-                        form(action="/testimonial/update-testimonial" method="POST" id="form_testimonial")
-                            .form-group.mb-4
-                                label(for="modal-description" class="text-gray-700 block mb-2 mt-4 ml-1") Descripción:
+            .modal-dialog.mx-auto.mt-16.w-full.max-w-xl
+                .modal-content.bg-white.rounded-xl.shadow-lg.overflow-hidden
+                    .modal-header.bg-blue-600.text-white.py-4.px-6
+                        h5#exampleModalLabela.text-lg.font-bold.text-center Actualizar feedback
+                    .modal-body.px-6.py-5
+                        form#form_testimonial(action="/testimonial/update-testimonial" method="POST")
+                            .mb-4
+                                label(for="modal-description" class="text-gray-700 block mb-2") Descripción
                                 input#modal-description.form-control(type="text" name="description" class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-blue-500")
-                            .form-group.form-check.mb-4
-                                input#modal-state.form-check-input(type="checkbox" name="state" class="form-checkbox text-blue-500 ml-1 h-5 w-5 mr-2")
-                                label.form-check-label(for="modal-state" class="text-gray-700") Aceptado
+                            .flex.items-center.gap-3.mb-2
+                                input#modal-state.form-check-input(type="checkbox" name="state" class="form-checkbox text-blue-600 h-5 w-5")
+                                label(for="modal-state" class="text-gray-700 select-none") Aceptado
                             input#modal-id(type="hidden" name="id")
-                            .modal-footer.bg-gray-100.rounded-b-lg.py-4.px-2.flex.justify-end
-                                button#closeModalButton.btn.btn-secondary(type="button" aria-label="Close" class="mr-2 px-6 py-2 rounded-md text-white bg-gray-500 hover:bg-gray-600 focus:outline-none focus:border-gray-700 focus:ring focus:ring-gray-200") Cerrar
+                            .modal-footer.bg-gray-50.py-4.px-4.flex.justify-end.gap-3
+                                button#closeModalButton.btn(type="button" aria-label="Cerrar" class="px-4 py-2 rounded-md text-slate-700 bg-white border border-slate-300 hover:bg-slate-50") Cerrar
                                 button.btn.btn-primary(type="submit" class="px-6 py-2 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:border-blue-700 focus:ring focus:ring-blue-200") Enviar
-
-
-
-

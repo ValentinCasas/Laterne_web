@@ -1,95 +1,86 @@
 extends layout_tailwind
 
-
 block content
-
     title Usuarios
 
-    head 
-
+    head
         script(src="/users_fetch.js" defer)
         script(src="/drag_and_drop.js" defer)
-
         link(rel="stylesheet" href="/dist/drag_and_drop.css")
 
     body
+        // Contenedor principal
+        div(class="max-w-7xl mx-auto px-4 lg:px-8 py-6")
+            // Grid: formulario (2/5) + listado (3/5)
+            div(class="grid grid-cols-1 lg:grid-cols-5 gap-6")
 
+                // ===========================
+                // FORMULARIO
+                // ===========================
+                form#form_user(class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-5 space-y-6")
 
-        form(id="form_user" class="max-w-md mx-auto mb-2 mt-20 p-6 bg-white rounded shadow-md")
-            
-            .w-full
-                .relative.h-10.w-full(class='min-w-[200px]')
-                    input.peer.h-full.w-full.border.border-blue-gray-200.bg-transparent.px-3.font-sans.text-sm.font-normal.text-blue-gray-700.outline.outline-0.transition-all(type="text" name="name" id="name" class='rounded-[7px] py-6 placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200 focus:border-2 focus:border-pink-500 focus:border-t-transparent focus:outline-0 disabled:border-0 disabled:bg-blue-gray-50' placeholder=' ')
-                    label.pointer-events-none.absolute.left-0.flex.h-full.w-full.select-none.font-normal.leading-tight.text-blue-gray-400.transition-all(class="before:content[' '] after:content[' '] -top-1.5 text-[11px] before:pointer-events-none before:mt-[6.5px] before:mr-1 before:box-border before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-t before:border-l before:border-blue-gray-200 before:transition-all after:pointer-events-none after:mt-[6.5px] after:ml-1 after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow after:rounded-tr-md after:border-t after:border-r after:border-blue-gray-200 after:transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-blue-gray-500 peer-placeholder-shown:before:border-transparent peer-placeholder-shown:after:border-transparent peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-pink-500 peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:border-pink-500 peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:border-pink-500 peer-disabled:text-transparent peer-disabled:before:border-transparent peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500")
-                        | NOMBRE
+                    // Nombre
+                    div(class="space-y-1")
+                        label(for="name" class="block text-sm font-medium text-slate-700") NOMBRE
+                        input#name(type="text" name="name" placeholder="Ej: Juan Pérez" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500")
 
-            .w-full.my-10
-                .relative.h-10.w-full(class='min-w-[200px]')
-                    input.peer.h-full.w-full.border.border-blue-gray-200.bg-transparent.px-3.font-sans.text-sm.font-normal.text-blue-gray-700.outline.outline-0.transition-all(type="email" name="email" id="email" class='rounded-[7px] py-6 placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200 focus:border-2 focus:border-pink-500 focus:border-t-transparent focus:outline-0 disabled:border-0 disabled:bg-blue-gray-50' placeholder=' ')
-                    label.pointer-events-none.absolute.left-0.flex.h-full.w-full.select-none.font-normal.leading-tight.text-blue-gray-400.transition-all(class="before:content[' '] after:content[' '] -top-1.5 text-[11px] before:pointer-events-none before:mt-[6.5px] before:mr-1 before:box-border before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-t before:border-l before:border-blue-gray-200 before:transition-all after:pointer-events-none after:mt-[6.5px] after:ml-1 after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow after:rounded-tr-md after:border-t after:border-r after:border-blue-gray-200 after:transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-blue-gray-500 peer-placeholder-shown:before:border-transparent peer-placeholder-shown:after:border-transparent peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-pink-500 peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:border-pink-500 peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:border-pink-500 peer-disabled:text-transparent peer-disabled:before:border-transparent peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500")
-                        | EMAIL
+                    // Email
+                    div(class="space-y-1")
+                        label(for="email" class="block text-sm font-medium text-slate-700") EMAIL
+                        input#email(type="email" name="email" placeholder="usuario@dominio.com" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500")
 
-            .w-full.my-5
-                .relative.h-10.w-full(class='min-w-[200px]')
-                    input.peer.h-full.w-full.border.border-blue-gray-200.bg-transparent.px-3.font-sans.text-sm.font-normal.text-blue-gray-700.outline.outline-0.transition-all(type="password" name="password" id="password" class='rounded-[7px] py-6 placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200 focus:border-2 focus:border-pink-500 focus:border-t-transparent focus:outline-0 disabled:border-0 disabled:bg-blue-gray-50' placeholder=' ')
-                    label.pointer-events-none.absolute.left-0.flex.h-full.w-full.select-none.font-normal.leading-tight.text-blue-gray-400.transition-all(class="before:content[' '] after:content[' '] -top-1.5 text-[11px] before:pointer-events-none before:mt-[6.5px] before:mr-1 before:box-border before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-t before:border-l before:border-blue-gray-200 before:transition-all after:pointer-events-none after:mt-[6.5px] after:ml-1 after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow after:rounded-tr-md after:border-t after:border-r after:border-blue-gray-200 after:transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-blue-gray-500 peer-placeholder-shown:before:border-transparent peer-placeholder-shown:after:border-transparent peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-pink-500 peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:border-pink-500 peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:border-pink-500 peer-disabled:text-transparent peer-disabled:before:border-transparent peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500")
-                        | CONTRASEÑA
+                    // Contraseña
+                    div(class="space-y-1")
+                        label(for="password" class="block text-sm font-medium text-slate-700") CONTRASEÑA
+                        input#password(type="password" name="password" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500")
 
-            .relative.h-16.w-full.my-10(class='min-w-[200px]')
-                select.peer.h-full.w-full.border.border-blue-gray-200.border-t-transparent.bg-transparent.px-3.font-sans.text-sm.font-normal.text-blue-gray-700.outline.outline-0.transition-all(name="role" id="role"  class='rounded-[7px] py-2 placeholder-shown:border placeholder-shown:border-blue-gray-200 placeholder-shown:border-t-blue-gray-200 empty:!bg-red-500 focus:border-2 focus:border-pink-500 focus:border-t-transparent focus:outline-0 disabled:border-0 disabled:bg-blue-gray-50')
-                    option(value="1") Administrador
-                    option(value="2") Empleado
-                label.pointer-events-none.absolute.left-0.flex.h-full.w-full.select-none.font-normal.leading-tight.text-blue-gray-400.transition-all(class="before:content[' '] after:content[' '] -top-1.5 text-[11px] before:pointer-events-none before:mt-[6.5px] before:mr-1 before:box-border before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-t before:border-l before:border-blue-gray-200 before:transition-all after:pointer-events-none after:mt-[6.5px] after:ml-1 after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow after:rounded-tr-md after:border-t after:border-r after:border-blue-gray-200 after:transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-blue-gray-500 peer-placeholder-shown:before:border-transparent peer-placeholder-shown:after:border-transparent peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-pink-500 peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:border-pink-500 peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:border-pink-500 peer-disabled:text-transparent peer-disabled:before:border-transparent peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500")
-                    | ROL
-            
-            
+                    // Rol
+                    div(class="space-y-1")
+                        label(for="role" class="block text-sm font-medium text-slate-700") ROL
+                        select#role(name="role" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-500")
+                            option(value="1") Administrador
+                            option(value="2") Empleado
 
-            div.mb-3.container
-                .header
-                    svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
-                        g#SVGRepo_bgCarrier(stroke-width="0")
-                        g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
-                        g#SVGRepo_iconCarrier
-                            path(d="M7 10V9C7 6.23858 9.23858 4 12 4C14.7614 4 17 6.23858 17 9V10C19.2091 10 21 11.7909 21 14C21 15.4806 20.1956 16.8084 19 17.5M7 10C4.79086 10 3 11.7909 3 14C3 15.4806 3.8044 16.8084 5 17.5M7 10C7.43285 10 7.84965 10.0688 8.24006 10.1959" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round")
-                    p imagen
-                label.footer(for="imageFile")
-                    svg(fill="#000000" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg")
-                        g#SVGRepo_bgCarrier(stroke-width="0")
-                        g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
-                        g#SVGRepo_iconCarrier
-                            path(d="M15.331 6H8.5v20h15V14.154h-8.169")
-                            path(d="M18.153 6h-.009v5.342H23.5v-.002")
-                    p Nada seleccionado
-                    svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg")
-                        g#SVGRepo_bgCarrier(stroke-width="0")
-                        g#SVGRepo_tracerCarrier(stroke-linecap="round" stroke-linejoin="round")
-                        g#SVGRepo_iconCarrier
-                            path(d="M5.16565 10.1534C5.07629 8.99181 5.99473 8 7.15975 8H16.8402C18.0053 8 18.9237 8.9918 18.8344 10.1534L18.142 19.1534C18.0619 20.1954 17.193 21 16.1479 21H7.85206C6.80699 21 5.93811 20.1954 5.85795 19.1534L5.16565 10.1534Z" stroke="#000000" stroke-width="2")
-                            path(d="M19.5 5H4.5" stroke="#000000" stroke-width="2" stroke-linecap="round")
-                            path(d="M10 3C10 2.44772 10.4477 2 11 2H13C13.5523 2 14 2.44772 14 3V5H10V3Z" stroke="#000000" stroke-width="2")
-                input#file(type="file" name="imageFile" accept=".jpg, .jpeg, .png, .webp, ")
+                    // Upload (mantiene tus clases/ids para drag_and_drop.js)
+                    div(class="space-y-2")
+                        span(class="block text-sm font-medium text-slate-700") IMAGEN
+                        .container
+                            .header(class="rounded-xl border-2 border-dashed border-sky-300 bg-sky-50/40 p-6 flex flex-col items-center justify-center gap-3 text-slate-600")
+                                svg(viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-20 h-20")
+                                    path(d="M7 10V9C7 6.23858 9.23858 4 12 4C14.7614 4 17 6.23858 17 9V10C19.2091 10 21 11.7909 21 14C21 15.4806 20.1956 16.8084 19 17.5M7 10C4.79086 10 3 11.7909 3 14C3 15.4806 3.8044 16.8084 5 17.5M7 10C7.43285 10 7.84965 10.0688 8.24006 10.1959" stroke="#0f172a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round")
+                                p(class="text-sm") Arrastrá una imagen o hacé click abajo
+                        // Nota: el label ahora referencia al input real (id="file")
+                        label.footer(for="file" class="rounded-lg bg-slate-50 px-3 py-2 flex items-center justify-between gap-2 cursor-pointer")
+                            span(class="text-sm text-slate-600 flex-1 text-center") Nada seleccionado
+                            svg(fill="#000000" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6")
+                                path(d="M15.331 6H8.5v20h15V14.154h-8.169")
+                                path(d="M18.153 6h-.009v5.342H23.5v-.002")
+                        input#file(type="file" name="imageFile" accept=".jpg,.jpeg,.png,.webp" hidden)
 
-            div.flex.justify-end
-                button(type="submit" class="bg-blue-500 mt-4 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") Crear 
+                    div(class="flex items-center justify-end pt-2")
+                        button(type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition") Crear
 
+                // ===========================
+                // LISTADO / TEAM
+                // ===========================
+                section(class="lg:col-span-3")
+                    div(class="bg-white rounded-2xl shadow-sm p-5")
+                        header(class="space-y-1 mb-5")
+                            h2(class="text-2xl font-bold tracking-tight") Team Laterne
+                            p(class="text-slate-500 text-sm") Vista específicamente para administradores.
 
-        .bg-white
-            .mx-auto.max-w-7xl.py-12.px-6(class='lg:px-8 lg:py-24')
-                .space-y-12
-                    .space-y-5(class='sm:space-y-4 md:max-w-xl lg:max-w-3xl xl:max-w-none')
-                        h2.text-3xl.font-bold.tracking-tight(class='sm:text-4xl') Team Laterne
-                        p.text-xl.text-gray-500
-                            | Vista especificamente para administradores.
-                    ul.space-y-12#container-users(role='list' class='sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-3 lg:gap-x-8')
-                        each user in Users
-                            li(id=`card-${user.id}`).shadow-lg
-                                .space-y-4
-                                    .aspect-w-3.aspect-h-2
-                                        img.rounded-lg.object-cover.shadow-lg.h-80.w-full.border(src=`${user.imageUrl == "avatar_profile_default.png" ? "/avatar_profile_default.png" : "/" + user.imageUrl}` ,  alt='')
-                                    .space-y-2.p-3
-                                        .space-y-1.text-lg.font-medium.leading-6
-                                            h3=user.name
-                                            p=user.role == 1 ? "Admin" : "Empleado"
-                                            div.flex.justify-between
-                                                a(href=`/user/view-edit-users/${user.id}`).text-indigo-600 EDITAR
-                                                a(href=`/auth/delete-user/${user.id}` data-user-id=user.id, class="delete-user bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") ELIMINAR
+                        // Grid de usuarios (conserva #container-users)
+                        ul#container-users(role="list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6")
+                            each user in Users
+                                li(id=`card-${user.id}` class="rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col")
+                                    // Imagen
+                                    div(class="w-full h-64 bg-slate-100 overflow-hidden")
+                                        img(src=`${user.imageUrl == "avatar_profile_default.png" ? "/avatar_profile_default.png" : "/" + user.imageUrl}` alt=user.name class="w-full h-full object-cover")
+                                    // Contenido
+                                    div(class="p-4 space-y-1")
+                                        h3(class="text-lg font-semibold text-slate-800")= user.name
+                                        p(class="text-sm text-slate-600")= (user.role == 1 ? "Admin" : "Empleado")
+                                    // Acciones (sin absolute → mejor en mobile)
+                                    div(class="grid grid-cols-2 divide-x border-t border-slate-200 mt-auto")
+                                        a(href=`/user/view-edit-users/${user.id}` class="text-center py-3 text-slate-700 hover:bg-slate-50 font-medium") EDITAR
+                                        a(href=`/auth/delete-user/${user.id}` data-user-id=user.id class="delete-user text-center py-3 text-rose-600 hover:bg-rose-50 font-medium") ELIMINAR
