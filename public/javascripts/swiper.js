@@ -119,3 +119,38 @@ window.onclick = function (event) {
 };
 
 
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.querySelector('.swiper-container-categories');
+  if (!container) return;
+
+  const wrapper = container.querySelector('.swiper-wrapper');
+  const hidden = document.getElementById('selectedImage');
+
+  const clear = () => {
+    wrapper.querySelectorAll('.swiper-slide.is-selected')
+      .forEach(s => s.classList.remove('is-selected'));
+  };
+
+  // Click en cualquier parte del cuadrado
+  wrapper.addEventListener('click', (e) => {
+    const slide = e.target.closest('.swiper-slide');
+    if (!slide) return;
+
+    clear();
+    slide.classList.add('is-selected');
+
+    // toma el nombre desde el contenedor o, si no, desde la img (como lo tenías)
+    const name = slide.dataset.name || slide.querySelector('img')?.dataset.name || '';
+    if (hidden) hidden.value = name;
+  });
+
+  // Accesibilidad: Enter o Espacio también seleccionan
+  wrapper.addEventListener('keydown', (e) => {
+    const slide = e.target.closest('.swiper-slide');
+    if (!slide) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      slide.click();
+    }
+  });
+});

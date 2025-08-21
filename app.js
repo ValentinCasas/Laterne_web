@@ -39,7 +39,7 @@ app.use(session({
   saveUninitialized: true,
 }));
 
-app.set('view engine', 'jade');
+app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(cors());

@@ -3,9 +3,26 @@
 @import 'tailwindcss/utilities';
 
 
-.selectable-image.selected {
-    border: 2px solid rgb(194, 52, 219);
+/* hace clickeable y con transición */
+.swiper-slide {
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+    /* gris clarito */
+    border-radius: 12px;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+/* estado seleccionado en la TARJETA (no solo la imagen) */
+.swiper-slide.is-selected {
+     border: 2px solid rgb(194, 52, 219);
     box-shadow: 0 0 10px rgba(188, 52, 219, 0.7);
     transition: border 0.3s ease, box-shadow 0.3s ease; 
 
+}
+
+/* por si antes pintabas solo la imagen, lo anulamos */
+.selectable-image.selected,
+.swiper-slide.is-selected .selectable-image.selected {
+    box-shadow: none !important;
+    border-color: transparent !important;
 }
