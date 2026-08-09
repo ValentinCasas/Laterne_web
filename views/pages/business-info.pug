@@ -1,0 +1,44 @@
+extends ../layouts/admin
+include ../mixins/forms
+
+block title
+  | Información del negocio · Laterne
+
+block append styles
+  link(rel='stylesheet' href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css')
+  link(rel='stylesheet' href='/css/pages/business-info.css')
+
+block content
+  .page-shell
+    form#form_info.panel.mx-auto.max-w-4xl
+      input#input-latitude(type='hidden' name='latitude' value=BusinessInfo.latitude)
+      input#input-longitude(type='hidden' name='longitude' value=BusinessInfo.longitude)
+
+      header
+        h1.text-2xl.font-bold Información de Laterne
+        p.mt-2.text-sm.text-gray-600 Actualizá los datos de contacto, ubicación y redes sociales.
+
+      .mt-8.space-y-8
+        section.space-y-5(aria-labelledby='location-title')
+          h2#location-title.text-lg.font-semibold Ubicación
+          +field('Dirección', 'address', 'text', BusinessInfo.address)(required autocomplete='street-address')
+          #map.h-80.overflow-hidden.rounded-xl.border.border-gray-200(aria-label='Seleccionar ubicación en el mapa')
+
+        section.space-y-5.border-t.border-gray-200.pt-8(aria-labelledby='contact-title')
+          h2#contact-title.text-lg.font-semibold Contacto
+          .grid.gap-5(class='sm:grid-cols-2')
+            +field('Teléfono', 'phoneNumber', 'tel', BusinessInfo.phoneNumber)(required autocomplete='tel')
+            +field('Email', 'email', 'email', BusinessInfo.email)(required autocomplete='email')
+
+        section.space-y-5.border-t.border-gray-200.pt-8(aria-labelledby='social-title')
+          h2#social-title.text-lg.font-semibold Redes sociales
+          .grid.gap-5(class='sm:grid-cols-2')
+            +field('Facebook', 'facebookUrl', 'url', BusinessInfo.facebookUrl)(placeholder='https://facebook.com/...')
+            +field('Instagram', 'instagramUrl', 'url', BusinessInfo.instagramUrl)(placeholder='https://instagram.com/...')
+
+      .mt-8.flex.justify-end
+        button.button-primary(type='submit') Guardar cambios
+
+block append scripts
+  script(src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js')
+  script(src='/js/admin/business-info.js' defer)

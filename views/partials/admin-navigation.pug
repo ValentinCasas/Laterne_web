@@ -1,0 +1,36 @@
+nav.border-b.border-gray-200.bg-white.shadow-sm(aria-label='Navegación principal')
+  .mx-auto.flex.max-w-7xl.flex-wrap.items-center.justify-between.gap-3.px-4.py-3(class='sm:px-6 lg:px-8')
+    a.flex.items-center.gap-2(href='/' aria-label='Ir al inicio de Laterne')
+      img.h-10.w-auto(src='/images/banners/brand.png' alt='Laterne')
+
+    button.rounded-lg.border.border-gray-300.p-2.text-gray-700(type='button' data-menu-toggle aria-controls='admin-navigation' aria-expanded='false' class='lg:hidden')
+      span.sr-only Abrir navegación
+      svg.h-6.w-6(viewBox='0 0 24 24' fill='none' stroke='currentColor' aria-hidden='true')
+        path(stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 6h16M4 12h16M4 18h16')
+
+    #admin-navigation.hidden.w-full.items-center.gap-1(class='lg:flex lg:w-auto')
+      a.admin-link(href='/') Inicio
+      a.admin-link(href='/card_virtual') Carta
+
+      if locals.isLoggedIn
+        a.admin-link(href='/home') Resumen
+        details.relative
+          summary.admin-link.cursor-pointer.list-none Administración
+          .mt-2.grid.min-w-48.gap-1.rounded-xl.border.border-gray-200.bg-white.p-2.shadow-lg(class='lg:absolute lg:right-0 lg:z-50')
+            a.admin-link(href='/product/view-products') Productos
+            a.admin-link(href='/category/view-create-category') Categorías
+            a.admin-link(href='/testimonial/view-testimonials') Opiniones
+            a.admin-link(href='/event/view-create-event') Eventos
+            if locals.role === 1
+              a.admin-link(href='/user/view-users') Usuarios
+
+        details.relative
+          summary.admin-link.cursor-pointer.list-none Configuración
+          .mt-2.grid.min-w-48.gap-1.rounded-xl.border.border-gray-200.bg-white.p-2.shadow-lg(class='lg:absolute lg:right-0 lg:z-50')
+            a.admin-link(href='/businessInfo/view-businessInfo') Negocio
+            a.admin-link(href='/openingHour/view-opening-hour') Horarios
+            a.admin-link(href='/user/view-profile') Cuenta
+
+        a.admin-link(href='/auth/logout') Salir
+      else
+        a.admin-link(href='/auth/view-login') Ingresar

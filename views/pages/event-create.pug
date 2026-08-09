@@ -1,0 +1,63 @@
+extends ../layouts/admin
+include ../mixins/forms
+
+block title
+  | Eventos · Laterne
+
+block append styles
+  link(rel='stylesheet' href='/css/pages/events.css')
+  link(rel='stylesheet' href='/css/components/file-upload.css')
+
+block content
+  .page-shell.grid.gap-8(class='lg:grid-cols-2')
+    form#form_event.panel.h-fit
+      h1.text-2xl.font-bold Nuevo evento
+      p.mt-2.text-sm.text-gray-600 Publicá una fecha próxima en el sitio.
+
+      .mt-8.space-y-5
+        +field('Nombre', 'name', 'text', '')(required maxlength='120')
+        +textareaField('Descripción', 'description', '')(maxlength='500')
+        .grid.gap-5(class='sm:grid-cols-2')
+          +field('Fecha', 'date', 'date', '')(required)
+          +field('Hora', 'time', 'time', '')(required)
+        +field('Dirección', 'location', 'text', '')(required maxlength='200')
+        +fileUpload('Imagen del evento')
+
+      .mt-8.flex.justify-end
+        button.button-primary(type='submit') Crear evento
+
+    section(aria-labelledby='events-title')
+      h2#events-title.text-2xl.font-bold Eventos
+      label.sr-only(for='search-input') Buscar eventos
+      input#search-input.form-input.mt-4(type='search' placeholder='Buscar eventos…')
+
+      #container-events.mt-6.space-y-5.overflow-auto.pr-2(class='max-h-[75vh]')
+        each event in Events
+          - const eventDate = event.date ? new Date(event.date).toLocaleDateString('es-AR', { timeZone: 'UTC' }) : 'Sin fecha'
+          - const eventTime = event.time ? event.time.substring(0, 5) : 'Sin hora'
+          article.card.panel.relative.flex.gap-4.overflow-hidden.pb-16(id='card-' + event.id)
+            if event.imageUrl
+              img.h-36.w-36.shrink-0.rounded-xl.object-cover(src='/images/images_event/' + event.imageUrl alt='Imagen de ' + event.name)
+            else
+              .flex.h-36.w-36.shrink-0.items-center.justify-center.rounded-xl.bg-gray-100.text-sm.text-gray-500 Sin imagen
+            div
+              h3.text-lg.font-bold= event.name
+              p.mt-1.text-sm.text-gray-600= event.description
+              dl.mt-3.space-y-1.text-sm.text-gray-600
+                div.flex.gap-2
+                  dt.font-semibold Fecha:
+                  dd= eventDate
+                div.flex.gap-2
+                  dt.font-semibold Hora:
+                  dd= eventTime
+                div.flex.gap-2
+                  dt.font-semibold Lugar:
+                  dd= event.location
+            .absolute.inset-x-0.bottom-0.grid.grid-cols-2.border-t.border-gray-200
+              a.p-3.text-center.text-sm.font-semibold.text-gray-700(href='/event/view-edit-event/' + event.id class='hover:bg-gray-50') Editar
+              button.delete-event.border-l.border-gray-200.p-3.text-sm.font-semibold.text-red-600(type='button' data-event-id=event.id class='hover:bg-red-50') Eliminar
+
+block append scripts
+  script(src='/js/admin/file-upload.js' defer)
+  script(src='/js/admin/collection-tools.js' defer)
+  script(src='/js/admin/event-create.js' defer)

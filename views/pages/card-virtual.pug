@@ -1,0 +1,139 @@
+extends ../layouts/base
+
+block title
+  | Carta virtual · Laterne
+
+block append styles
+  link(rel='stylesheet' href='https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css')
+  link(rel='stylesheet' href='/css/pages/card-virtual.css')
+
+block body
+  .page
+    header.hero
+      .hero-inner
+        nav.topbar(aria-label='Navegación de la carta')
+          a.brand(href='/')
+            .brand-logo-original(aria-label='Laterne')
+              span.logo-laterne Laterne
+              span.logo-ampersand &
+              span.logo-dot .
+            .brand-text-block
+              p.brand-subtitle Carta virtual
+          a.home-link(href='/') Volver al inicio
+
+        .hero-content
+          p.eyebrow Cervezas · Cocina · Momentos
+          h1.hero-title
+            | Carta 
+            span Laterne
+          p.hero-description Elegí tus favoritos, recorré las categorías y armá tu pedido de forma rápida y clara.
+          .hero-actions
+            a.primary-button(href='#menu') Ver carta
+            button.secondary-button(type='button' data-cart-open) Ver pedido
+
+    section#menu.category-bar(aria-labelledby='category-title')
+      .category-inner
+        .category-head
+          h2#category-title.category-label Categorías
+          a.category-up(href='#') Arriba
+        .swiper.categorySwiper
+          .swiper-wrapper
+            if GroupedProducts && GroupedProducts.length
+              each group in GroupedProducts
+                .swiper-slide.category-slide
+                  a.category-pill(href='#category-' + group.category.id)
+                    img(src='/images/images_categories/' + group.category.imageUrl alt='')
+                    span= group.category.name
+            else
+              .swiper-slide.category-slide
+                .category-pill
+                  img(src='/images/images_categories/bottle-1-svgrepo-com.png' alt='')
+                  span Sin categorías
+
+    main.menu
+      if GroupedProducts && GroupedProducts.length
+        each group in GroupedProducts
+          section.category-section(id='category-' + group.category.id aria-labelledby='category-heading-' + group.category.id)
+            .category-sticky-title
+              .section-header
+                div
+                  p.section-kicker Laterne
+                  h2.section-title(id='category-heading-' + group.category.id)= group.category.name
+                p.product-count #{group.products.length} productos
+
+            .products-grid
+              each product in group.products
+                - const productImage = product.imageUrl && product.imageUrl !== 'product_default.png' ? '/images/images_product/' + product.imageUrl : '/images/image_defect/product_default.png'
+                - const productDescription = product.description || 'Sin descripción disponible.'
+                - const productPrice = product.price || 0
+                - const isSoldOut = product.availavility === 'agotado'
+                - const productId = product.id || product.name
+                article.product-card
+                  .product-image-box
+                    button.product-preview(type='button' data-product-preview data-image=productImage data-title=product.name aria-label='Ampliar imagen de ' + product.name)
+                      img.product-image(src=productImage alt='Imagen de ' + product.name)
+                    if isSoldOut
+                      .sold-out
+                        span Agotado
+                    else
+                      button.quick-add(type='button' data-add-product data-id=productId data-name=product.name data-price=productPrice data-image=productImage data-description=productDescription aria-label='Agregar ' + product.name) +
+
+                  .product-info
+                    div
+                      .product-top
+                        h3.product-name= product.name
+                        span.price-pill $ #{productPrice}
+                      p.product-description= productDescription
+                    .product-footer
+                      if isSoldOut
+                        span.unavailable-pill No disponible
+                      else
+                        span.available-pill Disponible
+                        button.add-button(type='button' data-add-product data-id=productId data-name=product.name data-price=productPrice data-image=productImage data-description=productDescription) Agregar
+      else
+        section.empty-state
+          .empty-icon(aria-hidden='true') 🍺
+          h2 Carta no disponible
+          p Todavía no hay productos cargados para mostrar.
+
+    button#contador-carrito.cart-floating(type='button' data-cart-open)
+      span.cart-icon(aria-hidden='true') 🛒
+      span.cart-text
+        small Pedido
+        strong
+          span#cantidad-productos 0
+          |  productos
+
+    #modal-carrito.modal(role='dialog' aria-modal='true' aria-labelledby='cart-title')
+      .cart-panel
+        .cart-header
+          div
+            p Laterne
+            h2#cart-title Tu pedido
+          button.close-button(type='button' data-cart-close aria-label='Cerrar pedido') ×
+        #items-carrito.cart-items
+          .cart-empty Todavía no agregaste productos.
+        .cart-footer
+          .total-row
+            span Total
+            strong#precio-total $ 0
+          .cart-actions
+            button.cart-action-secondary(type='button' data-cart-clear) Vaciar pedido
+            button.cart-action-primary(type='button' data-cart-copy) Copiar pedido
+
+    #productModal.modal(role='dialog' aria-modal='true' aria-labelledby='modalTitle')
+      .image-panel
+        button.image-close(type='button' data-product-modal-close aria-label='Cerrar imagen') ×
+        img#modalImage(src='' alt='Producto')
+        p#modalTitle.image-title
+
+    footer.footer
+      p.footer-logo
+        span.logo-laterne.footer-logo-laterne Laterne
+        span.logo-ampersand.footer-logo-ampersand &
+        span.logo-dot.footer-logo-dot .
+      p Carta virtual
+
+block append scripts
+  script(src='https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js' defer)
+  script(src='/js/site/cart.js' defer)

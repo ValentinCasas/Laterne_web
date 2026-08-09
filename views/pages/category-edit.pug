@@ -1,0 +1,44 @@
+extends ../layouts/admin
+include ../mixins/forms
+
+block title
+  | Editar categoría · Laterne
+
+block append styles
+  link(rel='stylesheet' href='https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css')
+  link(rel='stylesheet' href='/css/pages/categories.css')
+
+block content
+  .page-shell.grid.gap-8(class='lg:grid-cols-2')
+    form#form_edit_category.panel.h-fit
+      input(type='hidden' name='id' value=Category.id)
+      h1.text-2xl.font-bold Editar categoría
+
+      .mt-8.space-y-5
+        +field('Nombre', 'name', 'text', Category.name)(required maxlength='100')
+        +textareaField('Descripción', 'description', Category.description)(required maxlength='500')
+
+        fieldset
+          legend.form-label.mb-2 Ícono
+          .swiper-container-categories.overflow-hidden
+            .swiper-wrapper
+              each image in Images
+                .swiper-slide.flex.justify-center.rounded-xl.border.border-gray-200
+                  button.selectable-image.w-full.p-3(type='button' class=image.name === Category.imageUrl ? 'selected' : '' data-name=image.name aria-label='Usar ' + image.name)
+                    img.mx-auto.h-20.w-20.object-contain(src=image.path alt='')
+          input#selectedImage(type='hidden' name='selectedImage' value=Category.imageUrl required)
+
+      .mt-8.flex.justify-end
+        button.button-primary(type='submit') Guardar cambios
+
+    article#container-categories
+      .card.panel.flex.gap-5(id='card-' + Category.id)
+        img#category-image.h-28.w-28.object-contain(src='/images/images_categories/' + Category.imageUrl alt='Ícono de ' + Category.name)
+        div
+          h2#category-name.text-xl.font-bold= Category.name
+          p#category-description.mt-2.text-gray-600= Category.description
+
+block append scripts
+  script(src='https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js' defer)
+  script(src='/js/site/carousels.js' defer)
+  script(src='/js/admin/category-edit.js' defer)
