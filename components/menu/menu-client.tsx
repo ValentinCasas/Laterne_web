@@ -3,15 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import Swal from "sweetalert2";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 
 export type MenuProduct = {
   id: number;
+  slug: string;
   name: string;
   description: string;
   price: number;
   availability: string | null;
   image: string;
+  featured: boolean;
+  isNew: boolean;
+  recommended: boolean;
+  vegetarian: boolean;
+  vegan: boolean;
+  glutenFree: boolean;
+  alcoholFree: boolean;
+  promotionalPrice: number | null;
+  previousPrice: number | null;
 };
 export type MenuCategory = {
   id: number;
@@ -117,7 +128,15 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
   async function copyOrder() {
     if (!cart.length) return;
     await navigator.clipboard.writeText(orderText);
-    alert("Pedido copiado.");
+    await Swal.fire({
+      title: "Pedido copiado",
+      text: "Ya podés pegarlo donde quieras.",
+      icon: "success",
+      timer: 1800,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
   }
 
   return (
@@ -267,18 +286,50 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                       )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-5">
+                      {(product.featured || product.isNew || product.recommended) && (
+                        <div className="mb-2 flex flex-wrap gap-1.5">
+                          {product.featured && (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-black uppercase text-amber-300">
+                              Destacado
+                            </span>
+                          )}
+                          {product.isNew && (
+                            <span className="rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-black uppercase text-sky-300">
+                              Nuevo
+                            </span>
+                          )}
+                          {product.recommended && (
+                            <span className="rounded-full bg-pink-500/15 px-2 py-1 text-[10px] font-black uppercase text-pink-300">
+                              Recomendado
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-3">
                         <h3 className="min-w-0 flex-1 break-words text-sm font-black leading-tight sm:text-base">
                           {product.name}
                         </h3>
-                        <strong className="shrink-0 rounded-full bg-pink-500/15 px-2.5 py-1 text-xs text-pink-300 sm:px-3 sm:text-sm">
-                          {formatPrice(product.price)}
-                        </strong>
+                        <span className="shrink-0 text-right">
+                          {product.previousPrice && product.previousPrice > product.price && (
+                            <del className="block text-[10px] text-zinc-600">
+                              {formatPrice(product.previousPrice)}
+                            </del>
+                          )}
+                          <strong className="block rounded-full bg-pink-500/15 px-2.5 py-1 text-xs text-pink-300 sm:px-3 sm:text-sm">
+                            {formatPrice(product.price)}
+                          </strong>
+                        </span>
                       </div>
                       <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-500 sm:mt-3 sm:line-clamp-3 sm:text-sm">
                         {product.description || "Sin descripción disponible."}
                       </p>
                       <div className="mt-auto pt-3 sm:pt-5">
+                        <Link
+                          className="mb-2 block text-center text-xs font-bold text-zinc-400 hover:text-pink-300 sm:text-sm"
+                          href={`/productos/${product.slug}`}
+                        >
+                          Ver detalles
+                        </Link>
                         {soldOut ? (
                           <span className="text-xs font-bold text-red-300 sm:text-sm">No disponible</span>
                         ) : (

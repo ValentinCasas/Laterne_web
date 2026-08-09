@@ -9,6 +9,7 @@ datasource db {
 
 model BusinessInfo {
   id           Int     @id @default(autoincrement())
+  tenantId     Int     @unique
   latitude     String? @db.VarChar(255)
   longitude    String? @db.VarChar(255)
   address      String? @db.VarChar(255)
@@ -16,83 +17,423 @@ model BusinessInfo {
   phoneNumber  BigInt?
   instagramUrl String? @db.VarChar(255)
   facebookUrl  String? @db.VarChar(255)
+  tenant       Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("businessinfo")
 }
 
 model Category {
   id          Int               @id @default(autoincrement())
+  tenantId    Int
   name        String            @db.VarChar(255)
+  slug        String            @db.VarChar(180)
   description String            @db.VarChar(255)
   imageUrl    String            @db.VarChar(255)
+  status      String            @default("published") @db.VarChar(20)
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products    ProductCategory[]
 
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, sortOrder])
   @@map("category")
 }
 
 model Event {
   id          Int       @id @default(autoincrement())
+  tenantId    Int
   name        String    @db.VarChar(255)
   date        DateTime? @db.DateTime(0)
   time        DateTime? @db.Time(0)
   description String    @db.VarChar(255)
   location    String    @db.VarChar(255)
   imageUrl    String?   @db.VarChar(255)
+  status      String    @default("published") @db.VarChar(20)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, status, date])
   @@map("event")
 }
 
 model OpeningHour {
   id               Int       @id @default(autoincrement())
+  tenantId         Int
   dayOfWeek        String    @db.VarChar(255)
   morningStartTime DateTime? @db.Time(0)
   morningEndTime   DateTime? @db.Time(0)
   eveningStartTime DateTime? @db.Time(0)
   eveningEndTime   DateTime? @db.Time(0)
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@map("openinghour")
 }
 
 model Product {
-  id           Int               @id @default(autoincrement())
-  name         String            @db.VarChar(255)
-  description  String            @db.VarChar(700)
-  availability String?           @map("availavility") @db.VarChar(255)
-  price        Decimal?          @db.Decimal(10, 0)
-  imageUrl     String            @db.VarChar(255)
-  categories   ProductCategory[]
+  id                 Int               @id @default(autoincrement())
+  tenantId           Int
+  name               String            @db.VarChar(255)
+  slug               String            @db.VarChar(180)
+  description        String            @db.VarChar(700)
+  availability       String?           @map("availavility") @db.VarChar(255)
+  price              Decimal?          @db.Decimal(10, 0)
+  imageUrl           String            @db.VarChar(255)
+  status             String            @default("published") @db.VarChar(20)
+  featured           Boolean           @default(false)
+  isNew              Boolean           @default(false)
+  recommended        Boolean           @default(false)
+  vegetarian         Boolean           @default(false)
+  vegan              Boolean           @default(false)
+  glutenFree         Boolean           @default(false)
+  alcoholFree        Boolean           @default(false)
+  spiceLevel         Int               @default(0)
+  preparationMinutes Int?
+  promotionalPrice   Decimal?          @db.Decimal(10, 0)
+  previousPrice      Decimal?          @db.Decimal(10, 0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categories         ProductCategory[]
+  allergens          ProductAllergen[]
+  relatedFrom        ProductRelation[] @relation("ProductRelationFrom")
+  relatedTo          ProductRelation[] @relation("ProductRelationTo")
 
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, featured])
   @@map("product")
 }
 
 model ProductCategory {
   id         Int      @id @default(autoincrement())
+  tenantId   Int
   productId  Int
   categoryId Int
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product    Product  @relation(fields: [productId], references: [id], onDelete: NoAction, map: "productcategory_ibfk_1")
   category   Category @relation(fields: [categoryId], references: [id], onDelete: NoAction, map: "productcategory_ibfk_2")
 
+  @@unique([productId, categoryId])
   @@index([categoryId], map: "categoryId")
   @@index([productId], map: "productId")
+  @@index([tenantId])
   @@map("productcategory")
 }
 
 model Testimonial {
-  id          Int      @id @default(autoincrement())
-  description String   @db.VarChar(255)
-  state       Boolean
-  date        DateTime @db.Date
+  id               Int      @id @default(autoincrement())
+  tenantId         Int
+  description      String   @db.VarChar(255)
+  state            Boolean
+  moderationStatus String   @default("pending") @db.VarChar(20)
+  date             DateTime @db.Date
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, moderationStatus])
   @@map("testimonial")
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  name     String @db.VarChar(255)
-  email    String @db.VarChar(255)
-  password String @db.VarChar(255)
-  role     Int
-  imageUrl String @db.VarChar(255)
+  id            Int                @id @default(autoincrement())
+  name          String             @db.VarChar(255)
+  email         String             @db.VarChar(255)
+  password      String             @db.VarChar(255)
+  role          Int
+  imageUrl      String             @db.VarChar(255)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  memberships   TenantMembership[]
+  sessions      AuthSession[]
+  auditLogs     AuditLog[]
+  assignedLeads SalesLead[]        @relation("AssignedSalesLeads")
 
+  @@unique([email])
   @@map("user")
+}
+
+model Tenant {
+  id                Int                @id @default(autoincrement())
+  name              String             @db.VarChar(160)
+  slug              String             @unique @db.VarChar(120)
+  status            String             @default("active") @db.VarChar(20)
+  defaultCurrency   String             @default("ARS") @db.VarChar(3)
+  locale            String             @default("es-AR") @db.VarChar(12)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  businessInfo      BusinessInfo?
+  categories        Category[]
+  products          Product[]
+  productCategories ProductCategory[]
+  events            Event[]
+  openingHours      OpeningHour[]
+  testimonials      Testimonial[]
+  memberships       TenantMembership[]
+  roles             Role[]
+  auditLogs         AuditLog[]
+
+  @@map("tenant")
+}
+
+model Role {
+  id          Int                @id @default(autoincrement())
+  tenantId    Int
+  key         String             @db.VarChar(60)
+  name        String             @db.VarChar(100)
+  description String?            @db.VarChar(255)
+  system      Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  memberships TenantMembership[]
+
+  @@unique([tenantId, key])
+  @@map("role")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique @db.VarChar(100)
+  name        String           @db.VarChar(120)
+  description String?          @db.VarChar(255)
+  roles       RolePermission[]
+
+  @@map("permission")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("rolepermission")
+}
+
+model TenantMembership {
+  id        Int           @id @default(autoincrement())
+  tenantId  Int
+  userId    Int
+  roleId    Int
+  status    String        @default("active") @db.VarChar(20)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions  AuthSession[]
+
+  @@unique([tenantId, userId])
+  @@index([userId, status])
+  @@map("tenantmembership")
+}
+
+model AuthSession {
+  id           Int              @id @default(autoincrement())
+  userId       Int
+  membershipId Int
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime         @default(now())
+  lastSeenAt   DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership   TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("authsession")
+}
+
+model LoginAttempt {
+  id         BigInt   @id @default(autoincrement())
+  emailHash  String   @db.VarChar(64)
+  ipHash     String   @db.VarChar(64)
+  successful Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([emailHash, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("loginattempt")
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   Int
+  userId     Int?
+  action     String   @db.VarChar(80)
+  entityType String   @db.VarChar(80)
+  entityId   String?  @db.VarChar(80)
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?  @db.VarChar(64)
+  result     String   @default("success") @db.VarChar(20)
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@map("auditlog")
+}
+
+model Plan {
+  id           Int           @id @default(autoincrement())
+  slug         String        @unique @db.VarChar(100)
+  name         String        @db.VarChar(140)
+  summary      String        @db.VarChar(500)
+  audience     String?       @db.VarChar(255)
+  type         String        @default("implementation") @db.VarChar(30)
+  billingMode  String        @default("one_time") @db.VarChar(30)
+  badge        String?       @db.VarChar(80)
+  highlighted  Boolean       @default(false)
+  active       Boolean       @default(true)
+  displayOrder Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  prices       PlanPrice[]
+  features     PlanFeature[]
+  leads        SalesLead[]
+
+  @@index([active, type, displayOrder])
+  @@map("plan")
+}
+
+model PlanPrice {
+  id            Int       @id @default(autoincrement())
+  planId        Int
+  currency      String    @default("ARS") @db.VarChar(3)
+  amount        Decimal?  @db.Decimal(14, 0)
+  billingPeriod String    @default("once") @db.VarChar(20)
+  active        Boolean   @default(true)
+  validFrom     DateTime  @default(now())
+  validUntil    DateTime?
+  plan          Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, active, validFrom])
+  @@map("planprice")
+}
+
+model Feature {
+  id           Int           @id @default(autoincrement())
+  key          String        @unique @db.VarChar(100)
+  name         String        @db.VarChar(180)
+  description  String?       @db.VarChar(500)
+  category     String        @default("general") @db.VarChar(80)
+  displayOrder Int           @default(0)
+  active       Boolean       @default(true)
+  plans        PlanFeature[]
+
+  @@index([category, displayOrder])
+  @@map("feature")
+}
+
+model PlanFeature {
+  id           Int     @id @default(autoincrement())
+  planId       Int
+  featureId    Int
+  included     Boolean @default(true)
+  detail       String? @db.VarChar(255)
+  displayOrder Int     @default(0)
+  plan         Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature      Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId])
+  @@index([planId, displayOrder])
+  @@map("planfeature")
+}
+
+model SalesLead {
+  id                  Int                 @id @default(autoincrement())
+  status              String              @default("new") @db.VarChar(30)
+  fullName            String              @db.VarChar(160)
+  businessName        String              @db.VarChar(180)
+  businessType        String              @db.VarChar(80)
+  city                String              @db.VarChar(100)
+  province            String              @db.VarChar(100)
+  phone               String              @db.VarChar(60)
+  email               String              @db.VarChar(190)
+  approximateProducts Int?
+  branches            Int                 @default(1)
+  planId              Int?
+  requiredFeatures    Json?
+  approximateBudget   String?             @db.VarChar(100)
+  message             String?             @db.Text
+  consent             Boolean             @default(false)
+  source              String              @default("direct") @db.VarChar(100)
+  ipHash              String?             @db.VarChar(64)
+  assignedToId        Int?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  plan                Plan?               @relation(fields: [planId], references: [id], onDelete: SetNull)
+  assignedTo          User?               @relation("AssignedSalesLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
+  history             LeadStatusHistory[]
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("saleslead")
+}
+
+model LeadStatusHistory {
+  id         Int       @id @default(autoincrement())
+  leadId     Int
+  userId     Int?
+  fromStatus String?   @db.VarChar(30)
+  toStatus   String    @db.VarChar(30)
+  note       String?   @db.VarChar(500)
+  createdAt  DateTime  @default(now())
+  lead       SalesLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@map("leadstatushistory")
+}
+
+model Allergen {
+  id       Int               @id @default(autoincrement())
+  tenantId Int
+  name     String            @db.VarChar(100)
+  slug     String            @db.VarChar(100)
+  products ProductAllergen[]
+
+  @@unique([tenantId, slug])
+  @@map("allergen")
+}
+
+model ProductAllergen {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  allergenId Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  allergen   Allergen @relation(fields: [allergenId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, allergenId])
+  @@map("productallergen")
+}
+
+model ProductRelation {
+  id               Int     @id @default(autoincrement())
+  productId        Int
+  relatedProductId Int
+  relationType     String  @default("recommended") @db.VarChar(30)
+  product          Product @relation("ProductRelationFrom", fields: [productId], references: [id], onDelete: Cascade)
+  relatedProduct   Product @relation("ProductRelationTo", fields: [relatedProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedProductId, relationType])
+  @@map("productrelation")
+}
+
+model CommercialFaq {
+  id           Int     @id @default(autoincrement())
+  audience     String  @default("plans") @db.VarChar(40)
+  question     String  @db.VarChar(255)
+  answer       String  @db.Text
+  active       Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  @@index([audience, active, displayOrder])
+  @@map("commercialfaq")
 }
