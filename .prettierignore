@@ -1,0 +1,8 @@
+.next
+node_modules
+public/vendor
+public/images
+package-lock.json
+prisma
+AGENTS.md
+CLAUDE.md
