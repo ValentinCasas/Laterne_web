@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model BusinessInfo {
+  id           Int     @id @default(autoincrement())
+  latitude     String? @db.VarChar(255)
+  longitude    String? @db.VarChar(255)
+  address      String? @db.VarChar(255)
+  email        String? @db.VarChar(255)
+  phoneNumber  BigInt?
+  instagramUrl String? @db.VarChar(255)
+  facebookUrl  String? @db.VarChar(255)
+
+  @@map("businessinfo")
+}
+
+model Category {
+  id          Int               @id @default(autoincrement())
+  name        String            @db.VarChar(255)
+  description String            @db.VarChar(255)
+  imageUrl    String            @db.VarChar(255)
+  products    ProductCategory[]
+
+  @@map("category")
+}
+
+model Event {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(255)
+  date        DateTime? @db.DateTime(0)
+  time        DateTime? @db.Time(0)
+  description String    @db.VarChar(255)
+  location    String    @db.VarChar(255)
+  imageUrl    String?   @db.VarChar(255)
+
+  @@map("event")
+}
+
+model OpeningHour {
+  id               Int       @id @default(autoincrement())
+  dayOfWeek        String    @db.VarChar(255)
+  morningStartTime DateTime? @db.Time(0)
+  morningEndTime   DateTime? @db.Time(0)
+  eveningStartTime DateTime? @db.Time(0)
+  eveningEndTime   DateTime? @db.Time(0)
+
+  @@map("openinghour")
+}
+
+model Product {
+  id           Int               @id @default(autoincrement())
+  name         String            @db.VarChar(255)
+  description  String            @db.VarChar(700)
+  availability String?           @map("availavility") @db.VarChar(255)
+  price        Decimal?          @db.Decimal(10, 0)
+  imageUrl     String            @db.VarChar(255)
+  categories   ProductCategory[]
+
+  @@map("product")
+}
+
+model ProductCategory {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  categoryId Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: NoAction, map: "productcategory_ibfk_1")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: NoAction, map: "productcategory_ibfk_2")
+
+  @@index([categoryId], map: "categoryId")
+  @@index([productId], map: "productId")
+  @@map("productcategory")
+}
+
+model Testimonial {
+  id          Int      @id @default(autoincrement())
+  description String   @db.VarChar(255)
+  state       Boolean
+  date        DateTime @db.Date
+
+  @@map("testimonial")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String @db.VarChar(255)
+  email    String @db.VarChar(255)
+  password String @db.VarChar(255)
+  role     Int
+  imageUrl String @db.VarChar(255)
+
+  @@map("user")
+}
