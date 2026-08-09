@@ -19,9 +19,18 @@ type Delegate = { create(args: { data: Record<string, unknown> }): Promise<unkno
 function normalize(resource: string, input: Record<string, string>) {
   const data: Record<string, unknown> = { ...input };
   for (const key of Object.keys(data)) if (data[key] === "") data[key] = null;
-  if (resource === "productos") data.price = input.price ? Number(input.price) : null;
+  if (resource === "productos") {
+    const categoryId = Number(input.categoryId);
+    if (!Number.isInteger(categoryId) || categoryId < 1) throw new Error("Seleccioná una categoría válida");
+    data.price = input.price ? Number(input.price) : null;
+    data.categories = { create: { categoryId } };
+    delete data.categoryId;
+  }
   if (resource === "testimonios") {
-    data.state = input.state === "true" || input.state === "1";
+    const status =
+      input.moderationStatus || (input.state === "true" || input.state === "1" ? "approved" : "pending");
+    data.moderationStatus = status;
+    data.state = status === "approved";
     data.date = new Date();
   }
   if (resource === "usuarios") {
@@ -47,7 +56,15 @@ export async function POST(request: Request, context: { params: Promise<{ resour
   const model = models[resource as keyof typeof models];
   if (!model) return NextResponse.json({ error: "Recurso inválido" }, { status: 404 });
   const input = (await request.json()) as Record<string, string>;
-  const data = normalize(resource, input);
+  let data: Record<string, unknown>;
+  try {
+    data = normalize(resource, input);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Datos inválidos" },
+      { status: 400 },
+    );
+  }
   if (resource === "usuarios") {
     if (!input.password) return NextResponse.json({ error: "La contraseña es obligatoria" }, { status: 400 });
     data.password = await bcrypt.hash(input.password, 12);

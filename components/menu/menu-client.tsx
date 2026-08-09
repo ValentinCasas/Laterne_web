@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import Swal from "sweetalert2";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 
 export type MenuProduct = {
@@ -117,7 +118,15 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
   async function copyOrder() {
     if (!cart.length) return;
     await navigator.clipboard.writeText(orderText);
-    alert("Pedido copiado.");
+    await Swal.fire({
+      title: "Pedido copiado",
+      text: "Ya podés pegarlo donde quieras.",
+      icon: "success",
+      timer: 1800,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
   }
 
   return (

@@ -50,7 +50,7 @@ export function BeerCarousel({ images }: { images: string[] }) {
         ref={viewport}
         {...dragProps}
         onScroll={syncActiveSlide}
-        className={`flex snap-x snap-mandatory gap-5 overflow-x-auto px-[8vw] py-8 select-none [scrollbar-width:none] sm:px-0 ${isDragging ? "cursor-grabbing snap-none" : "cursor-grab"}`}
+        className={`flex gap-5 overflow-x-auto px-[8vw] py-8 select-none [scrollbar-width:none] sm:px-0 ${isDragging ? "cursor-grabbing snap-none" : "cursor-grab snap-x snap-mandatory scroll-smooth"}`}
       >
         {images.map((image, index) => (
           <article

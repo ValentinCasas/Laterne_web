@@ -78,10 +78,11 @@ model ProductCategory {
 }
 
 model Testimonial {
-  id          Int      @id @default(autoincrement())
-  description String   @db.VarChar(255)
-  state       Boolean
-  date        DateTime @db.Date
+  id               Int      @id @default(autoincrement())
+  description      String   @db.VarChar(255)
+  state            Boolean
+  moderationStatus String   @default("pending") @db.VarChar(20)
+  date             DateTime @db.Date
 
   @@map("testimonial")
 }

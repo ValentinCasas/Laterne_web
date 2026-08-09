@@ -23,8 +23,19 @@ function values(resource: string, input: Record<string, string>) {
   const data: Record<string, unknown> = Object.fromEntries(
     Object.entries(input).filter(([, value]) => value !== ""),
   );
-  if (resource === "productos" && input.price) data.price = Number(input.price);
-  if (resource === "testimonios") data.state = input.state === "true" || input.state === "1";
+  if (resource === "productos") {
+    const categoryId = Number(input.categoryId);
+    if (!Number.isInteger(categoryId) || categoryId < 1) throw new Error("Seleccioná una categoría válida");
+    if (input.price) data.price = Number(input.price);
+    data.categories = { deleteMany: {}, create: { categoryId } };
+    delete data.categoryId;
+  }
+  if (resource === "testimonios") {
+    const status =
+      input.moderationStatus || (input.state === "true" || input.state === "1" ? "approved" : "pending");
+    data.moderationStatus = status;
+    data.state = status === "approved";
+  }
   if (resource === "usuarios") data.role = Number(input.role);
   if (resource === "negocio" && input.phoneNumber) data.phoneNumber = BigInt(input.phoneNumber);
   if (resource === "eventos") {
@@ -55,7 +66,15 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
   if (!model || !Number.isInteger(id))
     return NextResponse.json({ error: "Recurso inválido" }, { status: 404 });
   const input = (await request.json()) as Record<string, string>;
-  const data = values(resource, input);
+  let data: Record<string, unknown>;
+  try {
+    data = values(resource, input);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Datos inválidos" },
+      { status: 400 },
+    );
+  }
   if (resource === "usuarios") {
     if (input.password) data.password = await bcrypt.hash(input.password, 12);
     else delete data.password;
@@ -71,9 +90,33 @@ export async function DELETE(
 ) {
   const session = await getSession();
   if (!session || session.role !== 1) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  const { id, model } = await contextData(context);
+  const { resource, id, model } = await contextData(context);
   if (!model || !Number.isInteger(id))
     return NextResponse.json({ error: "Recurso inválido" }, { status: 404 });
-  await (prisma[model] as unknown as Delegate).delete({ where: { id } });
-  return new NextResponse(null, { status: 204 });
+
+  try {
+    if (resource === "productos") {
+      await prisma.$transaction([
+        prisma.productCategory.deleteMany({ where: { productId: id } }),
+        prisma.product.delete({ where: { id } }),
+      ]);
+      return new NextResponse(null, { status: 204 });
+    }
+
+    if (resource === "categorias") {
+      await prisma.$transaction([
+        prisma.productCategory.deleteMany({ where: { categoryId: id } }),
+        prisma.category.delete({ where: { id } }),
+      ]);
+      return new NextResponse(null, { status: 204 });
+    }
+
+    await (prisma[model] as unknown as Delegate).delete({ where: { id } });
+    return new NextResponse(null, { status: 204 });
+  } catch {
+    return NextResponse.json(
+      { error: "No se pudo eliminar el registro. Puede que ya no exista o tenga otra relación protegida." },
+      { status: 409 },
+    );
+  }
 }

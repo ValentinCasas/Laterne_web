@@ -23,6 +23,7 @@
     "react": "latest",
     "react-dom": "latest",
     "react-hook-form": "latest",
+    "sweetalert2": "^11.26.25",
     "zod": "latest"
   },
   "devDependencies": {

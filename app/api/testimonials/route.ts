@@ -8,7 +8,12 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Comentario inválido" }, { status: 400 });
   const testimonial = await prisma.testimonial.create({
-    data: { description: parsed.data.description, state: false, date: new Date() },
+    data: {
+      description: parsed.data.description,
+      state: false,
+      moderationStatus: "pending",
+      date: new Date(),
+    },
   });
   return NextResponse.json({ testimonial }, { status: 201 });
 }
