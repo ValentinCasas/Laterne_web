@@ -7,6 +7,8 @@ const links = [
   ["/carta", "Carta"],
   ["/#eventos", "Eventos"],
   ["/#horarios", "Horarios"],
+  ["/para-negocios", "Para negocios"],
+  ["/planes", "Planes"],
   ["/admin", "Administración"],
 ] as const;
 

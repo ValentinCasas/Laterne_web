@@ -6,3 +6,6 @@ package-lock.json
 prisma
 AGENTS.md
 CLAUDE.md
+coverage
+test-results
+playwright-report

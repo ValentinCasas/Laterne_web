@@ -10,6 +10,7 @@ import { TestimonialCarousel } from "@/components/home/testimonial-carousel";
 import { TestimonialForm } from "@/components/testimonial-form";
 import { prisma } from "@/lib/prisma";
 import { time } from "@/lib/format";
+import { getDefaultTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -68,11 +69,19 @@ function formatOpeningHours(group: {
 
 /** @summary Construye la página pública con los datos actuales almacenados en MySQL. */
 export default async function LandingPage() {
+  const tenant = await getDefaultTenant();
   const [business, events, hours, testimonials, avatarFiles, eventImageFiles] = await Promise.all([
-    prisma.businessInfo.findFirst(),
-    prisma.event.findMany({ orderBy: [{ date: "desc" }, { id: "desc" }] }),
-    prisma.openingHour.findMany({ orderBy: { id: "asc" } }),
-    prisma.testimonial.findMany({ where: { state: true }, orderBy: { date: "desc" }, take: 12 }),
+    prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
+    prisma.event.findMany({
+      where: { tenantId: tenant.id, status: "published" },
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+    }),
+    prisma.openingHour.findMany({ where: { tenantId: tenant.id }, orderBy: { id: "asc" } }),
+    prisma.testimonial.findMany({
+      where: { tenantId: tenant.id, state: true, moderationStatus: "approved" },
+      orderBy: { date: "desc" },
+      take: 12,
+    }),
     readdir(path.join(process.cwd(), "public", "images", "avatars_defect")),
     readdir(path.join(process.cwd(), "public", "images", "images_event")),
   ]);

@@ -5,6 +5,8 @@ import { TestimonialBoard } from "@/components/admin/testimonial-board";
 import { ResourceManager, type ResourceField, type ResourceOption } from "@/components/resource-manager";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
+import { getAdminResource } from "@/lib/admin-resources";
+import { requirePermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,7 @@ function createDefinition(
   resource: string,
   images: Record<string, ResourceOption[]>,
   categoryOptions: ResourceOption[],
+  roleOptions: ResourceOption[],
 ): ResourceDefinition | null {
   const definitions: Record<string, ResourceDefinition> = {
     productos: {
@@ -42,6 +45,12 @@ function createDefinition(
       model: "product",
       fields: [
         { key: "name", label: "Nombre", required: true, placeholder: "Ej. Hamburguesa Laterne" },
+        {
+          key: "slug",
+          label: "Dirección pública",
+          placeholder: "Se genera automáticamente si lo dejás vacío",
+          help: "Ej. hamburguesa-laterne",
+        },
         {
           key: "description",
           label: "Descripción",
@@ -59,6 +68,39 @@ function createDefinition(
             { value: "agotado", label: "Agotado" },
           ],
         },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          required: true,
+          options: [
+            { value: "published", label: "Publicado" },
+            { value: "draft", label: "Borrador" },
+            { value: "hidden", label: "Oculto" },
+            { value: "archived", label: "Archivado" },
+          ],
+        },
+        { key: "featured", label: "Producto destacado", control: "checkbox" },
+        { key: "isNew", label: "Marcar como nuevo", control: "checkbox" },
+        { key: "recommended", label: "Recomendación del bar", control: "checkbox" },
+        { key: "vegetarian", label: "Vegetariano", control: "checkbox" },
+        { key: "vegan", label: "Vegano", control: "checkbox" },
+        { key: "glutenFree", label: "Sin gluten", control: "checkbox" },
+        { key: "alcoholFree", label: "Sin alcohol", control: "checkbox" },
+        {
+          key: "spiceLevel",
+          label: "Nivel de picante",
+          control: "select",
+          options: [
+            { value: "0", label: "Sin picante" },
+            { value: "1", label: "Suave" },
+            { value: "2", label: "Medio" },
+            { value: "3", label: "Intenso" },
+          ],
+        },
+        { key: "preparationMinutes", label: "Preparación estimada", type: "number", help: "Minutos" },
+        { key: "promotionalPrice", label: "Precio promocional", type: "number" },
+        { key: "previousPrice", label: "Precio anterior", type: "number" },
         {
           key: "categoryId",
           label: "Categoría de la carta",
@@ -84,12 +126,30 @@ function createDefinition(
       fields: [
         { key: "name", label: "Nombre", required: true, placeholder: "Ej. Cervezas artesanales" },
         {
+          key: "slug",
+          label: "Dirección pública",
+          placeholder: "Se genera automáticamente",
+        },
+        {
           key: "description",
           label: "Descripción",
           required: true,
           control: "textarea",
           placeholder: "Una descripción breve de esta sección de la carta.",
         },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          required: true,
+          options: [
+            { value: "published", label: "Publicada" },
+            { value: "draft", label: "Borrador" },
+            { value: "hidden", label: "Oculta" },
+            { value: "archived", label: "Archivada" },
+          ],
+        },
+        { key: "sortOrder", label: "Orden", type: "number", help: "Menor aparece primero" },
         {
           key: "imageUrl",
           label: "Ícono o imagen de categoría",
@@ -122,6 +182,18 @@ function createDefinition(
         { key: "location", label: "Ubicación", required: true, placeholder: "Laterne · La Punta" },
         { key: "date", label: "Fecha", type: "date" },
         { key: "time", label: "Hora", type: "time" },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          required: true,
+          options: [
+            { value: "published", label: "Publicado" },
+            { value: "draft", label: "Borrador" },
+            { value: "hidden", label: "Oculto" },
+            { value: "archived", label: "Archivado" },
+          ],
+        },
         {
           key: "imageUrl",
           label: "Flyer o imagen del evento",
@@ -169,14 +241,11 @@ function createDefinition(
         { key: "name", label: "Nombre", required: true },
         { key: "email", label: "Email", type: "email", required: true },
         {
-          key: "role",
-          label: "Permisos",
+          key: "roleId",
+          label: "Rol dentro del negocio",
           required: true,
           control: "select",
-          options: [
-            { value: "1", label: "Administrador" },
-            { value: "0", label: "Editor" },
-          ],
+          options: roleOptions,
         },
         { key: "password", label: "Contraseña", type: "password", help: "Dejala vacía para conservarla" },
         {
@@ -209,9 +278,10 @@ function createDefinition(
 }
 
 /** @summary Obtiene los registros y adapta las relaciones necesarias para su edición. */
-async function loadItems(definition: ResourceDefinition) {
+async function loadItems(definition: ResourceDefinition, tenantId: number) {
   if (definition.model === "product") {
     const products = await prisma.product.findMany({
+      where: { tenantId },
       include: { categories: { select: { categoryId: true }, take: 1 } },
       orderBy: { id: "asc" },
     });
@@ -221,21 +291,41 @@ async function loadItems(definition: ResourceDefinition) {
     }));
   }
 
+  if (definition.model === "user") {
+    const memberships = await prisma.tenantMembership.findMany({
+      where: { tenantId },
+      include: { user: true, role: true },
+      orderBy: { user: { name: "asc" } },
+    });
+    return memberships.map(({ user, role, id: membershipId, roleId }) => ({
+      ...user,
+      membershipId,
+      roleId: roleId.toString(),
+      roleName: role.name,
+      password: "",
+    }));
+  }
+
   const delegate = prisma[definition.model as keyof typeof prisma] as unknown as {
     findMany(args: object): Promise<unknown[]>;
   };
-  return delegate.findMany({ orderBy: { id: "asc" } });
+  return delegate.findMany({ where: { tenantId }, orderBy: { id: "asc" } });
 }
 
 /** @summary Carga la configuración, imágenes y registros del recurso administrativo solicitado. */
 export default async function ResourcePage({ params }: { params: Promise<{ resource: string }> }) {
   const { resource } = await params;
-  const [productImages, categoryImages, eventImages, userImages, categories] = await Promise.all([
+  const resourceConfig = getAdminResource(resource);
+  if (!resourceConfig) notFound();
+  const context = await requirePermission(resourceConfig.permission);
+  const tenantId = context.tenant.id;
+  const [productImages, categoryImages, eventImages, userImages, categories, roles] = await Promise.all([
     readImageOptions("images_product"),
     readImageOptions("images_categories"),
     readImageOptions("images_event"),
     readImageOptions("images_profile"),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+    prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
   ]);
 
   const categoryOptions = categories.map((category) => ({
@@ -252,10 +342,11 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
       usuarios: userImages,
     },
     categoryOptions,
+    roles.map((role) => ({ value: role.id.toString(), label: role.name })),
   );
   if (!definition) notFound();
 
-  const items = await loadItems(definition);
+  const items = await loadItems(definition, tenantId);
   if (resource === "testimonios") {
     return (
       <TestimonialBoard

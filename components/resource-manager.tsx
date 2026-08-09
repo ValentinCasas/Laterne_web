@@ -13,7 +13,7 @@ export type ResourceField = {
   label: string;
   type?: string;
   required?: boolean;
-  control?: "input" | "textarea" | "select" | "choice" | "image" | "location";
+  control?: "input" | "textarea" | "select" | "choice" | "image" | "location" | "checkbox";
   placeholder?: string;
   help?: string;
   options?: ResourceOption[];
@@ -134,6 +134,24 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
 
   if (field.control === "choice") {
     return <ChoiceField key={`${item?.id ?? "new"}-${field.key}`} field={field} initialValue={value} />;
+  }
+
+  if (field.control === "checkbox") {
+    const checked = item?.[field.key] === true || item?.[field.key] === "true" || item?.[field.key] === 1;
+    return (
+      <label className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] px-4 py-3 hover:border-pink-500/40">
+        <input name={field.key} type="hidden" value="false" />
+        <input
+          className="h-5 w-5 accent-pink-500"
+          name={field.key}
+          type="checkbox"
+          value="true"
+          defaultChecked={checked}
+          key={`${item?.id ?? "new"}-${field.key}`}
+        />
+        <span className="text-sm font-bold text-zinc-200">{field.label}</span>
+      </label>
+    );
   }
 
   const label = (

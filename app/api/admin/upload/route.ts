@@ -1,7 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { authorize } from "@/lib/auth";
+import { getAdminResource } from "@/lib/admin-resources";
+import { recordAudit } from "@/lib/audit";
 
 const folders = {
   productos: "images_product",
@@ -33,11 +35,11 @@ function createFilename(originalName: string, extension: string) {
 
 /** @summary Valida y almacena una imagen dentro de la carpeta pública correspondiente al recurso. */
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
   const formData = await request.formData();
   const resource = String(formData.get("resource") ?? "") as keyof typeof folders;
+  const resourceConfig = getAdminResource(resource);
+  const auth = resourceConfig ? await authorize(resourceConfig.permission) : null;
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const file = formData.get("file");
   const folder = folders[resource];
 
@@ -57,6 +59,15 @@ export async function POST(request: Request) {
   const destination = path.join(process.cwd(), "public", "images", folder);
   await mkdir(destination, { recursive: true });
   await writeFile(path.join(destination, filename), new Uint8Array(await file.arrayBuffer()));
+
+  await recordAudit({
+    context: auth,
+    action: "upload",
+    entityType: "media",
+    entityId: filename,
+    newValues: { resource, filename, mimeType: file.type, size: file.size },
+    request,
+  });
 
   return NextResponse.json({ filename, url: `/images/${folder}/${filename}` }, { status: 201 });
 }

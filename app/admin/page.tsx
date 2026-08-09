@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,18 +9,28 @@ const statStyles = [
   "from-amber-500/25 to-amber-950/10 text-amber-300",
   "from-violet-500/25 to-violet-950/10 text-violet-300",
   "from-emerald-500/25 to-emerald-950/10 text-emerald-300",
+  "from-sky-500/25 to-sky-950/10 text-sky-300",
 ] as const;
 
 /** @summary Muestra indicadores, accesos rápidos y actividad reciente del negocio. */
 export default async function Dashboard() {
-  const [products, categories, events, pendingTestimonials, recentEvents, recentTestimonials] =
+  const context = await requirePermission("admin.access");
+  const tenantId = context.tenant.id;
+  const [products, categories, events, pendingTestimonials, newLeads, recentEvents, recentTestimonials] =
     await Promise.all([
-      prisma.product.count(),
-      prisma.category.count(),
-      prisma.event.count(),
-      prisma.testimonial.count({ where: { moderationStatus: "pending" } }),
-      prisma.event.findMany({ orderBy: [{ date: "desc" }, { id: "desc" }], take: 3 }),
-      prisma.testimonial.findMany({ orderBy: { id: "desc" }, take: 3 }),
+      prisma.product.count({ where: { tenantId } }),
+      prisma.category.count({ where: { tenantId } }),
+      prisma.event.count({ where: { tenantId } }),
+      prisma.testimonial.count({ where: { tenantId, moderationStatus: "pending" } }),
+      context.permissions.includes("lead.manage")
+        ? prisma.salesLead.count({ where: { status: "new" } })
+        : Promise.resolve(0),
+      prisma.event.findMany({
+        where: { tenantId },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
+        take: 3,
+      }),
+      prisma.testimonial.findMany({ where: { tenantId }, orderBy: { id: "desc" }, take: 3 }),
     ]);
 
   const stats = [
@@ -28,6 +39,9 @@ export default async function Dashboard() {
     { label: "Eventos cargados", value: events, href: "/admin/eventos" },
     { label: "Opiniones pendientes", value: pendingTestimonials, href: "/admin/testimonios" },
   ] as const;
+  const visibleStats = context.permissions.includes("lead.manage")
+    ? [...stats, { label: "Oportunidades nuevas", value: newLeads, href: "/admin/oportunidades" } as const]
+    : stats;
 
   return (
     <section className="space-y-6">
@@ -53,7 +67,7 @@ export default async function Dashboard() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat, index) => (
+        {visibleStats.map((stat, index) => (
           <Link
             className={`group rounded-3xl border border-white/10 bg-gradient-to-br p-5 transition hover:-translate-y-1 hover:border-white/20 ${statStyles[index]}`}
             href={stat.href}
