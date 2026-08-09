@@ -9,14 +9,29 @@ export const dynamic = "force-dynamic";
 /** @summary Obtiene categorías y productos válidos para construir la carta pública. */
 export default async function MenuPage() {
   const tenant = await getDefaultTenant();
+  const now = new Date();
   const [records, business, productImageFiles, categoryImageFiles] = await Promise.all([
     prisma.category.findMany({
-      where: { tenantId: tenant.id, status: "published" },
+      where: {
+        tenantId: tenant.id,
+        OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
+      },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: {
         products: {
-          where: { product: { status: "published" } },
-          include: { product: true },
+          where: {
+            product: {
+              OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
+            },
+          },
+          include: {
+            product: {
+              include: {
+                variants: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] },
+                extras: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] },
+              },
+            },
+          },
           orderBy: { product: { name: "asc" } },
         },
       },
@@ -52,6 +67,19 @@ export default async function MenuPage() {
         alcoholFree: product.alcoholFree,
         promotionalPrice: product.promotionalPrice ? Number(product.promotionalPrice) : null,
         previousPrice: product.previousPrice ? Number(product.previousPrice) : null,
+        arEnabled: product.arEnabled && Boolean(product.model3dUrl),
+        preparationMinutes: product.preparationMinutes,
+        spiceLevel: product.spiceLevel,
+        variants: product.variants.map((variant) => ({
+          id: variant.id,
+          name: variant.name,
+          priceAdjustment: Number(variant.priceAdjustment),
+        })),
+        extras: product.extras.map((extra) => ({
+          id: extra.id,
+          name: extra.name,
+          price: Number(extra.price),
+        })),
         image:
           product.imageUrl?.trim() &&
           product.imageUrl !== "product_default.png" &&

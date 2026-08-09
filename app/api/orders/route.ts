@@ -1,0 +1,238 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { orderAddressHash, orderPublicToken, orderReference, orderTokenHash } from "@/lib/orders";
+import { loyaltyTokenHash } from "@/lib/loyalty";
+import { prisma } from "@/lib/prisma";
+import { getDefaultTenant } from "@/lib/tenant";
+
+const orderInput = z.object({
+  customerName: z.string().trim().min(2).max(160),
+  phone: z.string().trim().min(6).max(60),
+  email: z.string().trim().email().max(190).optional().or(z.literal("")),
+  orderType: z.enum(["takeaway", "dine_in", "delivery"]),
+  tableCode: z.string().trim().max(40).optional(),
+  address: z.string().trim().max(300).optional(),
+  requestedTime: z.string().trim().max(80).optional(),
+  notes: z.string().trim().max(1500).optional(),
+  promotionCode: z.string().trim().max(80).optional(),
+  tip: z.coerce.number().min(0).max(1_000_000).default(0),
+  website: z.string().max(0).optional(),
+  loyaltyToken: z.string().max(100).optional(),
+  items: z
+    .array(
+      z.object({
+        productId: z.coerce.number().int().positive(),
+        quantity: z.coerce.number().int().min(1).max(30),
+        variantId: z.coerce.number().int().positive().optional().nullable(),
+        extraIds: z.array(z.coerce.number().int().positive()).max(20).default([]),
+        notes: z.string().trim().max(500).optional(),
+      }),
+    )
+    .min(1)
+    .max(80),
+});
+
+/** @summary Recupera la dirección declarada por el proxy para aplicar protección contra abuso. */
+function requestAddress(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
+/** @summary Genera una referencia de pedido que no se encuentre utilizada en la base. */
+async function uniqueReference() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const reference = orderReference();
+    const exists = await prisma.customerOrder.findUnique({ where: { reference }, select: { id: true } });
+    if (!exists) return reference;
+  }
+  throw new Error("No se pudo generar la referencia del pedido");
+}
+
+/** @summary Calcula un descuento activo a partir de un código promocional válido. */
+async function promotionDiscount(tenantId: number, code: string | undefined, subtotal: number) {
+  if (!code) return 0;
+  const now = new Date();
+  const promotion = await prisma.promotion.findFirst({
+    where: {
+      tenantId,
+      code: code.trim(),
+      AND: [
+        {
+          OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
+        },
+        { OR: [{ startAt: null }, { startAt: { lte: now } }] },
+        { OR: [{ endAt: null }, { endAt: { gte: now } }] },
+      ],
+    },
+  });
+  if (!promotion) return 0;
+  if (promotion.type === "percentage" && promotion.discountValue) {
+    return Math.min(subtotal, subtotal * (Number(promotion.discountValue) / 100));
+  }
+  if (promotion.type === "special_price" && promotion.discountValue) {
+    return Math.min(subtotal, Number(promotion.discountValue));
+  }
+  return 0;
+}
+
+/** @summary Valida precios en el servidor, almacena el pedido y devuelve su acceso de seguimiento. */
+export async function POST(request: Request) {
+  const parsed = orderInput.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Revisá los datos y productos del pedido" }, { status: 400 });
+  }
+  if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
+
+  const tenant = await getDefaultTenant();
+  const ipHash = orderAddressHash(requestAddress(request));
+  const recent = await prisma.customerOrder.count({
+    where: { ipHash, createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } },
+  });
+  if (recent >= 8) {
+    return NextResponse.json({ error: "Alcanzaste el límite temporal de pedidos" }, { status: 429 });
+  }
+
+  const productIds = [...new Set(parsed.data.items.map((item) => item.productId))];
+  const products = await prisma.product.findMany({
+    where: { tenantId: tenant.id, id: { in: productIds }, status: "published" },
+    include: {
+      variants: { where: { active: true } },
+      extras: { where: { active: true } },
+    },
+  });
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  if (products.length !== productIds.length) {
+    return NextResponse.json({ error: "Uno de los productos ya no está disponible" }, { status: 409 });
+  }
+
+  let calculatedItems;
+  try {
+    calculatedItems = parsed.data.items.map((input) => {
+      const product = productMap.get(input.productId);
+      if (!product || product.availability?.toLowerCase() === "agotado") {
+        throw new Error("Uno de los productos está agotado");
+      }
+      const variant = input.variantId
+        ? product.variants.find((candidate) => candidate.id === input.variantId)
+        : null;
+      if (input.variantId && !variant) {
+        throw new Error("La variante seleccionada ya no está disponible");
+      }
+      const selectedExtras = product.extras.filter((extra) => input.extraIds.includes(extra.id));
+      if (selectedExtras.length !== new Set(input.extraIds).size) {
+        throw new Error("Uno de los agregados ya no está disponible");
+      }
+      const unitPrice = Number(product.promotionalPrice ?? product.price ?? 0);
+      const variantPrice = Number(variant?.priceAdjustment ?? 0);
+      const extrasTotal = selectedExtras.reduce((sum, extra) => sum + Number(extra.price), 0);
+      const lineTotal = (unitPrice + variantPrice + extrasTotal) * input.quantity;
+      return {
+        productId: product.id,
+        productName: product.name,
+        quantity: input.quantity,
+        unitPrice,
+        variantName: variant?.name ?? null,
+        variantPrice,
+        extras: selectedExtras.map((extra) => ({
+          id: extra.id,
+          name: extra.name,
+          price: Number(extra.price),
+        })),
+        extrasTotal,
+        notes: input.notes || null,
+        lineTotal,
+      };
+    });
+  } catch (reason) {
+    return NextResponse.json(
+      { error: reason instanceof Error ? reason.message : "No se pudo validar el pedido" },
+      { status: 409 },
+    );
+  }
+  const subtotal = calculatedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const discount = await promotionDiscount(tenant.id, parsed.data.promotionCode, subtotal);
+  const tip = parsed.data.tip;
+  const total = Math.max(0, subtotal - discount + tip);
+
+  const table = parsed.data.tableCode
+    ? await prisma.diningTable.findFirst({
+        where: { tenantId: tenant.id, code: parsed.data.tableCode, active: true },
+      })
+    : null;
+  const customer = parsed.data.loyaltyToken
+    ? await prisma.loyaltyCustomer.findFirst({
+        where: {
+          tenantId: tenant.id,
+          publicTokenHash: loyaltyTokenHash(parsed.data.loyaltyToken),
+          deletedAt: null,
+        },
+      })
+    : null;
+  if (parsed.data.orderType === "dine_in" && parsed.data.tableCode && !table) {
+    return NextResponse.json({ error: "La mesa indicada no existe o no está disponible" }, { status: 409 });
+  }
+  if (parsed.data.orderType === "delivery" && !parsed.data.address) {
+    return NextResponse.json({ error: "Ingresá la dirección de entrega" }, { status: 400 });
+  }
+
+  const reference = await uniqueReference();
+  const token = orderPublicToken();
+  await prisma.$transaction(async (transaction) => {
+    const order = await transaction.customerOrder.create({
+      data: {
+        tenantId: tenant.id,
+        tableId: table?.id ?? null,
+        customerId: customer?.id ?? null,
+        reference,
+        publicTokenHash: orderTokenHash(token),
+        status: "received",
+        orderType: parsed.data.orderType,
+        customerName: parsed.data.customerName,
+        phone: parsed.data.phone,
+        email: parsed.data.email || null,
+        notes:
+          [
+            parsed.data.address ? `Dirección: ${parsed.data.address}` : "",
+            parsed.data.requestedTime ? `Horario: ${parsed.data.requestedTime}` : "",
+            parsed.data.notes ?? "",
+            tip ? `Propina: ${tip}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n") || null,
+        subtotal,
+        discount,
+        total,
+        currency: tenant.defaultCurrency,
+        source: table ? `table:${table.code}` : "website",
+        ipHash,
+        items: { create: calculatedItems },
+        history: { create: { toStatus: "received", note: "Pedido creado desde la carta" } },
+      },
+    });
+    await transaction.notification.create({
+      data: {
+        tenantId: tenant.id,
+        type: "order.new",
+        title: `Nuevo pedido · ${reference}`,
+        message: `${parsed.data.customerName} realizó un pedido por ${tenant.defaultCurrency} ${total.toFixed(2)}.`,
+        link: "/admin/pedidos",
+      },
+    });
+    await transaction.analyticsEvent.create({
+      data: {
+        tenantId: tenant.id,
+        eventType: "order.completed",
+        ipHash,
+        path: "/pedido",
+        entityType: "order",
+        entityId: order.id,
+        metadata: { total, itemCount: calculatedItems.reduce((sum, item) => sum + item.quantity, 0) },
+      },
+    });
+  });
+
+  return NextResponse.json({ ok: true, reference, token, status: "received", total }, { status: 201 });
+}

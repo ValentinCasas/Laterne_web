@@ -6,7 +6,9 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
+import { localModelUrl, modelOrientation, optionalMeasurement } from "@/lib/product-model";
+import { promotionData } from "@/lib/promotion-admin";
+import { slugify, uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
 
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
 type Delegate = {
@@ -32,9 +34,12 @@ async function values(resource: string, input: Record<string, string>, tenantId:
     const category = await prisma.category.findFirst({ where: { id: categoryId, tenantId } });
     if (!category) throw new Error("Seleccioná una categoría válida");
     const fields = selectFields(input, ["name", "description", "availability", "imageUrl", "status"]);
+    const model3dUrl = localModelUrl(input.model3dUrl ?? "", tenantId, ["glb", "gltf"]);
+    const usdzUrl = localModelUrl(input.usdzUrl ?? "", tenantId, ["usdz"]);
     return {
       ...fields,
       status: fields.status || "published",
+      publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueProductSlug(tenantId, input.slug || fields.name, id),
       price: input.price ? Number(input.price) : null,
       promotionalPrice: input.promotionalPrice ? Number(input.promotionalPrice) : null,
@@ -48,6 +53,17 @@ async function values(resource: string, input: Record<string, string>, tenantId:
       vegan: booleanValue(input.vegan),
       glutenFree: booleanValue(input.glutenFree),
       alcoholFree: booleanValue(input.alcoholFree),
+      model3dUrl,
+      usdzUrl,
+      arEnabled: Boolean(model3dUrl) && booleanValue(input.arEnabled),
+      arScale: optionalMeasurement(input.arScale || "1", 0.01, 20),
+      modelWidthCm: optionalMeasurement(input.modelWidthCm ?? ""),
+      modelHeightCm: optionalMeasurement(input.modelHeightCm ?? ""),
+      modelDepthCm: optionalMeasurement(input.modelDepthCm ?? ""),
+      modelOrientation: modelOrientation(input.modelOrientation ?? ""),
+      arPlacement: input.arPlacement === "wall" ? "wall" : "floor",
+      arAllowScale: booleanValue(input.arAllowScale),
+      modelUpdatedAt: model3dUrl ? new Date() : null,
       categories: { deleteMany: {}, create: { tenantId, categoryId } },
     };
   }
@@ -57,6 +73,7 @@ async function values(resource: string, input: Record<string, string>, tenantId:
     return {
       ...fields,
       status: fields.status || "published",
+      publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueCategorySlug(tenantId, input.slug || fields.name, id),
       sortOrder: Number(input.sortOrder || 0),
     };
@@ -66,6 +83,7 @@ async function values(resource: string, input: Record<string, string>, tenantId:
     return {
       ...selectFields(input, ["name", "description", "location", "imageUrl", "status"]),
       status: input.status || "published",
+      publishAt: input.publishAt ? new Date(input.publishAt) : null,
       date: input.date ? new Date(`${input.date}T00:00:00`) : null,
       time: input.time ? new Date(`1970-01-01T${input.time}:00Z`) : null,
     };
@@ -92,6 +110,60 @@ async function values(resource: string, input: Record<string, string>, tenantId:
     return {
       ...selectFields(input, ["address", "email", "latitude", "longitude", "instagramUrl", "facebookUrl"]),
       phoneNumber: input.phoneNumber ? BigInt(input.phoneNumber.replace(/\D/g, "")) : null,
+    };
+  }
+
+  if (resource === "promociones") {
+    const data = await promotionData(input, tenantId, id);
+    return {
+      ...data,
+      products: { deleteMany: {}, ...data.products },
+      categories: { deleteMany: {}, ...data.categories },
+    };
+  }
+
+  if (resource === "legales") {
+    return {
+      title: input.title.trim(),
+      slug: slugify(input.slug || input.title) || `pagina-${id}`,
+      content: input.content.trim(),
+      status: input.status || "published",
+    };
+  }
+
+  if (resource === "ayuda") {
+    return {
+      title: input.title.trim(),
+      slug: slugify(input.slug || input.title) || `articulo-${id}`,
+      summary: input.summary.trim(),
+      content: input.content.trim(),
+      category: input.category?.trim() || "General",
+      audience: ["public", "admin", "all"].includes(input.audience) ? input.audience : "public",
+      status: input.status || "published",
+      displayOrder: Number(input.displayOrder || 0),
+    };
+  }
+
+  if (resource === "casos") {
+    return {
+      ...selectFields(input, [
+        "businessName",
+        "logoUrl",
+        "coverUrl",
+        "businessType",
+        "location",
+        "initialProblem",
+        "solution",
+        "features",
+        "results",
+        "testimonial",
+        "websiteUrl",
+        "planName",
+        "status",
+      ]),
+      slug: slugify(input.slug || input.businessName) || `caso-${id}`,
+      status: input.status || "published",
+      sortOrder: Number(input.sortOrder || 0),
     };
   }
 

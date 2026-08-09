@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/components/analytics/tracker";
 
 type ProductActionData = {
   id: number;
@@ -18,6 +19,7 @@ export function ProductActions({ product }: { product: ProductActionData }) {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    trackEvent("product.view", { entityType: "product", entityId: product.id });
     const timer = window.setTimeout(() => {
       try {
         const favorites = JSON.parse(localStorage.getItem("laterne_favoritos") ?? "[]") as number[];
@@ -44,6 +46,7 @@ export function ProductActions({ product }: { product: ProductActionData }) {
           )
         : [...current, { ...product, quantity: 1 }];
       localStorage.setItem("laterne_carrito", JSON.stringify(next));
+      trackEvent("product.add", { entityType: "product", entityId: product.id });
       setMessage("Producto agregado al pedido.");
     } catch {
       setMessage("No pudimos guardar el producto en este dispositivo.");
@@ -59,6 +62,11 @@ export function ProductActions({ product }: { product: ProductActionData }) {
         : [...current, product.id];
       localStorage.setItem("laterne_favoritos", JSON.stringify(next));
       setFavorite(next.includes(product.id));
+      trackEvent("product.favorite", {
+        entityType: "product",
+        entityId: product.id,
+        metadata: { enabled: next.includes(product.id) },
+      });
       setMessage(next.includes(product.id) ? "Guardado en favoritos." : "Quitado de favoritos.");
     } catch {
       setMessage("No pudimos actualizar tus favoritos.");

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { trackEvent } from "@/components/analytics/tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 
 export type MenuProduct = {
@@ -23,6 +24,11 @@ export type MenuProduct = {
   alcoholFree: boolean;
   promotionalPrice: number | null;
   previousPrice: number | null;
+  arEnabled: boolean;
+  preparationMinutes: number | null;
+  spiceLevel: number;
+  variants: Array<{ id: number; name: string; priceAdjustment: number }>;
+  extras: Array<{ id: number; name: string; price: number }>;
 };
 export type MenuCategory = {
   id: number;
@@ -31,7 +37,16 @@ export type MenuCategory = {
   image: string;
   products: MenuProduct[];
 };
-type CartItem = MenuProduct & { quantity: number };
+type CartItem = MenuProduct & {
+  quantity: number;
+  lineId?: string;
+  variantId?: number | null;
+  variantName?: string | null;
+  variantPrice?: number;
+  extraIds?: number[];
+  extrasSelected?: Array<{ id: number; name: string; price: number }>;
+  notes?: string;
+};
 
 /** @summary Convierte el precio de un producto al formato monetario utilizado en Argentina. */
 const formatPrice = (value: number) =>
@@ -39,6 +54,20 @@ const formatPrice = (value: number) =>
     value,
   );
 const productFallback = "/images/image_defect/product_default.png";
+
+/** @summary Calcula el precio unitario de una elección incluyendo variante y agregados. */
+function cartItemPrice(item: CartItem) {
+  return (
+    item.price +
+    Number(item.variantPrice ?? 0) +
+    (item.extrasSelected?.reduce((sum, extra) => sum + extra.price, 0) ?? 0)
+  );
+}
+
+/** @summary Obtiene la clave estable de una línea para distinguir personalizaciones del mismo producto. */
+function cartItemKey(item: CartItem) {
+  return item.lineId ?? String(item.id);
+}
 
 /** @summary Renderiza la carta interactiva, la búsqueda de productos y el pedido del visitante. */
 export function MenuClient({ categories, phone }: { categories: MenuCategory[]; phone: string }) {
@@ -51,6 +80,10 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
   const [cartOpen, setCartOpen] = useState(false);
   const [preview, setPreview] = useState<MenuProduct | null>(null);
   const [query, setQuery] = useState("");
+  const [diet, setDiet] = useState("all");
+  const [maximumPrice, setMaximumPrice] = useState("");
+  const [sort, setSort] = useState("recommended");
+  const [configuring, setConfiguring] = useState<MenuProduct | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -94,20 +127,45 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
   }, []);
   const shownCategories = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
-    if (!normalized) return categories;
     return categories
       .map((category) => ({
         ...category,
-        products: category.products.filter((product) =>
-          `${product.name} ${product.description}`.toLocaleLowerCase("es").includes(normalized),
-        ),
+        products: category.products
+          .filter(
+            (product) =>
+              !normalized ||
+              `${product.name} ${product.description}`.toLocaleLowerCase("es").includes(normalized),
+          )
+          .filter((product) => diet === "all" || Boolean(product[diet as keyof MenuProduct]))
+          .filter((product) => !maximumPrice || product.price <= Number(maximumPrice))
+          .sort((left, right) => {
+            if (sort === "name") return left.name.localeCompare(right.name, "es");
+            if (sort === "price_asc") return left.price - right.price;
+            if (sort === "price_desc") return right.price - left.price;
+            return Number(right.recommended || right.featured) - Number(left.recommended || left.featured);
+          }),
       }))
       .filter((category) => category.products.length);
-  }, [categories, query]);
+  }, [categories, diet, maximumPrice, query, sort]);
+  useEffect(() => {
+    const normalized = query.trim();
+    if (normalized.length < 2) return;
+    const timer = window.setTimeout(() => {
+      trackEvent(shownCategories.length ? "menu.search" : "menu.search_empty", {
+        metadata: { queryLength: normalized.length, results: shownCategories.length },
+      });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [query, shownCategories.length]);
   const quantity = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = cart.reduce((sum, item) => sum + cartItemPrice(item) * item.quantity, 0);
   /** @summary Agrega un producto nuevo al pedido o incrementa su cantidad existente. */
   function add(product: MenuProduct) {
+    if (product.variants.length || product.extras.length) {
+      setConfiguring(product);
+      return;
+    }
+    trackEvent("product.add", { entityType: "product", entityId: product.id });
     setCart((current) => {
       const existing = current.find((item) => item.id === product.id);
       return existing
@@ -115,15 +173,45 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
         : [...current, { ...product, quantity: 1 }];
     });
   }
+  /** @summary Agrega una línea personalizada con variante, extras y observaciones propias. */
+  function addConfigured(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!configuring) return;
+    const form = new FormData(event.currentTarget);
+    const variantId = form.get("variantId") ? Number(form.get("variantId")) : null;
+    const variant = configuring.variants.find((item) => item.id === variantId) ?? null;
+    const extraIds = form.getAll("extraIds").map(Number);
+    const extrasSelected = configuring.extras.filter((item) => extraIds.includes(item.id));
+    setCart((current) => [
+      ...current,
+      {
+        ...configuring,
+        quantity: 1,
+        lineId: crypto.randomUUID(),
+        variantId,
+        variantName: variant?.name ?? null,
+        variantPrice: variant?.priceAdjustment ?? 0,
+        extraIds,
+        extrasSelected,
+        notes: String(form.get("notes") ?? "").trim(),
+      },
+    ]);
+    trackEvent("product.add", {
+      entityType: "product",
+      entityId: configuring.id,
+      metadata: { customized: true },
+    });
+    setConfiguring(null);
+  }
   /** @summary Modifica la cantidad de un producto y lo retira cuando llega a cero. */
-  function change(id: number, amount: number) {
+  function change(key: string, amount: number) {
     setCart((current) =>
       current
-        .map((item) => (item.id === id ? { ...item, quantity: item.quantity + amount } : item))
+        .map((item) => (cartItemKey(item) === key ? { ...item, quantity: item.quantity + amount } : item))
         .filter((item) => item.quantity > 0),
     );
   }
-  const orderText = `Pedido Laterne:\n\n${cart.map((item) => `${item.quantity} x ${item.name} - ${formatPrice(item.price * item.quantity)}`).join("\n")}\n\nTotal: ${formatPrice(total)}`;
+  const orderText = `Pedido Laterne:\n\n${cart.map((item) => `${item.quantity} x ${item.name}${item.variantName ? ` (${item.variantName})` : ""}${item.extrasSelected?.length ? ` + ${item.extrasSelected.map((extra) => extra.name).join(", ")}` : ""}${item.notes ? ` · ${item.notes}` : ""} - ${formatPrice(cartItemPrice(item) * item.quantity)}`).join("\n")}\n\nTotal: ${formatPrice(total)}`;
   /** @summary Copia al portapapeles un resumen completo del pedido actual. */
   async function copyOrder() {
     if (!cart.length) return;
@@ -221,6 +309,40 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
               type="search"
             />
           </label>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <select
+              className="input py-2 text-xs sm:text-sm"
+              value={diet}
+              onChange={(event) => setDiet(event.target.value)}
+              aria-label="Preferencia alimentaria"
+            >
+              <option value="all">Todas las preferencias</option>
+              <option value="vegetarian">Vegetarianos</option>
+              <option value="vegan">Veganos</option>
+              <option value="glutenFree">Sin gluten</option>
+              <option value="alcoholFree">Sin alcohol</option>
+            </select>
+            <input
+              className="input py-2 text-xs sm:text-sm"
+              value={maximumPrice}
+              onChange={(event) => setMaximumPrice(event.target.value)}
+              type="number"
+              min={0}
+              placeholder="Precio máximo"
+              aria-label="Precio máximo"
+            />
+            <select
+              className="input col-span-2 py-2 text-xs sm:col-span-1 sm:text-sm"
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+              aria-label="Ordenar productos"
+            >
+              <option value="recommended">Recomendados</option>
+              <option value="name">Nombre</option>
+              <option value="price_asc">Menor precio</option>
+              <option value="price_desc">Mayor precio</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -286,7 +408,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                       )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-5">
-                      {(product.featured || product.isNew || product.recommended) && (
+                      {(product.featured || product.isNew || product.recommended || product.arEnabled) && (
                         <div className="mb-2 flex flex-wrap gap-1.5">
                           {product.featured && (
                             <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-black uppercase text-amber-300">
@@ -301,6 +423,11 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                           {product.recommended && (
                             <span className="rounded-full bg-pink-500/15 px-2 py-1 text-[10px] font-black uppercase text-pink-300">
                               Recomendado
+                            </span>
+                          )}
+                          {product.arEnabled && (
+                            <span className="rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-black uppercase text-violet-300">
+                              3D · AR
                             </span>
                           )}
                         </div>
@@ -360,7 +487,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
       <button
         className="fixed bottom-4 right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-pink-500 font-black shadow-2xl shadow-pink-950/60 hover:scale-105 sm:bottom-5 sm:right-5 sm:flex sm:h-auto sm:w-auto sm:gap-3 sm:px-5 sm:py-3"
         onClick={() => setCartOpen(true)}
-        aria-label={`Ver pedido con ${quantity} productos`}
+        aria-label={`Ver pedido con ${quantity} ${quantity === 1 ? "producto" : "productos"}`}
       >
         <span className="text-xl">🛒</span>
         <span className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1 text-xs text-black sm:static sm:block sm:h-auto sm:bg-transparent sm:p-0 sm:text-left sm:text-white">
@@ -400,7 +527,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
             <div className="flex-1 space-y-3 overflow-y-auto p-5">
               {cart.length ? (
                 cart.map((item) => (
-                  <article className="flex gap-3 rounded-2xl border p-3" key={item.id}>
+                  <article className="flex gap-3 rounded-2xl border p-3" key={cartItemKey(item)}>
                     <div className="relative h-20 w-20 shrink-0 rounded-xl bg-zinc-100">
                       <Image
                         src={item.image}
@@ -417,30 +544,38 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                         <h3 className="truncate font-black">{item.name}</h3>
                         <button
                           className="text-xl text-zinc-400"
-                          onClick={() => setCart(cart.filter((product) => product.id !== item.id))}
+                          onClick={() =>
+                            setCart(cart.filter((product) => cartItemKey(product) !== cartItemKey(item)))
+                          }
                           aria-label={`Quitar ${item.name}`}
                         >
                           ×
                         </button>
                       </div>
-                      <p className="text-sm font-bold text-pink-600">{formatPrice(item.price)}</p>
+                      <p className="text-sm font-bold text-pink-600">{formatPrice(cartItemPrice(item))}</p>
+                      {item.variantName && <p className="text-xs text-zinc-500">{item.variantName}</p>}
+                      {!!item.extrasSelected?.length && (
+                        <p className="line-clamp-1 text-xs text-zinc-500">
+                          + {item.extrasSelected.map((extra) => extra.name).join(", ")}
+                        </p>
+                      )}
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center rounded-full bg-zinc-100 p-1">
                           <button
                             className="h-8 w-8 rounded-full bg-white"
-                            onClick={() => change(item.id, -1)}
+                            onClick={() => change(cartItemKey(item), -1)}
                           >
                             −
                           </button>
                           <span className="w-8 text-center text-sm font-black">{item.quantity}</span>
                           <button
                             className="h-8 w-8 rounded-full bg-white"
-                            onClick={() => change(item.id, 1)}
+                            onClick={() => change(cartItemKey(item), 1)}
                           >
                             +
                           </button>
                         </div>
-                        <strong>{formatPrice(item.price * item.quantity)}</strong>
+                        <strong>{formatPrice(cartItemPrice(item) * item.quantity)}</strong>
                       </div>
                     </div>
                   </article>
@@ -457,6 +592,16 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                 <strong className="text-3xl">{formatPrice(total)}</strong>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
+                <Link
+                  className={`rounded-xl bg-pink-500 py-3 text-center font-bold text-white sm:col-span-2 ${!cart.length ? "pointer-events-none opacity-40" : ""}`}
+                  href="/pedido"
+                  onClick={() => {
+                    trackEvent("order.started", { metadata: { itemCount: quantity } });
+                    setCartOpen(false);
+                  }}
+                >
+                  Continuar y guardar pedido
+                </Link>
                 <button className="rounded-xl border py-3 font-bold" onClick={() => setCart([])}>
                   Vaciar pedido
                 </button>
@@ -471,6 +616,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                   <a
                     className={`rounded-xl bg-green-600 py-3 text-center font-bold text-white sm:col-span-2 ${!cart.length ? "pointer-events-none opacity-40" : ""}`}
                     href={`https://wa.me/${phone}?text=${encodeURIComponent(orderText)}`}
+                    onClick={() => trackEvent("whatsapp.click", { metadata: { source: "menu_cart" } })}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -516,6 +662,95 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
               ×
             </button>
           </div>
+        </div>
+      )}
+
+      {configuring && (
+        <div
+          className="fixed inset-0 z-[115] grid place-items-center bg-black/80 p-4 backdrop-blur"
+          onClick={() => setConfiguring(null)}
+        >
+          <form
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-zinc-950 p-6 text-white shadow-2xl"
+            onSubmit={addConfigured}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Personalizar ${configuring.name}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="section-eyebrow">Personalizá tu elección</p>
+                <h2 className="mt-2 text-3xl font-black">{configuring.name}</h2>
+              </div>
+              <button
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+                onClick={() => setConfiguring(null)}
+                type="button"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            {!!configuring.variants.length && (
+              <fieldset className="mt-6">
+                <legend className="font-black">Variante</legend>
+                <div className="mt-3 grid gap-2">
+                  {configuring.variants.map((variant, index) => (
+                    <label
+                      className="flex items-center justify-between rounded-2xl border border-white/10 p-4"
+                      key={variant.id}
+                    >
+                      <span className="flex items-center gap-3">
+                        <input
+                          name="variantId"
+                          type="radio"
+                          value={variant.id}
+                          defaultChecked={index === 0}
+                          required
+                        />
+                        {variant.name}
+                      </span>
+                      <span className="text-sm text-pink-300">
+                        {variant.priceAdjustment
+                          ? `+ ${formatPrice(variant.priceAdjustment)}`
+                          : "Sin adicional"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {!!configuring.extras.length && (
+              <fieldset className="mt-6">
+                <legend className="font-black">Agregados opcionales</legend>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {configuring.extras.map((extra) => (
+                    <label
+                      className="flex items-center justify-between gap-2 rounded-2xl border border-white/10 p-3 text-sm"
+                      key={extra.id}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input name="extraIds" type="checkbox" value={extra.id} />
+                        {extra.name}
+                      </span>
+                      <span className="text-pink-300">+{formatPrice(extra.price)}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            <label className="mt-6 block">
+              <span className="label">Nota para este producto</span>
+              <textarea
+                className="input min-h-20"
+                name="notes"
+                maxLength={500}
+                placeholder="Ej. sin cebolla"
+              />
+            </label>
+            <button className="btn mt-6 w-full">Agregar al pedido</button>
+          </form>
         </div>
       )}
     </main>

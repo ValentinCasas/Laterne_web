@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import Swal from "sweetalert2";
+import { AssetPicker } from "@/components/admin/asset-picker";
 import { ImagePicker } from "@/components/admin/image-picker";
 import { LocationPicker } from "@/components/admin/location-picker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
@@ -12,13 +13,19 @@ export type ResourceField = {
   key: string;
   label: string;
   type?: string;
+  min?: number;
+  max?: number;
+  step?: number | string;
   required?: boolean;
-  control?: "input" | "textarea" | "select" | "choice" | "image" | "location" | "checkbox";
+  control?:
+    "input" | "textarea" | "select" | "choice" | "multichoice" | "image" | "asset" | "location" | "checkbox";
   placeholder?: string;
   help?: string;
   options?: ResourceOption[];
   imageFolder?: string;
   fallbackImage?: string;
+  accept?: string;
+  previewModel?: boolean;
 };
 
 type Item = Record<string, unknown> & { id: number };
@@ -28,6 +35,7 @@ const imageFolders: Record<string, string> = {
   categorias: "images_categories",
   eventos: "images_event",
   usuarios: "images_profile",
+  promociones: "images_promotions",
 };
 
 /** @summary Adapta fechas, horarios y valores nulos para utilizarlos en controles HTML. */
@@ -36,6 +44,7 @@ function inputValue(value: unknown, type?: string) {
   const text = String(value);
   if (type === "date") return text.slice(0, 10);
   if (type === "time") return text.includes("T") ? text.slice(11, 16) : text.slice(0, 5);
+  if (type === "datetime-local") return text.includes("T") ? text.slice(0, 16) : text;
   return text;
 }
 
@@ -98,6 +107,76 @@ function ChoiceField({ field, initialValue }: { field: ResourceField; initialVal
   );
 }
 
+/** @summary Permite relacionar varios productos o categorías mediante una lista buscable. */
+function MultiChoiceField({ field, initialValue }: { field: ResourceField; initialValue: string }) {
+  const [selected, setSelected] = useState(
+    () =>
+      new Set(
+        initialValue
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ),
+  );
+  const [query, setQuery] = useState("");
+  const visibleOptions = field.options?.filter((option) =>
+    option.label.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es")),
+  );
+
+  /** @summary Agrega o quita una relación del conjunto que se enviará con el formulario. */
+  function toggle(value: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
+
+  return (
+    <fieldset className="min-w-0 rounded-2xl border border-white/10 p-4 md:col-span-2">
+      <legend className="px-2 text-sm font-bold text-zinc-200">{field.label}</legend>
+      <input name={field.key} type="hidden" value={[...selected].join(",")} />
+      <label className="mt-2 block">
+        <span className="sr-only">Buscar dentro de {field.label}</span>
+        <input
+          className="input py-2 text-sm"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={`Buscar en ${field.label.toLocaleLowerCase("es")}…`}
+        />
+      </label>
+      <div className="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+        {visibleOptions?.map((option) => {
+          const checked = selected.has(option.value);
+          return (
+            <button
+              className={`flex items-center gap-3 rounded-xl border p-3 text-left text-sm transition ${
+                checked
+                  ? "border-pink-400 bg-pink-500/10 text-white"
+                  : "border-white/10 text-zinc-400 hover:border-white/25"
+              }`}
+              key={option.value}
+              onClick={() => toggle(option.value)}
+              type="button"
+              aria-pressed={checked}
+            >
+              <span
+                className={`grid h-5 w-5 shrink-0 place-items-center rounded-md text-xs ${checked ? "bg-pink-500" : "bg-white/5"}`}
+              >
+                {checked ? "✓" : ""}
+              </span>
+              <span className="line-clamp-2">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-xs text-zinc-600">{selected.size} seleccionados</p>
+    </fieldset>
+  );
+}
+
 /** @summary Renderiza un campo con el control más apropiado para su tipo de contenido. */
 function FormField({ field, item }: { field: ResourceField; item: Item | null }) {
   const value = inputValue(item?.[field.key], field.type);
@@ -134,6 +213,24 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
 
   if (field.control === "choice") {
     return <ChoiceField key={`${item?.id ?? "new"}-${field.key}`} field={field} initialValue={value} />;
+  }
+
+  if (field.control === "multichoice") {
+    return <MultiChoiceField key={`${item?.id ?? "new"}-${field.key}`} field={field} initialValue={value} />;
+  }
+
+  if (field.control === "asset") {
+    return (
+      <AssetPicker
+        key={`${item?.id ?? "new"}-${field.key}`}
+        name={field.key}
+        label={field.label}
+        value={value}
+        accept={field.accept ?? ""}
+        help={field.help}
+        previewModel={field.previewModel}
+      />
+    );
   }
 
   if (field.control === "checkbox") {
@@ -206,6 +303,9 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
         className="input mt-2"
         name={field.key}
         type={field.type ?? "text"}
+        min={field.min}
+        max={field.max}
+        step={field.step}
         required={field.required}
         placeholder={field.placeholder}
         defaultValue={value}
@@ -271,6 +371,20 @@ export function ResourceManager({
     return String(body.filename);
   }
 
+  /** @summary Carga un modelo 3D validado y devuelve la URL aislada asignada por el servidor. */
+  async function uploadAsset(field: ResourceField, formData: FormData) {
+    const file = formData.get(`${field.key}File`);
+    if (!(file instanceof File) || !file.size) return String(formData.get(field.key) ?? "");
+
+    const upload = new FormData();
+    upload.set("resource", "product-model");
+    upload.set("file", file);
+    const response = await fetch("/api/admin/upload", { method: "POST", body: upload });
+    const body = (await response.json()) as { url?: string; error?: string };
+    if (!response.ok || !body.url) throw new Error(body.error ?? "No se pudo cargar el modelo");
+    return body.url;
+  }
+
   /** @summary Crea o actualiza un registro y refleja el resultado en la colección visible. */
   async function save(formData: FormData) {
     setSaving(true);
@@ -282,10 +396,15 @@ export function ResourceManager({
           payload.longitude = String(formData.get("longitude") ?? "");
           continue;
         }
-        payload[field.key] =
-          field.control === "image"
-            ? await uploadImage(field, formData)
-            : String(formData.get(field.key) ?? "");
+        if (field.control === "image") {
+          payload[field.key] = await uploadImage(field, formData);
+          continue;
+        }
+        if (field.control === "asset") {
+          payload[field.key] = await uploadAsset(field, formData);
+          continue;
+        }
+        payload[field.key] = String(formData.get(field.key) ?? "");
       }
 
       const id = editing?.id;
@@ -487,9 +606,26 @@ export function ResourceManager({
                   </p>
                 )}
                 {resource === "productos" && (
-                  <strong className="mt-3 block text-pink-300">
-                    ${Number(item.price ?? 0).toLocaleString("es-AR")}
-                  </strong>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-pink-300">
+                      ${Number(item.price ?? 0).toLocaleString("es-AR")}
+                    </strong>
+                    {item.model3dUrl ? (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                          item.arEnabled
+                            ? "bg-violet-500/15 text-violet-300"
+                            : "bg-amber-500/15 text-amber-300"
+                        }`}
+                      >
+                        {item.arEnabled ? "3D y AR activo" : "Modelo sin publicar"}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase text-zinc-500">
+                        Sin modelo 3D
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 <div className="mt-5 flex gap-2 border-t border-white/10 pt-4">

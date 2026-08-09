@@ -48,3 +48,22 @@ export async function uniqueCategorySlug(tenantId: number, value: string, exclud
 
   return candidate;
 }
+
+/** @summary Genera un slug de promoción único dentro del negocio sin colisionar con registros existentes. */
+export async function uniquePromotionSlug(tenantId: number, value: string, excludeId?: number) {
+  const base = slugify(value) || "promocion";
+  let candidate = base;
+  let suffix = 2;
+
+  while (
+    await prisma.promotion.findFirst({
+      where: { tenantId, slug: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) },
+      select: { id: true },
+    })
+  ) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
