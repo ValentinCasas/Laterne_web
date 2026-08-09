@@ -70,10 +70,14 @@ function formatOpeningHours(group: {
 /** @summary Construye la página pública con los datos actuales almacenados en MySQL. */
 export default async function LandingPage() {
   const tenant = await getDefaultTenant();
+  const now = new Date();
   const [business, events, hours, testimonials, avatarFiles, eventImageFiles] = await Promise.all([
     prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
     prisma.event.findMany({
-      where: { tenantId: tenant.id, status: "published" },
+      where: {
+        tenantId: tenant.id,
+        OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
+      },
       orderBy: [{ date: "desc" }, { id: "desc" }],
     }),
     prisma.openingHour.findMany({ where: { tenantId: tenant.id }, orderBy: { id: "asc" } }),

@@ -13,7 +13,18 @@ export const dynamic = "force-dynamic";
 type ResourceDefinition = {
   title: string;
   description: string;
-  model: "product" | "category" | "event" | "openingHour" | "testimonial" | "user" | "businessInfo";
+  model:
+    | "product"
+    | "category"
+    | "event"
+    | "openingHour"
+    | "testimonial"
+    | "user"
+    | "businessInfo"
+    | "promotion"
+    | "legalPage"
+    | "helpArticle"
+    | "successCase";
   fields: ResourceField[];
   singular?: boolean;
 };
@@ -36,6 +47,7 @@ function createDefinition(
   resource: string,
   images: Record<string, ResourceOption[]>,
   categoryOptions: ResourceOption[],
+  productOptions: ResourceOption[],
   roleOptions: ResourceOption[],
 ): ResourceDefinition | null {
   const definitions: Record<string, ResourceDefinition> = {
@@ -75,11 +87,13 @@ function createDefinition(
           required: true,
           options: [
             { value: "published", label: "Publicado" },
+            { value: "scheduled", label: "Programado" },
             { value: "draft", label: "Borrador" },
             { value: "hidden", label: "Oculto" },
             { value: "archived", label: "Archivado" },
           ],
         },
+        { key: "publishAt", label: "Publicar desde", type: "datetime-local" },
         { key: "featured", label: "Producto destacado", control: "checkbox" },
         { key: "isNew", label: "Marcar como nuevo", control: "checkbox" },
         { key: "recommended", label: "Recomendación del bar", control: "checkbox" },
@@ -117,6 +131,75 @@ function createDefinition(
           imageFolder: "images_product",
           fallbackImage: "/images/image_defect/product_default.png",
         },
+        {
+          key: "model3dUrl",
+          label: "Modelo principal GLB o GLTF",
+          control: "asset",
+          accept: ".glb,.gltf,model/gltf-binary,model/gltf+json",
+          help: "GLB hasta 40 MB o GLTF autónomo hasta 15 MB.",
+          previewModel: true,
+        },
+        {
+          key: "usdzUrl",
+          label: "Modelo USDZ para iPhone",
+          control: "asset",
+          accept: ".usdz,model/vnd.usdz+zip,application/octet-stream",
+          help: "Opcional. Quick Look puede utilizar este archivo de hasta 60 MB.",
+        },
+        { key: "arEnabled", label: "Habilitar experiencia 3D y AR", control: "checkbox" },
+        {
+          key: "arScale",
+          label: "Escala inicial del modelo",
+          type: "number",
+          min: 0.01,
+          max: 20,
+          step: 0.01,
+          help: "1 representa el tamaño original",
+        },
+        {
+          key: "modelWidthCm",
+          label: "Ancho real",
+          type: "number",
+          min: 0.1,
+          max: 1000,
+          step: 0.1,
+          help: "Centímetros",
+        },
+        {
+          key: "modelHeightCm",
+          label: "Alto real",
+          type: "number",
+          min: 0.1,
+          max: 1000,
+          step: 0.1,
+          help: "Centímetros",
+        },
+        {
+          key: "modelDepthCm",
+          label: "Profundidad real",
+          type: "number",
+          min: 0.1,
+          max: 1000,
+          step: 0.1,
+          help: "Centímetros",
+        },
+        {
+          key: "modelOrientation",
+          label: "Rotación inicial",
+          placeholder: "0deg 0deg 0deg",
+          help: "Giro, inclinación y orientación",
+        },
+        {
+          key: "arPlacement",
+          label: "Superficie de colocación",
+          control: "select",
+          required: true,
+          options: [
+            { value: "floor", label: "Horizontal, como una mesa" },
+            { value: "wall", label: "Vertical, como una pared" },
+          ],
+        },
+        { key: "arAllowScale", label: "Permitir ajustar tamaño en AR", control: "checkbox" },
       ],
     },
     categorias: {
@@ -144,11 +227,13 @@ function createDefinition(
           required: true,
           options: [
             { value: "published", label: "Publicada" },
+            { value: "scheduled", label: "Programada" },
             { value: "draft", label: "Borrador" },
             { value: "hidden", label: "Oculta" },
             { value: "archived", label: "Archivada" },
           ],
         },
+        { key: "publishAt", label: "Publicar desde", type: "datetime-local" },
         { key: "sortOrder", label: "Orden", type: "number", help: "Menor aparece primero" },
         {
           key: "imageUrl",
@@ -189,11 +274,13 @@ function createDefinition(
           required: true,
           options: [
             { value: "published", label: "Publicado" },
+            { value: "scheduled", label: "Programado" },
             { value: "draft", label: "Borrador" },
             { value: "hidden", label: "Oculto" },
             { value: "archived", label: "Archivado" },
           ],
         },
+        { key: "publishAt", label: "Publicar desde", type: "datetime-local" },
         {
           key: "imageUrl",
           label: "Flyer o imagen del evento",
@@ -272,6 +359,196 @@ function createDefinition(
         { key: "facebookUrl", label: "Facebook", type: "url", placeholder: "https://facebook.com/..." },
       ],
     },
+    promociones: {
+      title: "Promociones",
+      description: "Programá descuentos, combos, happy hours y cupones relacionados con la carta.",
+      model: "promotion",
+      fields: [
+        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Happy hour Laterne" },
+        {
+          key: "slug",
+          label: "Dirección pública",
+          placeholder: "Se genera automáticamente",
+        },
+        {
+          key: "description",
+          label: "Descripción",
+          control: "textarea",
+          required: true,
+          placeholder: "Explicá el beneficio de forma clara.",
+        },
+        {
+          key: "type",
+          label: "Tipo de promoción",
+          control: "select",
+          required: true,
+          options: [
+            { value: "percentage", label: "Descuento porcentual" },
+            { value: "special_price", label: "Precio especial" },
+            { value: "two_for_one", label: "Dos por uno" },
+            { value: "happy_hour", label: "Happy hour" },
+            { value: "combo", label: "Combo" },
+            { value: "day", label: "Promoción por día" },
+            { value: "time", label: "Promoción por horario" },
+            { value: "coupon", label: "Cupón" },
+            { value: "birthday", label: "Beneficio de cumpleaños" },
+          ],
+        },
+        {
+          key: "discountValue",
+          label: "Valor del beneficio",
+          type: "number",
+          min: 0,
+          step: 0.01,
+          help: "Porcentaje o importe según el tipo",
+        },
+        { key: "buyQuantity", label: "Cantidad que compra", type: "number", min: 1 },
+        { key: "receiveQuantity", label: "Cantidad que recibe", type: "number", min: 1 },
+        { key: "startAt", label: "Comienza", type: "datetime-local" },
+        { key: "endAt", label: "Finaliza", type: "datetime-local" },
+        { key: "publishAt", label: "Publicar desde", type: "datetime-local" },
+        { key: "startTime", label: "Horario desde", type: "time" },
+        { key: "endTime", label: "Horario hasta", type: "time" },
+        {
+          key: "daysOfWeek",
+          label: "Días aplicables",
+          placeholder: "lunes, martes, miércoles",
+          help: "Separados por comas",
+        },
+        { key: "code", label: "Código promocional", placeholder: "Ej. LATERNE20" },
+        { key: "conditions", label: "Condiciones", control: "textarea" },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          required: true,
+          options: [
+            { value: "published", label: "Publicada" },
+            { value: "draft", label: "Borrador" },
+            { value: "scheduled", label: "Programada" },
+            { value: "hidden", label: "Oculta" },
+            { value: "archived", label: "Archivada" },
+          ],
+        },
+        { key: "priority", label: "Prioridad", type: "number", min: 0 },
+        {
+          key: "productIds",
+          label: "Productos alcanzados",
+          control: "multichoice",
+          options: productOptions,
+        },
+        {
+          key: "categoryIds",
+          label: "Categorías alcanzadas",
+          control: "multichoice",
+          options: categoryOptions,
+        },
+        {
+          key: "imageUrl",
+          label: "Imagen de la promoción",
+          control: "image",
+          options: images.promociones,
+          imageFolder: "images_promotions",
+        },
+      ],
+    },
+    legales: {
+      title: "Páginas legales",
+      description: "Administrá políticas, condiciones, cookies, alérgenos y derechos de privacidad.",
+      model: "legalPage",
+      fields: [
+        { key: "title", label: "Título", required: true },
+        { key: "slug", label: "Dirección pública", placeholder: "politica-de-privacidad" },
+        { key: "content", label: "Contenido", control: "textarea", required: true },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          required: true,
+          options: [
+            { value: "published", label: "Publicada" },
+            { value: "draft", label: "Borrador" },
+            { value: "hidden", label: "Oculta" },
+          ],
+        },
+      ],
+    },
+    ayuda: {
+      title: "Artículos de ayuda",
+      description: "Creá respuestas, guías y tutoriales buscables para clientes y administradores.",
+      model: "helpArticle",
+      fields: [
+        { key: "title", label: "Título", required: true },
+        { key: "slug", label: "Dirección pública", placeholder: "como-hacer-un-pedido" },
+        { key: "summary", label: "Resumen", control: "textarea", required: true },
+        { key: "content", label: "Contenido de la guía", control: "textarea", required: true },
+        { key: "category", label: "Categoría", required: true, placeholder: "Pedidos" },
+        {
+          key: "audience",
+          label: "Audiencia",
+          control: "select",
+          options: [
+            { value: "public", label: "Clientes" },
+            { value: "admin", label: "Administradores" },
+            { value: "all", label: "Todos" },
+          ],
+        },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          options: [
+            { value: "published", label: "Publicado" },
+            { value: "draft", label: "Borrador" },
+            { value: "hidden", label: "Oculto" },
+          ],
+        },
+        { key: "displayOrder", label: "Orden", type: "number" },
+      ],
+    },
+    casos: {
+      title: "Casos de éxito",
+      description: "Documentá implementaciones reales, funciones utilizadas y resultados obtenidos.",
+      model: "successCase",
+      fields: [
+        { key: "businessName", label: "Nombre del negocio", required: true },
+        { key: "slug", label: "Dirección pública", placeholder: "nombre-del-negocio" },
+        { key: "businessType", label: "Tipo de negocio", required: true },
+        { key: "location", label: "Ubicación", required: true },
+        { key: "initialProblem", label: "Problema inicial", control: "textarea", required: true },
+        { key: "solution", label: "Solución implementada", control: "textarea", required: true },
+        { key: "features", label: "Funciones utilizadas", control: "textarea", required: true },
+        { key: "results", label: "Resultados obtenidos", control: "textarea", required: true },
+        { key: "testimonial", label: "Testimonio", control: "textarea" },
+        { key: "websiteUrl", label: "Sitio web", type: "url" },
+        { key: "planName", label: "Plan contratado" },
+        {
+          key: "status",
+          label: "Publicación",
+          control: "select",
+          options: [
+            { value: "published", label: "Publicado" },
+            { value: "draft", label: "Borrador" },
+            { value: "hidden", label: "Oculto" },
+          ],
+        },
+        { key: "sortOrder", label: "Orden", type: "number" },
+        {
+          key: "logoUrl",
+          label: "Logo",
+          control: "image",
+          options: images.casos,
+          imageFolder: "images_cases",
+        },
+        {
+          key: "coverUrl",
+          label: "Portada",
+          control: "image",
+          options: images.casos,
+          imageFolder: "images_cases",
+        },
+      ],
+    },
   };
 
   return definitions[resource] ?? null;
@@ -306,6 +583,23 @@ async function loadItems(definition: ResourceDefinition, tenantId: number) {
     }));
   }
 
+  if (definition.model === "promotion") {
+    const promotions = await prisma.promotion.findMany({
+      where: { tenantId },
+      include: {
+        products: { select: { productId: true } },
+        categories: { select: { categoryId: true } },
+      },
+      orderBy: [{ priority: "desc" }, { id: "desc" }],
+    });
+    return promotions.map(({ products, categories, daysOfWeek, ...promotion }) => ({
+      ...promotion,
+      daysOfWeek: Array.isArray(daysOfWeek) ? daysOfWeek.join(", ") : "",
+      productIds: products.map((item) => item.productId).join(","),
+      categoryIds: categories.map((item) => item.categoryId).join(","),
+    }));
+  }
+
   const delegate = prisma[definition.model as keyof typeof prisma] as unknown as {
     findMany(args: object): Promise<unknown[]>;
   };
@@ -319,12 +613,25 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   if (!resourceConfig) notFound();
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
-  const [productImages, categoryImages, eventImages, userImages, categories, roles] = await Promise.all([
+  const [
+    productImages,
+    categoryImages,
+    eventImages,
+    userImages,
+    promotionImages,
+    caseImages,
+    categories,
+    products,
+    roles,
+  ] = await Promise.all([
     readImageOptions("images_product"),
     readImageOptions("images_categories"),
     readImageOptions("images_event"),
     readImageOptions("images_profile"),
+    readImageOptions("images_promotions"),
+    readImageOptions("images_cases"),
     prisma.category.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+    prisma.product.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
     prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
   ]);
 
@@ -340,8 +647,11 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
       categorias: categoryImages,
       eventos: eventImages,
       usuarios: userImages,
+      promociones: promotionImages,
+      casos: caseImages,
     },
     categoryOptions,
+    products.map((product) => ({ value: product.id.toString(), label: product.name })),
     roles.map((role) => ({ value: role.id.toString(), label: role.name })),
   );
   if (!definition) notFound();

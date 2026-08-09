@@ -7,22 +7,40 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 ### Experiencia pública
 
 - Landing del negocio con eventos, horarios, testimonios, ubicación y productos destacados.
-- Carta virtual responsive con categorías, búsqueda, pedido local y envío por WhatsApp.
-- Fichas individuales de producto con URL amigable, metadatos sociales y datos estructurados.
-- Favoritos locales, compartir productos, etiquetas alimentarias y precios promocionales.
-- Landing comercial para negocios, catálogo de planes y comparador de funcionalidades.
-- Formulario de solicitud de demo con persistencia, protección antispam y continuación por WhatsApp.
-- Sitemap, robots.txt, manifest y página 404 personalizada.
+- Carta responsive con búsqueda, filtros alimentarios, precio máximo, ordenamiento y categorías fijas al recorrer.
+- Carrito persistente con variantes, agregados, notas, cupones, propina, mesa, retiro y entrega.
+- Pedidos guardados en MySQL con referencia privada, seguimiento de estado e historial.
+- Fichas de producto con URL amigable, SEO, favoritos, compartir y datos estructurados.
+- Visor 3D interactivo con controles de cámara, pantalla completa y captura de imagen.
+- Realidad aumentada real mediante WebXR, Scene Viewer y Quick Look cuando el dispositivo es compatible.
+- Reservas, promociones, programa de puntos, QR por mesa y casos de éxito.
+- Ayuda, soporte y documentos legales administrables.
+- PWA instalable con experiencia sin conexión, aviso de actualización y páginas de error cuidadas.
+- Analítica propia respetuosa del consentimiento, sin depender de cookies publicitarias.
 
 ### Administración
 
-- Gestión de productos, categorías, eventos, horarios, testimonios, negocio y usuarios.
-- Gestión comercial de planes, precios y funcionalidades sin modificar componentes.
-- Tablero de oportunidades con búsqueda, detalle, estados y movimiento entre columnas.
-- Roles y permisos por empresa.
-- Sesiones revocables y rutas administrativas protegidas.
-- Auditoría de operaciones con usuario, entidad, IP y valores anteriores/nuevos.
-- Gestor de imágenes con validación por recurso.
+- Gestión visual de productos, categorías, eventos, horarios, testimonios, promociones y contenido legal.
+- Publicación inmediata, borradores y programación de contenido.
+- Modelos 3D GLB/GLTF y USDZ, escala, dimensiones, rotación, ubicación y vista previa del modelo actual.
+- Tableros operativos de pedidos, reservas, soporte y testimonios con estados claros.
+- Mesas con códigos QR imprimibles y descarga individual.
+- Clientes frecuentes, niveles, puntos, movimientos e historial de pedidos.
+- Estadísticas del recorrido público con filtros y exportación CSV.
+- Importación validada de productos y exportación de productos, pedidos, reservas y clientes.
+- Biblioteca de medios con texto alternativo, detección de duplicados y eliminación protegida por uso.
+- Personalización centralizada de nombre, logotipo, favicon, colores, tipografía, tarjetas y botones.
+- Centro de notificaciones y preferencias por evento y canal.
+- Onboarding guiado que detecta la configuración completada.
+- Roles, permisos, sesiones revocables, cambio de contraseña y auditoría de operaciones.
+- Paleta de comandos con `Ctrl/⌘ + K` y navegación adaptable a escritorio y celular.
+
+### Plataforma multiempresa
+
+- Resolución de negocios por dominio personalizado, subdominio o tenant predeterminado.
+- Superadministración separada para crear, suspender y asignar planes a negocios.
+- Suscripciones, límites configurables, vencimientos, observaciones y registro administrativo de pagos.
+- Datos, permisos, contenido, métricas y archivos aislados por empresa.
 
 ## Stack
 
@@ -46,12 +64,14 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 
 1. Importar `laterne.sql` en una base MySQL llamada `laterne` si se parte de una instalación limpia.
 2. Copiar `.env.example` como `.env`.
-3. Ajustar `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL` y generar un valor seguro para `AUTH_SECRET`.
+3. Ajustar `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `ROOT_DOMAIN` y generar un valor seguro para `AUTH_SECRET`.
 4. Ejecutar `npm install`.
 5. Ejecutar `npx prisma migrate deploy` para aplicar las migraciones pendientes.
 6. Ejecutar `npm run dev`.
 
-En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio.
+En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base, sin protocolo. Los dominios personalizados deben apuntar al mismo despliegue.
+
+La realidad aumentada requiere HTTPS fuera de `localhost`. Android utiliza WebXR o Scene Viewer; iPhone y iPad usan archivos USDZ mediante Quick Look. Si el dispositivo no es compatible, la ficha mantiene disponible el visor 3D y explica la limitación sin romper la página.
 
 ## Comandos
 
@@ -91,6 +111,12 @@ La instalación existente se migra a un tenant inicial llamado `Laterne`, preser
 - `20260810003000_phase_one_foundations`: tenants, roles, permisos, sesiones, auditoría, planes, oportunidades y mejoras de productos.
 - `20260810010000_backfill_friendly_slugs`: genera direcciones amigables para productos y categorías existentes.
 - `20260810020000_login_attempt_protection`: limita intentos de acceso mediante identificadores anónimos y temporales.
+- `20260810030000_product_spatial_experience`: modelos 3D y configuración de realidad aumentada por producto.
+- `20260810040000_promotions_and_reservations`: promociones, disponibilidad y reservas persistentes.
+- `20260810050000_orders_tables_analytics`: pedidos, opciones, mesas QR, fidelización y analítica propia.
+- `20260810060000_product_platform_modules`: marca, archivos, notificaciones, soporte, onboarding y plataforma multiempresa.
+- `20260810070000_success_cases`: casos de éxito administrables para la landing comercial.
+- `20260810080000_scheduled_publication`: publicación programada para el contenido público.
 
 Antes de aplicar migraciones en un entorno real se recomienda crear un respaldo de MySQL. En despliegues se debe usar `npx prisma migrate deploy`; `prisma db push` no reemplaza el historial de migraciones.
 
@@ -98,6 +124,10 @@ Antes de aplicar migraciones en un entorno real se recomienda crear un respaldo 
 
 La versión 2 reemplaza Express, Pug, Sequelize, Bootstrap, jQuery y el JavaScript imperativo anterior por una aplicación React unificada. Prisma conserva mediante `@@map` y `@map` los nombres históricos de tablas y columnas, incluida la columna heredada `availavility`.
 
-## Alcance de esta etapa
+## Integraciones externas
 
-Esta entrega cubre la base de la Fase 1: profesionalización comercial, producto individual, seguridad, roles, auditoría, SEO, accesibilidad y preparación multiempresa. El visor 3D/AR, reservas, promociones, pedidos persistidos y estadísticas avanzadas pertenecen a las siguientes fases y deben implementarse sobre esta base, con almacenamiento externo y credenciales definidos antes de habilitarlos en producción.
+El núcleo funcional trabaja de forma autónoma con MySQL. Los canales externos de email, WhatsApp, notificaciones push, almacenamiento en nube, facturación y cobro electrónico quedan preparados a nivel de preferencias y dominio, pero necesitan que cada despliegue aporte un proveedor y sus credenciales. Mercado Pago no se activa automáticamente: el pedido se registra y administra sin cobrar en línea hasta configurar esa integración de manera explícita.
+
+## Verificación antes de publicar
+
+Ejecutar `npm run format:check`, `npm run typecheck`, `npm run lint`, `npm run test:unit`, `npm run test:e2e`, `npm run build` y `npm audit --audit-level=high`. En producción también se deben ejecutar las migraciones con `npx prisma migrate deploy`, configurar HTTPS y conservar un respaldo reciente de MySQL.

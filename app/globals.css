@@ -8,17 +8,54 @@
   --font-sans: "Inter", system-ui, sans-serif;
 }
 
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  body > header,
+  aside,
+  form,
+  .print\:hidden {
+    display: none !important;
+  }
+  .qr-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .qr-print-card {
+    break-inside: avoid;
+    border: 2px solid #111 !important;
+    background: white !important;
+    color: black !important;
+  }
+  .qr-print-card p,
+  .qr-print-card h2 {
+    color: black !important;
+  }
+  .qr-instruction {
+    border-color: #111 !important;
+  }
+}
+
 :root {
   color-scheme: dark;
+  --brand-primary: #ec4899;
+  --brand-secondary: #f5c542;
+  --brand-background: #09090b;
+  --brand-font: Inter;
+  --brand-button-radius: 0.75rem;
+  --brand-card-radius: 1rem;
 }
 html {
   scroll-behavior: smooth;
 }
 body {
   margin: 0;
-  background: #09090b;
+  background: var(--brand-background);
   color: #fafafa;
-  font-family: var(--font-sans);
+  font-family: var(--brand-font), var(--font-sans);
 }
 a,
 button {
@@ -40,7 +77,7 @@ button {
 }
 .card {
   border: 1px solid rgb(255 255 255 / 0.1);
-  border-radius: 1rem;
+  border-radius: var(--brand-card-radius);
   background: rgb(255 255 255 / 0.05);
 }
 .input {
@@ -59,14 +96,14 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  background: #ec4899;
+  border-radius: var(--brand-button-radius);
+  background: var(--brand-primary);
   padding: 0.7rem 1.1rem;
   font-weight: 700;
   color: white;
 }
 .btn:hover {
-  background: #db2777;
+  filter: brightness(0.9);
 }
 .btn-secondary {
   background: #27272a;
@@ -76,7 +113,7 @@ button {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #f472b6;
+  color: var(--brand-primary);
 }
 .section-title {
   font-size: clamp(2.5rem, 6vw, 4.5rem);

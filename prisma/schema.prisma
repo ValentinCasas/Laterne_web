@@ -23,18 +23,20 @@ model BusinessInfo {
 }
 
 model Category {
-  id          Int               @id @default(autoincrement())
+  id          Int                 @id @default(autoincrement())
   tenantId    Int
-  name        String            @db.VarChar(255)
-  slug        String            @db.VarChar(180)
-  description String            @db.VarChar(255)
-  imageUrl    String            @db.VarChar(255)
-  status      String            @default("published") @db.VarChar(20)
-  sortOrder   Int               @default(0)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String              @db.VarChar(255)
+  slug        String              @db.VarChar(180)
+  description String              @db.VarChar(255)
+  imageUrl    String              @db.VarChar(255)
+  status      String              @default("published") @db.VarChar(20)
+  publishAt   DateTime?
+  sortOrder   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products    ProductCategory[]
+  promotions  PromotionCategory[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, sortOrder])
@@ -51,6 +53,7 @@ model Event {
   location    String    @db.VarChar(255)
   imageUrl    String?   @db.VarChar(255)
   status      String    @default("published") @db.VarChar(20)
+  publishAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -74,33 +77,50 @@ model OpeningHour {
 }
 
 model Product {
-  id                 Int               @id @default(autoincrement())
+  id                 Int                @id @default(autoincrement())
   tenantId           Int
-  name               String            @db.VarChar(255)
-  slug               String            @db.VarChar(180)
-  description        String            @db.VarChar(700)
-  availability       String?           @map("availavility") @db.VarChar(255)
-  price              Decimal?          @db.Decimal(10, 0)
-  imageUrl           String            @db.VarChar(255)
-  status             String            @default("published") @db.VarChar(20)
-  featured           Boolean           @default(false)
-  isNew              Boolean           @default(false)
-  recommended        Boolean           @default(false)
-  vegetarian         Boolean           @default(false)
-  vegan              Boolean           @default(false)
-  glutenFree         Boolean           @default(false)
-  alcoholFree        Boolean           @default(false)
-  spiceLevel         Int               @default(0)
+  name               String             @db.VarChar(255)
+  slug               String             @db.VarChar(180)
+  description        String             @db.VarChar(700)
+  availability       String?            @map("availavility") @db.VarChar(255)
+  price              Decimal?           @db.Decimal(10, 0)
+  imageUrl           String             @db.VarChar(255)
+  status             String             @default("published") @db.VarChar(20)
+  publishAt          DateTime?
+  featured           Boolean            @default(false)
+  isNew              Boolean            @default(false)
+  recommended        Boolean            @default(false)
+  vegetarian         Boolean            @default(false)
+  vegan              Boolean            @default(false)
+  glutenFree         Boolean            @default(false)
+  alcoholFree        Boolean            @default(false)
+  spiceLevel         Int                @default(0)
   preparationMinutes Int?
-  promotionalPrice   Decimal?          @db.Decimal(10, 0)
-  previousPrice      Decimal?          @db.Decimal(10, 0)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promotionalPrice   Decimal?           @db.Decimal(10, 0)
+  previousPrice      Decimal?           @db.Decimal(10, 0)
+  model3dUrl         String?            @db.VarChar(500)
+  usdzUrl            String?            @db.VarChar(500)
+  modelPosterUrl     String?            @db.VarChar(500)
+  arEnabled          Boolean            @default(false)
+  arScale            Decimal            @default(1.000) @db.Decimal(8, 3)
+  modelWidthCm       Decimal?           @db.Decimal(8, 2)
+  modelHeightCm      Decimal?           @db.Decimal(8, 2)
+  modelDepthCm       Decimal?           @db.Decimal(8, 2)
+  modelOrientation   String             @default("0deg 0deg 0deg") @db.VarChar(80)
+  arPlacement        String             @default("floor") @db.VarChar(20)
+  arAllowScale       Boolean            @default(true)
+  modelUpdatedAt     DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   categories         ProductCategory[]
   allergens          ProductAllergen[]
-  relatedFrom        ProductRelation[] @relation("ProductRelationFrom")
-  relatedTo          ProductRelation[] @relation("ProductRelationTo")
+  relatedFrom        ProductRelation[]  @relation("ProductRelationFrom")
+  relatedTo          ProductRelation[]  @relation("ProductRelationTo")
+  promotions         PromotionProduct[]
+  variants           ProductVariant[]
+  extras             ProductExtra[]
+  orderItems         OrderItem[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -149,30 +169,54 @@ model User {
   sessions      AuthSession[]
   auditLogs     AuditLog[]
   assignedLeads SalesLead[]        @relation("AssignedSalesLeads")
+  isSuperAdmin  Boolean            @default(false)
+  mediaAssets   MediaAsset[]
 
   @@unique([email])
   @@map("user")
 }
 
 model Tenant {
-  id                Int                @id @default(autoincrement())
-  name              String             @db.VarChar(160)
-  slug              String             @unique @db.VarChar(120)
-  status            String             @default("active") @db.VarChar(20)
-  defaultCurrency   String             @default("ARS") @db.VarChar(3)
-  locale            String             @default("es-AR") @db.VarChar(12)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  businessInfo      BusinessInfo?
-  categories        Category[]
-  products          Product[]
-  productCategories ProductCategory[]
-  events            Event[]
-  openingHours      OpeningHour[]
-  testimonials      Testimonial[]
-  memberships       TenantMembership[]
-  roles             Role[]
-  auditLogs         AuditLog[]
+  id                   Int                   @id @default(autoincrement())
+  name                 String                @db.VarChar(160)
+  slug                 String                @unique @db.VarChar(120)
+  status               String                @default("active") @db.VarChar(20)
+  defaultCurrency      String                @default("ARS") @db.VarChar(3)
+  locale               String                @default("es-AR") @db.VarChar(12)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  businessInfo         BusinessInfo?
+  categories           Category[]
+  products             Product[]
+  productCategories    ProductCategory[]
+  events               Event[]
+  openingHours         OpeningHour[]
+  testimonials         Testimonial[]
+  memberships          TenantMembership[]
+  roles                Role[]
+  auditLogs            AuditLog[]
+  promotions           Promotion[]
+  promotionProducts    PromotionProduct[]
+  promotionCategories  PromotionCategory[]
+  reservationSettings  ReservationSettings?
+  reservationBlocks    ReservationBlock[]
+  reservations         Reservation[]
+  notifications        Notification[]
+  productVariants      ProductVariant[]
+  productExtras        ProductExtra[]
+  diningTables         DiningTable[]
+  customerOrders       CustomerOrder[]
+  analyticsEvents      AnalyticsEvent[]
+  brandSettings        BrandSettings?
+  subscription         TenantSubscription?
+  onboarding           OnboardingProgress?
+  notificationSettings NotificationSettings?
+  legalPages           LegalPage[]
+  helpArticles         HelpArticle[]
+  supportTickets       SupportTicket[]
+  mediaAssets          MediaAsset[]
+  loyaltyCustomers     LoyaltyCustomer[]
+  successCases         SuccessCase[]
 
   @@map("tenant")
 }
@@ -281,22 +325,23 @@ model AuditLog {
 }
 
 model Plan {
-  id           Int           @id @default(autoincrement())
-  slug         String        @unique @db.VarChar(100)
-  name         String        @db.VarChar(140)
-  summary      String        @db.VarChar(500)
-  audience     String?       @db.VarChar(255)
-  type         String        @default("implementation") @db.VarChar(30)
-  billingMode  String        @default("one_time") @db.VarChar(30)
-  badge        String?       @db.VarChar(80)
-  highlighted  Boolean       @default(false)
-  active       Boolean       @default(true)
-  displayOrder Int           @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  prices       PlanPrice[]
-  features     PlanFeature[]
-  leads        SalesLead[]
+  id            Int                  @id @default(autoincrement())
+  slug          String               @unique @db.VarChar(100)
+  name          String               @db.VarChar(140)
+  summary       String               @db.VarChar(500)
+  audience      String?              @db.VarChar(255)
+  type          String               @default("implementation") @db.VarChar(30)
+  billingMode   String               @default("one_time") @db.VarChar(30)
+  badge         String?              @db.VarChar(80)
+  highlighted   Boolean              @default(false)
+  active        Boolean              @default(true)
+  displayOrder  Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  prices        PlanPrice[]
+  features      PlanFeature[]
+  subscriptions TenantSubscription[]
+  leads         SalesLead[]
 
   @@index([active, type, displayOrder])
   @@map("plan")
@@ -436,4 +481,517 @@ model CommercialFaq {
 
   @@index([audience, active, displayOrder])
   @@map("commercialfaq")
+}
+
+model Promotion {
+  id              Int                 @id @default(autoincrement())
+  tenantId        Int
+  slug            String              @db.VarChar(180)
+  name            String              @db.VarChar(180)
+  description     String              @db.VarChar(700)
+  imageUrl        String?             @db.VarChar(255)
+  type            String              @db.VarChar(30)
+  discountValue   Decimal?            @db.Decimal(12, 2)
+  buyQuantity     Int?
+  receiveQuantity Int?
+  startAt         DateTime?
+  endAt           DateTime?
+  startTime       DateTime?           @db.Time(0)
+  endTime         DateTime?           @db.Time(0)
+  daysOfWeek      Json?
+  conditions      String?             @db.Text
+  code            String?             @db.VarChar(80)
+  status          String              @default("published") @db.VarChar(20)
+  publishAt       DateTime?
+  priority        Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products        PromotionProduct[]
+  categories      PromotionCategory[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, startAt, endAt])
+  @@map("promotion")
+}
+
+model PromotionProduct {
+  id          Int       @id @default(autoincrement())
+  tenantId    Int
+  promotionId Int
+  productId   Int
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, productId])
+  @@index([tenantId, productId])
+  @@map("promotionproduct")
+}
+
+model PromotionCategory {
+  id          Int       @id @default(autoincrement())
+  tenantId    Int
+  promotionId Int
+  categoryId  Int
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, categoryId])
+  @@index([tenantId, categoryId])
+  @@map("promotioncategory")
+}
+
+model ReservationSettings {
+  id                 Int      @id @default(autoincrement())
+  tenantId           Int      @unique
+  enabled            Boolean  @default(true)
+  capacityPerSlot    Int      @default(30)
+  slotInterval       Int      @default(30)
+  minimumLeadHours   Int      @default(2)
+  maximumAdvanceDays Int      @default(60)
+  maximumPartySize   Int      @default(20)
+  defaultDuration    Int      @default(120)
+  sectors            Json?
+  policy             String?  @db.Text
+  confirmationMode   String   @default("manual") @db.VarChar(20)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("reservationsettings")
+}
+
+model ReservationBlock {
+  id        Int       @id @default(autoincrement())
+  tenantId  Int
+  startDate DateTime  @db.Date
+  endDate   DateTime  @db.Date
+  startTime DateTime? @db.Time(0)
+  endTime   DateTime? @db.Time(0)
+  reason    String    @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, startDate, endDate])
+  @@map("reservationblock")
+}
+
+model Reservation {
+  id                Int                        @id @default(autoincrement())
+  tenantId          Int
+  reference         String                     @unique @db.VarChar(24)
+  status            String                     @default("pending") @db.VarChar(24)
+  reservationDate   DateTime                   @db.Date
+  reservationTime   DateTime                   @db.Time(0)
+  partySize         Int
+  sector            String?                    @db.VarChar(100)
+  customerName      String                     @db.VarChar(160)
+  phone             String                     @db.VarChar(60)
+  email             String                     @db.VarChar(190)
+  notes             String?                    @db.Text
+  reason            String?                    @db.VarChar(160)
+  acceptedPolicy    Boolean                    @default(false)
+  source            String                     @default("website") @db.VarChar(60)
+  ipHash            String?                    @db.VarChar(64)
+  estimatedDuration Int?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  tenant            Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  history           ReservationStatusHistory[]
+
+  @@index([tenantId, reservationDate, reservationTime])
+  @@index([tenantId, status, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("reservation")
+}
+
+model ReservationStatusHistory {
+  id            Int         @id @default(autoincrement())
+  reservationId Int
+  userId        Int?
+  fromStatus    String?     @db.VarChar(24)
+  toStatus      String      @db.VarChar(24)
+  note          String?     @db.VarChar(500)
+  createdAt     DateTime    @default(now())
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId, createdAt])
+  @@map("reservationstatushistory")
+}
+
+model Notification {
+  id        BigInt    @id @default(autoincrement())
+  tenantId  Int
+  type      String    @db.VarChar(60)
+  title     String    @db.VarChar(180)
+  message   String    @db.VarChar(700)
+  link      String?   @db.VarChar(500)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, readAt, createdAt])
+  @@map("notification")
+}
+
+model ProductVariant {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int
+  productId       Int
+  name            String   @db.VarChar(120)
+  priceAdjustment Decimal  @default(0) @db.Decimal(12, 2)
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, productId, active, sortOrder])
+  @@map("productvariant")
+}
+
+model ProductExtra {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  productId Int
+  name      String   @db.VarChar(120)
+  price     Decimal  @default(0) @db.Decimal(12, 2)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, productId, active, sortOrder])
+  @@map("productextra")
+}
+
+model DiningTable {
+  id        Int             @id @default(autoincrement())
+  tenantId  Int
+  code      String          @db.VarChar(40)
+  name      String          @db.VarChar(100)
+  sector    String?         @db.VarChar(100)
+  capacity  Int             @default(4)
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders    CustomerOrder[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active, name])
+  @@map("diningtable")
+}
+
+model CustomerOrder {
+  id              Int                  @id @default(autoincrement())
+  tenantId        Int
+  tableId         Int?
+  customerId      Int?
+  reference       String               @unique @db.VarChar(24)
+  publicTokenHash String               @db.VarChar(64)
+  status          String               @default("received") @db.VarChar(24)
+  orderType       String               @default("takeaway") @db.VarChar(24)
+  customerName    String               @db.VarChar(160)
+  phone           String               @db.VarChar(60)
+  email           String?              @db.VarChar(190)
+  notes           String?              @db.Text
+  subtotal        Decimal              @db.Decimal(12, 2)
+  discount        Decimal              @default(0) @db.Decimal(12, 2)
+  total           Decimal              @db.Decimal(12, 2)
+  currency        String               @default("ARS") @db.VarChar(3)
+  source          String               @default("website") @db.VarChar(60)
+  ipHash          String?              @db.VarChar(64)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  table           DiningTable?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  customer        LoyaltyCustomer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  history         OrderStatusHistory[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, tableId, createdAt])
+  @@index([tenantId, customerId, createdAt])
+  @@index([publicTokenHash])
+  @@map("customerorder")
+}
+
+model OrderItem {
+  id           Int           @id @default(autoincrement())
+  orderId      Int
+  productId    Int?
+  productName  String        @db.VarChar(180)
+  quantity     Int
+  unitPrice    Decimal       @db.Decimal(12, 2)
+  variantName  String?       @db.VarChar(120)
+  variantPrice Decimal       @default(0) @db.Decimal(12, 2)
+  extras       Json?
+  extrasTotal  Decimal       @default(0) @db.Decimal(12, 2)
+  notes        String?       @db.VarChar(500)
+  lineTotal    Decimal       @db.Decimal(12, 2)
+  order        CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("orderitem")
+}
+
+model OrderStatusHistory {
+  id         Int           @id @default(autoincrement())
+  orderId    Int
+  userId     Int?
+  fromStatus String?       @db.VarChar(24)
+  toStatus   String        @db.VarChar(24)
+  note       String?       @db.VarChar(500)
+  createdAt  DateTime      @default(now())
+  order      CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("orderstatushistory")
+}
+
+model AnalyticsEvent {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    Int
+  eventType   String   @db.VarChar(80)
+  sessionHash String?  @db.VarChar(64)
+  ipHash      String?  @db.VarChar(64)
+  path        String?  @db.VarChar(300)
+  entityType  String?  @db.VarChar(60)
+  entityId    Int?
+  metadata    Json?
+  occurredAt  DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, eventType, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@index([sessionHash, occurredAt])
+  @@map("analyticsevent")
+}
+
+model BrandSettings {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @unique
+  logoUrl         String?  @db.VarChar(500)
+  isotypeUrl      String?  @db.VarChar(500)
+  faviconUrl      String?  @db.VarChar(500)
+  primaryColor    String   @default("#ec4899") @db.VarChar(20)
+  secondaryColor  String   @default("#f5c542") @db.VarChar(20)
+  backgroundColor String   @default("#09090b") @db.VarChar(20)
+  fontFamily      String   @default("Inter") @db.VarChar(100)
+  buttonStyle     String   @default("rounded") @db.VarChar(30)
+  cardStyle       String   @default("soft") @db.VarChar(30)
+  heroTitle       String?  @db.VarChar(220)
+  heroSubtitle    String?  @db.VarChar(500)
+  tone            String?  @db.VarChar(120)
+  socialLinks     Json?
+  customDomain    String?  @db.VarChar(255)
+  analyticsId     String?  @db.VarChar(100)
+  metaPixelId     String?  @db.VarChar(100)
+  searchConsoleId String?  @db.VarChar(255)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("brandsettings")
+}
+
+model TenantSubscription {
+  id            Int       @id @default(autoincrement())
+  tenantId      Int       @unique
+  planId        Int?
+  status        String    @default("active") @db.VarChar(24)
+  startsAt      DateTime  @default(now())
+  endsAt        DateTime?
+  renewalAmount Decimal?  @db.Decimal(14, 2)
+  limits        Json?
+  enabled       Json?
+  notes         String?   @db.Text
+  lastPaymentAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan          Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([status, endsAt])
+  @@map("tenantsubscription")
+}
+
+model OnboardingProgress {
+  id             Int       @id @default(autoincrement())
+  tenantId       Int       @unique
+  completedSteps Json?
+  currentStep    Int       @default(1)
+  percentage     Int       @default(0)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("onboardingprogress")
+}
+
+model NotificationSettings {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @unique
+  panel     Boolean  @default(true)
+  email     Boolean  @default(false)
+  whatsapp  Boolean  @default(false)
+  webPush   Boolean  @default(false)
+  events    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("notificationsettings")
+}
+
+model LegalPage {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  slug      String   @db.VarChar(100)
+  title     String   @db.VarChar(180)
+  content   String   @db.LongText
+  status    String   @default("published") @db.VarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@map("legalpage")
+}
+
+model HelpArticle {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  slug         String   @db.VarChar(140)
+  title        String   @db.VarChar(220)
+  summary      String   @db.VarChar(500)
+  content      String   @db.LongText
+  category     String   @db.VarChar(100)
+  audience     String   @default("public") @db.VarChar(30)
+  status       String   @default("published") @db.VarChar(20)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, audience, status, displayOrder])
+  @@map("helparticle")
+}
+
+model SupportTicket {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  reference    String   @unique @db.VarChar(24)
+  status       String   @default("open") @db.VarChar(24)
+  category     String   @db.VarChar(100)
+  customerName String   @db.VarChar(160)
+  email        String   @db.VarChar(190)
+  phone        String?  @db.VarChar(60)
+  subject      String   @db.VarChar(220)
+  message      String   @db.Text
+  adminNotes   String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt])
+  @@map("supportticket")
+}
+
+model MediaAsset {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  userId    Int?
+  folder    String   @db.VarChar(100)
+  filename  String   @db.VarChar(255)
+  url       String   @db.VarChar(500)
+  mimeType  String   @db.VarChar(120)
+  sizeBytes BigInt
+  altText   String?  @db.VarChar(300)
+  checksum  String   @db.VarChar(64)
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, checksum, folder])
+  @@index([tenantId, folder, createdAt])
+  @@map("mediaasset")
+}
+
+model LoyaltyCustomer {
+  id              Int                  @id @default(autoincrement())
+  tenantId        Int
+  publicTokenHash String               @unique @db.VarChar(64)
+  name            String               @db.VarChar(160)
+  email           String?              @db.VarChar(190)
+  phone           String?              @db.VarChar(60)
+  birthday        DateTime?            @db.Date
+  points          Int                  @default(0)
+  tier            String               @default("inicial") @db.VarChar(40)
+  consentAt       DateTime
+  deletedAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders          CustomerOrder[]
+  transactions    LoyaltyTransaction[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@index([tenantId, tier, points])
+  @@map("loyaltycustomer")
+}
+
+model LoyaltyTransaction {
+  id         Int             @id @default(autoincrement())
+  customerId Int
+  points     Int
+  reason     String          @db.VarChar(220)
+  reference  String?         @db.VarChar(80)
+  createdAt  DateTime        @default(now())
+  customer   LoyaltyCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt])
+  @@map("loyaltytransaction")
+}
+
+model SuccessCase {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int
+  slug           String   @db.VarChar(160)
+  businessName   String   @db.VarChar(180)
+  logoUrl        String?  @db.VarChar(255)
+  coverUrl       String?  @db.VarChar(255)
+  businessType   String   @db.VarChar(100)
+  location       String   @db.VarChar(180)
+  initialProblem String   @db.Text
+  solution       String   @db.Text
+  features       String   @db.Text
+  results        String   @db.Text
+  gallery        Json?
+  testimonial    String?  @db.Text
+  websiteUrl     String?  @db.VarChar(500)
+  planName       String?  @db.VarChar(120)
+  status         String   @default("published") @db.VarChar(20)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, sortOrder])
+  @@map("successcase")
 }

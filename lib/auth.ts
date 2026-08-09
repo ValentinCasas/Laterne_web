@@ -128,6 +128,24 @@ export async function requirePermission(permission: string) {
   return context;
 }
 
+/** @summary Comprueba si la sesión pertenece al propietario global de la plataforma. */
+export async function authorizeSuperAdmin() {
+  const session = await getSession();
+  if (!session) return null;
+  const user = await prisma.user.findFirst({
+    where: { id: session.userId, isSuperAdmin: true },
+    select: { id: true, name: true, email: true },
+  });
+  return user ? { session, user } : null;
+}
+
+/** @summary Exige privilegios globales antes de abrir herramientas multiempresa. */
+export async function requireSuperAdmin() {
+  const context = await authorizeSuperAdmin();
+  if (!context) redirect("/403");
+  return context;
+}
+
 /** @summary Revoca en el servidor la sesión actual para impedir que el token vuelva a utilizarse. */
 export async function revokeCurrentSession() {
   const session = await getSession();

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { ProductActions } from "@/components/menu/product-actions";
+import { ModelExperience } from "@/components/products/model-experience";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
@@ -14,7 +15,11 @@ type ProductPageProps = { params: Promise<{ slug: string }> };
 async function getProduct(slug: string) {
   const tenant = await getDefaultTenant();
   return prisma.product.findFirst({
-    where: { tenantId: tenant.id, slug, status: "published" },
+    where: {
+      tenantId: tenant.id,
+      slug,
+      OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
+    },
     include: {
       categories: { include: { category: true }, take: 3 },
       allergens: { include: { allergen: true } },
@@ -47,6 +52,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ? `/images/images_product/${product.imageUrl}`
       : "/images/image_defect/product_default.png";
   const price = Number(product.promotionalPrice ?? product.price ?? 0);
+  const spatialAvailable = product.arEnabled && Boolean(product.model3dUrl);
   const labels = [
     product.featured && "Destacado",
     product.isNew && "Nuevo",
@@ -163,8 +169,50 @@ export default async function ProductPage({ params }: ProductPageProps) {
               }}
             />
           </div>
+          {spatialAvailable && (
+            <a
+              className="mt-3 inline-flex min-h-12 items-center font-black text-pink-300 hover:text-pink-200"
+              href="#experiencia-3d"
+            >
+              Ver este producto en 3D o sobre tu mesa ↓
+            </a>
+          )}
         </div>
       </section>
+
+      {spatialAvailable && product.model3dUrl && (
+        <section className="mt-16 scroll-mt-24" id="experiencia-3d">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="section-eyebrow">Experiencia espacial</p>
+              <h2 className="mt-2 text-3xl font-black sm:text-5xl">Mirá cómo queda en tu mesa</h2>
+            </div>
+            {(product.modelWidthCm || product.modelHeightCm || product.modelDepthCm) && (
+              <p className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-400">
+                Medidas aproximadas: {product.modelWidthCm ? `${Number(product.modelWidthCm)} cm` : "—"} ×{" "}
+                {product.modelHeightCm ? `${Number(product.modelHeightCm)} cm` : "—"} ×{" "}
+                {product.modelDepthCm ? `${Number(product.modelDepthCm)} cm` : "—"}
+              </p>
+            )}
+          </div>
+          <ModelExperience
+            productId={product.id}
+            modelUrl={product.model3dUrl}
+            iosUrl={product.usdzUrl}
+            posterUrl={product.modelPosterUrl ?? image}
+            productName={product.name}
+            scale={Number(product.arScale)}
+            orientation={product.modelOrientation}
+            placement={product.arPlacement === "wall" ? "wall" : "floor"}
+            allowScale={product.arAllowScale}
+          />
+          <p className="mt-4 text-sm leading-relaxed text-zinc-500">
+            La realidad aumentada utiliza WebXR cuando está disponible, Scene Viewer en Android y Quick Look
+            en iPhone. Requiere HTTPS y permiso de cámara. Si el dispositivo no es compatible, el producto
+            permanece disponible en el visor 3D interactivo.
+          </p>
+        </section>
+      )}
 
       {product.relatedFrom.length > 0 && (
         <section className="mt-20">

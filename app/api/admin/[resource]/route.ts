@@ -6,7 +6,9 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
+import { localModelUrl, modelOrientation, optionalMeasurement } from "@/lib/product-model";
+import { promotionData } from "@/lib/promotion-admin";
+import { slugify, uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
 
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
 type Delegate = { create(args: { data: Record<string, unknown> }): Promise<unknown> };
@@ -30,10 +32,13 @@ async function normalize(resource: string, input: Record<string, string>, tenant
     const fields = selectFields(input, ["name", "description", "availability", "imageUrl", "status"]);
     if (!fields.name.trim() || !fields.description.trim())
       throw new Error("Completá el nombre y la descripción");
+    const model3dUrl = localModelUrl(input.model3dUrl ?? "", tenantId, ["glb", "gltf"]);
+    const usdzUrl = localModelUrl(input.usdzUrl ?? "", tenantId, ["usdz"]);
     return {
       ...fields,
       tenantId,
       status: fields.status || "published",
+      publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueProductSlug(tenantId, input.slug || fields.name),
       price: input.price ? Number(input.price) : null,
       promotionalPrice: input.promotionalPrice ? Number(input.promotionalPrice) : null,
@@ -47,6 +52,17 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       vegan: booleanValue(input.vegan),
       glutenFree: booleanValue(input.glutenFree),
       alcoholFree: booleanValue(input.alcoholFree),
+      model3dUrl,
+      usdzUrl,
+      arEnabled: Boolean(model3dUrl) && booleanValue(input.arEnabled),
+      arScale: optionalMeasurement(input.arScale || "1", 0.01, 20),
+      modelWidthCm: optionalMeasurement(input.modelWidthCm ?? ""),
+      modelHeightCm: optionalMeasurement(input.modelHeightCm ?? ""),
+      modelDepthCm: optionalMeasurement(input.modelDepthCm ?? ""),
+      modelOrientation: modelOrientation(input.modelOrientation ?? ""),
+      arPlacement: input.arPlacement === "wall" ? "wall" : "floor",
+      arAllowScale: booleanValue(input.arAllowScale),
+      modelUpdatedAt: model3dUrl ? new Date() : null,
       categories: { create: { tenantId, categoryId } },
     };
   }
@@ -59,6 +75,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       ...fields,
       tenantId,
       status: fields.status || "published",
+      publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueCategorySlug(tenantId, input.slug || fields.name),
       sortOrder: Number(input.sortOrder || 0),
     };
@@ -69,6 +86,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       ...selectFields(input, ["name", "description", "location", "imageUrl", "status"]),
       tenantId,
       status: input.status || "published",
+      publishAt: input.publishAt ? new Date(input.publishAt) : null,
       date: input.date ? new Date(`${input.date}T00:00:00`) : null,
       time: input.time ? new Date(`1970-01-01T${input.time}:00Z`) : null,
     };
@@ -98,6 +116,73 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       ...selectFields(input, ["address", "email", "latitude", "longitude", "instagramUrl", "facebookUrl"]),
       tenantId,
       phoneNumber: input.phoneNumber ? BigInt(input.phoneNumber.replace(/\D/g, "")) : null,
+    };
+  }
+
+  if (resource === "promociones") {
+    return promotionData(input, tenantId);
+  }
+
+  if (resource === "legales") {
+    if (!input.title?.trim() || !input.content?.trim()) throw new Error("Completá el título y el contenido");
+    return {
+      tenantId,
+      title: input.title.trim(),
+      slug: slugify(input.slug || input.title) || "pagina-legal",
+      content: input.content.trim(),
+      status: input.status || "published",
+    };
+  }
+
+  if (resource === "ayuda") {
+    if (!input.title?.trim() || !input.summary?.trim() || !input.content?.trim()) {
+      throw new Error("Completá título, resumen y contenido");
+    }
+    return {
+      tenantId,
+      title: input.title.trim(),
+      slug: slugify(input.slug || input.title) || "articulo",
+      summary: input.summary.trim(),
+      content: input.content.trim(),
+      category: input.category?.trim() || "General",
+      audience: ["public", "admin", "all"].includes(input.audience) ? input.audience : "public",
+      status: input.status || "published",
+      displayOrder: Number(input.displayOrder || 0),
+    };
+  }
+
+  if (resource === "casos") {
+    const required = [
+      "businessName",
+      "businessType",
+      "location",
+      "initialProblem",
+      "solution",
+      "features",
+      "results",
+    ];
+    if (required.some((field) => !input[field]?.trim()))
+      throw new Error("Completá la información principal del caso");
+    return {
+      tenantId,
+      ...selectFields(input, [
+        "businessName",
+        "logoUrl",
+        "coverUrl",
+        "businessType",
+        "location",
+        "initialProblem",
+        "solution",
+        "features",
+        "results",
+        "testimonial",
+        "websiteUrl",
+        "planName",
+        "status",
+      ]),
+      slug: slugify(input.slug || input.businessName) || "caso",
+      status: input.status || "published",
+      sortOrder: Number(input.sortOrder || 0),
     };
   }
 
