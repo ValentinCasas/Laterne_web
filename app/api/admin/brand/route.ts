@@ -1,3 +1,5 @@
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
@@ -123,4 +125,67 @@ export async function PATCH(request: Request) {
       { status: 400 },
     );
   }
+}
+
+const brandFields = ["logoUrl", "isotypeUrl", "faviconUrl"] as const;
+
+/** @summary Elimina la asociación del recurso de marca y, si es una imagen administrada, remueve el archivo físico. */
+export async function DELETE(request: Request) {
+  const auth = await authorize("brand.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const parsed = z
+    .object({ field: z.enum(brandFields), assetUrl: z.string().min(1) })
+    .safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
+  const { field, assetUrl } = parsed.data;
+  const brand = await prisma.brandSettings.findUnique({ where: { tenantId: auth.tenant.id } });
+  if (!brand) return NextResponse.json({ error: "No hay marca configurada" }, { status: 404 });
+  const current = brand[field];
+  if (!current || current !== assetUrl) {
+    return NextResponse.json({ brand: serialize(brand), removed: false });
+  }
+
+  if (current.startsWith("/images/images_brand/")) {
+    const assets = await prisma.mediaAsset.findMany({
+      where: { tenantId: auth.tenant.id, url: current },
+      select: { id: true, thumbnailUrl: true },
+    });
+    const publicRoot = path.resolve(process.cwd(), "public");
+    for (const asset of assets) {
+      const target = path.resolve(publicRoot, `.${current}`);
+      if (target.toLocaleLowerCase("en").startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)) {
+        await unlink(target).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOENT") throw error;
+        });
+      }
+      if (asset.thumbnailUrl) {
+        const thumbnailTarget = path.resolve(publicRoot, `.${asset.thumbnailUrl}`);
+        if (
+          thumbnailTarget
+            .toLocaleLowerCase("en")
+            .startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)
+        ) {
+          await unlink(thumbnailTarget).catch((error: NodeJS.ErrnoException) => {
+            if (error.code !== "ENOENT") throw error;
+          });
+        }
+      }
+      await prisma.mediaAsset.delete({ where: { id: asset.id } });
+    }
+  }
+
+  const updated = await prisma.brandSettings.update({
+    where: { tenantId: auth.tenant.id },
+    data: { [field]: null },
+  });
+  await recordAudit({
+    context: auth,
+    action: "update",
+    entityType: "brand-settings",
+    entityId: updated.id,
+    oldValues: toAuditValue(serialize(brand)),
+    newValues: toAuditValue(serialize(updated)),
+    request,
+  });
+  return NextResponse.json({ brand: serialize(updated), removed: true });
 }

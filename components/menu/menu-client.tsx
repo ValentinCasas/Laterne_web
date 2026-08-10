@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
@@ -95,6 +95,26 @@ export function MenuClient({
   const [configuring, setConfiguring] = useState<MenuProduct | null>(null);
   const [ready, setReady] = useState(false);
   const [recentIds, setRecentIds] = useState<number[]>([]);
+  const [stickyOffset, setStickyOffset] = useState(0);
+  const toolbarRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    /** @summary Fija el tope de los títulos justo debajo del navbar y del bloque de búsqueda reales. */
+    const toolbar = toolbarRef.current;
+    const header = document.querySelector<HTMLElement>("header");
+    const update = () => {
+      const headerHeight = header?.getBoundingClientRect().height ?? 64;
+      const toolbarHeight = toolbar?.getBoundingClientRect().height ?? 0;
+      setStickyOffset(headerHeight + toolbarHeight);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    if (toolbar) observer.observe(toolbar);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
@@ -293,7 +313,10 @@ export function MenuClient({
         </div>
       </section>
 
-      <section className="sticky top-16 z-30 border-b border-white/10 bg-black/90 py-2 backdrop-blur-xl sm:py-4">
+      <section
+        ref={toolbarRef}
+        className="sticky top-16 z-30 border-b border-white/10 bg-black/90 py-2 backdrop-blur-xl sm:py-4"
+      >
         <div className="shell">
           <div
             ref={categoryScroll}
@@ -399,8 +422,12 @@ export function MenuClient({
             className="scroll-mt-[10.75rem] sm:scroll-mt-[13rem]"
             id={`category-${category.id}`}
             key={category.id}
+            style={stickyOffset > 0 ? { scrollMarginTop: `${stickyOffset + 2}px` } : undefined}
           >
-            <header className="sticky top-[10.75rem] z-20 -mx-1 mb-4 flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/90 px-3 py-2 shadow-xl shadow-black/30 backdrop-blur-xl sm:top-[13rem] sm:-mx-2 sm:mb-7 sm:rounded-2xl sm:px-4 sm:py-3">
+            <header
+              className="sticky top-[10.75rem] z-20 -mx-1 mb-4 flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/90 px-3 py-2 shadow-xl shadow-black/30 backdrop-blur-xl sm:top-[13rem] sm:-mx-2 sm:mb-7 sm:rounded-2xl sm:px-4 sm:py-3"
+              style={stickyOffset > 0 ? { top: `${stickyOffset}px` } : undefined}
+            >
               <div className="min-w-0">
                 <p className="section-eyebrow hidden sm:block">Laterne</p>
                 <h2 className="truncate text-xl font-black sm:mt-1 sm:text-3xl">{category.name}</h2>

@@ -40,6 +40,7 @@ function socialValue(value: unknown, key: string) {
 export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
   const [brand, setBrand] = useState(initialBrand);
   const [uploading, setUploading] = useState<BrandAsset | null>(null);
+  const [deleting, setDeleting] = useState<BrandAsset | null>(null);
 
   /** @summary Carga un recurso visual y lo asigna al campo de marca correspondiente. */
   async function uploadAsset(field: BrandAsset, file: File | undefined) {
@@ -62,6 +63,45 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
       return;
     }
     setBrand((current) => ({ ...current, [field]: result.url! }));
+  }
+
+  /** @summary Elimina un recurso visual de marca tras confirmar y actualiza la vista al instante. */
+  async function deleteAsset(field: BrandAsset, label: string) {
+    const current = brand[field];
+    if (!current) return;
+    const confirmed = await Swal.fire({
+      title: `¿Quitar ${label.toLowerCase()}?`,
+      text: "Se eliminará de tu carta y se volverá a mostrar el nombre del negocio.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, quitar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#e11d48",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmed.isConfirmed) return;
+    setDeleting(field);
+    try {
+      const response = await fetch("/api/admin/brand", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ field, assetUrl: current }),
+      });
+      const result = (await response.json().catch(() => ({}))) as { brand?: BrandData; error?: string };
+      if (!response.ok || !result.brand) throw new Error(result.error ?? "No se pudo quitar");
+      setBrand(result.brand);
+    } catch (error) {
+      await Swal.fire({
+        title: "No se pudo quitar",
+        text: error instanceof Error ? error.message : "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    } finally {
+      setDeleting(null);
+    }
   }
 
   /** @summary Guarda la identidad completa y actualiza la vista previa sin recargar. */
@@ -137,6 +177,19 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
                 <span className="mt-2 block text-xs text-pink-300">
                   {uploading === field ? "Cargando…" : "Elegir archivo"}
                 </span>
+                {brand[field] && uploading !== field && (
+                  <button
+                    type="button"
+                    className="mt-1 w-full text-[11px] font-bold text-red-300 transition hover:text-red-200"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void deleteAsset(field, label);
+                    }}
+                  >
+                    {deleting === field ? "Quitando…" : "Quitar"}
+                  </button>
+                )}
                 <input
                   className="sr-only"
                   type="file"
