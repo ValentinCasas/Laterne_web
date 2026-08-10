@@ -7,6 +7,13 @@ import { AssetPicker } from "@/components/admin/asset-picker";
 import { ImagePicker } from "@/components/admin/image-picker";
 import { LocationPicker } from "@/components/admin/location-picker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
+import {
+  readBrowserJson,
+  readBrowserText,
+  removeBrowserText,
+  writeBrowserJson,
+  writeBrowserText,
+} from "@/lib/browser-compat";
 
 export type ResourceOption = { value: string; label: string; image?: string };
 export type ResourceField = {
@@ -358,11 +365,9 @@ export function ResourceManager({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setQuery(localStorage.getItem(`laterne_admin_filter_${resource}`) ?? "");
-      const stored = JSON.parse(
-        localStorage.getItem(`laterne_admin_favorites_${resource}`) ?? "[]",
-      ) as number[];
-      setFavoriteIds(new Set(stored));
+      setQuery(readBrowserText(`laterne_admin_filter_${resource}`) ?? "");
+      const stored = readBrowserJson<number[]>(`laterne_admin_favorites_${resource}`, []);
+      setFavoriteIds(new Set(Array.isArray(stored) ? stored : []));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [resource]);
@@ -396,21 +401,15 @@ export function ResourceManager({
   const visibleItems = filteredItems.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
 
   useEffect(() => {
-    localStorage.setItem(`laterne_admin_filter_${resource}`, query);
+    writeBrowserText(`laterne_admin_filter_${resource}`, query);
   }, [query, resource]);
 
   /** @summary Abre el formulario vacío o carga en él los datos de un registro existente. */
   function openForm(item: Item | null) {
     setEditing(item);
     if (!item) {
-      try {
-        const stored = JSON.parse(
-          localStorage.getItem(`laterne_admin_draft_${resource}`) ?? "null",
-        ) as Record<string, unknown> | null;
-        setDraftItem(stored ? ({ id: 0, ...stored } as Item) : null);
-      } catch {
-        setDraftItem(null);
-      }
+      const stored = readBrowserJson<Record<string, unknown> | null>(`laterne_admin_draft_${resource}`, null);
+      setDraftItem(stored ? ({ id: 0, ...stored } as Item) : null);
     } else setDraftItem(null);
     setFormOpen(true);
     window.requestAnimationFrame(() =>
@@ -431,7 +430,7 @@ export function ResourceManager({
     for (const [key, value] of new FormData(form).entries()) {
       if (typeof value === "string") draft[key] = value;
     }
-    localStorage.setItem(`laterne_admin_draft_${resource}`, JSON.stringify(draft));
+    writeBrowserJson(`laterne_admin_draft_${resource}`, draft);
   }
 
   /** @summary Carga una imagen nueva cuando corresponde y devuelve su nombre público. */
@@ -497,7 +496,7 @@ export function ResourceManager({
       setItems((current) =>
         id ? current.map((item) => (item.id === id ? nextItem : item)) : [...current, nextItem],
       );
-      localStorage.removeItem(`laterne_admin_draft_${resource}`);
+      removeBrowserText(`laterne_admin_draft_${resource}`);
       closeForm();
       await Swal.fire({
         title: id ? "Cambios guardados" : "Contenido creado",
@@ -632,7 +631,7 @@ export function ResourceManager({
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      localStorage.setItem(`laterne_admin_favorites_${resource}`, JSON.stringify([...next]));
+      writeBrowserJson(`laterne_admin_favorites_${resource}`, [...next]);
       return next;
     });
   }

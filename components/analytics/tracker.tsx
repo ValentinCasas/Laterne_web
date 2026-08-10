@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { createBrowserId, readBrowserText, writeBrowserText } from "@/lib/browser-compat";
 
 type TrackOptions = {
   entityType?: "product" | "category" | "promotion" | "reservation" | "order" | "page";
@@ -12,45 +13,49 @@ type TrackOptions = {
 /** @summary Recupera o crea el identificador anónimo que agrupa una sesión de navegación. */
 function analyticsSession() {
   const key = "laterne_analytics_session";
-  const existing = sessionStorage.getItem(key);
+  const existing = readBrowserText(key, "session");
   if (existing) return existing;
-  const created = crypto.randomUUID();
-  sessionStorage.setItem(key, created);
+  const created = createBrowserId();
+  writeBrowserText(key, created, "session");
   return created;
 }
 
 /** @summary Envía un evento analítico no bloqueante sin incluir datos personales del visitante. */
 export function trackEvent(eventType: string, options: TrackOptions = {}) {
   if (typeof window === "undefined") return;
-  if (localStorage.getItem("laterne_analytics_consent") !== "accepted") return;
-  const privacyControl = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl;
-  if (privacyControl) return;
-  const payload = JSON.stringify({
-    eventType,
-    sessionId: analyticsSession(),
-    path: window.location.pathname,
-    entityType: options.entityType,
-    entityId: options.entityId,
-    metadata: {
-      device: window.matchMedia("(max-width: 640px)").matches ? "mobile" : "desktop",
-      ...options.metadata,
-    },
-  });
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon("/api/analytics", new Blob([payload], { type: "application/json" }));
-    return;
+  try {
+    if (readBrowserText("laterne_analytics_consent") !== "accepted") return;
+    const privacyControl = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl;
+    if (privacyControl) return;
+    const payload = JSON.stringify({
+      eventType,
+      sessionId: analyticsSession(),
+      path: window.location.pathname,
+      entityType: options.entityType,
+      entityId: options.entityId,
+      metadata: {
+        device: window.matchMedia("(max-width: 640px)").matches ? "mobile" : "desktop",
+        ...options.metadata,
+      },
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/api/analytics", new Blob([payload], { type: "application/json" }));
+      return;
+    }
+    void fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    // La analítica nunca debe bloquear favoritos, pedidos ni controles interactivos.
   }
-  void fetch("/api/analytics", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: payload,
-    keepalive: true,
-  });
 }
 
 /** @summary Carga medidores externos válidos únicamente después del consentimiento explícito. */
 function loadExternalAnalytics(analyticsId?: string | null, metaPixelId?: string | null) {
-  if (localStorage.getItem("laterne_analytics_consent") !== "accepted") return;
+  if (readBrowserText("laterne_analytics_consent") !== "accepted") return;
   const privacyControl = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl;
   if (privacyControl) return;
   if (

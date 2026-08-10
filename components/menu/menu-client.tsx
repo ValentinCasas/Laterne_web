@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
+import { copyBrowserText, createBrowserId, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
 
 export type MenuProduct = {
   id: number;
@@ -97,7 +98,7 @@ export function MenuClient({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const stored: unknown = JSON.parse(localStorage.getItem("laterne_carrito") ?? "[]");
+        const stored: unknown = readBrowserJson("laterne_carrito", []);
         const sanitized = Array.isArray(stored)
           ? stored
               .filter((item) => item && typeof item === "object" && "id" in item && "name" in item)
@@ -113,9 +114,9 @@ export function MenuClient({
               })
           : [];
         setCart(sanitized);
-        const viewed = JSON.parse(localStorage.getItem("laterne_vistos") ?? "[]") as Array<{ id?: number }>;
+        const viewed = readBrowserJson<Array<{ id?: number }>>("laterne_vistos", []);
         setRecentIds(
-          viewed
+          (Array.isArray(viewed) ? viewed : [])
             .map((item) => Number(item.id))
             .filter(Number.isInteger)
             .slice(0, 8),
@@ -128,7 +129,7 @@ export function MenuClient({
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
-    if (ready) localStorage.setItem("laterne_carrito", JSON.stringify(cart));
+    if (ready) writeBrowserJson("laterne_carrito", cart);
   }, [cart, ready]);
   useEffect(() => {
     /** @summary Cierra cualquier panel modal cuando el visitante presiona la tecla Escape. */
@@ -208,7 +209,7 @@ export function MenuClient({
       {
         ...configuring,
         quantity: 1,
-        lineId: crypto.randomUUID(),
+        lineId: createBrowserId(),
         variantId,
         variantName: variant?.name ?? null,
         variantPrice: variant?.priceAdjustment ?? 0,
@@ -236,11 +237,11 @@ export function MenuClient({
   /** @summary Copia al portapapeles un resumen completo del pedido actual. */
   async function copyOrder() {
     if (!cart.length) return;
-    await navigator.clipboard.writeText(orderText);
+    const copied = await copyBrowserText(orderText);
     await Swal.fire({
-      title: "Pedido copiado",
-      text: "Ya podés pegarlo donde quieras.",
-      icon: "success",
+      title: copied ? "Pedido copiado" : "No se pudo copiar automáticamente",
+      text: copied ? "Ya podés pegarlo donde quieras." : "Mantené presionado el resumen para copiarlo.",
+      icon: copied ? "success" : "info",
       timer: 1800,
       showConfirmButton: false,
       background: "#18181b",

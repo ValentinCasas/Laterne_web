@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
+import { copyBrowserText, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
 
 type ProductActionData = {
   id: number;
@@ -23,15 +24,12 @@ export function ProductActions({ product }: { product: ProductActionData }) {
   useEffect(() => {
     trackEvent("product.view", { entityType: "product", entityId: product.id });
     const timer = window.setTimeout(() => {
-      try {
-        const favorites = JSON.parse(localStorage.getItem("laterne_favoritos") ?? "[]") as number[];
-        setFavorite(favorites.includes(product.id));
-        const history = JSON.parse(localStorage.getItem("laterne_vistos") ?? "[]") as ProductActionData[];
-        const nextHistory = [product, ...history.filter((item) => item.id !== product.id)].slice(0, 12);
-        localStorage.setItem("laterne_vistos", JSON.stringify(nextHistory));
-      } catch {
-        setFavorite(false);
-      }
+      const favorites = readBrowserJson<number[]>("laterne_favoritos", []);
+      setFavorite(Array.isArray(favorites) && favorites.includes(product.id));
+      const history = readBrowserJson<ProductActionData[]>("laterne_vistos", []);
+      const validHistory = Array.isArray(history) ? history : [];
+      const nextHistory = [product, ...validHistory.filter((item) => item.id !== product.id)].slice(0, 12);
+      writeBrowserJson("laterne_vistos", nextHistory);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [product]);
@@ -39,9 +37,8 @@ export function ProductActions({ product }: { product: ProductActionData }) {
   /** @summary Agrega el producto al pedido persistido o incrementa su cantidad si ya estaba elegido. */
   function addToOrder() {
     try {
-      const current = JSON.parse(localStorage.getItem("laterne_carrito") ?? "[]") as Array<
-        ProductActionData & { quantity: number }
-      >;
+      const stored = readBrowserJson<Array<ProductActionData & { quantity: number }>>("laterne_carrito", []);
+      const current = Array.isArray(stored) ? stored : [];
       const existing = current.find((item) => item.id === product.id);
       const next = existing
         ? current.map((item) =>
@@ -50,9 +47,13 @@ export function ProductActions({ product }: { product: ProductActionData }) {
               : item,
           )
         : [...current, { ...product, quantity: 1 }];
-      localStorage.setItem("laterne_carrito", JSON.stringify(next));
+      const persisted = writeBrowserJson("laterne_carrito", next);
       trackEvent("product.add", { entityType: "product", entityId: product.id });
-      setMessage("Producto agregado al pedido.");
+      setMessage(
+        persisted
+          ? "Producto agregado al pedido."
+          : "Producto agregado para esta visita. Safari no permitió guardarlo de forma permanente.",
+      );
     } catch {
       setMessage("No pudimos guardar el producto en este dispositivo.");
     }
@@ -60,46 +61,56 @@ export function ProductActions({ product }: { product: ProductActionData }) {
 
   /** @summary Alterna el producto dentro de la colección de favoritos guardada en el dispositivo. */
   function toggleFavorite() {
-    try {
-      const current = JSON.parse(localStorage.getItem("laterne_favoritos") ?? "[]") as number[];
-      const next = current.includes(product.id)
-        ? current.filter((id) => id !== product.id)
-        : [...current, product.id];
-      localStorage.setItem("laterne_favoritos", JSON.stringify(next));
-      setFavorite(next.includes(product.id));
-      trackEvent("product.favorite", {
-        entityType: "product",
-        entityId: product.id,
-        metadata: { enabled: next.includes(product.id) },
-      });
-      setMessage(next.includes(product.id) ? "Guardado en favoritos." : "Quitado de favoritos.");
-    } catch {
-      setMessage("No pudimos actualizar tus favoritos.");
-    }
+    const stored = readBrowserJson<number[]>("laterne_favoritos", []);
+    const current = Array.isArray(stored) ? stored.filter(Number.isInteger) : [];
+    const enabled = !current.includes(product.id);
+    const next = enabled ? [...current, product.id] : current.filter((id) => id !== product.id);
+    const persisted = writeBrowserJson("laterne_favoritos", next);
+    setFavorite(enabled);
+    trackEvent("product.favorite", {
+      entityType: "product",
+      entityId: product.id,
+      metadata: { enabled },
+    });
+    setMessage(
+      enabled
+        ? persisted
+          ? "Guardado en favoritos."
+          : "Guardado durante esta visita. Safari bloqueó la persistencia privada."
+        : "Quitado de favoritos.",
+    );
   }
 
   /** @summary Comparte la ficha con la función nativa disponible o copia su dirección. */
   async function shareProduct() {
     const url = window.location.href;
     try {
-      if (navigator.share) await navigator.share({ title: product.name, text: product.description, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        setMessage("Enlace copiado.");
+      if (navigator.share) {
+        await navigator.share({ title: product.name, text: product.description, url });
+        setMessage("Producto compartido.");
+        return;
       }
     } catch (error) {
-      if ((error as DOMException).name !== "AbortError") setMessage("No pudimos compartir el producto.");
+      if ((error as DOMException).name === "AbortError") return;
     }
+    const copied = await copyBrowserText(url);
+    setMessage(copied ? "Enlace copiado." : `Copiá este enlace: ${url}`);
   }
 
   /** @summary Genera localmente el QR individual de la ficha para mostrarlo o descargarlo sin terceros. */
   async function showQr() {
-    const dataUrl = await QRCode.toDataURL(window.location.href, {
-      width: 720,
-      margin: 2,
-      errorCorrectionLevel: "H",
-      color: { dark: "#09090b", light: "#ffffff" },
-    });
+    let dataUrl = "";
+    try {
+      dataUrl = await QRCode.toDataURL(window.location.href, {
+        width: 720,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: { dark: "#09090b", light: "#ffffff" },
+      });
+    } catch {
+      setMessage("No pudimos generar el código QR en este navegador.");
+      return;
+    }
     const result = await Swal.fire({
       title: product.name,
       text: "Escaneá para abrir esta ficha individual.",

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { readBrowserJson, readBrowserText, removeBrowserText, writeBrowserJson } from "@/lib/browser-compat";
 
 type StoredCartItem = {
   id: number;
@@ -38,20 +39,16 @@ function formatPrice(value: number, currency: string, locale: string) {
 
 /** @summary Recupera un carrito compatible desde el almacenamiento local y descarta entradas inválidas. */
 function storedCart() {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem("laterne_carrito") ?? "[]");
-    if (!Array.isArray(value)) return [];
-    return value.filter(
-      (item): item is StoredCartItem =>
-        Boolean(item) &&
-        typeof item === "object" &&
-        "id" in item &&
-        "quantity" in item &&
-        Number.isInteger(Number((item as StoredCartItem).id)),
-    );
-  } catch {
-    return [];
-  }
+  const value: unknown = readBrowserJson("laterne_carrito", []);
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is StoredCartItem =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      "id" in item &&
+      "quantity" in item &&
+      Number.isInteger(Number((item as StoredCartItem).id)),
+  );
 }
 
 /** @summary Permite revisar datos, modalidad y productos antes de almacenar un pedido definitivo. */
@@ -75,7 +72,7 @@ export function CheckoutForm({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const table = searchParams.get("mesa") || localStorage.getItem("laterne_mesa") || "";
+      const table = searchParams.get("mesa") || readBrowserText("laterne_mesa") || "";
       setTableCode(table);
       if (table) setOrderType("dine_in");
       setItems(storedCart());
@@ -102,7 +99,7 @@ export function CheckoutForm({
   function removeItem(index: number) {
     setItems((current) => {
       const next = current.filter((_, itemIndex) => itemIndex !== index);
-      localStorage.setItem("laterne_carrito", JSON.stringify(next));
+      writeBrowserJson("laterne_carrito", next);
       return next;
     });
   }
@@ -128,7 +125,7 @@ export function CheckoutForm({
       tip: Number(form.get("tip") || 0),
       paymentMethod: form.get("paymentMethod"),
       website: form.get("website"),
-      loyaltyToken: localStorage.getItem("laterne_cliente_token") || undefined,
+      loyaltyToken: readBrowserText("laterne_cliente_token") || undefined,
       items: items.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
@@ -159,7 +156,7 @@ export function CheckoutForm({
       });
       return;
     }
-    localStorage.removeItem("laterne_carrito");
+    removeBrowserText("laterne_carrito");
     router.push(`/pedido/${result.reference}?token=${encodeURIComponent(result.token)}`);
   }
 

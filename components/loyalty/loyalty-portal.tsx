@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
+import { readBrowserText, removeBrowserText, writeBrowserText } from "@/lib/browser-compat";
 
 type LoyaltyProfile = {
   name: string;
@@ -41,10 +42,10 @@ export function LoyaltyPortal() {
   useEffect(() => {
     const timer = window.setTimeout(async () => {
       const shared = new URLSearchParams(window.location.search).get("token")?.trim() ?? "";
-      const accessToken = shared || localStorage.getItem("laterne_cliente_token") || "";
+      const accessToken = shared || readBrowserText("laterne_cliente_token") || "";
       setToken(accessToken);
       if (accessToken) {
-        localStorage.setItem("laterne_cliente_token", accessToken);
+        writeBrowserText("laterne_cliente_token", accessToken);
         try {
           await loadProfile(accessToken);
         } catch (reason) {
@@ -97,7 +98,7 @@ export function LoyaltyPortal() {
       setError(result.error ?? "No se pudo crear el perfil");
       return;
     }
-    localStorage.setItem("laterne_cliente_token", result.token);
+    writeBrowserText("laterne_cliente_token", result.token);
     setToken(result.token);
     await loadProfile(result.token);
   }
@@ -129,7 +130,7 @@ export function LoyaltyPortal() {
       });
       return;
     }
-    localStorage.removeItem("laterne_cliente_token");
+    removeBrowserText("laterne_cliente_token");
     setToken("");
     setProfile(null);
   }

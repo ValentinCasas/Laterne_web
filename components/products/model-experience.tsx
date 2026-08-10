@@ -5,6 +5,8 @@ import { trackEvent } from "@/components/analytics/tracker";
 
 type ViewerElement = HTMLElement & {
   canActivateAR: boolean;
+  loaded?: boolean;
+  modelIsVisible?: boolean;
   activateAR(): Promise<void>;
   toBlob(options?: { mimeType?: string; qualityArgument?: number; idealAspect?: boolean }): Promise<Blob>;
 };
@@ -30,6 +32,15 @@ const ModelViewerCanvas = forwardRef<ViewerElement, Record<string, unknown>>(
   },
 );
 
+/** @summary Reconoce iPhone y iPad, incluidos los modelos recientes que se identifican como una computadora Mac. */
+function isAppleMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 /** @summary Presenta un modelo bajo demanda y activa WebXR, Scene Viewer o Quick Look cuando corresponde. */
 export function ModelExperience({
   modelUrl,
@@ -49,20 +60,30 @@ export function ModelExperience({
   const [libraryReady, setLibraryReady] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [arAvailable, setArAvailable] = useState(false);
+  const [quickLookAvailable, setQuickLookAvailable] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [retryToken, setRetryToken] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!requested) return;
     let active = true;
 
-    import("@google/model-viewer").then(() => {
-      if (active) setLibraryReady(true);
-    });
+    import("@google/model-viewer")
+      .then(async () => {
+        await customElements.whenDefined("model-viewer");
+        if (active) setLibraryReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadError("No se pudo iniciar el visor 3D. Revisá la conexión y volvé a intentarlo.");
+      });
 
     return () => {
       active = false;
     };
-  }, [requested]);
+  }, [requested, retryToken]);
 
   useEffect(() => {
     const element = viewer.current;
@@ -71,6 +92,7 @@ export function ModelExperience({
     /** @summary Actualiza los controles cuando el archivo 3D termina de cargarse. */
     const handleLoad = () => {
       setModelReady(true);
+      setLoadError("");
       const supportsAr = arEnabled && Boolean(element.canActivateAR);
       setArAvailable(supportsAr);
       setMessage(
@@ -80,6 +102,16 @@ export function ModelExperience({
             ? "Modelo listo. AR no está disponible en este dispositivo, pero el visor 3D funciona normalmente."
             : "Modelo listo para girar, ampliar y explorar en tres dimensiones.",
       );
+    };
+
+    /** @summary Explica una falla de descarga o lectura del modelo y ofrece una recuperación visible. */
+    const handleError = () => {
+      setModelReady(false);
+      setArAvailable(false);
+      setLoadError(
+        "El archivo 3D no pudo abrirse en este dispositivo. Podés reintentar sin recargar la página.",
+      );
+      setMessage("");
     };
 
     /** @summary Traduce el estado nativo de realidad aumentada a un mensaje comprensible. */
@@ -95,12 +127,24 @@ export function ModelExperience({
     };
 
     element.addEventListener("load", handleLoad);
+    element.addEventListener("error", handleError);
     element.addEventListener("ar-status", handleArStatus);
+    if (element.loaded || element.modelIsVisible) handleLoad();
     return () => {
       element.removeEventListener("load", handleLoad);
+      element.removeEventListener("error", handleError);
       element.removeEventListener("ar-status", handleArStatus);
     };
   }, [arEnabled, libraryReady]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [expanded]);
 
   /** @summary Solicita una experiencia AR real desde una interacción directa del visitante. */
   async function openAugmentedReality() {
@@ -138,8 +182,25 @@ export function ModelExperience({
 
   /** @summary Amplía el visor para explorar el producto sin distracciones. */
   async function openFullscreen() {
-    if (!viewer.current?.requestFullscreen) return;
-    await viewer.current.requestFullscreen();
+    if (!viewer.current) return;
+    try {
+      if (viewer.current.requestFullscreen) {
+        await viewer.current.requestFullscreen();
+        return;
+      }
+    } catch {
+      // iPhone no expone Fullscreen API para elementos arbitrarios; usa el modo ampliado propio.
+    }
+    setExpanded(true);
+  }
+
+  /** @summary Reinicia la carga del componente y del modelo sin perder la ubicación actual del visitante. */
+  function retry() {
+    setModelReady(false);
+    setArAvailable(false);
+    setLoadError("");
+    setMessage("");
+    setRetryToken((current) => current + 1);
   }
 
   if (!requested) {
@@ -168,6 +229,8 @@ export function ModelExperience({
             className="btn mt-5"
             onClick={() => {
               setRequested(true);
+              setLoadError("");
+              setQuickLookAvailable(Boolean(iosUrl) && isAppleMobileDevice());
               trackEvent("model.open", {
                 entityType: productId ? "product" : undefined,
                 entityId: productId,
@@ -191,6 +254,7 @@ export function ModelExperience({
     "shadow-intensity": "1",
     "shadow-softness": "0.8",
     "interaction-prompt": "auto",
+    "interaction-prompt-style": "wiggle",
     orientation,
     scale: `${scale} ${scale} ${scale}`,
     loading: "lazy",
@@ -205,14 +269,44 @@ export function ModelExperience({
           "ar-placement": placement,
         }
       : {}),
-    style: { width: "100%", height: compact ? "320px" : "min(68vh, 680px)", background: "#09090b" },
+    style: {
+      width: "100%",
+      height: expanded ? "calc(100dvh - 9rem)" : compact ? "320px" : "min(68vh, 680px)",
+      background: "#09090b",
+    },
   };
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950">
+    <section
+      className={`overflow-hidden border border-white/10 bg-zinc-950 ${
+        expanded
+          ? "fixed inset-0 z-[200] rounded-none bg-black p-[max(env(safe-area-inset-top),0px)_0_max(env(safe-area-inset-bottom),0px)]"
+          : "rounded-[2rem]"
+      }`}
+    >
+      {expanded && (
+        <div className="flex min-h-14 items-center justify-between border-b border-white/10 px-4">
+          <strong className="truncate pr-3">{productName}</strong>
+          <button className="btn btn-secondary min-h-11" onClick={() => setExpanded(false)} type="button">
+            Cerrar
+          </button>
+        </div>
+      )}
       <div className="relative">
-        {libraryReady ? (
-          <ModelViewerCanvas {...viewerProperties} ref={viewer} />
+        {libraryReady && !loadError ? (
+          <ModelViewerCanvas {...viewerProperties} key={retryToken} ref={viewer} />
+        ) : loadError ? (
+          <div
+            className={`grid place-items-center px-6 text-center ${compact ? "h-80" : "h-[min(68vh,680px)]"}`}
+            role="alert"
+          >
+            <div className="max-w-md">
+              <p className="font-bold text-amber-200">{loadError}</p>
+              <button className="btn mt-5 min-h-12" onClick={retry} type="button">
+                Reintentar visor 3D
+              </button>
+            </div>
+          </div>
         ) : (
           <div
             className={`grid place-items-center ${compact ? "h-80" : "h-[min(68vh,680px)]"}`}
@@ -234,11 +328,22 @@ export function ModelExperience({
               Ver en tu mesa
             </button>
           )}
+          {arEnabled && !arAvailable && quickLookAvailable && iosUrl && (
+            <a className="btn" href={iosUrl} rel="ar">
+              {createElement("img", {
+                src: posterUrl || "/images/image_defect/product_default.png",
+                alt: "",
+                "aria-hidden": true,
+                style: { display: "none" },
+              })}
+              Ver en tu mesa
+            </a>
+          )}
           <button className="btn btn-secondary" disabled={!modelReady} onClick={downloadView} type="button">
             Descargar captura 3D
           </button>
           <button className="btn btn-secondary" disabled={!modelReady} onClick={openFullscreen} type="button">
-            Pantalla completa
+            {expanded ? "Vista ampliada" : "Ampliar visor"}
           </button>
         </div>
         <p className="mt-3 min-h-5 text-sm text-zinc-400" role="status" aria-live="polite">

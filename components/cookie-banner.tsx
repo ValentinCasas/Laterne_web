@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { readBrowserText, writeBrowserText } from "@/lib/browser-compat";
 
 /** @summary Solicita una preferencia explícita antes de habilitar medición anónima no esencial. */
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const timer = window.setTimeout(() => setVisible(!localStorage.getItem("laterne_analytics_consent")), 0);
+    const timer = window.setTimeout(() => setVisible(!readBrowserText("laterne_analytics_consent")), 0);
     return () => window.clearTimeout(timer);
   }, []);
 
   /** @summary Guarda la decisión local de analítica y oculta el aviso. */
   function choose(value: "accepted" | "denied") {
-    localStorage.setItem("laterne_analytics_consent", value);
+    writeBrowserText("laterne_analytics_consent", value);
     setVisible(false);
     if (value === "accepted") window.dispatchEvent(new Event("laterne-consent"));
   }

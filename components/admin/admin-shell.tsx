@@ -1,62 +1,158 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { NotificationCenter } from "@/components/admin/notification-center";
 
-const links = [
-  { href: "/admin/onboarding", label: "Puesta en marcha", icon: "OK", permission: "admin.access" },
-  { href: "/admin", label: "Resumen", icon: "IN", permission: "admin.access" },
-  { href: "/admin/productos", label: "Productos", icon: "PR", permission: "product.manage" },
-  { href: "/admin/opciones-producto", label: "Variantes y extras", icon: "VX", permission: "product.manage" },
-  { href: "/admin/categorias", label: "Categorías", icon: "CA", permission: "category.manage" },
-  { href: "/admin/eventos", label: "Eventos", icon: "EV", permission: "event.manage" },
-  { href: "/admin/promociones", label: "Promociones", icon: "PM", permission: "promotion.manage" },
-  { href: "/admin/reservas", label: "Reservas", icon: "RS", permission: "reservation.manage" },
-  { href: "/admin/pedidos", label: "Pedidos", icon: "PE", permission: "order.manage" },
-  { href: "/admin/facturacion", label: "Facturación", icon: "FC", permission: "order.manage" },
-  { href: "/admin/inventario", label: "Inventario", icon: "ST", permission: "product.manage" },
-  { href: "/admin/mesas", label: "Mesas y QR", icon: "QR", permission: "table.manage" },
-  { href: "/admin/sucursales", label: "Sucursales", icon: "SU", permission: "business.manage" },
+type NavigationLink = {
+  href: string;
+  label: string;
+  icon: string;
+  permission: string;
+};
+
+type NavigationGroup = {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  links: readonly NavigationLink[];
+};
+
+const navigationGroups = [
   {
-    href: "/admin/clientes-frecuentes",
-    label: "Clientes frecuentes",
-    icon: "CF",
-    permission: "customer.manage",
+    id: "inicio",
+    label: "Inicio",
+    icon: "IN",
+    description: "Resumen y configuración inicial",
+    links: [
+      { href: "/admin", label: "Resumen", icon: "IN", permission: "admin.access" },
+      {
+        href: "/admin/onboarding",
+        label: "Puesta en marcha",
+        icon: "OK",
+        permission: "admin.access",
+      },
+    ],
   },
-  { href: "/admin/estadisticas", label: "Estadísticas", icon: "AN", permission: "analytics.read" },
-  { href: "/admin/notificaciones", label: "Notificaciones", icon: "NO", permission: "notification.manage" },
-  { href: "/admin/horarios", label: "Horarios", icon: "HO", permission: "hours.manage" },
   {
-    href: "/admin/testimonios",
-    label: "Testimonios",
-    icon: "TE",
-    permission: "testimonial.moderate",
+    id: "carta",
+    label: "Carta y contenido",
+    icon: "CA",
+    description: "Productos y publicaciones",
+    links: [
+      { href: "/admin/productos", label: "Productos", icon: "PR", permission: "product.manage" },
+      {
+        href: "/admin/opciones-producto",
+        label: "Variantes y extras",
+        icon: "VX",
+        permission: "product.manage",
+      },
+      { href: "/admin/categorias", label: "Categorías", icon: "CA", permission: "category.manage" },
+      { href: "/admin/promociones", label: "Promociones", icon: "PM", permission: "promotion.manage" },
+      { href: "/admin/eventos", label: "Eventos", icon: "EV", permission: "event.manage" },
+      { href: "/admin/horarios", label: "Horarios", icon: "HO", permission: "hours.manage" },
+      {
+        href: "/admin/testimonios",
+        label: "Testimonios",
+        icon: "TE",
+        permission: "testimonial.moderate",
+      },
+    ],
   },
-  { href: "/admin/negocio", label: "Negocio", icon: "NE", permission: "business.manage" },
-  { href: "/admin/marca", label: "Marca", icon: "BR", permission: "brand.manage" },
-  { href: "/admin/seo", label: "SEO", icon: "SE", permission: "business.manage" },
-  { href: "/admin/redirecciones", label: "Redirecciones", icon: "RD", permission: "business.manage" },
-  { href: "/admin/integraciones", label: "Integraciones", icon: "IG", permission: "business.manage" },
-  { href: "/admin/legales", label: "Páginas legales", icon: "LG", permission: "content.manage" },
-  { href: "/admin/ayuda", label: "Centro de ayuda", icon: "AY", permission: "content.manage" },
-  { href: "/admin/soporte", label: "Soporte", icon: "SO", permission: "support.manage" },
-  { href: "/admin/casos", label: "Casos de éxito", icon: "CX", permission: "content.manage" },
-  { href: "/admin/usuarios", label: "Usuarios", icon: "US", permission: "user.manage" },
-  { href: "/admin/planes", label: "Planes", icon: "PL", permission: "plan.manage" },
-  { href: "/admin/oportunidades", label: "Oportunidades", icon: "OP", permission: "lead.manage" },
-  { href: "/admin/auditoria", label: "Auditoría", icon: "AU", permission: "audit.read" },
-  { href: "/admin/errores", label: "Registro de errores", icon: "ER", permission: "audit.read" },
-  { href: "/admin/datos", label: "Importar / exportar", icon: "DT", permission: "admin.access" },
-  { href: "/admin/archivos", label: "Archivos", icon: "MD", permission: "media.manage" },
-  { href: "/admin/cuenta", label: "Mi cuenta", icon: "SE", permission: "admin.access" },
-] as const;
+  {
+    id: "operacion",
+    label: "Operación",
+    icon: "OP",
+    description: "Atención y funcionamiento diario",
+    links: [
+      { href: "/admin/pedidos", label: "Pedidos", icon: "PE", permission: "order.manage" },
+      { href: "/admin/reservas", label: "Reservas", icon: "RS", permission: "reservation.manage" },
+      { href: "/admin/facturacion", label: "Facturación", icon: "FC", permission: "order.manage" },
+      { href: "/admin/inventario", label: "Inventario", icon: "ST", permission: "product.manage" },
+      { href: "/admin/mesas", label: "Mesas y QR", icon: "QR", permission: "table.manage" },
+      { href: "/admin/sucursales", label: "Sucursales", icon: "SU", permission: "business.manage" },
+      {
+        href: "/admin/clientes-frecuentes",
+        label: "Clientes frecuentes",
+        icon: "CF",
+        permission: "customer.manage",
+      },
+    ],
+  },
+  {
+    id: "presencia",
+    label: "Marca y presencia",
+    icon: "BR",
+    description: "Identidad y experiencia pública",
+    links: [
+      { href: "/admin/negocio", label: "Negocio", icon: "NE", permission: "business.manage" },
+      { href: "/admin/marca", label: "Marca", icon: "BR", permission: "brand.manage" },
+      { href: "/admin/seo", label: "SEO", icon: "SE", permission: "business.manage" },
+      {
+        href: "/admin/redirecciones",
+        label: "Redirecciones",
+        icon: "RD",
+        permission: "business.manage",
+      },
+      {
+        href: "/admin/integraciones",
+        label: "Integraciones",
+        icon: "IG",
+        permission: "business.manage",
+      },
+      { href: "/admin/legales", label: "Páginas legales", icon: "LG", permission: "content.manage" },
+      { href: "/admin/casos", label: "Casos de éxito", icon: "CX", permission: "content.manage" },
+    ],
+  },
+  {
+    id: "gestion",
+    label: "Gestión y análisis",
+    icon: "AN",
+    description: "Métricas y administración",
+    links: [
+      { href: "/admin/estadisticas", label: "Estadísticas", icon: "AN", permission: "analytics.read" },
+      {
+        href: "/admin/notificaciones",
+        label: "Notificaciones",
+        icon: "NO",
+        permission: "notification.manage",
+      },
+      { href: "/admin/oportunidades", label: "Oportunidades", icon: "OP", permission: "lead.manage" },
+      { href: "/admin/planes", label: "Planes", icon: "PL", permission: "plan.manage" },
+      { href: "/admin/usuarios", label: "Usuarios", icon: "US", permission: "user.manage" },
+      { href: "/admin/auditoria", label: "Auditoría", icon: "AU", permission: "audit.read" },
+      { href: "/admin/errores", label: "Registro de errores", icon: "ER", permission: "audit.read" },
+    ],
+  },
+  {
+    id: "herramientas",
+    label: "Herramientas y ayuda",
+    icon: "HE",
+    description: "Archivos, datos y asistencia",
+    links: [
+      { href: "/admin/archivos", label: "Archivos", icon: "MD", permission: "media.manage" },
+      { href: "/admin/datos", label: "Importar / exportar", icon: "DT", permission: "admin.access" },
+      { href: "/admin/ayuda", label: "Centro de ayuda", icon: "AY", permission: "content.manage" },
+      { href: "/admin/soporte", label: "Soporte", icon: "SO", permission: "support.manage" },
+      { href: "/admin/cuenta", label: "Mi cuenta", icon: "SE", permission: "admin.access" },
+    ],
+  },
+] as const satisfies readonly NavigationGroup[];
+
+const links: NavigationLink[] = navigationGroups.flatMap((group) => [...group.links]);
 
 /** @summary Determina si un enlace corresponde a la sección administrativa visible. */
 function isActivePath(pathname: string, href: string) {
   return href === "/admin" ? pathname === href : pathname.startsWith(href);
+}
+
+/** @summary Localiza el grupo que contiene una ruta para abrirlo al navegar desde búsquedas o accesos directos. */
+function groupIdForHref(href: string) {
+  return navigationGroups.find((group) => group.links.some((link) => link.href === href))?.id ?? "inicio";
 }
 
 /** @summary Organiza la navegación administrativa y su contenido con un diseño adaptable. */
@@ -73,10 +169,27 @@ export function AdminShell({
   const router = useRouter();
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string>(
+    () =>
+      navigationGroups.find((group) => group.links.some((link) => isActivePath(pathname, link.href)))?.id ??
+      "inicio",
+  );
   const accessibleLinks = useMemo(
     () => links.filter((link) => permissions.includes(link.permission)),
     [permissions],
   );
+  const accessibleGroups = useMemo(
+    () =>
+      navigationGroups
+        .map((group) => ({
+          ...group,
+          links: group.links.filter((link) => permissions.includes(link.permission)),
+        }))
+        .filter((group) => group.links.length > 0),
+    [permissions],
+  );
+  const currentLink = accessibleLinks.find((link) => isActivePath(pathname, link.href));
   const commandLinks = accessibleLinks.filter((link) =>
     link.label.toLocaleLowerCase("es").includes(commandQuery.trim().toLocaleLowerCase("es")),
   );
@@ -88,7 +201,10 @@ export function AdminShell({
         event.preventDefault();
         setCommandOpen(true);
       }
-      if (event.key === "Escape") setCommandOpen(false);
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+        setMobileMenuOpen(false);
+      }
     }
     window.addEventListener("keydown", keyboardShortcut);
     return () => window.removeEventListener("keydown", keyboardShortcut);
@@ -126,78 +242,160 @@ export function AdminShell({
             </p>
           </div>
 
-          <nav
-            className="flex gap-2 overflow-x-auto p-2 [scrollbar-width:none] lg:flex-col lg:overflow-visible lg:p-3"
-            aria-label="Secciones administrativas"
+          <button
+            className="flex w-full items-center gap-3 p-3 text-left lg:hidden"
+            type="button"
+            aria-controls="admin-navigation-panel"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((current) => !current)}
           >
-            {accessibleLinks.map(({ href, label, icon }) => {
-              const active = isActivePath(pathname, href);
-              return (
-                <Link
-                  className={`group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold transition lg:w-full ${
-                    active
-                      ? "bg-pink-500 text-white shadow-lg shadow-pink-950/40"
-                      : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                  }`}
-                  href={href}
-                  key={href}
-                >
-                  <span
-                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[10px] font-black tracking-wider ${
-                      active ? "bg-white/20" : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pink-500/15 text-xs font-black text-pink-300">
+              {currentLink?.icon ?? "AD"}
+            </span>
+            <span className="min-w-0 flex-1">
+              <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
+                Administración
+              </small>
+              <strong className="block truncate text-sm">{currentLink?.label ?? "Elegir sección"}</strong>
+            </span>
+            <span
+              className={`grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-lg transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            >
+              ⌄
+            </span>
+          </button>
+
+          <div
+            className={`${mobileMenuOpen ? "block" : "hidden"} border-t border-white/10 lg:block lg:border-t-0`}
+            id="admin-navigation-panel"
+          >
+            <nav
+              className="max-h-[calc(100dvh-14rem)] space-y-2 overflow-y-auto overscroll-contain p-2 lg:max-h-[calc(100dvh-24rem)] lg:p-3"
+              aria-label="Secciones administrativas"
+            >
+              {accessibleGroups.map((group) => {
+                const expanded = openGroup === group.id;
+                const containsActive = group.links.some((link) => isActivePath(pathname, link.href));
+                return (
+                  <section
+                    className={`overflow-hidden rounded-2xl border transition ${
+                      containsActive
+                        ? "border-pink-500/25 bg-pink-500/[.04]"
+                        : "border-white/[.07] bg-white/[.02]"
                     }`}
+                    key={group.id}
                   >
-                    {icon}
+                    <button
+                      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-white/5"
+                      type="button"
+                      aria-controls={`admin-group-${group.id}`}
+                      aria-expanded={expanded}
+                      onClick={() => setOpenGroup((current) => (current === group.id ? "" : group.id))}
+                    >
+                      <span
+                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[10px] font-black tracking-wider ${
+                          containsActive ? "bg-pink-500 text-white" : "bg-white/5 text-pink-300"
+                        }`}
+                      >
+                        {group.icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <strong className="block truncate text-sm">{group.label}</strong>
+                        <small className="hidden truncate text-[10px] text-zinc-600 xl:block">
+                          {group.description}
+                        </small>
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-zinc-500">
+                        {group.links.length}
+                      </span>
+                      <span
+                        className={`text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      >
+                        ⌄
+                      </span>
+                    </button>
+
+                    {expanded && (
+                      <div
+                        className="space-y-1 border-t border-white/[.07] p-2"
+                        id={`admin-group-${group.id}`}
+                      >
+                        {group.links.map(({ href, label, icon }) => {
+                          const active = isActivePath(pathname, href);
+                          return (
+                            <Link
+                              className={`group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-bold transition ${
+                                active
+                                  ? "bg-pink-500 text-white shadow-lg shadow-pink-950/30"
+                                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                              }`}
+                              href={href as Route}
+                              key={href}
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              <span
+                                className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
+                                  active
+                                    ? "bg-white/20"
+                                    : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
+                                }`}
+                              >
+                                {icon}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate">{label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+
+              {isSuperAdmin && (
+                <Link
+                  className="group flex items-center gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-3 py-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10"
+                  href="/superadmin"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">
+                    SA
                   </span>
-                  <span>{label}</span>
+                  Plataforma
                 </Link>
-              );
-            })}
-            {isSuperAdmin && (
-              <Link
-                className="group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold text-amber-300 hover:bg-amber-500/10 lg:w-full"
-                href="/superadmin"
+              )}
+            </nav>
+
+            <div className="border-t border-white/10 p-3 print:hidden">
+              <button
+                className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/10"
+                onClick={() => {
+                  setCommandOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                type="button"
               >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">
-                  SA
-                </span>
-                Plataforma
-              </Link>
-            )}
-            <button
-              className="flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-red-300 hover:bg-red-500/10 lg:hidden"
-              onClick={logout}
-              type="button"
-            >
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-red-500/10">→</span>
-              Salir
-            </button>
-          </nav>
+                <span>Buscar o ir a…</span>
+                <kbd className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-500">
+                  Ctrl K
+                </kbd>
+              </button>
+            </div>
 
-          <div className="border-t border-white/10 p-3 print:hidden">
-            <button
-              className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/10"
-              onClick={() => setCommandOpen(true)}
-              type="button"
-            >
-              <span>Buscar o ir a…</span>
-              <kbd className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-500">
-                Ctrl K
-              </kbd>
-            </button>
-          </div>
+            {permissions.includes("notification.manage") && <NotificationCenter />}
 
-          {permissions.includes("notification.manage") && <NotificationCenter />}
-
-          <div className="hidden border-t border-white/10 p-3 lg:block">
-            <button
-              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-red-300 hover:bg-red-500/10"
-              onClick={logout}
-              type="button"
-            >
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-red-500/10">→</span>
-              Cerrar sesión
-            </button>
+            <div className="border-t border-white/10 p-3">
+              <button
+                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-red-300 hover:bg-red-500/10"
+                onClick={logout}
+                type="button"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-red-500/10">→</span>
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -229,11 +427,13 @@ export function AdminShell({
               {commandLinks.map((link) => (
                 <Link
                   className="flex items-center gap-3 rounded-2xl p-3 hover:bg-white/5"
-                  href={link.href}
+                  href={link.href as Route}
                   key={link.href}
                   onClick={() => {
                     setCommandOpen(false);
                     setCommandQuery("");
+                    setOpenGroup(groupIdForHref(link.href));
+                    setMobileMenuOpen(false);
                   }}
                 >
                   <span className="grid h-9 w-9 place-items-center rounded-xl bg-pink-500/10 text-[10px] font-black text-pink-300">
