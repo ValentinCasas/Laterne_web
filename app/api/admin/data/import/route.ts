@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const valid: Array<Record<string, string>> = [];
   for (let position = 1; position < rows.length; position += 1) {
     const row = rows[position];
+    /** @summary Recupera una celda normalizada mediante el nombre esperado de su columna. */
     const value = (header: string) => row[index[header]]?.trim() ?? "";
     const price = Number(value("precio"));
     if (!value("nombre") || !value("descripcion") || !value("categoria")) {

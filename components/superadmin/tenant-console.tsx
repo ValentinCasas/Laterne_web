@@ -16,14 +16,19 @@ export type PlatformTenant = {
     endsAt: string | null;
     notes: string | null;
     lastPaymentAt: string | null;
+    limits: Record<string, unknown> | null;
+    enabled: unknown[] | null;
     plan: { name: string } | null;
   } | null;
+  brandSettings: { customDomain: string | null } | null;
+  storageBytes: number;
   _count: {
     products: number;
     memberships: number;
     customerOrders: number;
     reservations: number;
     mediaAssets: number;
+    errorLogs: number;
   };
 };
 type PlanChoice = { id: number; name: string };
@@ -35,6 +40,26 @@ function escapeHtml(value: string) {
     (character) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character,
   );
+}
+
+/** @summary Recupera un límite numérico desde configuración JSON sin confiar en su forma original. */
+function limitValue(tenant: PlatformTenant, key: string) {
+  const value = tenant.subscription?.limits?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/** @summary Convierte la lista de funciones activadas en un texto editable y seguro. */
+function enabledValue(tenant: PlatformTenant) {
+  return Array.isArray(tenant.subscription?.enabled)
+    ? tenant.subscription.enabled.filter((item): item is string => typeof item === "string").join(", ")
+    : "";
+}
+
+/** @summary Presenta consumo de almacenamiento con una unidad fácil de comparar. */
+function storageValue(bytes: number) {
+  if (bytes < 1_000_000) return `${Math.max(0, bytes / 1_000).toFixed(1)} KB`;
+  if (bytes < 1_000_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  return `${(bytes / 1_000_000_000).toFixed(2)} GB`;
 }
 
 /** @summary Gestiona altas, suspensiones, planes, vencimientos y pagos manuales de clientes. */
@@ -76,9 +101,13 @@ export function TenantConsole({
 
   /** @summary Presenta controles sensibles de suscripción y guarda los cambios confirmados. */
   async function manage(tenant: PlatformTenant) {
+    const productLimit = limitValue(tenant, "products");
+    const userLimit = limitValue(tenant, "users");
+    const storageLimit = limitValue(tenant, "storageMb");
+    const enabled = enabledValue(tenant);
     const result = await Swal.fire({
       title: tenant.name,
-      html: `<label style="display:block;text-align:left">Estado<select id="tenant-status" class="swal2-select" style="display:block;width:100%;margin:.5rem 0"><option value="active" ${tenant.status === "active" ? "selected" : ""}>Activo</option><option value="suspended" ${tenant.status === "suspended" ? "selected" : ""}>Suspendido</option></select></label><label style="display:block;text-align:left">Plan<select id="tenant-plan" class="swal2-select" style="display:block;width:100%;margin:.5rem 0"><option value="">Sin plan</option>${plans.map((plan) => `<option value="${plan.id}" ${tenant.subscription?.planId === plan.id ? "selected" : ""}>${escapeHtml(plan.name)}</option>`).join("")}</select></label><label style="display:block;text-align:left">Vencimiento<input id="tenant-end" class="swal2-input" type="datetime-local" value="${tenant.subscription?.endsAt?.slice(0, 16) ?? ""}"></label><textarea id="tenant-notes" class="swal2-textarea" placeholder="Observaciones internas">${escapeHtml(tenant.subscription?.notes ?? "")}</textarea><label style="display:flex;justify-content:center;gap:.5rem"><input id="tenant-payment" type="checkbox"> Registrar pago de hoy</label>`,
+      html: `<label style="display:block;text-align:left">Estado<select id="tenant-status" class="swal2-select" style="display:block;width:100%;margin:.5rem 0"><option value="active" ${tenant.status === "active" ? "selected" : ""}>Activo</option><option value="suspended" ${tenant.status === "suspended" ? "selected" : ""}>Suspendido</option></select></label><label style="display:block;text-align:left">Plan<select id="tenant-plan" class="swal2-select" style="display:block;width:100%;margin:.5rem 0"><option value="">Sin plan</option>${plans.map((plan) => `<option value="${plan.id}" ${tenant.subscription?.planId === plan.id ? "selected" : ""}>${escapeHtml(plan.name)}</option>`).join("")}</select></label><label style="display:block;text-align:left">Dominio personalizado<input id="tenant-domain" class="swal2-input" value="${escapeHtml(tenant.brandSettings?.customDomain ?? "")}" placeholder="menu.negocio.com"></label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem"><label style="font-size:.75rem">Productos<input id="tenant-products" class="swal2-input" type="number" min="0" value="${productLimit}" style="width:100%;margin:.25rem 0"></label><label style="font-size:.75rem">Usuarios<input id="tenant-users" class="swal2-input" type="number" min="0" value="${userLimit}" style="width:100%;margin:.25rem 0"></label><label style="font-size:.75rem">Almacenamiento MB<input id="tenant-storage" class="swal2-input" type="number" min="0" value="${storageLimit}" style="width:100%;margin:.25rem 0"></label></div><label style="display:block;text-align:left">Funciones activadas<input id="tenant-enabled" class="swal2-input" value="${escapeHtml(enabled)}" placeholder="ar, stock, reservations"></label><label style="display:block;text-align:left">Vencimiento<input id="tenant-end" class="swal2-input" type="datetime-local" value="${tenant.subscription?.endsAt?.slice(0, 16) ?? ""}"></label><textarea id="tenant-notes" class="swal2-textarea" placeholder="Observaciones internas">${escapeHtml(tenant.subscription?.notes ?? "")}</textarea><label style="display:flex;justify-content:center;gap:.5rem"><input id="tenant-payment" type="checkbox"> Registrar pago de hoy</label>`,
       showCancelButton: true,
       confirmButtonText: "Guardar",
       cancelButtonText: "Cancelar",
@@ -92,6 +121,16 @@ export function TenantConsole({
           : null,
         notes: (document.querySelector("#tenant-notes") as HTMLTextAreaElement).value,
         lastPayment: (document.querySelector("#tenant-payment") as HTMLInputElement).checked,
+        customDomain: (document.querySelector("#tenant-domain") as HTMLInputElement).value,
+        limits: {
+          products: Number((document.querySelector("#tenant-products") as HTMLInputElement).value),
+          users: Number((document.querySelector("#tenant-users") as HTMLInputElement).value),
+          storageMb: Number((document.querySelector("#tenant-storage") as HTMLInputElement).value),
+        },
+        enabled: (document.querySelector("#tenant-enabled") as HTMLInputElement).value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
       }),
     });
     if (!result.isConfirmed || !result.value) return;
@@ -112,6 +151,16 @@ export function TenantConsole({
     router.refresh();
   }
 
+  const totals = initialTenants.reduce(
+    (result, tenant) => ({
+      products: result.products + tenant._count.products,
+      users: result.users + tenant._count.memberships,
+      storage: result.storage + tenant.storageBytes,
+      errors: result.errors + tenant._count.errorLogs,
+    }),
+    { products: 0, users: 0, storage: 0, errors: 0 },
+  );
+
   return (
     <section>
       <header className="mb-6 rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,197,66,.2),transparent_40%),#09090b] p-6 sm:p-9">
@@ -121,6 +170,20 @@ export function TenantConsole({
           Clientes, planes, límites, vencimientos, uso y pagos manuales en una vista reservada.
         </p>
       </header>
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          [initialTenants.length, "Clientes"],
+          [totals.products, "Productos"],
+          [totals.users, "Usuarios"],
+          [storageValue(totals.storage), "Almacenamiento"],
+          [totals.errors, "Errores técnicos"],
+        ].map(([value, label]) => (
+          <article className="card p-5" key={label}>
+            <strong className="text-3xl">{value}</strong>
+            <p className="mt-1 text-sm text-zinc-500">{label}</p>
+          </article>
+        ))}
+      </div>
       <form
         className="card mb-6 grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-6 xl:items-end"
         onSubmit={createTenant}
@@ -180,13 +243,14 @@ export function TenantConsole({
                 Gestionar
               </button>
             </div>
-            <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:grid-cols-5">
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
               {[
                 [tenant._count.products, "Productos"],
                 [tenant._count.memberships, "Usuarios"],
                 [tenant._count.customerOrders, "Pedidos"],
                 [tenant._count.reservations, "Reservas"],
                 [tenant._count.mediaAssets, "Archivos"],
+                [tenant._count.errorLogs, "Errores"],
               ].map(([value, label]) => (
                 <div className="rounded-xl bg-white/5 p-2" key={label}>
                   <strong className="block text-lg">{value}</strong>
@@ -199,6 +263,13 @@ export function TenantConsole({
                 Vence: {new Date(tenant.subscription.endsAt).toLocaleString("es-AR")}
               </p>
             )}
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-500">
+              <span>{storageValue(tenant.storageBytes)} almacenados</span>
+              {tenant.brandSettings?.customDomain && <span>· {tenant.brandSettings.customDomain}</span>}
+              {limitValue(tenant, "products") > 0 && (
+                <span>· límite {limitValue(tenant, "products")} productos</span>
+              )}
+            </div>
           </article>
         ))}
       </div>

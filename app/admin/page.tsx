@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
@@ -16,22 +17,55 @@ const statStyles = [
 export default async function Dashboard() {
   const context = await requirePermission("admin.access");
   const tenantId = context.tenant.id;
-  const [products, categories, events, pendingTestimonials, newLeads, recentEvents, recentTestimonials] =
-    await Promise.all([
-      prisma.product.count({ where: { tenantId } }),
-      prisma.category.count({ where: { tenantId } }),
-      prisma.event.count({ where: { tenantId } }),
-      prisma.testimonial.count({ where: { tenantId, moderationStatus: "pending" } }),
-      context.permissions.includes("lead.manage")
-        ? prisma.salesLead.count({ where: { status: "new" } })
-        : Promise.resolve(0),
-      prisma.event.findMany({
-        where: { tenantId },
-        orderBy: [{ date: "desc" }, { id: "desc" }],
-        take: 3,
-      }),
-      prisma.testimonial.findMany({ where: { tenantId }, orderBy: { id: "desc" }, take: 3 }),
-    ]);
+  const [
+    products,
+    categories,
+    events,
+    pendingTestimonials,
+    newLeads,
+    pendingOrders,
+    pendingReservations,
+    lowStock,
+    incompleteProducts,
+    recentEvents,
+    recentTestimonials,
+  ] = await Promise.all([
+    prisma.product.count({ where: { tenantId } }),
+    prisma.category.count({ where: { tenantId } }),
+    prisma.event.count({ where: { tenantId } }),
+    prisma.testimonial.count({ where: { tenantId, moderationStatus: "pending" } }),
+    context.permissions.includes("lead.manage")
+      ? prisma.salesLead.count({ where: { status: "new" } })
+      : Promise.resolve(0),
+    context.permissions.includes("order.manage")
+      ? prisma.customerOrder.count({
+          where: {
+            tenantId,
+            status: { in: ["received", "confirmed", "preparing", "ready"] },
+          },
+        })
+      : Promise.resolve(0),
+    context.permissions.includes("reservation.manage")
+      ? prisma.reservation.count({ where: { tenantId, status: "pending" } })
+      : Promise.resolve(0),
+    context.permissions.includes("product.manage")
+      ? prisma.inventoryStock.count({
+          where: { tenantId, tracked: true, current: { lte: prisma.inventoryStock.fields.minimum } },
+        })
+      : Promise.resolve(0),
+    prisma.product.count({
+      where: {
+        tenantId,
+        OR: [{ price: null }, { imageUrl: "product_default.png" }, { categories: { none: {} } }],
+      },
+    }),
+    prisma.event.findMany({
+      where: { tenantId },
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+      take: 3,
+    }),
+    prisma.testimonial.findMany({ where: { tenantId }, orderBy: { id: "desc" }, take: 3 }),
+  ]);
 
   const stats = [
     { label: "Productos publicados", value: products, href: "/admin/productos" },
@@ -42,6 +76,28 @@ export default async function Dashboard() {
   const visibleStats = context.permissions.includes("lead.manage")
     ? [...stats, { label: "Oportunidades nuevas", value: newLeads, href: "/admin/oportunidades" } as const]
     : stats;
+  const operationAlerts = [
+    context.permissions.includes("order.manage") && {
+      label: "Pedidos en curso",
+      value: pendingOrders,
+      href: "/admin/pedidos",
+    },
+    context.permissions.includes("reservation.manage") && {
+      label: "Reservas pendientes",
+      value: pendingReservations,
+      href: "/admin/reservas",
+    },
+    context.permissions.includes("product.manage") && {
+      label: "Alertas de stock",
+      value: lowStock,
+      href: "/admin/inventario",
+    },
+    context.permissions.includes("product.manage") && {
+      label: "Productos incompletos",
+      value: incompleteProducts,
+      href: "/admin/productos",
+    },
+  ].filter(Boolean) as { label: string; value: number; href: string }[];
 
   return (
     <section className="space-y-6">
@@ -81,6 +137,34 @@ export default async function Dashboard() {
           </Link>
         ))}
       </div>
+
+      {operationAlerts.length > 0 && (
+        <section className="rounded-3xl border border-white/10 bg-zinc-950/70 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-amber-300">
+                Atención operativa
+              </p>
+              <h2 className="mt-1 text-2xl font-black">Qué conviene revisar ahora</h2>
+            </div>
+            <Link className="text-sm font-bold text-pink-300" href="/admin/notificaciones">
+              Centro de actividad
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {operationAlerts.map((alert) => (
+              <Link
+                className="rounded-2xl bg-white/[.04] p-4 transition hover:bg-white/[.07]"
+                href={alert.href as Route}
+                key={alert.label}
+              >
+                <strong className="text-3xl">{alert.value}</strong>
+                <p className="mt-1 text-sm text-zinc-400">{alert.label}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-3xl border border-white/10 bg-zinc-950/70 p-6">

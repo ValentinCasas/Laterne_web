@@ -24,7 +24,7 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
   const [order, business] = await Promise.all([
     prisma.customerOrder.findFirst({
       where: { tenantId: tenant.id, reference, publicTokenHash: orderTokenHash(token) },
-      include: { table: true, items: true, history: { orderBy: { createdAt: "asc" } } },
+      include: { branch: true, table: true, items: true, history: { orderBy: { createdAt: "asc" } } },
     }),
     prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
   ]);
@@ -90,6 +90,11 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
                 Mesa: <strong className="text-white">{order.table.name}</strong>
               </p>
             )}
+            {order.branch && (
+              <p className="mb-3 text-sm text-zinc-400">
+                Sucursal: <strong className="text-white">{order.branch.name}</strong>
+              </p>
+            )}
             <div className="flex justify-between text-sm text-zinc-400">
               <span>Subtotal</span>
               <span>{formatPrice(Number(order.subtotal), order.currency)}</span>
@@ -98,6 +103,18 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
               <div className="mt-2 flex justify-between text-sm text-emerald-300">
                 <span>Descuento</span>
                 <span>− {formatPrice(Number(order.discount), order.currency)}</span>
+              </div>
+            )}
+            {Number(order.deliveryFee) > 0 && (
+              <div className="mt-2 flex justify-between text-sm text-zinc-400">
+                <span>Envío</span>
+                <span>{formatPrice(Number(order.deliveryFee), order.currency)}</span>
+              </div>
+            )}
+            {Number(order.tip) > 0 && (
+              <div className="mt-2 flex justify-between text-sm text-zinc-400">
+                <span>Propina</span>
+                <span>{formatPrice(Number(order.tip), order.currency)}</span>
               </div>
             )}
             <div className="mt-4 flex justify-between border-t border-white/10 pt-4 text-xl font-black">

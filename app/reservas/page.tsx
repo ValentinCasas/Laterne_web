@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
 import { ReservationForm } from "@/components/reservations/reservation-form";
 import { prisma } from "@/lib/prisma";
+import { managedPageMetadata } from "@/lib/seo";
 import { getDefaultTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Reservas",
-  description: "Consultá disponibilidad y solicitá una mesa en Laterne.",
-};
+/** @summary Recupera la configuración SEO administrable de reservas. */
+export function generateMetadata() {
+  return managedPageMetadata("/reservas", "Reservas", "Consultá disponibilidad y solicitá una mesa.");
+}
 
 /** @summary Presenta la disponibilidad del negocio y el formulario público de reservas. */
 export default async function ReservationsPage() {

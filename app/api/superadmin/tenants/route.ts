@@ -77,6 +77,15 @@ export async function POST(request: Request) {
     });
     await Promise.all([
       transaction.businessInfo.create({ data: { tenantId: created.id } }),
+      transaction.branch.create({
+        data: {
+          tenantId: created.id,
+          name: `${created.name} · Principal`,
+          slug: "principal",
+          address: "Dirección a configurar",
+          isPrimary: true,
+        },
+      }),
       transaction.brandSettings.create({ data: { tenantId: created.id } }),
       transaction.notificationSettings.create({ data: { tenantId: created.id } }),
       transaction.onboardingProgress.create({ data: { tenantId: created.id, completedSteps: [] } }),

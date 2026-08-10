@@ -2,8 +2,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { managedPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+/** @summary Recupera la configuración SEO administrable del portfolio comercial. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/clientes",
+    "Clientes y casos de éxito",
+    "Experiencias gastronómicas transformadas con Laterne Web.",
+  );
+}
 
 /** @summary Presenta implementaciones reales publicadas como portfolio comercial. */
 export default async function ClientsPage() {

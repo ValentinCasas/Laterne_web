@@ -18,6 +18,7 @@ type ModelExperienceProps = {
   orientation?: string;
   placement?: "floor" | "wall";
   allowScale?: boolean;
+  arEnabled?: boolean;
   compact?: boolean;
   productId?: number;
 };
@@ -39,6 +40,7 @@ export function ModelExperience({
   orientation = "0deg 0deg 0deg",
   placement = "floor",
   allowScale = true,
+  arEnabled = true,
   compact = false,
   productId,
 }: ModelExperienceProps) {
@@ -69,12 +71,14 @@ export function ModelExperience({
     /** @summary Actualiza los controles cuando el archivo 3D termina de cargarse. */
     const handleLoad = () => {
       setModelReady(true);
-      const supportsAr = Boolean(element.canActivateAR);
+      const supportsAr = arEnabled && Boolean(element.canActivateAR);
       setArAvailable(supportsAr);
       setMessage(
         supportsAr
           ? "Modelo listo. También podés ubicarlo sobre una superficie real."
-          : "Modelo listo. AR no está disponible en este dispositivo, pero el visor 3D funciona normalmente.",
+          : arEnabled
+            ? "Modelo listo. AR no está disponible en este dispositivo, pero el visor 3D funciona normalmente."
+            : "Modelo listo para girar, ampliar y explorar en tres dimensiones.",
       );
     };
 
@@ -96,11 +100,11 @@ export function ModelExperience({
       element.removeEventListener("load", handleLoad);
       element.removeEventListener("ar-status", handleArStatus);
     };
-  }, [libraryReady]);
+  }, [arEnabled, libraryReady]);
 
   /** @summary Solicita una experiencia AR real desde una interacción directa del visitante. */
   async function openAugmentedReality() {
-    if (!viewer.current?.canActivateAR) {
+    if (!arEnabled || !viewer.current?.canActivateAR) {
       setArAvailable(false);
       setMessage("AR no está disponible en este dispositivo. Podés seguir usando el visor 3D.");
       return;
@@ -171,7 +175,7 @@ export function ModelExperience({
             }}
             type="button"
           >
-            <span className="md:hidden">Ver en 3D y en tu mesa</span>
+            <span className="md:hidden">{arEnabled ? "Ver en 3D y en tu mesa" : "Ver en 3D"}</span>
             <span className="hidden md:inline">Abrir visor 3D</span>
           </button>
         </div>
@@ -182,10 +186,6 @@ export function ModelExperience({
   const viewerProperties: Record<string, unknown> = {
     src: modelUrl,
     alt: `Modelo 3D de ${productName}`,
-    ar: true,
-    "ar-modes": "webxr scene-viewer quick-look",
-    "ar-scale": allowScale ? "auto" : "fixed",
-    "ar-placement": placement,
     "camera-controls": true,
     "touch-action": "pan-y",
     "shadow-intensity": "1",
@@ -197,6 +197,14 @@ export function ModelExperience({
     "xr-environment": true,
     ...(iosUrl ? { "ios-src": iosUrl } : {}),
     ...(posterUrl ? { poster: posterUrl } : {}),
+    ...(arEnabled
+      ? {
+          ar: true,
+          "ar-modes": "webxr scene-viewer quick-look",
+          "ar-scale": allowScale ? "auto" : "fixed",
+          "ar-placement": placement,
+        }
+      : {}),
     style: { width: "100%", height: compact ? "320px" : "min(68vh, 680px)", background: "#09090b" },
   };
 
@@ -221,7 +229,7 @@ export function ModelExperience({
       </div>
       <div className="border-t border-white/10 p-4 sm:p-5">
         <div className="flex flex-wrap gap-2">
-          {arAvailable && (
+          {arEnabled && arAvailable && (
             <button className="btn" disabled={!modelReady} onClick={openAugmentedReality} type="button">
               Ver en tu mesa
             </button>

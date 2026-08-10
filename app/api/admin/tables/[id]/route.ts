@@ -10,6 +10,7 @@ const tableUpdate = z.object({
   sector: z.string().trim().max(100).optional(),
   capacity: z.coerce.number().int().min(1).max(100),
   active: z.boolean(),
+  branchId: z.coerce.number().int().positive(),
 });
 
 /** @summary Modifica los datos operativos de una mesa sin cambiar el QR ya distribuido. */
@@ -22,6 +23,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   const current = await prisma.diningTable.findFirst({ where: { id, tenantId: auth.tenant.id } });
   if (!current) return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
+  const branch = await prisma.branch.findFirst({
+    where: { id: parsed.data.branchId, tenantId: auth.tenant.id },
+  });
+  if (!branch) return NextResponse.json({ error: "Seleccioná una sucursal válida" }, { status: 400 });
   const updated = await prisma.diningTable.update({
     where: { id },
     data: { ...parsed.data, sector: parsed.data.sector || null },

@@ -8,9 +8,33 @@ export const dynamic = "force-dynamic";
 /** @summary Carga las mesas del negocio para gestionar sus datos y códigos QR. */
 export default async function AdminTablesPage() {
   const context = await requirePermission("table.manage");
-  const tables = await prisma.diningTable.findMany({
-    where: { tenantId: context.tenant.id },
-    orderBy: [{ sector: "asc" }, { name: "asc" }],
-  });
-  return <TableManager initialTables={serialize(tables) as unknown as DiningTableData[]} />;
+  const [tables, branches] = await Promise.all([
+    prisma.diningTable.findMany({
+      where: { tenantId: context.tenant.id },
+      include: {
+        orders: {
+          where: { status: { notIn: ["delivered", "cancelled"] } },
+          select: { reference: true, status: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: [{ sector: "asc" }, { name: "asc" }],
+    }),
+    prisma.branch.findMany({
+      where: { tenantId: context.tenant.id, active: true },
+      select: { id: true, name: true },
+      orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
+    }),
+  ]);
+  return (
+    <TableManager
+      initialTables={
+        serialize(
+          tables.map(({ orders, ...table }) => ({ ...table, currentOrder: orders[0] ?? null })),
+        ) as unknown as DiningTableData[]
+      }
+      branches={branches}
+    />
+  );
 }

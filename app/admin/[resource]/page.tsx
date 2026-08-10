@@ -1,5 +1,3 @@
-import { readdir } from "node:fs/promises";
-import path from "node:path";
 import { notFound } from "next/navigation";
 import { TestimonialBoard } from "@/components/admin/testimonial-board";
 import { ResourceManager, type ResourceField, type ResourceOption } from "@/components/resource-manager";
@@ -24,22 +22,33 @@ type ResourceDefinition = {
     | "promotion"
     | "legalPage"
     | "helpArticle"
-    | "successCase";
+    | "successCase"
+    | "branch"
+    | "seoPage"
+    | "redirectRule";
   fields: ResourceField[];
   singular?: boolean;
 };
 
-/** @summary Lee imágenes válidas de una carpeta pública para construir una galería seleccionable. */
-async function readImageOptions(folder: string): Promise<ResourceOption[]> {
-  try {
-    const files = await readdir(path.join(process.cwd(), "public", "images", folder));
-    return files
-      .filter((file) => /\.(?:avif|gif|jpe?g|png|webp)$/i.test(file))
-      .sort((first, second) => first.localeCompare(second, "es"))
-      .map((file) => ({ value: file, label: file, image: `/images/${folder}/${file}` }));
-  } catch {
-    return [];
+/** @summary Combina archivos registrados y referencias históricas sin exponer imágenes de otros tenants. */
+function tenantImageOptions(
+  folder: string,
+  assets: Array<{ folder: string; filename: string; url: string }>,
+  historicalFilenames: Array<string | null | undefined>,
+): ResourceOption[] {
+  const options = new Map<string, ResourceOption>();
+  for (const asset of assets.filter((item) => item.folder === folder)) {
+    options.set(asset.filename, { value: asset.filename, label: asset.filename, image: asset.url });
   }
+  for (const filename of historicalFilenames) {
+    if (!filename || !/\.(?:avif|gif|jpe?g|png|webp)$/i.test(filename)) continue;
+    options.set(filename, {
+      value: filename,
+      label: filename,
+      image: `/images/${folder}/${filename}`,
+    });
+  }
+  return [...options.values()].sort((first, second) => first.label.localeCompare(second.label, "es"));
 }
 
 /** @summary Construye la definición visual y los controles específicos de cada recurso. */
@@ -80,6 +89,23 @@ function createDefinition(
             { value: "agotado", label: "Agotado" },
           ],
         },
+        {
+          key: "availableDays",
+          label: "Días disponibles",
+          control: "multichoice",
+          help: "Vacío significa todos los días",
+          options: [
+            { value: "1", label: "Lunes" },
+            { value: "2", label: "Martes" },
+            { value: "3", label: "Miércoles" },
+            { value: "4", label: "Jueves" },
+            { value: "5", label: "Viernes" },
+            { value: "6", label: "Sábado" },
+            { value: "0", label: "Domingo" },
+          ],
+        },
+        { key: "availableStartTime", label: "Disponible desde", type: "time" },
+        { key: "availableEndTime", label: "Disponible hasta", type: "time" },
         {
           key: "status",
           label: "Publicación",
@@ -549,6 +575,61 @@ function createDefinition(
         },
       ],
     },
+    sucursales: {
+      title: "Sucursales",
+      description: "Administrá ubicaciones, costos de entrega, contacto y origen operativo de los pedidos.",
+      model: "branch",
+      fields: [
+        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Laterne Centro" },
+        { key: "slug", label: "Identificador", placeholder: "laterne-centro" },
+        { key: "address", label: "Dirección", required: true },
+        { key: "city", label: "Ciudad" },
+        { key: "province", label: "Provincia" },
+        { key: "phone", label: "Teléfono", type: "tel" },
+        { key: "whatsapp", label: "WhatsApp", type: "tel" },
+        { key: "location", label: "Ubicación en el mapa", control: "location" },
+        { key: "deliveryFee", label: "Costo de entrega", type: "number", min: 0, step: 0.01 },
+        { key: "minimumOrder", label: "Pedido mínimo", type: "number", min: 0, step: 0.01 },
+        { key: "orderPrefix", label: "Prefijo de pedido", placeholder: "PED" },
+        { key: "isPrimary", label: "Sucursal principal", control: "checkbox" },
+        {
+          key: "active",
+          label: "Sucursal activa",
+          control: "checkbox",
+          defaultChecked: true,
+        },
+      ],
+    },
+    seo: {
+      title: "SEO por página",
+      description:
+        "Controlá títulos, descripciones, imagen social, canonical e indexación sin editar código.",
+      model: "seoPage",
+      fields: [
+        { key: "path", label: "Ruta", required: true, placeholder: "/carta" },
+        { key: "title", label: "Título SEO", required: true },
+        { key: "description", label: "Descripción", control: "textarea", required: true },
+        { key: "canonical", label: "URL canonical", type: "url" },
+        { key: "ogImageUrl", label: "Imagen para compartir", type: "url" },
+        { key: "noIndex", label: "No permitir indexación", control: "checkbox" },
+      ],
+    },
+    redirecciones: {
+      title: "Redirecciones",
+      description: "Conservá enlaces anteriores enviándolos de forma segura hacia una ruta pública vigente.",
+      model: "redirectRule",
+      fields: [
+        { key: "sourcePath", label: "Ruta anterior", required: true, placeholder: "/menu-viejo" },
+        { key: "targetPath", label: "Ruta de destino", required: true, placeholder: "/carta" },
+        { key: "permanent", label: "Redirección permanente", control: "checkbox" },
+        {
+          key: "active",
+          label: "Regla activa",
+          control: "checkbox",
+          defaultChecked: true,
+        },
+      ],
+    },
   };
 
   return definitions[resource] ?? null;
@@ -571,14 +652,23 @@ async function loadItems(definition: ResourceDefinition, tenantId: number) {
   if (definition.model === "user") {
     const memberships = await prisma.tenantMembership.findMany({
       where: { tenantId },
-      include: { user: true, role: true },
+      include: {
+        user: true,
+        role: true,
+        sessions: {
+          select: { lastSeenAt: true },
+          orderBy: { lastSeenAt: "desc" },
+          take: 1,
+        },
+      },
       orderBy: { user: { name: "asc" } },
     });
-    return memberships.map(({ user, role, id: membershipId, roleId }) => ({
+    return memberships.map(({ user, role, sessions, id: membershipId, roleId }) => ({
       ...user,
       membershipId,
       roleId: roleId.toString(),
       roleName: role.name,
+      lastAccessAt: sessions[0]?.lastSeenAt ?? null,
       password: "",
     }));
   }
@@ -613,27 +703,63 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   if (!resourceConfig) notFound();
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
-  const [
-    productImages,
-    categoryImages,
-    eventImages,
-    userImages,
-    promotionImages,
-    caseImages,
-    categories,
-    products,
-    roles,
-  ] = await Promise.all([
-    readImageOptions("images_product"),
-    readImageOptions("images_categories"),
-    readImageOptions("images_event"),
-    readImageOptions("images_profile"),
-    readImageOptions("images_promotions"),
-    readImageOptions("images_cases"),
-    prisma.category.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-    prisma.product.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-    prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-  ]);
+  const [categories, products, roles, tenant, mediaAssets, events, memberships, promotions, cases] =
+    await Promise.all([
+      prisma.category.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+      prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+      prisma.tenant.findUniqueOrThrow({
+        where: { id: tenantId },
+        select: { defaultCurrency: true, locale: true },
+      }),
+      prisma.mediaAsset.findMany({
+        where: { tenantId },
+        select: { folder: true, filename: true, url: true },
+        orderBy: { createdAt: "desc" },
+        take: 5000,
+      }),
+      prisma.event.findMany({ where: { tenantId }, select: { imageUrl: true } }),
+      prisma.tenantMembership.findMany({
+        where: { tenantId },
+        select: { user: { select: { imageUrl: true } } },
+      }),
+      prisma.promotion.findMany({ where: { tenantId }, select: { imageUrl: true } }),
+      prisma.successCase.findMany({
+        where: { tenantId },
+        select: { logoUrl: true, coverUrl: true },
+      }),
+    ]);
+
+  const productImages = tenantImageOptions(
+    "images_product",
+    mediaAssets,
+    products.map((product) => product.imageUrl),
+  );
+  const categoryImages = tenantImageOptions(
+    "images_categories",
+    mediaAssets,
+    categories.map((category) => category.imageUrl),
+  );
+  const eventImages = tenantImageOptions(
+    "images_event",
+    mediaAssets,
+    events.map((event) => event.imageUrl),
+  );
+  const userImages = tenantImageOptions(
+    "images_profile",
+    mediaAssets,
+    memberships.map((membership) => membership.user.imageUrl),
+  );
+  const promotionImages = tenantImageOptions(
+    "images_promotions",
+    mediaAssets,
+    promotions.map((promotion) => promotion.imageUrl),
+  );
+  const caseImages = tenantImageOptions(
+    "images_cases",
+    mediaAssets,
+    cases.flatMap((item) => [item.logoUrl, item.coverUrl]),
+  );
 
   const categoryOptions = categories.map((category) => ({
     value: category.id.toString(),
@@ -681,6 +807,8 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
       initialItems={serialize(items) as Array<Record<string, unknown> & { id: number }>}
       fields={definition.fields}
       singular={definition.singular}
+      currency={tenant.defaultCurrency}
+      locale={tenant.locale}
     />
   );
 }

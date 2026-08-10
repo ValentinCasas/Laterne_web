@@ -11,21 +11,35 @@ import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: { default: "Laterne", template: "%s · Laterne" },
-  description: "Cerveza artesanal, cocina y encuentros en La Punta.",
-  icons: { icon: "/images/banners/logo.ico" },
-  openGraph: {
-    title: "Laterne",
-    description: "Cerveza artesanal, cocina y encuentros en La Punta.",
-    type: "website",
-    locale: "es_AR",
-    images: ["/images/banners/new_banner2_750.jpg"],
-  },
-  twitter: { card: "summary_large_image" },
-  manifest: "/manifest.webmanifest",
-};
+/** @summary Construye metadatos globales administrables para el tenant resuelto por dominio. */
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getDefaultTenant();
+  const [brand, seo] = await Promise.all([
+    prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }),
+    prisma.seoPage.findUnique({ where: { tenantId_path: { tenantId: tenant.id, path: "/" } } }),
+  ]);
+  const title = seo?.title || tenant.name;
+  const description = seo?.description || "Carta digital, pedidos, reservas y experiencias gastronómicas.";
+  const image = seo?.ogImageUrl || "/images/banners/new_banner2_750.jpg";
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+    title: { default: title, template: `%s · ${tenant.name}` },
+    description,
+    alternates: seo?.canonical ? { canonical: seo.canonical } : undefined,
+    robots: seo?.noIndex ? { index: false, follow: false } : undefined,
+    icons: { icon: brand?.faviconUrl || "/images/banners/logo.ico" },
+    verification: brand?.searchConsoleId ? { google: brand.searchConsoleId } : undefined,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: tenant.locale.replace("-", "_"),
+      images: [image],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+    manifest: "/manifest.webmanifest",
+  };
+}
 
 /** @summary Define la estructura global, los estilos compartidos y la navegación del sitio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -42,10 +56,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       brand?.cardStyle === "flat" ? ".25rem" : brand?.cardStyle === "bordered" ? ".75rem" : "1rem",
   } as CSSProperties;
   return (
-    <html lang="es" data-scroll-behavior="smooth">
+    <html lang={tenant.locale.split("-")[0]} data-scroll-behavior="smooth">
       <body style={style}>
         <SiteHeader brandName={tenant.name} logoUrl={brand?.logoUrl} />
-        <AnalyticsTracker />
+        <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />
         <PwaRegister />
         <CookieBanner />
         {children}

@@ -1,12 +1,15 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { managedPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Laterne Web para negocios gastronómicos",
-  description:
-    "Carta digital, pedidos, reservas, promociones, administración y experiencias 3D para negocios gastronómicos.",
-};
+/** @summary Recupera la configuración SEO administrable de la propuesta para negocios. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/para-negocios",
+    "Laterne Web para negocios gastronómicos",
+    "Carta digital, pedidos, reservas, promociones, administración y experiencias 3D.",
+  );
+}
 
 const businessCases = [
   "Bares",

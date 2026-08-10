@@ -1,13 +1,16 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingCatalog, type CommercialPlan } from "@/components/commercial/pricing-catalog";
 import { prisma } from "@/lib/prisma";
+import { managedPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Planes y precios",
-  description:
-    "Planes de Laterne Web para cartas digitales, gestión gastronómica, reservas, pedidos y experiencias 3D.",
-};
+/** @summary Recupera la configuración SEO administrable de planes comerciales. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/planes",
+    "Planes y precios",
+    "Planes para cartas digitales, gestión gastronómica, reservas, pedidos y experiencias 3D.",
+  );
+}
 
 /** @summary Consulta el catálogo comercial administrable y presenta planes, comparación y preguntas frecuentes. */
 export default async function PlansPage() {

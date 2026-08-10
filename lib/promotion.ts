@@ -28,6 +28,7 @@ export function isPromotionActive(promotion: PublicPromotionTiming, now = new Da
     minute: "2-digit",
     hourCycle: "h23",
   }).format(now);
+  /** @summary Convierte una hora persistida en minutos para comparar franjas de promoción. */
   const timeValue = (value: Date) =>
     `${String(value.getUTCHours()).padStart(2, "0")}:${String(value.getUTCMinutes()).padStart(2, "0")}`;
   if (promotion.startTime && currentTime < timeValue(promotion.startTime)) return false;

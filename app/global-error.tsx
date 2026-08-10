@@ -1,7 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
+
 /** @summary Ofrece una recuperación mínima incluso cuando falla la estructura global del sitio. */
-export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    void fetch("/api/errors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source: "global-boundary",
+        message: error.message || "Error global",
+        path: window.location.pathname,
+        digest: error.digest,
+      }),
+    });
+  }, [error]);
   return (
     <html lang="es">
       <body style={{ margin: 0, background: "#09090b", color: "#fafafa", fontFamily: "system-ui" }}>

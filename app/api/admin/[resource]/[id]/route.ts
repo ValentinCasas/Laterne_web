@@ -63,6 +63,16 @@ async function values(resource: string, input: Record<string, string>, tenantId:
       modelOrientation: modelOrientation(input.modelOrientation ?? ""),
       arPlacement: input.arPlacement === "wall" ? "wall" : "floor",
       arAllowScale: booleanValue(input.arAllowScale),
+      availableDays: input.availableDays
+        ? input.availableDays
+            .split(",")
+            .map(Number)
+            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+        : null,
+      availableStartTime: input.availableStartTime
+        ? new Date(`1970-01-01T${input.availableStartTime}:00Z`)
+        : null,
+      availableEndTime: input.availableEndTime ? new Date(`1970-01-01T${input.availableEndTime}:00Z`) : null,
       modelUpdatedAt: model3dUrl ? new Date() : null,
       categories: { deleteMany: {}, create: { tenantId, categoryId } },
     };
@@ -167,6 +177,56 @@ async function values(resource: string, input: Record<string, string>, tenantId:
     };
   }
 
+  if (resource === "sucursales") {
+    if (!input.name?.trim() || !input.address?.trim()) {
+      throw new Error("Completá el nombre y la dirección de la sucursal");
+    }
+    return {
+      name: input.name.trim(),
+      slug: slugify(input.slug || input.name) || `sucursal-${id}`,
+      address: input.address.trim(),
+      city: input.city?.trim() || null,
+      province: input.province?.trim() || null,
+      phone: input.phone?.trim() || null,
+      whatsapp: input.whatsapp?.trim() || null,
+      latitude: input.latitude ? Number(input.latitude) : null,
+      longitude: input.longitude ? Number(input.longitude) : null,
+      deliveryFee: Math.max(0, Number(input.deliveryFee || 0)),
+      minimumOrder: Math.max(0, Number(input.minimumOrder || 0)),
+      orderPrefix: input.orderPrefix?.trim().toUpperCase().slice(0, 12) || "PED",
+      isPrimary: booleanValue(input.isPrimary),
+      active: booleanValue(input.active),
+    };
+  }
+
+  if (resource === "seo") {
+    const pagePath = input.path?.trim();
+    if (!pagePath?.startsWith("/") || !input.title?.trim() || !input.description?.trim()) {
+      throw new Error("Ingresá una ruta válida, título y descripción");
+    }
+    return {
+      path: pagePath,
+      title: input.title.trim(),
+      description: input.description.trim(),
+      canonical: input.canonical?.trim() || null,
+      ogImageUrl: input.ogImageUrl?.trim() || null,
+      noIndex: booleanValue(input.noIndex),
+    };
+  }
+
+  if (resource === "redirecciones") {
+    if (!input.sourcePath?.startsWith("/") || !input.targetPath?.startsWith("/")) {
+      throw new Error("Las rutas de origen y destino deben comenzar con /");
+    }
+    if (input.sourcePath === input.targetPath) throw new Error("El origen y el destino deben ser distintos");
+    return {
+      sourcePath: input.sourcePath.trim(),
+      targetPath: input.targetPath.trim(),
+      permanent: booleanValue(input.permanent),
+      active: booleanValue(input.active),
+    };
+  }
+
   throw new Error("El recurso necesita un flujo de edición específico");
 }
 
@@ -239,6 +299,12 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
     const delegate = prisma[config.model] as unknown as Delegate;
     const oldItem = await delegate.findFirst({ where: { id, tenantId: auth.tenant.id } });
     if (!oldItem) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
+    if (resource === "sucursales" && booleanValue(input.isPrimary)) {
+      await prisma.branch.updateMany({
+        where: { tenantId: auth.tenant.id, id: { not: id } },
+        data: { isPrimary: false },
+      });
+    }
     const item = await delegate.update({
       where: { id },
       data: await values(resource, input, auth.tenant.id, id),
@@ -302,6 +368,12 @@ export async function DELETE(
     const delegate = prisma[config.model] as unknown as Delegate;
     const oldItem = await delegate.findFirst({ where: { id, tenantId: auth.tenant.id } });
     if (!oldItem) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
+    if (resource === "sucursales" && (oldItem as { isPrimary?: boolean }).isPrimary) {
+      return NextResponse.json(
+        { error: "Asigná otra sucursal principal antes de eliminarla" },
+        { status: 409 },
+      );
+    }
 
     if (resource === "productos") {
       await prisma.$transaction([

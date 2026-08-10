@@ -10,6 +10,9 @@ export const adminResources = {
   legales: { model: "legalPage", permission: "content.manage" },
   ayuda: { model: "helpArticle", permission: "content.manage" },
   casos: { model: "successCase", permission: "content.manage" },
+  sucursales: { model: "branch", permission: "business.manage" },
+  seo: { model: "seoPage", permission: "business.manage" },
+  redirecciones: { model: "redirectRule", permission: "business.manage" },
 } as const;
 
 export type AdminResource = keyof typeof adminResources;

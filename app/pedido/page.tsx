@@ -1,12 +1,22 @@
 import { CheckoutForm } from "@/components/orders/checkout-form";
+import { prisma } from "@/lib/prisma";
+import { getDefaultTenant } from "@/lib/tenant";
+import { managedPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Confirmar pedido",
-  description: "Revisá y confirmá tu pedido en Laterne.",
-};
+/** @summary Recupera metadatos administrables y evita indexar datos transaccionales del pedido. */
+export async function generateMetadata() {
+  const metadata = await managedPageMetadata("/pedido", "Confirmar pedido", "Revisá y confirmá tu pedido.");
+  return { ...metadata, robots: { index: false, follow: false } };
+}
 
 /** @summary Presenta el checkout público para guardar un pedido y verificar sus datos finales. */
-export default function OrderPage() {
+export default async function OrderPage() {
+  const tenant = await getDefaultTenant();
+  const branches = await prisma.branch.findMany({
+    where: { tenantId: tenant.id, active: true },
+    select: { id: true, name: true, address: true, deliveryFee: true, minimumOrder: true },
+    orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
+  });
   return (
     <main className="shell py-10 sm:py-16">
       <p className="section-eyebrow">Pedido online</p>
@@ -16,7 +26,15 @@ export default function OrderPage() {
       <p className="mb-8 mt-4 max-w-2xl text-zinc-400">
         Confirmá tus datos. Vas a obtener un número interno y una página privada para seguir el estado.
       </p>
-      <CheckoutForm />
+      <CheckoutForm
+        branches={branches.map((branch) => ({
+          ...branch,
+          deliveryFee: Number(branch.deliveryFee),
+          minimumOrder: Number(branch.minimumOrder),
+        }))}
+        currency={tenant.defaultCurrency}
+        locale={tenant.locale}
+      />
     </main>
   );
 }

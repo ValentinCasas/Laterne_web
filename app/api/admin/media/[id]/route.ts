@@ -70,6 +70,16 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   await unlink(target).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "ENOENT") throw error;
   });
+  if (asset.thumbnailUrl) {
+    const thumbnailTarget = path.resolve(publicRoot, `.${asset.thumbnailUrl}`);
+    if (
+      thumbnailTarget.toLocaleLowerCase("en").startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)
+    ) {
+      await unlink(thumbnailTarget).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      });
+    }
+  }
   await prisma.mediaAsset.delete({ where: { id } });
   await recordAudit({
     context: auth,

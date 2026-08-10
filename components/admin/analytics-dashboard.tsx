@@ -2,6 +2,22 @@ import Link from "next/link";
 
 type Metric = { eventType: string; count: number };
 type ProductMetric = { id: number; name: string; views: number; additions: number };
+type Operations = {
+  orders: number;
+  previousOrders: number;
+  revenue: number;
+  previousRevenue: number;
+  averageTicket: number;
+  reservations: number;
+  orderStatus: { status: string; count: number }[];
+  currency: string;
+  locale: string;
+};
+type ActivityBreakdown = {
+  devices: { name: string; count: number }[];
+  hours: { hour: number; count: number }[];
+  categories: { name: string; count: number }[];
+};
 
 const labels: Record<string, string> = {
   "page.view": "Vistas de páginas",
@@ -23,16 +39,35 @@ export function AnalyticsDashboard({
   metrics,
   products,
   days,
+  operations,
+  activity,
 }: {
   metrics: Metric[];
   products: ProductMetric[];
   days: number;
+  operations: Operations;
+  activity: ActivityBreakdown;
 }) {
   const metricMap = new Map(metrics.map((metric) => [metric.eventType, metric.count]));
   const started = metricMap.get("order.started") ?? 0;
   const completed = metricMap.get("order.completed") ?? 0;
   const conversion = started ? (completed / started) * 100 : 0;
   const maximum = Math.max(1, ...metrics.map((metric) => metric.count));
+  const orderChange = operations.previousOrders
+    ? ((operations.orders - operations.previousOrders) / operations.previousOrders) * 100
+    : operations.orders
+      ? 100
+      : 0;
+  const revenueChange = operations.previousRevenue
+    ? ((operations.revenue - operations.previousRevenue) / operations.previousRevenue) * 100
+    : operations.revenue
+      ? 100
+      : 0;
+  const currency = new Intl.NumberFormat(operations.locale, {
+    style: "currency",
+    currency: operations.currency,
+    maximumFractionDigits: 0,
+  });
   return (
     <section>
       <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
@@ -76,6 +111,32 @@ export function AnalyticsDashboard({
           <strong className="mt-2 block text-3xl">{metricMap.get("ar.started") ?? 0}</strong>
         </article>
       </div>
+      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="card p-5">
+          <p className="text-sm text-zinc-500">Ventas registradas</p>
+          <strong className="mt-2 block text-3xl">{currency.format(operations.revenue)}</strong>
+          <small className={revenueChange >= 0 ? "text-emerald-300" : "text-red-300"}>
+            {revenueChange >= 0 ? "+" : ""}
+            {revenueChange.toFixed(1)}% contra el período anterior
+          </small>
+        </article>
+        <article className="card p-5">
+          <p className="text-sm text-zinc-500">Pedidos almacenados</p>
+          <strong className="mt-2 block text-3xl">{operations.orders}</strong>
+          <small className={orderChange >= 0 ? "text-emerald-300" : "text-red-300"}>
+            {orderChange >= 0 ? "+" : ""}
+            {orderChange.toFixed(1)}% contra el período anterior
+          </small>
+        </article>
+        <article className="card p-5">
+          <p className="text-sm text-zinc-500">Ticket promedio</p>
+          <strong className="mt-2 block text-3xl">{currency.format(operations.averageTicket)}</strong>
+        </article>
+        <article className="card p-5">
+          <p className="text-sm text-zinc-500">Reservas recibidas</p>
+          <strong className="mt-2 block text-3xl">{operations.reservations}</strong>
+        </article>
+      </section>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Actividad</h2>
@@ -119,6 +180,59 @@ export function AnalyticsDashboard({
           </div>
         </section>
       </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-3">
+        <section className="card p-5 sm:p-7">
+          <h2 className="text-xl font-black">Estados de pedidos</h2>
+          <div className="mt-4 space-y-2">
+            {operations.orderStatus.map((item) => (
+              <div className="flex justify-between rounded-xl bg-white/[.04] px-4 py-3" key={item.status}>
+                <span className="capitalize">{item.status.replaceAll("_", " ")}</span>
+                <strong>{item.count}</strong>
+              </div>
+            ))}
+            {!operations.orderStatus.length && (
+              <p className="text-sm text-zinc-500">Sin pedidos en el período.</p>
+            )}
+          </div>
+        </section>
+        <section className="card p-5 sm:p-7">
+          <h2 className="text-xl font-black">Dispositivos</h2>
+          <div className="mt-4 space-y-2">
+            {activity.devices.map((item) => (
+              <div className="flex justify-between rounded-xl bg-white/[.04] px-4 py-3" key={item.name}>
+                <span className="capitalize">{item.name}</span>
+                <strong>{item.count}</strong>
+              </div>
+            ))}
+            {!activity.devices.length && <p className="text-sm text-zinc-500">Todavía no hay información.</p>}
+          </div>
+        </section>
+        <section className="card p-5 sm:p-7">
+          <h2 className="text-xl font-black">Horas con más actividad</h2>
+          <div className="mt-4 space-y-2">
+            {activity.hours.map((item) => (
+              <div className="flex justify-between rounded-xl bg-white/[.04] px-4 py-3" key={item.hour}>
+                <span>{String(item.hour).padStart(2, "0")}:00</span>
+                <strong>{item.count}</strong>
+              </div>
+            ))}
+            {!activity.hours.length && <p className="text-sm text-zinc-500">Todavía no hay información.</p>}
+          </div>
+        </section>
+      </div>
+      {activity.categories.length > 0 && (
+        <section className="card mt-6 p-5 sm:p-7">
+          <h2 className="text-xl font-black">Categorías más consultadas</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {activity.categories.map((item) => (
+              <article className="rounded-2xl bg-white/[.04] p-4" key={item.name}>
+                <strong>{item.name}</strong>
+                <p className="mt-1 text-sm text-zinc-500">{item.count} interacciones</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

@@ -12,7 +12,11 @@ export type DiningTableData = {
   sector: string | null;
   capacity: number;
   active: boolean;
+  branchId: number | null;
+  currentOrder?: { reference: string; status: string } | null;
 };
+
+type BranchOption = { id: number; name: string };
 
 /** @summary Construye la dirección absoluta que se codifica para identificar una mesa. */
 function tableUrl(code: string) {
@@ -20,7 +24,13 @@ function tableUrl(code: string) {
 }
 
 /** @summary Administra mesas y genera sus materiales QR descargables e imprimibles. */
-export function TableManager({ initialTables }: { initialTables: DiningTableData[] }) {
+export function TableManager({
+  initialTables,
+  branches,
+}: {
+  initialTables: DiningTableData[];
+  branches: BranchOption[];
+}) {
   const [tables, setTables] = useState(initialTables);
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<DiningTableData | null>(null);
@@ -69,6 +79,7 @@ export function TableManager({ initialTables }: { initialTables: DiningTableData
       sector: String(form.get("sector") ?? ""),
       capacity: Number(form.get("capacity") ?? 4),
       active: form.get("active") === "on",
+      branchId: Number(form.get("branchId")),
     };
     const response = await fetch(editing ? `/api/admin/tables/${editing.id}` : "/api/admin/tables", {
       method: editing ? "PATCH" : "POST",
@@ -150,7 +161,7 @@ export function TableManager({ initialTables }: { initialTables: DiningTableData
       </header>
 
       <form
-        className="card mb-6 grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_140px_auto_auto] lg:items-end"
+        className="card mb-6 grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_140px_auto_auto] lg:items-end"
         onSubmit={save}
       >
         <label>
@@ -171,6 +182,22 @@ export function TableManager({ initialTables }: { initialTables: DiningTableData
             defaultValue={editing?.sector ?? ""}
             key={`sector-${editing?.id ?? "new"}`}
           />
+        </label>
+        <label>
+          <span className="label">Sucursal</span>
+          <select
+            className="input"
+            name="branchId"
+            required
+            defaultValue={editing?.branchId ?? branches[0]?.id}
+            key={`branch-${editing?.id ?? "new"}`}
+          >
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           <span className="label">Capacidad</span>
@@ -243,6 +270,11 @@ export function TableManager({ initialTables }: { initialTables: DiningTableData
                 <p className={`mt-2 text-xs font-bold ${table.active ? "text-emerald-300" : "text-red-300"}`}>
                   {table.active ? "QR activo" : "Mesa desactivada"}
                 </p>
+                {table.currentOrder && (
+                  <p className="mt-2 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-200">
+                    Pedido {table.currentOrder.reference} · {table.currentOrder.status.replaceAll("_", " ")}
+                  </p>
+                )}
                 <p className="mt-2 truncate text-[10px] text-zinc-600">{table.code}</p>
               </div>
             </div>

@@ -6,10 +6,11 @@ import { prisma } from "@/lib/prisma";
 /** @summary Carga clientes, uso y planes para el panel exclusivo del propietario de la plataforma. */
 export default async function SuperAdminPage() {
   await requireSuperAdmin();
-  const [tenants, plans] = await Promise.all([
+  const [tenants, plans, storage] = await Promise.all([
     prisma.tenant.findMany({
       include: {
         subscription: { include: { plan: { select: { name: true } } } },
+        brandSettings: { select: { customDomain: true } },
         _count: {
           select: {
             products: true,
@@ -17,6 +18,7 @@ export default async function SuperAdminPage() {
             customerOrders: true,
             reservations: true,
             mediaAssets: true,
+            errorLogs: true,
           },
         },
       },
@@ -27,10 +29,25 @@ export default async function SuperAdminPage() {
       select: { id: true, name: true },
       orderBy: { displayOrder: "asc" },
     }),
+    prisma.mediaAsset.groupBy({
+      by: ["tenantId"],
+      _sum: { sizeBytes: true },
+    }),
   ]);
+  const storageByTenant = new Map(storage.map((item) => [item.tenantId, item._sum.sizeBytes ?? 0]));
   return (
     <main className="shell py-8 sm:py-12">
-      <TenantConsole initialTenants={serialize(tenants) as unknown as PlatformTenant[]} plans={plans} />
+      <TenantConsole
+        initialTenants={
+          serialize(
+            tenants.map((tenant) => ({
+              ...tenant,
+              storageBytes: storageByTenant.get(tenant.id) ?? 0,
+            })),
+          ) as unknown as PlatformTenant[]
+        }
+        plans={plans}
+      />
     </main>
   );
 }

@@ -21,10 +21,26 @@ const brandInput = z.object({
   tone: z.string().trim().max(120).optional(),
   instagram: z.string().trim().url().max(500).optional().or(z.literal("")),
   facebook: z.string().trim().url().max(500).optional().or(z.literal("")),
-  customDomain: z.string().trim().max(255).optional(),
+  customDomain: z
+    .string()
+    .trim()
+    .max(255)
+    .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i)
+    .optional()
+    .or(z.literal("")),
   analyticsId: z.string().trim().max(100).optional(),
   metaPixelId: z.string().trim().max(100).optional(),
   searchConsoleId: z.string().trim().max(255).optional(),
+  defaultCurrency: z.enum(["ARS", "USD", "UYU", "BRL", "CLP", "EUR"]),
+  locale: z.enum(["es-AR", "es-UY", "es-CL", "en-US", "pt-BR"]),
+  timeZone: z.enum([
+    "America/Argentina/Buenos_Aires",
+    "America/Montevideo",
+    "America/Santiago",
+    "America/Sao_Paulo",
+    "America/New_York",
+    "Europe/Madrid",
+  ]),
 });
 
 /** @summary Valida una imagen de marca para impedir referencias a esquemas inseguros. */
@@ -43,6 +59,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Revisá colores, URLs y textos de marca" }, { status: 400 });
   try {
     const current = await prisma.brandSettings.findUnique({ where: { tenantId: auth.tenant.id } });
+    const customDomain = parsed.data.customDomain?.toLocaleLowerCase("en") || null;
+    const domainConflict = customDomain
+      ? await prisma.brandSettings.findFirst({
+          where: { customDomain, tenantId: { not: auth.tenant.id } },
+          select: { id: true },
+        })
+      : null;
+    if (domainConflict) throw new Error("El dominio ya está asignado a otro negocio");
     const data = {
       logoUrl: brandAsset(parsed.data.logoUrl),
       isotypeUrl: brandAsset(parsed.data.isotypeUrl),
@@ -57,16 +81,32 @@ export async function PATCH(request: Request) {
       heroSubtitle: parsed.data.heroSubtitle || null,
       tone: parsed.data.tone || null,
       socialLinks: { instagram: parsed.data.instagram || "", facebook: parsed.data.facebook || "" },
-      customDomain: parsed.data.customDomain?.toLocaleLowerCase("es") || null,
+      customDomain,
       analyticsId: parsed.data.analyticsId || null,
       metaPixelId: parsed.data.metaPixelId || null,
       searchConsoleId: parsed.data.searchConsoleId || null,
     };
-    const brand = await prisma.brandSettings.upsert({
-      where: { tenantId: auth.tenant.id },
-      create: { tenantId: auth.tenant.id, ...data },
-      update: data,
-    });
+    const [brand] = await prisma.$transaction([
+      prisma.brandSettings.upsert({
+        where: { tenantId: auth.tenant.id },
+        create: { tenantId: auth.tenant.id, ...data },
+        update: data,
+      }),
+      prisma.tenant.update({
+        where: { id: auth.tenant.id },
+        data: {
+          defaultCurrency: parsed.data.defaultCurrency,
+          locale: parsed.data.locale,
+          timeZone: parsed.data.timeZone,
+        },
+      }),
+    ]);
+    const responseBrand = {
+      ...serialize(brand),
+      defaultCurrency: parsed.data.defaultCurrency,
+      locale: parsed.data.locale,
+      timeZone: parsed.data.timeZone,
+    };
     await recordAudit({
       context: auth,
       action: "update",
@@ -76,7 +116,7 @@ export async function PATCH(request: Request) {
       newValues: toAuditValue(serialize(brand)),
       request,
     });
-    return NextResponse.json({ brand: serialize(brand) });
+    return NextResponse.json({ brand: responseBrand });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo guardar la marca" },

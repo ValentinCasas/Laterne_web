@@ -19,11 +19,19 @@ type StoredCartItem = {
   notes?: string;
 };
 
+type BranchOption = {
+  id: number;
+  name: string;
+  address: string;
+  deliveryFee: number;
+  minimumOrder: number;
+};
+
 /** @summary Formatea importes del pedido usando la moneda configurada para la experiencia pública. */
-function formatPrice(value: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatPrice(value: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "ARS",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -47,7 +55,15 @@ function storedCart() {
 }
 
 /** @summary Permite revisar datos, modalidad y productos antes de almacenar un pedido definitivo. */
-export function CheckoutForm() {
+export function CheckoutForm({
+  branches,
+  currency,
+  locale,
+}: {
+  branches: BranchOption[];
+  currency: string;
+  locale: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<StoredCartItem[]>([]);
@@ -55,6 +71,7 @@ export function CheckoutForm() {
   const [submitting, setSubmitting] = useState(false);
   const [orderType, setOrderType] = useState<"takeaway" | "dine_in" | "delivery">("takeaway");
   const [tableCode, setTableCode] = useState("");
+  const [branchId, setBranchId] = useState(branches[0]?.id ?? 0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -76,6 +93,10 @@ export function CheckoutForm() {
       }, 0),
     [items],
   );
+  const selectedBranch = useMemo(
+    () => branches.find((branch) => branch.id === branchId),
+    [branchId, branches],
+  );
 
   /** @summary Quita un producto de la revisión y sincroniza el carrito persistido. */
   function removeItem(index: number) {
@@ -92,17 +113,20 @@ export function CheckoutForm() {
     if (!items.length) return;
     setSubmitting(true);
     const form = new FormData(event.currentTarget);
+    const requestedTime = String(form.get("requestedTime") ?? "");
     const payload = {
       customerName: form.get("customerName"),
       phone: form.get("phone"),
       email: form.get("email"),
       orderType,
+      branchId,
       tableCode: orderType === "dine_in" ? tableCode : undefined,
       address: orderType === "delivery" ? form.get("address") : undefined,
-      requestedTime: form.get("requestedTime"),
+      requestedTime: requestedTime ? new Date(requestedTime).toISOString() : "",
       notes: form.get("notes"),
       promotionCode: form.get("promotionCode"),
       tip: Number(form.get("tip") || 0),
+      paymentMethod: form.get("paymentMethod"),
       website: form.get("website"),
       loyaltyToken: localStorage.getItem("laterne_cliente_token") || undefined,
       items: items.map((item) => ({
@@ -165,6 +189,22 @@ export function CheckoutForm() {
               </button>
             ))}
           </div>
+          {branches.length > 0 && orderType !== "dine_in" && (
+            <label className="mt-4 block">
+              <span className="label">Sucursal</span>
+              <select
+                className="input"
+                value={branchId}
+                onChange={(event) => setBranchId(Number(event.target.value))}
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name} · {branch.address}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {orderType === "dine_in" && (
             <label className="mt-4 block">
               <span className="label">Código de mesa</span>
@@ -202,7 +242,7 @@ export function CheckoutForm() {
             </label>
             <label>
               <span className="label">Horario preferido</span>
-              <input className="input" name="requestedTime" placeholder="Lo antes posible" />
+              <input className="input" name="requestedTime" type="datetime-local" />
             </label>
           </div>
           <label className="mt-4 block">
@@ -259,6 +299,8 @@ export function CheckoutForm() {
                         Number(item.variantPrice ?? 0) +
                         (item.extrasSelected?.reduce((sum, extra) => sum + extra.price, 0) ?? 0)) *
                         item.quantity,
+                      currency,
+                      locale,
                     )}
                   </strong>
                 </div>
@@ -277,10 +319,32 @@ export function CheckoutForm() {
             <span className="label">Propina opcional</span>
             <input className="input" name="tip" type="number" min={0} step={100} defaultValue={0} />
           </label>
+          <label>
+            <span className="label">Forma de pago</span>
+            <select className="input" name="paymentMethod" defaultValue="on_delivery">
+              <option value="on_delivery">A coordinar con el local</option>
+              <option value="cash">Efectivo</option>
+              <option value="card_on_delivery">Tarjeta al recibir</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </label>
           <div className="flex items-end justify-between border-t border-white/10 pt-4">
             <span className="text-sm text-zinc-400">Subtotal estimado</span>
-            <strong className="text-2xl">{formatPrice(subtotal)}</strong>
+            <strong className="text-2xl">{formatPrice(subtotal, currency, locale)}</strong>
           </div>
+          {orderType === "delivery" && (
+            <div className="space-y-1 text-sm text-zinc-400">
+              <div className="flex justify-between">
+                <span>Envío estimado</span>
+                <span>{formatPrice(selectedBranch?.deliveryFee ?? 0, currency, locale)}</span>
+              </div>
+              {Number(selectedBranch?.minimumOrder ?? 0) > 0 && (
+                <p className="text-xs">
+                  Pedido mínimo: {formatPrice(selectedBranch?.minimumOrder ?? 0, currency, locale)}
+                </p>
+              )}
+            </div>
+          )}
           <p className="text-xs leading-relaxed text-zinc-500">
             El servidor vuelve a verificar precios, disponibilidad y promociones antes de confirmar.
           </p>

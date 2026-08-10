@@ -3,8 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { getDefaultTenant } from "@/lib/tenant";
+import { productAvailableAt } from "@/lib/product-availability";
+import { managedPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+/** @summary Recupera la configuración SEO administrable de la carta virtual. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/carta",
+    "Carta virtual",
+    "Productos, precios y opciones para armar tu pedido.",
+  );
+}
 
 /** @summary Obtiene categorías y productos válidos para construir la carta pública. */
 export default async function MenuPage() {
@@ -57,7 +68,17 @@ export default async function MenuPage() {
         name: product.name,
         description: product.description,
         price: Number(product.promotionalPrice ?? product.price ?? 0),
-        availability: product.availability,
+        availability:
+          product.availability?.toLocaleLowerCase("es") === "agotado" ||
+          !productAvailableAt(
+            product.availableDays,
+            product.availableStartTime,
+            product.availableEndTime,
+            now,
+            tenant.timeZone,
+          )
+            ? "agotado"
+            : "disponible",
         featured: product.featured,
         isNew: product.isNew,
         recommended: product.recommended,
@@ -89,5 +110,12 @@ export default async function MenuPage() {
       })),
     }))
     .filter((category) => category.products.length > 0);
-  return <MenuClient categories={categories} phone={business?.phoneNumber?.toString() ?? ""} />;
+  return (
+    <MenuClient
+      categories={categories}
+      phone={business?.phoneNumber?.toString() ?? ""}
+      currency={tenant.defaultCurrency}
+      locale={tenant.locale}
+    />
+  );
 }

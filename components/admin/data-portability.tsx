@@ -17,6 +17,8 @@ export function DataPortability() {
   const [csv, setCsv] = useState("");
   const [filename, setFilename] = useState("");
   const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [backup, setBackup] = useState<Record<string, unknown> | null>(null);
+  const [backupName, setBackupName] = useState("");
 
   /** @summary Lee un CSV local de tamaño acotado sin enviarlo hasta solicitar validación. */
   async function choose(file: File | undefined) {
@@ -56,6 +58,78 @@ export function DataPortability() {
       setCsv("");
       setFilename("");
     }
+  }
+
+  /** @summary Lee y valida superficialmente una copia JSON antes de solicitar la restauración controlada. */
+  async function chooseBackup(file: File | undefined) {
+    if (!file || file.size > 10_000_000) return;
+    try {
+      const parsed = JSON.parse(await file.text()) as Record<string, unknown>;
+      setBackup(parsed);
+      setBackupName(file.name);
+    } catch {
+      setBackup(null);
+      await Swal.fire({
+        title: "Copia inválida",
+        text: "El archivo no contiene JSON válido.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    }
+  }
+
+  /** @summary Solicita la frase exacta y fusiona una copia compatible sin eliminar contenido adicional. */
+  async function restoreBackup() {
+    if (!backup) return;
+    const tenantSlug = String(backup.tenantSlug ?? "");
+    const confirmation = await Swal.fire({
+      title: "Restauración controlada",
+      text: `Escribí RESTAURAR ${tenantSlug}. La operación fusiona registros y no borra contenido adicional.`,
+      input: "text",
+      showCancelButton: true,
+      confirmButtonText: "Restaurar",
+      cancelButtonText: "Cancelar",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmation.isConfirmed) return;
+    const response = await fetch("/api/admin/data/backup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...backup, confirmation: confirmation.value }),
+    });
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    await Swal.fire({
+      title: response.ok ? "Copia restaurada" : "No se pudo restaurar",
+      text: result.error,
+      icon: response.ok ? "success" : "error",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
+
+  /** @summary Descarga la copia JSON autenticada y conserva el nombre indicado por el servidor. */
+  async function downloadBackup() {
+    const response = await fetch("/api/admin/data/backup");
+    if (!response.ok) {
+      await Swal.fire({
+        title: "No se pudo descargar",
+        text: "Intentá nuevamente en unos instantes.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const name = disposition.match(/filename="([^"]+)"/)?.[1] ?? "laterne-backup.json";
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = name;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -130,6 +204,35 @@ export function DataPortability() {
                 </button>
               )}
             </div>
+          )}
+        </section>
+        <section className="card p-5 sm:p-7 xl:col-span-2">
+          <h2 className="text-2xl font-black">Copia de seguridad portable</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Exporta categorías, productos, opciones y sucursales. La restauración exige una frase exacta,
+            valida el tenant y fusiona sin borrar registros adicionales.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button className="btn" type="button" onClick={() => void downloadBackup()}>
+              Descargar copia JSON
+            </button>
+            <label className="btn btn-secondary cursor-pointer text-center">
+              {backupName || "Elegir copia para restaurar"}
+              <input
+                className="sr-only"
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) => void chooseBackup(event.target.files?.[0])}
+              />
+            </label>
+          </div>
+          {backup && (
+            <button
+              className="mt-4 text-sm font-bold text-amber-300 underline"
+              onClick={() => void restoreBackup()}
+            >
+              Validar y restaurar esta copia
+            </button>
           )}
         </section>
       </div>
