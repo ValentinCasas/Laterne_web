@@ -9,9 +9,12 @@ export type MediaAssetData = {
   folder: string;
   filename: string;
   url: string;
+  thumbnailUrl: string | null;
   mimeType: string;
   sizeBytes: string | number;
   altText: string | null;
+  width: number | null;
+  height: number | null;
   createdAt: string;
   user: { name: string } | null;
 };
@@ -72,6 +75,48 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
       return;
     }
     setAssets((current) => current.map((item) => (item.id === asset.id ? body.asset! : item)));
+  }
+
+  /** @summary Crea una variante recortada no destructiva con una proporción elegida por el administrador. */
+  async function crop(asset: MediaAssetData) {
+    const selection = await Swal.fire({
+      title: "Crear variante recortada",
+      text: "La imagen original se conserva y la nueva copia aparecerá en esta colección.",
+      input: "select",
+      inputOptions: {
+        square: "Cuadrada · 1:1",
+        landscape: "Horizontal · 16:9",
+        portrait: "Vertical · 4:5",
+      },
+      showCancelButton: true,
+      confirmButtonText: "Crear recorte",
+      cancelButtonText: "Cancelar",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!selection.isConfirmed) return;
+    const response = await fetch(`/api/admin/media/${asset.id}/crop`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preset: selection.value }),
+    });
+    const body = (await response.json().catch(() => ({}))) as {
+      asset?: MediaAssetData;
+      error?: string;
+    };
+    if (!response.ok || !body.asset) {
+      await Swal.fire({
+        title: "No se pudo recortar",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setAssets((current) =>
+      current.some((item) => item.id === body.asset!.id) ? current : [body.asset!, ...current],
+    );
   }
 
   /** @summary Confirma y solicita la eliminación, que el servidor rechaza si existe algún uso. */
@@ -143,7 +188,12 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
               className={`relative shrink-0 bg-white/5 ${view === "list" ? "h-20 w-20 rounded-xl" : "aspect-video"}`}
             >
               {asset.mimeType.startsWith("image/") ? (
-                <Image src={asset.url} alt={asset.altText ?? ""} fill className="object-contain p-2" />
+                <Image
+                  src={asset.thumbnailUrl || asset.url}
+                  alt={asset.altText ?? ""}
+                  fill
+                  className="object-contain p-2"
+                />
               ) : (
                 <span className="grid h-full place-items-center text-3xl font-black text-pink-300">3D</span>
               )}
@@ -155,6 +205,11 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
               <p className="mt-1 text-xs text-zinc-500">
                 {asset.folder} · {asset.mimeType} · {fileSize(asset.sizeBytes)}
               </p>
+              {asset.width && asset.height && (
+                <p className="mt-1 text-xs text-zinc-600">
+                  {asset.width} × {asset.height} px · miniatura optimizada
+                </p>
+              )}
               <p className="mt-1 line-clamp-2 text-xs text-zinc-400">
                 {asset.altText || "Sin texto alternativo"}
               </p>
@@ -165,6 +220,15 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
                 <button className="btn btn-secondary px-3 py-2 text-xs" onClick={() => edit(asset)}>
                   Editar texto
                 </button>
+                {asset.mimeType.startsWith("image/") && asset.mimeType !== "image/gif" && (
+                  <button
+                    className="btn btn-secondary px-3 py-2 text-xs"
+                    onClick={() => crop(asset)}
+                    type="button"
+                  >
+                    Recortar copia
+                  </button>
+                )}
                 <button
                   className="rounded-xl border border-red-500/20 px-3 text-xs text-red-300"
                   onClick={() => remove(asset)}

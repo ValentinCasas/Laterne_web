@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
+import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
 
 type ProductActionData = {
@@ -24,12 +26,15 @@ export function ProductActions({ product }: { product: ProductActionData }) {
       try {
         const favorites = JSON.parse(localStorage.getItem("laterne_favoritos") ?? "[]") as number[];
         setFavorite(favorites.includes(product.id));
+        const history = JSON.parse(localStorage.getItem("laterne_vistos") ?? "[]") as ProductActionData[];
+        const nextHistory = [product, ...history.filter((item) => item.id !== product.id)].slice(0, 12);
+        localStorage.setItem("laterne_vistos", JSON.stringify(nextHistory));
       } catch {
         setFavorite(false);
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [product.id]);
+  }, [product]);
 
   /** @summary Agrega el producto al pedido persistido o incrementa su cantidad si ya estaba elegido. */
   function addToOrder() {
@@ -87,11 +92,38 @@ export function ProductActions({ product }: { product: ProductActionData }) {
     }
   }
 
+  /** @summary Genera localmente el QR individual de la ficha para mostrarlo o descargarlo sin terceros. */
+  async function showQr() {
+    const dataUrl = await QRCode.toDataURL(window.location.href, {
+      width: 720,
+      margin: 2,
+      errorCorrectionLevel: "H",
+      color: { dark: "#09090b", light: "#ffffff" },
+    });
+    const result = await Swal.fire({
+      title: product.name,
+      text: "Escaneá para abrir esta ficha individual.",
+      imageUrl: dataUrl,
+      imageAlt: `Código QR de ${product.name}`,
+      imageWidth: 320,
+      showCancelButton: true,
+      confirmButtonText: "Descargar QR",
+      cancelButtonText: "Cerrar",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!result.isConfirmed) return;
+    const anchor = document.createElement("a");
+    anchor.href = dataUrl;
+    anchor.download = `qr-${product.slug}.png`;
+    anchor.click();
+  }
+
   const soldOut = product.availability?.toLocaleLowerCase("es") === "agotado";
 
   return (
     <div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
         <button
           className="btn min-h-12 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={soldOut}
@@ -110,6 +142,9 @@ export function ProductActions({ product }: { product: ProductActionData }) {
         </button>
         <button className="btn btn-secondary min-h-12" onClick={shareProduct} type="button">
           Compartir
+        </button>
+        <button className="btn btn-secondary min-h-12" onClick={() => void showQr()} type="button">
+          Código QR
         </button>
       </div>
       <p className="mt-3 min-h-6 text-sm text-pink-300" role="status" aria-live="polite">

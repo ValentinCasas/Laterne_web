@@ -2,10 +2,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { authorize } from "@/lib/auth";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
+import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
 const folders = {
   productos: "images_product",
@@ -29,6 +31,52 @@ const modelLimits = {
   gltf: 15 * 1024 * 1024,
   usdz: 60 * 1024 * 1024,
 } as const;
+
+/** @summary Comprueba el cupo de archivos y convierte el rechazo del plan en un mensaje controlado. */
+async function storageCapacityError(tenantId: number, bytes: number) {
+  try {
+    await ensureTenantCapacity(tenantId, "storageMb", bytes);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Se alcanzó el límite de almacenamiento";
+  }
+}
+
+/** @summary Comprime una imagen, corrige su orientación y genera una miniatura manteniendo transparencias. */
+async function optimizeImage(file: File, source: Uint8Array) {
+  if (file.type === "image/gif") {
+    const metadata = await sharp(source, { animated: true }).metadata();
+    return { bytes: source, width: metadata.width ?? null, height: metadata.height ?? null, thumbnail: null };
+  }
+  let pipeline = sharp(source)
+    .rotate()
+    .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true });
+  if (file.type === "image/jpeg") pipeline = pipeline.jpeg({ quality: 84, progressive: true });
+  if (file.type === "image/png") pipeline = pipeline.png({ compressionLevel: 9, palette: true });
+  if (file.type === "image/webp") pipeline = pipeline.webp({ quality: 84 });
+  if (file.type === "image/avif") pipeline = pipeline.avif({ quality: 55 });
+  const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
+  const thumbnail = await sharp(data)
+    .resize({ width: 480, height: 480, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 76 })
+    .toBuffer();
+  return {
+    bytes: new Uint8Array(data),
+    width: info.width,
+    height: info.height,
+    thumbnail: new Uint8Array(thumbnail),
+  };
+}
+
+/** @summary Escribe la miniatura optimizada y devuelve su dirección pública cuando corresponde. */
+async function writeThumbnail(folder: string, filename: string, bytes: Uint8Array | null) {
+  if (!bytes) return null;
+  const thumbnailName = `${path.parse(filename).name}.webp`;
+  const destination = path.join(process.cwd(), "public", "images", "thumbnails", folder);
+  await mkdir(destination, { recursive: true });
+  await writeFile(path.join(destination, thumbnailName), bytes);
+  return `/images/thumbnails/${folder}/${thumbnailName}`;
+}
 
 /** @summary Genera un nombre de archivo seguro y único conservando una referencia legible. */
 function createFilename(originalName: string, extension: string) {
@@ -109,6 +157,8 @@ async function uploadProductModel(request: Request, formData: FormData) {
     if (existing) {
       return NextResponse.json({ filename: existing.filename, url: existing.url, duplicate: true });
     }
+    const capacityError = await storageCapacityError(auth.tenant.id, file.size);
+    if (capacityError) return NextResponse.json({ error: capacityError }, { status: 409 });
     const filename = createFilename(file.name, `.${extension}`);
     const relativeDirectory = path.join("models", String(auth.tenant.id), "products");
     const destination = path.join(process.cwd(), "public", relativeDirectory);
@@ -161,8 +211,13 @@ export async function POST(request: Request) {
     const extension = extensions[file.type as keyof typeof extensions];
     if (!extension || file.size > 5 * 1024 * 1024)
       return NextResponse.json({ error: "Usá JPG, PNG, WebP o AVIF de hasta 5 MB" }, { status: 400 });
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const checksum = createHash("sha256").update(bytes).digest("hex");
+    const optimized = await optimizeImage(file, new Uint8Array(await file.arrayBuffer())).catch(() => null);
+    if (!optimized)
+      return NextResponse.json(
+        { error: "La imagen está dañada o su contenido no coincide con el formato" },
+        { status: 400 },
+      );
+    const checksum = createHash("sha256").update(optimized.bytes).digest("hex");
     const existing = await prisma.mediaAsset.findUnique({
       where: {
         tenantId_checksum_folder: {
@@ -175,11 +230,14 @@ export async function POST(request: Request) {
     if (existing) {
       return NextResponse.json({ filename: existing.filename, url: existing.url, duplicate: true });
     }
+    const capacityError = await storageCapacityError(auth.tenant.id, optimized.bytes.byteLength);
+    if (capacityError) return NextResponse.json({ error: capacityError }, { status: 409 });
     const filename = createFilename(file.name, extension);
     const destination = path.join(process.cwd(), "public", "images", "images_brand");
     await mkdir(destination, { recursive: true });
-    await writeFile(path.join(destination, filename), bytes);
+    await writeFile(path.join(destination, filename), optimized.bytes);
     const url = `/images/images_brand/${filename}`;
+    const thumbnailUrl = await writeThumbnail("images_brand", filename, optimized.thumbnail);
     await prisma.mediaAsset.create({
       data: {
         tenantId: auth.tenant.id,
@@ -187,10 +245,13 @@ export async function POST(request: Request) {
         folder: "images_brand",
         filename,
         url,
+        thumbnailUrl,
         mimeType: file.type,
-        sizeBytes: file.size,
+        sizeBytes: optimized.bytes.byteLength,
         checksum,
         altText: String(formData.get("altText") ?? "").slice(0, 300) || null,
+        width: optimized.width,
+        height: optimized.height,
       },
     });
     return NextResponse.json({ filename, url }, { status: 201 });
@@ -214,8 +275,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "La imagen no puede superar los 5 MB" }, { status: 400 });
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const checksum = createHash("sha256").update(bytes).digest("hex");
+  const optimized = await optimizeImage(file, new Uint8Array(await file.arrayBuffer())).catch(() => null);
+  if (!optimized) {
+    return NextResponse.json(
+      { error: "La imagen está dañada o su contenido no coincide con el formato" },
+      { status: 400 },
+    );
+  }
+  const checksum = createHash("sha256").update(optimized.bytes).digest("hex");
   const existing = await prisma.mediaAsset.findUnique({
     where: {
       tenantId_checksum_folder: { tenantId: auth.tenant.id, checksum, folder },
@@ -224,10 +291,13 @@ export async function POST(request: Request) {
   if (existing) {
     return NextResponse.json({ filename: existing.filename, url: existing.url, duplicate: true });
   }
+  const capacityError = await storageCapacityError(auth.tenant.id, optimized.bytes.byteLength);
+  if (capacityError) return NextResponse.json({ error: capacityError }, { status: 409 });
   const filename = createFilename(file.name, extension);
   const destination = path.join(process.cwd(), "public", "images", folder);
   await mkdir(destination, { recursive: true });
-  await writeFile(path.join(destination, filename), bytes);
+  await writeFile(path.join(destination, filename), optimized.bytes);
+  const thumbnailUrl = await writeThumbnail(folder, filename, optimized.thumbnail);
 
   await prisma.mediaAsset.create({
     data: {
@@ -236,10 +306,13 @@ export async function POST(request: Request) {
       folder,
       filename,
       url: `/images/${folder}/${filename}`,
+      thumbnailUrl,
       mimeType: file.type,
-      sizeBytes: file.size,
+      sizeBytes: optimized.bytes.byteLength,
       checksum,
       altText: String(formData.get("altText") ?? "").slice(0, 300) || null,
+      width: optimized.width,
+      height: optimized.height,
     },
   });
 
@@ -248,7 +321,7 @@ export async function POST(request: Request) {
     action: "upload",
     entityType: "media",
     entityId: filename,
-    newValues: { resource, filename, mimeType: file.type, size: file.size },
+    newValues: { resource, filename, mimeType: file.type, size: optimized.bytes.byteLength },
     request,
   });
 

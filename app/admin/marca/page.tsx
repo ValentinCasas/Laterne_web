@@ -11,5 +11,10 @@ export default async function BrandPage() {
     create: { tenantId: context.tenant.id },
     update: {},
   });
-  return <BrandManager initialBrand={serialize(brand) as unknown as BrandData} />;
+  const tenant = await prisma.tenant.findUniqueOrThrow({
+    where: { id: context.tenant.id },
+    select: { defaultCurrency: true, locale: true, timeZone: true },
+  });
+
+  return <BrandManager initialBrand={serialize({ ...brand, ...tenant }) as unknown as BrandData} />;
 }

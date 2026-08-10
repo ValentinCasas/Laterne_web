@@ -5,11 +5,11 @@ export function serialize<T>(value: T): T {
   );
 }
 
-/** @summary Formatea un valor numérico como un precio expresado en pesos argentinos. */
-export function money(value: unknown) {
-  return new Intl.NumberFormat("es-AR", {
+/** @summary Formatea un valor numérico con la moneda y región solicitadas. */
+export function money(value: unknown, currency = "ARS", locale = "es-AR") {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "ARS",
+    currency,
     maximumFractionDigits: 0,
   }).format(Number(value ?? 0));
 }

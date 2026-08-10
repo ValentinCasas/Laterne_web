@@ -1,8 +1,18 @@
 import { HelpCenter } from "@/components/help/help-center";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { managedPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+/** @summary Recupera la configuración SEO administrable del centro de ayuda. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/ayuda",
+    "Centro de ayuda",
+    "Preguntas frecuentes, guías y soporte para clientes y visitantes.",
+  );
+}
 
 /** @summary Reúne artículos públicos, buscador y contacto de soporte en una sola pantalla. */
 export default async function HelpPage() {

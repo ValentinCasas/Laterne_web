@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { localModelUrl, modelOrientation, optionalMeasurement } from "@/lib/product-model";
 import { promotionData } from "@/lib/promotion-admin";
 import { slugify, uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
+import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
 type Delegate = { create(args: { data: Record<string, unknown> }): Promise<unknown> };
@@ -62,6 +63,16 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       modelOrientation: modelOrientation(input.modelOrientation ?? ""),
       arPlacement: input.arPlacement === "wall" ? "wall" : "floor",
       arAllowScale: booleanValue(input.arAllowScale),
+      availableDays: input.availableDays
+        ? input.availableDays
+            .split(",")
+            .map(Number)
+            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+        : null,
+      availableStartTime: input.availableStartTime
+        ? new Date(`1970-01-01T${input.availableStartTime}:00Z`)
+        : null,
+      availableEndTime: input.availableEndTime ? new Date(`1970-01-01T${input.availableEndTime}:00Z`) : null,
       modelUpdatedAt: model3dUrl ? new Date() : null,
       categories: { create: { tenantId, categoryId } },
     };
@@ -186,6 +197,60 @@ async function normalize(resource: string, input: Record<string, string>, tenant
     };
   }
 
+  if (resource === "sucursales") {
+    if (!input.name?.trim() || !input.address?.trim()) {
+      throw new Error("Completá el nombre y la dirección de la sucursal");
+    }
+    const firstBranch = (await prisma.branch.count({ where: { tenantId } })) === 0;
+    return {
+      tenantId,
+      name: input.name.trim(),
+      slug: slugify(input.slug || input.name) || "sucursal",
+      address: input.address.trim(),
+      city: input.city?.trim() || null,
+      province: input.province?.trim() || null,
+      phone: input.phone?.trim() || null,
+      whatsapp: input.whatsapp?.trim() || null,
+      latitude: input.latitude ? Number(input.latitude) : null,
+      longitude: input.longitude ? Number(input.longitude) : null,
+      deliveryFee: Math.max(0, Number(input.deliveryFee || 0)),
+      minimumOrder: Math.max(0, Number(input.minimumOrder || 0)),
+      orderPrefix: input.orderPrefix?.trim().toUpperCase().slice(0, 12) || "PED",
+      isPrimary: firstBranch || booleanValue(input.isPrimary),
+      active: booleanValue(input.active),
+    };
+  }
+
+  if (resource === "seo") {
+    const pagePath = input.path?.trim();
+    if (!pagePath?.startsWith("/") || !input.title?.trim() || !input.description?.trim()) {
+      throw new Error("Ingresá una ruta válida, título y descripción");
+    }
+    return {
+      tenantId,
+      path: pagePath,
+      title: input.title.trim(),
+      description: input.description.trim(),
+      canonical: input.canonical?.trim() || null,
+      ogImageUrl: input.ogImageUrl?.trim() || null,
+      noIndex: booleanValue(input.noIndex),
+    };
+  }
+
+  if (resource === "redirecciones") {
+    if (!input.sourcePath?.startsWith("/") || !input.targetPath?.startsWith("/")) {
+      throw new Error("Las rutas de origen y destino deben comenzar con /");
+    }
+    if (input.sourcePath === input.targetPath) throw new Error("El origen y el destino deben ser distintos");
+    return {
+      tenantId,
+      sourcePath: input.sourcePath.trim(),
+      targetPath: input.targetPath.trim(),
+      permanent: booleanValue(input.permanent),
+      active: booleanValue(input.active),
+    };
+  }
+
   throw new Error("El recurso necesita un flujo de creación específico");
 }
 
@@ -227,12 +292,24 @@ export async function POST(request: Request, context: { params: Promise<{ resour
   );
 
   try {
+    if (resource === "productos") {
+      await ensureTenantCapacity(auth.tenant.id, "products");
+    }
+    if (resource === "usuarios") {
+      await ensureTenantCapacity(auth.tenant.id, "users");
+    }
     const item =
       resource === "usuarios"
         ? await createMember(input, auth.tenant.id)
         : await (prisma[resourceConfig.model] as unknown as Delegate).create({
             data: await normalize(resource, input, auth.tenant.id),
           });
+    if (resource === "sucursales" && (item as { isPrimary?: boolean }).isPrimary) {
+      await prisma.branch.updateMany({
+        where: { tenantId: auth.tenant.id, id: { not: (item as { id: number }).id } },
+        data: { isPrimary: false },
+      });
+    }
     await recordAudit({
       context: auth,
       action: "create",

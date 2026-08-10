@@ -22,6 +22,9 @@ export type BrandData = {
   analyticsId: string | null;
   metaPixelId: string | null;
   searchConsoleId: string | null;
+  defaultCurrency: string;
+  locale: string;
+  timeZone: string;
 };
 
 type BrandAsset = "logoUrl" | "isotypeUrl" | "faviconUrl";
@@ -248,6 +251,38 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
           <h2 className="text-2xl font-black">Dominio, SEO y medición</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <label>
+              <span className="label">Moneda pública</span>
+              <select className="input" name="defaultCurrency" defaultValue={brand.defaultCurrency}>
+                <option value="ARS">Peso argentino (ARS)</option>
+                <option value="USD">Dólar (USD)</option>
+                <option value="UYU">Peso uruguayo (UYU)</option>
+                <option value="BRL">Real (BRL)</option>
+                <option value="CLP">Peso chileno (CLP)</option>
+                <option value="EUR">Euro (EUR)</option>
+              </select>
+            </label>
+            <label>
+              <span className="label">Idioma y región</span>
+              <select className="input" name="locale" defaultValue={brand.locale}>
+                <option value="es-AR">Español · Argentina</option>
+                <option value="es-UY">Español · Uruguay</option>
+                <option value="es-CL">Español · Chile</option>
+                <option value="en-US">English · United States</option>
+                <option value="pt-BR">Português · Brasil</option>
+              </select>
+            </label>
+            <label>
+              <span className="label">Zona horaria</span>
+              <select className="input" name="timeZone" defaultValue={brand.timeZone}>
+                <option value="America/Argentina/Buenos_Aires">Argentina · Buenos Aires</option>
+                <option value="America/Montevideo">Uruguay · Montevideo</option>
+                <option value="America/Santiago">Chile · Santiago</option>
+                <option value="America/Sao_Paulo">Brasil · São Paulo</option>
+                <option value="America/New_York">Estados Unidos · Nueva York</option>
+                <option value="Europe/Madrid">España · Madrid</option>
+              </select>
+            </label>
+            <label>
               <span className="label">Dominio personalizado</span>
               <input
                 className="input"
@@ -276,7 +311,8 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
           </div>
           <p className="mt-3 text-xs text-zinc-500">
             Los identificadores quedan preparados; los scripts externos solo deben activarse después de
-            configurar consentimiento de cookies.
+            configurar consentimiento de cookies. Cambiar la moneda modifica el formato, no convierte precios
+            automáticamente.
           </p>
         </section>
       </div>

@@ -27,9 +27,14 @@ export function orderStatusLabel(status: string) {
 }
 
 /** @summary Genera la referencia breve y legible que identifica un pedido almacenado. */
-export function orderReference(date = new Date()) {
+export function orderReference(date = new Date(), prefix = "PED") {
   const day = date.toISOString().slice(2, 10).replaceAll("-", "");
-  return `PED-${day}-${randomBytes(3).toString("hex").toUpperCase()}`;
+  const safePrefix =
+    prefix
+      .replace(/[^A-Z0-9]/gi, "")
+      .toUpperCase()
+      .slice(0, 12) || "PED";
+  return `${safePrefix}-${day}-${randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
 /** @summary Crea un token privado para consultar un pedido sin exponer identificadores internos. */

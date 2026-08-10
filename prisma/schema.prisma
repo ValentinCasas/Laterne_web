@@ -109,6 +109,9 @@ model Product {
   modelOrientation   String             @default("0deg 0deg 0deg") @db.VarChar(80)
   arPlacement        String             @default("floor") @db.VarChar(20)
   arAllowScale       Boolean            @default(true)
+  availableDays      Json?
+  availableStartTime DateTime?          @db.Time(0)
+  availableEndTime   DateTime?          @db.Time(0)
   modelUpdatedAt     DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -121,6 +124,7 @@ model Product {
   variants           ProductVariant[]
   extras             ProductExtra[]
   orderItems         OrderItem[]
+  inventoryStocks    InventoryStock[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -177,46 +181,56 @@ model User {
 }
 
 model Tenant {
-  id                   Int                   @id @default(autoincrement())
-  name                 String                @db.VarChar(160)
-  slug                 String                @unique @db.VarChar(120)
-  status               String                @default("active") @db.VarChar(20)
-  defaultCurrency      String                @default("ARS") @db.VarChar(3)
-  locale               String                @default("es-AR") @db.VarChar(12)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  businessInfo         BusinessInfo?
-  categories           Category[]
-  products             Product[]
-  productCategories    ProductCategory[]
-  events               Event[]
-  openingHours         OpeningHour[]
-  testimonials         Testimonial[]
-  memberships          TenantMembership[]
-  roles                Role[]
-  auditLogs            AuditLog[]
-  promotions           Promotion[]
-  promotionProducts    PromotionProduct[]
-  promotionCategories  PromotionCategory[]
-  reservationSettings  ReservationSettings?
-  reservationBlocks    ReservationBlock[]
-  reservations         Reservation[]
-  notifications        Notification[]
-  productVariants      ProductVariant[]
-  productExtras        ProductExtra[]
-  diningTables         DiningTable[]
-  customerOrders       CustomerOrder[]
-  analyticsEvents      AnalyticsEvent[]
-  brandSettings        BrandSettings?
-  subscription         TenantSubscription?
-  onboarding           OnboardingProgress?
-  notificationSettings NotificationSettings?
-  legalPages           LegalPage[]
-  helpArticles         HelpArticle[]
-  supportTickets       SupportTicket[]
-  mediaAssets          MediaAsset[]
-  loyaltyCustomers     LoyaltyCustomer[]
-  successCases         SuccessCase[]
+  id                    Int                    @id @default(autoincrement())
+  name                  String                 @db.VarChar(160)
+  slug                  String                 @unique @db.VarChar(120)
+  status                String                 @default("active") @db.VarChar(20)
+  defaultCurrency       String                 @default("ARS") @db.VarChar(3)
+  locale                String                 @default("es-AR") @db.VarChar(12)
+  timeZone              String                 @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  businessInfo          BusinessInfo?
+  categories            Category[]
+  products              Product[]
+  productCategories     ProductCategory[]
+  events                Event[]
+  openingHours          OpeningHour[]
+  testimonials          Testimonial[]
+  memberships           TenantMembership[]
+  roles                 Role[]
+  auditLogs             AuditLog[]
+  promotions            Promotion[]
+  promotionProducts     PromotionProduct[]
+  promotionCategories   PromotionCategory[]
+  reservationSettings   ReservationSettings?
+  reservationBlocks     ReservationBlock[]
+  reservations          Reservation[]
+  notifications         Notification[]
+  productVariants       ProductVariant[]
+  productExtras         ProductExtra[]
+  diningTables          DiningTable[]
+  customerOrders        CustomerOrder[]
+  analyticsEvents       AnalyticsEvent[]
+  brandSettings         BrandSettings?
+  subscription          TenantSubscription?
+  onboarding            OnboardingProgress?
+  notificationSettings  NotificationSettings?
+  legalPages            LegalPage[]
+  helpArticles          HelpArticle[]
+  supportTickets        SupportTicket[]
+  mediaAssets           MediaAsset[]
+  loyaltyCustomers      LoyaltyCustomer[]
+  successCases          SuccessCase[]
+  branches              Branch[]
+  inventoryStocks       InventoryStock[]
+  stockMovements        StockMovement[]
+  invoices              InvoiceRecord[]
+  integrations          IntegrationSettings[]
+  seoPages              SeoPage[]
+  redirectRules         RedirectRule[]
+  errorLogs             ErrorLog[]
+  passwordResetRequests PasswordResetRequest[]
 
   @@map("tenant")
 }
@@ -673,6 +687,7 @@ model ProductExtra {
 model DiningTable {
   id        Int             @id @default(autoincrement())
   tenantId  Int
+  branchId  Int?
   code      String          @db.VarChar(40)
   name      String          @db.VarChar(100)
   sector    String?         @db.VarChar(100)
@@ -681,10 +696,12 @@ model DiningTable {
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
   orders    CustomerOrder[]
 
   @@unique([tenantId, code])
   @@index([tenantId, active, name])
+  @@index([tenantId, branchId])
   @@map("diningtable")
 }
 
@@ -692,6 +709,7 @@ model CustomerOrder {
   id              Int                  @id @default(autoincrement())
   tenantId        Int
   tableId         Int?
+  branchId        Int?
   customerId      Int?
   reference       String               @unique @db.VarChar(24)
   publicTokenHash String               @db.VarChar(64)
@@ -701,22 +719,32 @@ model CustomerOrder {
   phone           String               @db.VarChar(60)
   email           String?              @db.VarChar(190)
   notes           String?              @db.Text
+  deliveryAddress String?              @db.VarChar(500)
+  requestedAt     DateTime?
   subtotal        Decimal              @db.Decimal(12, 2)
   discount        Decimal              @default(0) @db.Decimal(12, 2)
+  deliveryFee     Decimal              @default(0) @db.Decimal(12, 2)
+  tip             Decimal              @default(0) @db.Decimal(12, 2)
   total           Decimal              @db.Decimal(12, 2)
   currency        String               @default("ARS") @db.VarChar(3)
+  paymentMethod   String               @default("on_delivery") @db.VarChar(30)
+  paymentStatus   String               @default("pending") @db.VarChar(24)
   source          String               @default("website") @db.VarChar(60)
   ipHash          String?              @db.VarChar(64)
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   table           DiningTable?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
   customer        LoyaltyCustomer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items           OrderItem[]
   history         OrderStatusHistory[]
+  stockMovements  StockMovement[]
+  invoice         InvoiceRecord?
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
+  @@index([tenantId, branchId, createdAt])
   @@index([tenantId, customerId, createdAt])
   @@index([publicTokenHash])
   @@map("customerorder")
@@ -910,21 +938,22 @@ model SupportTicket {
 }
 
 model MediaAsset {
-  id        Int      @id @default(autoincrement())
-  tenantId  Int
-  userId    Int?
-  folder    String   @db.VarChar(100)
-  filename  String   @db.VarChar(255)
-  url       String   @db.VarChar(500)
-  mimeType  String   @db.VarChar(120)
-  sizeBytes BigInt
-  altText   String?  @db.VarChar(300)
-  checksum  String   @db.VarChar(64)
-  width     Int?
-  height    Int?
-  createdAt DateTime @default(now())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  userId       Int?
+  folder       String   @db.VarChar(100)
+  filename     String   @db.VarChar(255)
+  url          String   @db.VarChar(500)
+  thumbnailUrl String?  @db.VarChar(500)
+  mimeType     String   @db.VarChar(120)
+  sizeBytes    BigInt
+  altText      String?  @db.VarChar(300)
+  checksum     String   @db.VarChar(64)
+  width        Int?
+  height       Int?
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, checksum, folder])
   @@index([tenantId, folder, createdAt])
@@ -994,4 +1023,191 @@ model SuccessCase {
   @@unique([tenantId, slug])
   @@index([tenantId, status, sortOrder])
   @@map("successcase")
+}
+
+model Branch {
+  id              Int              @id @default(autoincrement())
+  tenantId        Int
+  name            String           @db.VarChar(160)
+  slug            String           @db.VarChar(120)
+  address         String           @db.VarChar(300)
+  city            String?          @db.VarChar(120)
+  province        String?          @db.VarChar(120)
+  phone           String?          @db.VarChar(60)
+  whatsapp        String?          @db.VarChar(60)
+  latitude        Decimal?         @db.Decimal(10, 7)
+  longitude       Decimal?         @db.Decimal(10, 7)
+  deliveryFee     Decimal          @default(0) @db.Decimal(12, 2)
+  minimumOrder    Decimal          @default(0) @db.Decimal(12, 2)
+  orderPrefix     String           @default("PED") @db.VarChar(12)
+  isPrimary       Boolean          @default(false)
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tables          DiningTable[]
+  orders          CustomerOrder[]
+  inventoryStocks InventoryStock[]
+  invoices        InvoiceRecord[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, active, isPrimary])
+  @@map("branch")
+}
+
+model InventoryStock {
+  id        Int             @id @default(autoincrement())
+  tenantId  Int
+  branchId  Int
+  productId Int
+  tracked   Boolean         @default(false)
+  current   Decimal         @default(0) @db.Decimal(12, 3)
+  minimum   Decimal         @default(0) @db.Decimal(12, 3)
+  unit      String          @default("unidad") @db.VarChar(40)
+  updatedAt DateTime        @updatedAt
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
+
+  @@unique([branchId, productId])
+  @@index([tenantId, tracked, current])
+  @@map("inventorystock")
+}
+
+model StockMovement {
+  id           BigInt         @id @default(autoincrement())
+  tenantId     Int
+  stockId      Int
+  orderId      Int?
+  userId       Int?
+  type         String         @db.VarChar(30)
+  quantity     Decimal        @db.Decimal(12, 3)
+  balanceAfter Decimal        @db.Decimal(12, 3)
+  reason       String         @db.VarChar(300)
+  createdAt    DateTime       @default(now())
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stock        InventoryStock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  order        CustomerOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([stockId, createdAt])
+  @@index([orderId])
+  @@map("stockmovement")
+}
+
+model InvoiceRecord {
+  id            Int           @id @default(autoincrement())
+  tenantId      Int
+  branchId      Int?
+  orderId       Int           @unique
+  status        String        @default("draft") @db.VarChar(24)
+  documentType  String        @default("internal_receipt") @db.VarChar(40)
+  number        String?       @db.VarChar(80)
+  customerName  String        @db.VarChar(180)
+  customerTaxId String?       @db.VarChar(40)
+  subtotal      Decimal       @db.Decimal(12, 2)
+  tax           Decimal       @default(0) @db.Decimal(12, 2)
+  total         Decimal       @db.Decimal(12, 2)
+  currency      String        @default("ARS") @db.VarChar(3)
+  externalId    String?       @db.VarChar(180)
+  notes         String?       @db.Text
+  issuedAt      DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  order         CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, number])
+  @@map("invoicerecord")
+}
+
+model IntegrationSettings {
+  id               Int       @id @default(autoincrement())
+  tenantId         Int
+  provider         String    @db.VarChar(60)
+  enabled          Boolean   @default(false)
+  mode             String    @default("disabled") @db.VarChar(20)
+  publicConfig     Json?
+  secretConfigured Boolean   @default(false)
+  status           String    @default("not_configured") @db.VarChar(30)
+  lastCheckAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider])
+  @@index([tenantId, enabled, status])
+  @@map("integrationsettings")
+}
+
+model SeoPage {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  path        String   @db.VarChar(220)
+  title       String   @db.VarChar(180)
+  description String   @db.VarChar(500)
+  canonical   String?  @db.VarChar(500)
+  ogImageUrl  String?  @db.VarChar(500)
+  noIndex     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, path])
+  @@map("seopage")
+}
+
+model RedirectRule {
+  id         Int      @id @default(autoincrement())
+  tenantId   Int
+  sourcePath String   @db.VarChar(300)
+  targetPath String   @db.VarChar(500)
+  permanent  Boolean  @default(true)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, sourcePath])
+  @@index([tenantId, active])
+  @@map("redirectrule")
+}
+
+model ErrorLog {
+  id          BigInt    @id @default(autoincrement())
+  tenantId    Int?
+  level       String    @default("error") @db.VarChar(20)
+  source      String    @db.VarChar(80)
+  message     String    @db.VarChar(1000)
+  path        String?   @db.VarChar(500)
+  fingerprint String?   @db.VarChar(64)
+  context     Json?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, resolvedAt, createdAt])
+  @@index([fingerprint, createdAt])
+  @@map("errorlog")
+}
+
+model PasswordResetRequest {
+  id          Int       @id @default(autoincrement())
+  tenantId    Int?
+  userId      Int?
+  emailHash   String    @db.VarChar(64)
+  tokenHash   String?   @db.VarChar(64)
+  status      String    @default("requested") @db.VarChar(24)
+  requestedIp String?   @db.VarChar(64)
+  expiresAt   DateTime?
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([emailHash, createdAt])
+  @@index([tokenHash])
+  @@map("passwordresetrequest")
 }

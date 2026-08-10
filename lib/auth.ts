@@ -65,9 +65,15 @@ export async function getSession(): Promise<Session | null> {
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
-        select: { id: true },
+        select: { id: true, lastSeenAt: true },
       });
       if (!activeSession) return null;
+      if (activeSession.lastSeenAt.getTime() < Date.now() - 5 * 60 * 1000) {
+        await prisma.authSession.update({
+          where: { id: activeSession.id },
+          data: { lastSeenAt: new Date() },
+        });
+      }
     }
 
     return session;

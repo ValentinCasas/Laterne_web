@@ -10,6 +10,7 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 - Carta responsive con búsqueda, filtros alimentarios, precio máximo, ordenamiento y categorías fijas al recorrer.
 - Carrito persistente con variantes, agregados, notas, cupones, propina, mesa, retiro y entrega.
 - Pedidos guardados en MySQL con referencia privada, seguimiento de estado e historial.
+- Selección de sucursal, entrega, horario, costo de envío, propina y control de stock al confirmar.
 - Fichas de producto con URL amigable, SEO, favoritos, compartir y datos estructurados.
 - Visor 3D interactivo con controles de cámara, pantalla completa y captura de imagen.
 - Realidad aumentada real mediante WebXR, Scene Viewer y Quick Look cuando el dispositivo es compatible.
@@ -17,6 +18,7 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 - Ayuda, soporte y documentos legales administrables.
 - PWA instalable con experiencia sin conexión, aviso de actualización y páginas de error cuidadas.
 - Analítica propia respetuosa del consentimiento, sin depender de cookies publicitarias.
+- Moneda, idioma/región y zona horaria administrables para precios, formatos y disponibilidad pública.
 
 ### Administración
 
@@ -25,21 +27,28 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 - Modelos 3D GLB/GLTF y USDZ, escala, dimensiones, rotación, ubicación y vista previa del modelo actual.
 - Tableros operativos de pedidos, reservas, soporte y testimonios con estados claros.
 - Mesas con códigos QR imprimibles y descarga individual.
+- Sucursales con ubicación, contacto, pedido mínimo, costo de entrega y mesas asociadas.
+- Inventario opcional por producto y sucursal, descuento automático, mínimos y movimientos auditables.
+- Comprobantes internos imprimibles vinculados a pedidos, preparados para un proveedor fiscal externo.
+- SEO por página, redirecciones administrables y medición externa activada solo con consentimiento.
 - Clientes frecuentes, niveles, puntos, movimientos e historial de pedidos.
 - Estadísticas del recorrido público con filtros y exportación CSV.
 - Importación validada de productos y exportación de productos, pedidos, reservas y clientes.
-- Biblioteca de medios con texto alternativo, detección de duplicados y eliminación protegida por uso.
+- Biblioteca de medios con texto alternativo, compresión, miniaturas, recortes no destructivos, detección de duplicados y eliminación protegida por uso.
 - Personalización centralizada de nombre, logotipo, favicon, colores, tipografía, tarjetas y botones.
 - Centro de notificaciones y preferencias por evento y canal.
 - Onboarding guiado que detecta la configuración completada.
 - Roles, permisos, sesiones revocables, cambio de contraseña y auditoría de operaciones.
+- Recuperación segura de acceso con token de un solo uso, vencimiento y limitación de solicitudes.
+- Backups portables del contenido principal y restauración controlada dentro del mismo negocio.
+- Registro reducido de errores técnicos con seguimiento administrativo.
 - Paleta de comandos con `Ctrl/⌘ + K` y navegación adaptable a escritorio y celular.
 
 ### Plataforma multiempresa
 
 - Resolución de negocios por dominio personalizado, subdominio o tenant predeterminado.
 - Superadministración separada para crear, suspender y asignar planes a negocios.
-- Suscripciones, límites configurables, vencimientos, observaciones y registro administrativo de pagos.
+- Suscripciones, límites aplicados a productos, usuarios y almacenamiento, funciones habilitadas, vencimientos, observaciones y registro administrativo de pagos.
 - Datos, permisos, contenido, métricas y archivos aislados por empresa.
 
 ## Stack
@@ -70,6 +79,8 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 6. Ejecutar `npm run dev`.
 
 En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base, sin protocolo. Los dominios personalizados deben apuntar al mismo despliegue.
+
+`EMAIL_WEBHOOK_URL` permite conectar recuperación de acceso con un proveedor de correo sin acoplar el sistema a una marca. El endpoint debe usar HTTPS en producción y aceptar una solicitud JSON autenticada mediante `EMAIL_API_KEY`. Si no se configura, la solicitud queda registrada de forma segura y el panel recibe una notificación, pero no se envía el enlace por correo.
 
 La realidad aumentada requiere HTTPS fuera de `localhost`. Android utiliza WebXR o Scene Viewer; iPhone y iPad usan archivos USDZ mediante Quick Look. Si el dispositivo no es compatible, la ficha mantiene disponible el visor 3D y explica la limitación sin romper la página.
 
@@ -117,6 +128,8 @@ La instalación existente se migra a un tenant inicial llamado `Laterne`, preser
 - `20260810060000_product_platform_modules`: marca, archivos, notificaciones, soporte, onboarding y plataforma multiempresa.
 - `20260810070000_success_cases`: casos de éxito administrables para la landing comercial.
 - `20260810080000_scheduled_publication`: publicación programada para el contenido público.
+- `20260810100000_operations_expansion`: sucursales, inventario, comprobantes, integraciones, SEO, redirecciones, recuperación de acceso y errores técnicos.
+- `20260810101000_tenant_timezone`: zona horaria por negocio para disponibilidad y reportes coherentes en cualquier servidor.
 
 Antes de aplicar migraciones en un entorno real se recomienda crear un respaldo de MySQL. En despliegues se debe usar `npx prisma migrate deploy`; `prisma db push` no reemplaza el historial de migraciones.
 
@@ -126,7 +139,9 @@ La versión 2 reemplaza Express, Pug, Sequelize, Bootstrap, jQuery y el JavaScri
 
 ## Integraciones externas
 
-El núcleo funcional trabaja de forma autónoma con MySQL. Los canales externos de email, WhatsApp, notificaciones push, almacenamiento en nube, facturación y cobro electrónico quedan preparados a nivel de preferencias y dominio, pero necesitan que cada despliegue aporte un proveedor y sus credenciales. Mercado Pago no se activa automáticamente: el pedido se registra y administra sin cobrar en línea hasta configurar esa integración de manera explícita.
+El núcleo funcional trabaja de forma autónoma con MySQL. En **Administración → Integraciones** se puede revisar la preparación de email, WhatsApp, web push, almacenamiento y Mercado Pago. Las credenciales se leen exclusivamente desde variables de entorno y el panel solo conserva configuración pública y estados operativos. Mercado Pago permanece intencionalmente desactivado: el pedido se registra y administra sin cobrar en línea hasta completar una implementación y homologación separadas.
+
+Los comprobantes incluidos son documentos operativos internos, no facturas fiscales. Para emitir comprobantes fiscales válidos se debe conectar un proveedor autorizado y adaptar el flujo a las obligaciones de la jurisdicción correspondiente.
 
 ## Verificación antes de publicar
 

@@ -48,11 +48,9 @@ type CartItem = MenuProduct & {
   notes?: string;
 };
 
-/** @summary Convierte el precio de un producto al formato monetario utilizado en Argentina. */
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(
-    value,
-  );
+/** @summary Convierte un precio al formato monetario configurado por el negocio. */
+const formatPrice = (value: number, currency: string, locale: string) =>
+  new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
 const productFallback = "/images/image_defect/product_default.png";
 
 /** @summary Calcula el precio unitario de una elección incluyendo variante y agregados. */
@@ -70,7 +68,17 @@ function cartItemKey(item: CartItem) {
 }
 
 /** @summary Renderiza la carta interactiva, la búsqueda de productos y el pedido del visitante. */
-export function MenuClient({ categories, phone }: { categories: MenuCategory[]; phone: string }) {
+export function MenuClient({
+  categories,
+  phone,
+  currency,
+  locale,
+}: {
+  categories: MenuCategory[];
+  phone: string;
+  currency: string;
+  locale: string;
+}) {
   const {
     ref: categoryScroll,
     isDragging: isDraggingCategories,
@@ -85,6 +93,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
   const [sort, setSort] = useState("recommended");
   const [configuring, setConfiguring] = useState<MenuProduct | null>(null);
   const [ready, setReady] = useState(false);
+  const [recentIds, setRecentIds] = useState<number[]>([]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
@@ -104,6 +113,13 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
               })
           : [];
         setCart(sanitized);
+        const viewed = JSON.parse(localStorage.getItem("laterne_vistos") ?? "[]") as Array<{ id?: number }>;
+        setRecentIds(
+          viewed
+            .map((item) => Number(item.id))
+            .filter(Number.isInteger)
+            .slice(0, 8),
+        );
       } catch {
         setCart([]);
       }
@@ -159,6 +175,11 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
   }, [query, shownCategories.length]);
   const quantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.reduce((sum, item) => sum + cartItemPrice(item) * item.quantity, 0);
+  const recentProducts = recentIds
+    .map((id) => categories.flatMap((category) => category.products).find((product) => product.id === id))
+    .filter((product): product is MenuProduct => Boolean(product));
+  /** @summary Formatea importes de la carta con la moneda y región configuradas por el negocio. */
+  const priceText = (value: number) => formatPrice(value, currency, locale);
   /** @summary Agrega un producto nuevo al pedido o incrementa su cantidad existente. */
   function add(product: MenuProduct) {
     if (product.variants.length || product.extras.length) {
@@ -211,7 +232,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
         .filter((item) => item.quantity > 0),
     );
   }
-  const orderText = `Pedido Laterne:\n\n${cart.map((item) => `${item.quantity} x ${item.name}${item.variantName ? ` (${item.variantName})` : ""}${item.extrasSelected?.length ? ` + ${item.extrasSelected.map((extra) => extra.name).join(", ")}` : ""}${item.notes ? ` · ${item.notes}` : ""} - ${formatPrice(cartItemPrice(item) * item.quantity)}`).join("\n")}\n\nTotal: ${formatPrice(total)}`;
+  const orderText = `Pedido Laterne:\n\n${cart.map((item) => `${item.quantity} x ${item.name}${item.variantName ? ` (${item.variantName})` : ""}${item.extrasSelected?.length ? ` + ${item.extrasSelected.map((extra) => extra.name).join(", ")}` : ""}${item.notes ? ` · ${item.notes}` : ""} - ${priceText(cartItemPrice(item) * item.quantity)}`).join("\n")}\n\nTotal: ${priceText(total)}`;
   /** @summary Copia al portapapeles un resumen completo del pedido actual. */
   async function copyOrder() {
     if (!cart.length) return;
@@ -347,6 +368,31 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
       </section>
 
       <div id="productos" className="shell space-y-12 py-8 sm:space-y-20 sm:py-16">
+        {recentProducts.length > 0 && (
+          <section aria-labelledby="recent-title">
+            <p className="section-eyebrow">Tu recorrido</p>
+            <h2 id="recent-title" className="mt-2 text-2xl font-black sm:text-3xl">
+              Vistos recientemente
+            </h2>
+            <div className="mt-4 flex gap-3 overflow-x-auto pb-3">
+              {recentProducts.map((product) => (
+                <Link
+                  className="flex min-w-64 items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] p-3 hover:border-pink-500/40"
+                  href={`/productos/${product.slug}`}
+                  key={product.id}
+                >
+                  <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">
+                    <Image src={product.image} alt="" fill sizes="64px" className="object-contain p-1" />
+                  </span>
+                  <span className="min-w-0">
+                    <strong className="block truncate">{product.name}</strong>
+                    <small className="text-pink-300">{priceText(product.price)}</small>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
         {shownCategories.map((category) => (
           <section
             className="scroll-mt-[10.75rem] sm:scroll-mt-[13rem]"
@@ -439,11 +485,11 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                         <span className="shrink-0 text-right">
                           {product.previousPrice && product.previousPrice > product.price && (
                             <del className="block text-[10px] text-zinc-600">
-                              {formatPrice(product.previousPrice)}
+                              {priceText(product.previousPrice)}
                             </del>
                           )}
                           <strong className="block rounded-full bg-pink-500/15 px-2.5 py-1 text-xs text-pink-300 sm:px-3 sm:text-sm">
-                            {formatPrice(product.price)}
+                            {priceText(product.price)}
                           </strong>
                         </span>
                       </div>
@@ -552,7 +598,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                           ×
                         </button>
                       </div>
-                      <p className="text-sm font-bold text-pink-600">{formatPrice(cartItemPrice(item))}</p>
+                      <p className="text-sm font-bold text-pink-600">{priceText(cartItemPrice(item))}</p>
                       {item.variantName && <p className="text-xs text-zinc-500">{item.variantName}</p>}
                       {!!item.extrasSelected?.length && (
                         <p className="line-clamp-1 text-xs text-zinc-500">
@@ -575,7 +621,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                             +
                           </button>
                         </div>
-                        <strong>{formatPrice(cartItemPrice(item) * item.quantity)}</strong>
+                        <strong>{priceText(cartItemPrice(item) * item.quantity)}</strong>
                       </div>
                     </div>
                   </article>
@@ -589,7 +635,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
             <footer className="border-t p-6">
               <div className="mb-5 flex items-end justify-between">
                 <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Total</span>
-                <strong className="text-3xl">{formatPrice(total)}</strong>
+                <strong className="text-3xl">{priceText(total)}</strong>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Link
@@ -713,7 +759,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                       </span>
                       <span className="text-sm text-pink-300">
                         {variant.priceAdjustment
-                          ? `+ ${formatPrice(variant.priceAdjustment)}`
+                          ? `+ ${priceText(variant.priceAdjustment)}`
                           : "Sin adicional"}
                       </span>
                     </label>
@@ -734,7 +780,7 @@ export function MenuClient({ categories, phone }: { categories: MenuCategory[]; 
                         <input name="extraIds" type="checkbox" value={extra.id} />
                         {extra.name}
                       </span>
-                      <span className="text-pink-300">+{formatPrice(extra.price)}</span>
+                      <span className="text-pink-300">+{priceText(extra.price)}</span>
                     </label>
                   ))}
                 </div>

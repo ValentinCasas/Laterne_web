@@ -4,12 +4,14 @@ import { orderAddressHash, orderPublicToken, orderReference, orderTokenHash } fr
 import { loyaltyTokenHash } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { productAvailableAt } from "@/lib/product-availability";
 
 const orderInput = z.object({
   customerName: z.string().trim().min(2).max(160),
   phone: z.string().trim().min(6).max(60),
   email: z.string().trim().email().max(190).optional().or(z.literal("")),
   orderType: z.enum(["takeaway", "dine_in", "delivery"]),
+  branchId: z.coerce.number().int().positive().optional(),
   tableCode: z.string().trim().max(40).optional(),
   address: z.string().trim().max(300).optional(),
   requestedTime: z.string().trim().max(80).optional(),
@@ -18,6 +20,7 @@ const orderInput = z.object({
   tip: z.coerce.number().min(0).max(1_000_000).default(0),
   website: z.string().max(0).optional(),
   loyaltyToken: z.string().max(100).optional(),
+  paymentMethod: z.enum(["on_delivery", "cash", "card_on_delivery", "transfer"]).default("on_delivery"),
   items: z
     .array(
       z.object({
@@ -42,9 +45,9 @@ function requestAddress(request: Request) {
 }
 
 /** @summary Genera una referencia de pedido que no se encuentre utilizada en la base. */
-async function uniqueReference() {
+async function uniqueReference(prefix?: string) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const reference = orderReference();
+    const reference = orderReference(new Date(), prefix);
     const exists = await prisma.customerOrder.findUnique({ where: { reference }, select: { id: true } });
     if (!exists) return reference;
   }
@@ -97,7 +100,11 @@ export async function POST(request: Request) {
 
   const productIds = [...new Set(parsed.data.items.map((item) => item.productId))];
   const products = await prisma.product.findMany({
-    where: { tenantId: tenant.id, id: { in: productIds }, status: "published" },
+    where: {
+      tenantId: tenant.id,
+      id: { in: productIds },
+      OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
+    },
     include: {
       variants: { where: { active: true } },
       extras: { where: { active: true } },
@@ -108,11 +115,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Uno de los productos ya no está disponible" }, { status: 409 });
   }
 
+  const table = parsed.data.tableCode
+    ? await prisma.diningTable.findFirst({
+        where: { tenantId: tenant.id, code: parsed.data.tableCode, active: true },
+        include: { branch: true },
+      })
+    : null;
+  const selectedBranch = parsed.data.branchId
+    ? await prisma.branch.findFirst({
+        where: { id: parsed.data.branchId, tenantId: tenant.id, active: true },
+      })
+    : null;
+  if (parsed.data.branchId && !selectedBranch) {
+    return NextResponse.json({ error: "La sucursal seleccionada ya no está disponible" }, { status: 409 });
+  }
+  const branch =
+    table?.branch ??
+    selectedBranch ??
+    (await prisma.branch.findFirst({
+      where: { tenantId: tenant.id, active: true },
+      orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
+    }));
+  if (!branch)
+    return NextResponse.json({ error: "No hay una sucursal activa para recibir pedidos" }, { status: 409 });
+  if (parsed.data.orderType === "dine_in" && parsed.data.tableCode && !table) {
+    return NextResponse.json({ error: "La mesa indicada no existe o no está disponible" }, { status: 409 });
+  }
+  if (parsed.data.orderType === "delivery" && !parsed.data.address) {
+    return NextResponse.json({ error: "Ingresá la dirección de entrega" }, { status: 400 });
+  }
+
   let calculatedItems;
   try {
     calculatedItems = parsed.data.items.map((input) => {
       const product = productMap.get(input.productId);
-      if (!product || product.availability?.toLowerCase() === "agotado") {
+      if (
+        !product ||
+        product.availability?.toLowerCase() === "agotado" ||
+        !productAvailableAt(
+          product.availableDays,
+          product.availableStartTime,
+          product.availableEndTime,
+          new Date(),
+          tenant.timeZone,
+        )
+      ) {
         throw new Error("Uno de los productos está agotado");
       }
       const variant = input.variantId
@@ -155,13 +202,16 @@ export async function POST(request: Request) {
   const subtotal = calculatedItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const discount = await promotionDiscount(tenant.id, parsed.data.promotionCode, subtotal);
   const tip = parsed.data.tip;
-  const total = Math.max(0, subtotal - discount + tip);
-
-  const table = parsed.data.tableCode
-    ? await prisma.diningTable.findFirst({
-        where: { tenantId: tenant.id, code: parsed.data.tableCode, active: true },
-      })
-    : null;
+  const deliveryFee = parsed.data.orderType === "delivery" ? Number(branch.deliveryFee) : 0;
+  if (parsed.data.orderType === "delivery" && subtotal < Number(branch.minimumOrder)) {
+    return NextResponse.json(
+      {
+        error: `El pedido mínimo para ${branch.name} es ${tenant.defaultCurrency} ${Number(branch.minimumOrder).toFixed(2)}`,
+      },
+      { status: 409 },
+    );
+  }
+  const total = Math.max(0, subtotal - discount + deliveryFee + tip);
   const customer = parsed.data.loyaltyToken
     ? await prisma.loyaltyCustomer.findFirst({
         where: {
@@ -171,68 +221,133 @@ export async function POST(request: Request) {
         },
       })
     : null;
-  if (parsed.data.orderType === "dine_in" && parsed.data.tableCode && !table) {
-    return NextResponse.json({ error: "La mesa indicada no existe o no está disponible" }, { status: 409 });
+  const requestedAt = parsed.data.requestedTime ? new Date(parsed.data.requestedTime) : null;
+  if (requestedAt && Number.isNaN(requestedAt.getTime())) {
+    return NextResponse.json({ error: "El horario solicitado no es válido" }, { status: 400 });
   }
-  if (parsed.data.orderType === "delivery" && !parsed.data.address) {
-    return NextResponse.json({ error: "Ingresá la dirección de entrega" }, { status: 400 });
+  if (
+    requestedAt &&
+    (requestedAt.getTime() < Date.now() - 5 * 60 * 1000 ||
+      requestedAt.getTime() > Date.now() + 30 * 24 * 60 * 60 * 1000)
+  ) {
+    return NextResponse.json({ error: "Elegí un horario dentro de los próximos 30 días" }, { status: 400 });
+  }
+  const quantities = new Map<number, number>();
+  for (const item of calculatedItems) {
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+  }
+  const trackedStocks = await prisma.inventoryStock.findMany({
+    where: { tenantId: tenant.id, branchId: branch.id, productId: { in: productIds }, tracked: true },
+  });
+  const unavailableStock = trackedStocks.find(
+    (stock) => Number(stock.current) < (quantities.get(stock.productId) ?? 0),
+  );
+  if (unavailableStock) {
+    const product = productMap.get(unavailableStock.productId);
+    return NextResponse.json(
+      { error: `${product?.name ?? "Un producto"} no tiene stock suficiente` },
+      { status: 409 },
+    );
   }
 
-  const reference = await uniqueReference();
+  const reference = await uniqueReference(branch.orderPrefix);
   const token = orderPublicToken();
-  await prisma.$transaction(async (transaction) => {
-    const order = await transaction.customerOrder.create({
-      data: {
-        tenantId: tenant.id,
-        tableId: table?.id ?? null,
-        customerId: customer?.id ?? null,
-        reference,
-        publicTokenHash: orderTokenHash(token),
-        status: "received",
-        orderType: parsed.data.orderType,
-        customerName: parsed.data.customerName,
-        phone: parsed.data.phone,
-        email: parsed.data.email || null,
-        notes:
-          [
-            parsed.data.address ? `Dirección: ${parsed.data.address}` : "",
-            parsed.data.requestedTime ? `Horario: ${parsed.data.requestedTime}` : "",
-            parsed.data.notes ?? "",
-            tip ? `Propina: ${tip}` : "",
-          ]
-            .filter(Boolean)
-            .join("\n") || null,
-        subtotal,
-        discount,
-        total,
-        currency: tenant.defaultCurrency,
-        source: table ? `table:${table.code}` : "website",
-        ipHash,
-        items: { create: calculatedItems },
-        history: { create: { toStatus: "received", note: "Pedido creado desde la carta" } },
-      },
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const order = await transaction.customerOrder.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: branch.id,
+          tableId: table?.id ?? null,
+          customerId: customer?.id ?? null,
+          reference,
+          publicTokenHash: orderTokenHash(token),
+          status: "received",
+          orderType: parsed.data.orderType,
+          customerName: parsed.data.customerName,
+          phone: parsed.data.phone,
+          email: parsed.data.email || null,
+          notes: parsed.data.notes || null,
+          deliveryAddress: parsed.data.address || null,
+          requestedAt,
+          subtotal,
+          discount,
+          deliveryFee,
+          tip,
+          total,
+          currency: tenant.defaultCurrency,
+          paymentMethod: parsed.data.paymentMethod,
+          paymentStatus: "pending",
+          source: table ? `table:${table.code}` : "website",
+          ipHash,
+          items: { create: calculatedItems },
+          history: { create: { toStatus: "received", note: "Pedido creado desde la carta" } },
+        },
+      });
+      for (const stock of trackedStocks) {
+        const quantity = quantities.get(stock.productId) ?? 0;
+        if (!quantity) continue;
+        const result = await transaction.inventoryStock.updateMany({
+          where: { id: stock.id, tracked: true, current: { gte: quantity } },
+          data: { current: { decrement: quantity } },
+        });
+        if (result.count !== 1) throw new Error("El stock cambió mientras confirmabas el pedido");
+        const updated = await transaction.inventoryStock.findUniqueOrThrow({ where: { id: stock.id } });
+        await transaction.stockMovement.create({
+          data: {
+            tenantId: tenant.id,
+            stockId: stock.id,
+            orderId: order.id,
+            type: "order",
+            quantity: -quantity,
+            balanceAfter: updated.current,
+            reason: `Pedido ${reference}`,
+          },
+        });
+        if (Number(updated.current) <= Number(updated.minimum)) {
+          await transaction.notification.create({
+            data: {
+              tenantId: tenant.id,
+              type: "stock.low",
+              title: `Stock bajo · ${productMap.get(stock.productId)?.name ?? "Producto"}`,
+              message: `${branch.name}: quedaron ${Number(updated.current)} ${updated.unit}.`,
+              link: "/admin/inventario",
+            },
+          });
+        }
+      }
+      await transaction.notification.create({
+        data: {
+          tenantId: tenant.id,
+          type: "order.new",
+          title: `Nuevo pedido · ${reference}`,
+          message: `${parsed.data.customerName} realizó un pedido por ${tenant.defaultCurrency} ${total.toFixed(2)}.`,
+          link: "/admin/pedidos",
+        },
+      });
+      await transaction.analyticsEvent.create({
+        data: {
+          tenantId: tenant.id,
+          eventType: "order.completed",
+          ipHash,
+          path: "/pedido",
+          entityType: "order",
+          entityId: order.id,
+          metadata: { total, itemCount: calculatedItems.reduce((sum, item) => sum + item.quantity, 0) },
+        },
+      });
     });
-    await transaction.notification.create({
-      data: {
-        tenantId: tenant.id,
-        type: "order.new",
-        title: `Nuevo pedido · ${reference}`,
-        message: `${parsed.data.customerName} realizó un pedido por ${tenant.defaultCurrency} ${total.toFixed(2)}.`,
-        link: "/admin/pedidos",
+  } catch (reason) {
+    return NextResponse.json(
+      {
+        error:
+          reason instanceof Error && reason.message.includes("stock")
+            ? reason.message
+            : "No se pudo confirmar el pedido",
       },
-    });
-    await transaction.analyticsEvent.create({
-      data: {
-        tenantId: tenant.id,
-        eventType: "order.completed",
-        ipHash,
-        path: "/pedido",
-        entityType: "order",
-        entityId: order.id,
-        metadata: { total, itemCount: calculatedItems.reduce((sum, item) => sum + item.quantity, 0) },
-      },
-    });
-  });
+      { status: 409 },
+    );
+  }
 
   return NextResponse.json({ ok: true, reference, token, status: "received", total }, { status: 201 });
 }

@@ -80,7 +80,12 @@ export function AssetPicker({
 
       {previewModel && currentValue && !pendingName && (
         <div className="mt-4">
-          <ModelExperience modelUrl={currentValue} productName="Vista previa administrativa" compact />
+          <ModelExperience
+            modelUrl={currentValue}
+            productName="Vista previa administrativa"
+            arEnabled={false}
+            compact
+          />
         </div>
       )}
     </fieldset>

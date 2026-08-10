@@ -8,6 +8,7 @@ import { ProductActions } from "@/components/menu/product-actions";
 import { ModelExperience } from "@/components/products/model-experience";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { productAvailableAt } from "@/lib/product-availability";
 
 type ProductPageProps = { params: Promise<{ slug: string }> };
 
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 /** @summary Muestra información completa, etiquetas, precio y acciones de un producto individual. */
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const [product, tenant] = await Promise.all([getProduct(slug), getDefaultTenant()]);
   if (!product) notFound();
   const files = new Set(await readdir(path.join(process.cwd(), "public", "images", "images_product")));
   const image =
@@ -52,7 +53,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ? `/images/images_product/${product.imageUrl}`
       : "/images/image_defect/product_default.png";
   const price = Number(product.promotionalPrice ?? product.price ?? 0);
-  const spatialAvailable = product.arEnabled && Boolean(product.model3dUrl);
+  const availableNow =
+    product.availability?.toLocaleLowerCase("es") !== "agotado" &&
+    productAvailableAt(
+      product.availableDays,
+      product.availableStartTime,
+      product.availableEndTime,
+      new Date(),
+      tenant.timeZone,
+    );
+  const spatialAvailable = Boolean(product.model3dUrl);
   const labels = [
     product.featured && "Destacado",
     product.isNew && "Nuevo",
@@ -70,12 +80,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
     image,
     offers: {
       "@type": "Offer",
-      priceCurrency: "ARS",
+      priceCurrency: tenant.defaultCurrency,
       price,
-      availability:
-        product.availability?.toLocaleLowerCase("es") === "agotado"
-          ? "https://schema.org/OutOfStock"
-          : "https://schema.org/InStock",
+      availability: !availableNow ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
     },
   };
 
@@ -118,23 +125,37 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <p className="mt-5 text-lg leading-relaxed text-zinc-400">{product.description}</p>
           <div className="mt-7 flex items-end gap-3">
             <strong className="text-4xl font-black">
-              {new Intl.NumberFormat("es-AR", {
+              {new Intl.NumberFormat(tenant.locale, {
                 style: "currency",
-                currency: "ARS",
+                currency: tenant.defaultCurrency,
                 maximumFractionDigits: 0,
               }).format(price)}
             </strong>
             {product.previousPrice && Number(product.previousPrice) > price && (
               <del className="pb-1 text-zinc-600">
-                {new Intl.NumberFormat("es-AR", {
+                {new Intl.NumberFormat(tenant.locale, {
                   style: "currency",
-                  currency: "ARS",
+                  currency: tenant.defaultCurrency,
                   maximumFractionDigits: 0,
                 }).format(Number(product.previousPrice))}
               </del>
             )}
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {(product.availableStartTime || product.availableDays) && (
+              <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                <span className="block text-xs uppercase text-zinc-500">Disponibilidad actual</span>
+                <strong className={`mt-1 block ${availableNow ? "text-emerald-300" : "text-amber-300"}`}>
+                  {availableNow ? "Disponible para pedir" : "Fuera del horario de venta"}
+                </strong>
+                {product.availableStartTime && product.availableEndTime && (
+                  <small className="text-zinc-500">
+                    {product.availableStartTime.toISOString().slice(11, 16)} a{" "}
+                    {product.availableEndTime.toISOString().slice(11, 16)}
+                  </small>
+                )}
+              </div>
+            )}
             {product.preparationMinutes && (
               <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
                 <span className="block text-xs uppercase text-zinc-500">Preparación estimada</span>
@@ -164,7 +185,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 name: product.name,
                 description: product.description,
                 price,
-                availability: product.availability,
+                availability: availableNow ? "disponible" : "agotado",
                 image,
               }}
             />
@@ -174,7 +195,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               className="mt-3 inline-flex min-h-12 items-center font-black text-pink-300 hover:text-pink-200"
               href="#experiencia-3d"
             >
-              Ver este producto en 3D o sobre tu mesa ↓
+              {product.arEnabled ? "Ver este producto en 3D o sobre tu mesa ↓" : "Ver este producto en 3D ↓"}
             </a>
           )}
         </div>
@@ -185,7 +206,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="section-eyebrow">Experiencia espacial</p>
-              <h2 className="mt-2 text-3xl font-black sm:text-5xl">Mirá cómo queda en tu mesa</h2>
+              <h2 className="mt-2 text-3xl font-black sm:text-5xl">
+                {product.arEnabled ? "Mirá cómo queda en tu mesa" : "Exploralo desde todos los ángulos"}
+              </h2>
             </div>
             {(product.modelWidthCm || product.modelHeightCm || product.modelDepthCm) && (
               <p className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-400">
@@ -205,12 +228,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
             orientation={product.modelOrientation}
             placement={product.arPlacement === "wall" ? "wall" : "floor"}
             allowScale={product.arAllowScale}
+            arEnabled={product.arEnabled}
           />
-          <p className="mt-4 text-sm leading-relaxed text-zinc-500">
-            La realidad aumentada utiliza WebXR cuando está disponible, Scene Viewer en Android y Quick Look
-            en iPhone. Requiere HTTPS y permiso de cámara. Si el dispositivo no es compatible, el producto
-            permanece disponible en el visor 3D interactivo.
-          </p>
+          {product.arEnabled && (
+            <p className="mt-4 text-sm leading-relaxed text-zinc-500">
+              La realidad aumentada utiliza WebXR cuando está disponible, Scene Viewer en Android y Quick Look
+              en iPhone. Requiere HTTPS y permiso de cámara. Si el dispositivo no es compatible, el producto
+              permanece disponible en el visor 3D interactivo.
+            </p>
+          )}
         </section>
       )}
 

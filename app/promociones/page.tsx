@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { readdir } from "node:fs/promises";
@@ -6,13 +5,18 @@ import path from "node:path";
 import { prisma } from "@/lib/prisma";
 import { isPromotionActive, promotionBenefit, promotionTypeLabel } from "@/lib/promotion";
 import { getDefaultTenant } from "@/lib/tenant";
+import { managedPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Promociones",
-  description: "Beneficios, happy hours, combos y promociones vigentes de Laterne.",
-};
+/** @summary Recupera la configuración SEO administrable de promociones. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/promociones",
+    "Promociones",
+    "Beneficios, happy hours, combos y promociones vigentes.",
+  );
+}
 
 /** @summary Publica únicamente promociones vigentes con sus productos, categorías y condiciones. */
 export default async function PromotionsPage() {

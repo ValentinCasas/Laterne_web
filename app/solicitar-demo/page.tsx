@@ -1,13 +1,16 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { DemoForm } from "@/components/commercial/demo-form";
 import { prisma } from "@/lib/prisma";
+import { managedPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Solicitar demostración",
-  description:
-    "Solicitá una demostración de Laterne Web preparada para las necesidades de tu negocio gastronómico.",
-};
+/** @summary Recupera la configuración SEO administrable de la solicitud comercial. */
+export function generateMetadata() {
+  return managedPageMetadata(
+    "/solicitar-demo",
+    "Solicitar demostración",
+    "Solicitá una demostración preparada para tu negocio gastronómico.",
+  );
+}
 
 /** @summary Presenta el proceso comercial y recopila la información necesaria para preparar una demostración. */
 export default async function DemoPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {

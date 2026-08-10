@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -41,6 +42,9 @@ export function LoginForm() {
       <button className="btn w-full" disabled={pending}>
         {pending ? "Ingresando…" : "Ingresar"}
       </button>
+      <Link className="block text-center text-sm text-pink-300 hover:underline" href="/recuperar-acceso">
+        ¿Olvidaste tu contraseña?
+      </Link>
     </form>
   );
 }

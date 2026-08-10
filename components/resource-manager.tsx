@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AssetPicker } from "@/components/admin/asset-picker";
 import { ImagePicker } from "@/components/admin/image-picker";
@@ -26,6 +26,7 @@ export type ResourceField = {
   fallbackImage?: string;
   accept?: string;
   previewModel?: boolean;
+  defaultChecked?: boolean;
 };
 
 type Item = Record<string, unknown> & { id: number };
@@ -234,7 +235,9 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
   }
 
   if (field.control === "checkbox") {
-    const checked = item?.[field.key] === true || item?.[field.key] === "true" || item?.[field.key] === 1;
+    const checked = item
+      ? item[field.key] === true || item[field.key] === "true" || item[field.key] === 1
+      : Boolean(field.defaultChecked);
     return (
       <label className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] px-4 py-3 hover:border-pink-500/40">
         <input name={field.key} type="hidden" value="false" />
@@ -323,6 +326,8 @@ export function ResourceManager({
   initialItems,
   fields,
   singular,
+  currency = "ARS",
+  locale = "es-AR",
 }: {
   title: string;
   description: string;
@@ -330,21 +335,83 @@ export function ResourceManager({
   initialItems: Item[];
   fields: ResourceField[];
   singular?: boolean;
+  currency?: string;
+  locale?: string;
 }) {
   const [items, setItems] = useState(initialItems);
   const [editing, setEditing] = useState<Item | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [draftItem, setDraftItem] = useState<Item | null>(null);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"recent" | "name" | "oldest">("recent");
+  const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const formPanel = useRef<HTMLDivElement>(null);
+  const horizontal = resource === "categorias";
   const {
     ref: collection,
     isDragging: isDraggingCollection,
     dragProps: collectionDragProps,
   } = useDragToScroll<HTMLDivElement>();
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setQuery(localStorage.getItem(`laterne_admin_filter_${resource}`) ?? "");
+      const stored = JSON.parse(
+        localStorage.getItem(`laterne_admin_favorites_${resource}`) ?? "[]",
+      ) as number[];
+      setFavoriteIds(new Set(stored));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [resource]);
+
+  const filteredItems = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("es");
+    return [...items]
+      .filter(
+        (item) =>
+          !normalized ||
+          Object.values(item).some((value) =>
+            String(value ?? "")
+              .toLocaleLowerCase("es")
+              .includes(normalized),
+          ),
+      )
+      .sort((first, second) => {
+        if (favoriteIds.has(first.id) !== favoriteIds.has(second.id))
+          return favoriteIds.has(first.id) ? -1 : 1;
+        const firstName = String(first.name ?? first.businessName ?? first.title ?? first.description ?? "");
+        const secondName = String(
+          second.name ?? second.businessName ?? second.title ?? second.description ?? "",
+        );
+        if (sort === "name") return firstName.localeCompare(secondName, "es");
+        return sort === "oldest" ? first.id - second.id : second.id - first.id;
+      });
+  }, [favoriteIds, items, query, sort]);
+  const pageSize = horizontal ? 30 : 12;
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const effectivePage = Math.min(page, totalPages);
+  const visibleItems = filteredItems.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
+
+  useEffect(() => {
+    localStorage.setItem(`laterne_admin_filter_${resource}`, query);
+  }, [query, resource]);
+
   /** @summary Abre el formulario vacío o carga en él los datos de un registro existente. */
   function openForm(item: Item | null) {
     setEditing(item);
+    if (!item) {
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem(`laterne_admin_draft_${resource}`) ?? "null",
+        ) as Record<string, unknown> | null;
+        setDraftItem(stored ? ({ id: 0, ...stored } as Item) : null);
+      } catch {
+        setDraftItem(null);
+      }
+    } else setDraftItem(null);
     setFormOpen(true);
     window.requestAnimationFrame(() =>
       formPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
@@ -355,6 +422,16 @@ export function ResourceManager({
   function closeForm() {
     setEditing(null);
     setFormOpen(false);
+  }
+
+  /** @summary Conserva localmente un borrador legible mientras el usuario completa un registro nuevo. */
+  function autosaveDraft(form: HTMLFormElement) {
+    if (editing) return;
+    const draft: Record<string, string> = {};
+    for (const [key, value] of new FormData(form).entries()) {
+      if (typeof value === "string") draft[key] = value;
+    }
+    localStorage.setItem(`laterne_admin_draft_${resource}`, JSON.stringify(draft));
   }
 
   /** @summary Carga una imagen nueva cuando corresponde y devuelve su nombre público. */
@@ -416,10 +493,11 @@ export function ResourceManager({
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo guardar el registro");
 
-      const nextItem = { ...body.item, ...payload, id: body.item.id } as Item;
+      const nextItem = { ...payload, ...body.item, id: body.item.id } as Item;
       setItems((current) =>
         id ? current.map((item) => (item.id === id ? nextItem : item)) : [...current, nextItem],
       );
+      localStorage.removeItem(`laterne_admin_draft_${resource}`);
       closeForm();
       await Swal.fire({
         title: id ? "Cambios guardados" : "Contenido creado",
@@ -482,7 +560,82 @@ export function ResourceManager({
     });
   }
 
-  const horizontal = resource === "categorias";
+  /** @summary Duplica contenido reutilizando solo campos editables y genera un nuevo nombre reconocible. */
+  async function duplicate(item: Item) {
+    const payload: Record<string, string> = {};
+    for (const field of fields) {
+      if (field.control === "location") {
+        payload.latitude = String(item.latitude ?? "");
+        payload.longitude = String(item.longitude ?? "");
+      } else if (field.key !== "password") {
+        payload[field.key] = inputValue(item[field.key], field.type);
+      }
+    }
+    if ("name" in item) payload.name = `${String(item.name)} · copia`;
+    if ("businessName" in item) payload.businessName = `${String(item.businessName)} · copia`;
+    if ("title" in item) payload.title = `${String(item.title)} · copia`;
+    if ("slug" in payload) payload.slug = "";
+    const response = await fetch(`/api/admin/${resource}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = (await response.json().catch(() => ({}))) as { item?: Item; error?: string };
+    if (!response.ok || !body.item) {
+      await Swal.fire({
+        title: "No se pudo duplicar",
+        text: body.error,
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setItems((current) => [body.item!, ...current]);
+  }
+
+  /** @summary Elimina en lote únicamente los registros seleccionados que el servidor autoriza. */
+  async function removeSelected() {
+    if (!selectedIds.size) return;
+    const confirmation = await Swal.fire({
+      title: `¿Eliminar ${selectedIds.size} registros?`,
+      text: "Se validará cada elemento y se conservarán los que tengan relaciones protegidas.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Eliminar seleccionados",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ef4444",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmation.isConfirmed) return;
+    const removed = new Set<number>();
+    for (const id of selectedIds) {
+      const response = await fetch(`/api/admin/${resource}/${id}`, { method: "DELETE" });
+      if (response.ok) removed.add(id);
+    }
+    setItems((current) => current.filter((item) => !removed.has(item.id)));
+    setSelectedIds(new Set());
+    await Swal.fire({
+      title: `${removed.size} registros eliminados`,
+      icon: removed.size ? "success" : "info",
+      timer: 1500,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
+
+  /** @summary Marca un registro como favorito y conserva la elección para futuros accesos al módulo. */
+  function toggleFavorite(id: number) {
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      localStorage.setItem(`laterne_admin_favorites_${resource}`, JSON.stringify([...next]));
+      return next;
+    });
+  }
 
   return (
     <section>
@@ -501,6 +654,7 @@ export function ResourceManager({
         <div className="scroll-mt-24" ref={formPanel}>
           <form
             action={save}
+            onInput={(event) => autosaveDraft(event.currentTarget)}
             className="mt-6 grid min-w-0 gap-5 overflow-hidden rounded-[2rem] border border-pink-500/25 bg-gradient-to-br from-pink-950/25 to-zinc-950 p-5 shadow-2xl shadow-black/30 md:grid-cols-2 sm:p-8"
           >
             <div className="flex items-start justify-between gap-4 md:col-span-2">
@@ -521,7 +675,7 @@ export function ResourceManager({
             </div>
 
             {fields.map((field) => (
-              <FormField field={field} item={editing} key={field.key} />
+              <FormField field={field} item={editing ?? draftItem} key={field.key} />
             ))}
 
             <div className="flex flex-wrap gap-3 border-t border-white/10 pt-5 md:col-span-2">
@@ -535,6 +689,46 @@ export function ResourceManager({
           </form>
         </div>
       )}
+
+      <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-3 lg:grid-cols-[1fr_180px_auto_auto]">
+        <input
+          className="input py-2"
+          type="search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(1);
+          }}
+          placeholder="Buscar en este módulo…"
+        />
+        <select
+          className="input py-2"
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value as typeof sort);
+            setPage(1);
+          }}
+        >
+          <option value="recent">Más recientes</option>
+          <option value="oldest">Más antiguos</option>
+          <option value="name">Por nombre</option>
+        </select>
+        <button
+          className="btn btn-secondary py-2"
+          type="button"
+          onClick={() => setSelectedIds(new Set(visibleItems.map((item) => item.id)))}
+        >
+          Seleccionar página
+        </button>
+        <button
+          className="rounded-xl border border-red-500/20 px-4 py-2 text-sm font-bold text-red-300 disabled:opacity-30"
+          type="button"
+          disabled={!selectedIds.size}
+          onClick={() => void removeSelected()}
+        >
+          Eliminar ({selectedIds.size})
+        </button>
+      </div>
 
       <div className="mt-6 flex items-center justify-between gap-4 px-1">
         <h2 className="text-lg font-black">Contenido cargado</h2>
@@ -552,19 +746,47 @@ export function ResourceManager({
             : "grid gap-4 sm:grid-cols-2 2xl:grid-cols-3"
         }`}
       >
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const image = itemImage(resource, item);
           const titleValue = String(
             item.name ?? item.dayOfWeek ?? item.email ?? item.address ?? `Registro #${item.id}`,
           );
-          const descriptionValue = String(item.description ?? item.location ?? "");
+          const descriptionValue =
+            resource === "usuarios"
+              ? `${String(item.roleName ?? "Sin rol")} · ${item.lastAccessAt ? `último acceso ${new Date(String(item.lastAccessAt)).toLocaleString(locale)}` : "sin accesos registrados"}`
+              : String(item.description ?? item.location ?? "");
           return (
             <article
-              className={`group overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/80 shadow-xl shadow-black/20 transition hover:-translate-y-1 hover:border-white/20 ${
+              className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/80 shadow-xl shadow-black/20 transition hover:-translate-y-1 hover:border-white/20 ${
                 horizontal ? "min-w-72 snap-start" : "min-w-0"
               }`}
               key={item.id}
             >
+              <div className="absolute z-10 m-3 flex gap-2">
+                <label className="grid h-8 w-8 place-items-center rounded-lg bg-black/80">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(item.id)}
+                    onChange={(event) =>
+                      setSelectedIds((current) => {
+                        const next = new Set(current);
+                        if (event.target.checked) next.add(item.id);
+                        else next.delete(item.id);
+                        return next;
+                      })
+                    }
+                    aria-label={`Seleccionar ${titleValue}`}
+                  />
+                </label>
+                <button
+                  className="grid h-8 w-8 place-items-center rounded-lg bg-black/80 text-amber-300"
+                  type="button"
+                  onClick={() => toggleFavorite(item.id)}
+                  aria-label={favoriteIds.has(item.id) ? "Quitar favorito" : "Marcar favorito"}
+                >
+                  {favoriteIds.has(item.id) ? "★" : "☆"}
+                </button>
+              </div>
               {image ? (
                 <div className="relative h-44 bg-gradient-to-br from-zinc-800 to-zinc-950">
                   <Image
@@ -608,7 +830,11 @@ export function ResourceManager({
                 {resource === "productos" && (
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                     <strong className="text-pink-300">
-                      ${Number(item.price ?? 0).toLocaleString("es-AR")}
+                      {new Intl.NumberFormat(locale, {
+                        style: "currency",
+                        currency,
+                        maximumFractionDigits: 0,
+                      }).format(Number(item.price ?? 0))}
                     </strong>
                     {item.model3dUrl ? (
                       <span
@@ -618,7 +844,7 @@ export function ResourceManager({
                             : "bg-amber-500/15 text-amber-300"
                         }`}
                       >
-                        {item.arEnabled ? "3D y AR activo" : "Modelo sin publicar"}
+                        {item.arEnabled ? "3D y AR activo" : "3D activo · AR desactivado"}
                       </span>
                     ) : (
                       <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase text-zinc-500">
@@ -636,6 +862,15 @@ export function ResourceManager({
                   >
                     Editar
                   </button>
+                  {!singular && ["productos", "promociones"].includes(resource) && (
+                    <button
+                      className="rounded-xl bg-white/5 px-3 py-2.5 text-sm font-bold hover:bg-white/10"
+                      onClick={() => void duplicate(item)}
+                      type="button"
+                    >
+                      Duplicar
+                    </button>
+                  )}
                   {!singular && (
                     <button
                       className="rounded-xl bg-red-500/10 px-3 py-2.5 text-sm font-bold text-red-300 hover:bg-red-500 hover:text-white"
@@ -651,14 +886,43 @@ export function ResourceManager({
           );
         })}
 
-        {!items.length && (
+        {!visibleItems.length && (
           <div className="col-span-full rounded-3xl border border-dashed border-white/15 p-12 text-center">
             <span className="text-4xl">＋</span>
-            <h3 className="mt-3 text-xl font-black">Todavía no hay contenido</h3>
-            <p className="mt-2 text-sm text-zinc-500">Usá el botón superior para crear el primer registro.</p>
+            <h3 className="mt-3 text-xl font-black">
+              {query ? "No encontramos coincidencias" : "Todavía no hay contenido"}
+            </h3>
+            <p className="mt-2 text-sm text-zinc-500">
+              {query
+                ? "Probá con otra búsqueda o quitá los filtros."
+                : "Usá el botón superior para crear el primer registro."}
+            </p>
           </div>
         )}
       </div>
+      {totalPages > 1 && (
+        <nav className="mt-6 flex items-center justify-center gap-3" aria-label="Paginación">
+          <button
+            className="btn btn-secondary py-2"
+            type="button"
+            disabled={effectivePage <= 1}
+            onClick={() => setPage(Math.max(1, effectivePage - 1))}
+          >
+            Anterior
+          </button>
+          <span className="text-sm text-zinc-500">
+            Página {effectivePage} de {totalPages}
+          </span>
+          <button
+            className="btn btn-secondary py-2"
+            type="button"
+            disabled={effectivePage >= totalPages}
+            onClick={() => setPage(Math.min(totalPages, effectivePage + 1))}
+          >
+            Siguiente
+          </button>
+        </nav>
+      )}
     </section>
   );
 }

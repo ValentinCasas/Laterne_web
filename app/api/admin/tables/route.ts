@@ -11,6 +11,7 @@ const tableInput = z.object({
   sector: z.string().trim().max(100).optional(),
   capacity: z.coerce.number().int().min(1).max(100),
   active: z.boolean().default(true),
+  branchId: z.coerce.number().int().positive(),
 });
 
 /** @summary Genera un código de mesa que todavía no existe dentro del negocio actual. */
@@ -32,9 +33,14 @@ export async function POST(request: Request) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = tableInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá los datos de la mesa" }, { status: 400 });
+  const branch = await prisma.branch.findFirst({
+    where: { id: parsed.data.branchId, tenantId: auth.tenant.id },
+  });
+  if (!branch) return NextResponse.json({ error: "Seleccioná una sucursal válida" }, { status: 400 });
   const created = await prisma.diningTable.create({
     data: {
       tenantId: auth.tenant.id,
+      branchId: branch.id,
       code: await uniqueCode(auth.tenant.id, parsed.data.name),
       name: parsed.data.name,
       sector: parsed.data.sector || null,
