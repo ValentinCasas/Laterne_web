@@ -14,7 +14,7 @@ export type Session = {
 
 export type AuthorizationContext = {
   session: Session;
-  tenant: { id: number; name: string; slug: string };
+  tenant: { id: number; name: string; slug: string; timeZone: string };
   membership: { id: number; role: { key: string; name: string } };
   permissions: string[];
 };
@@ -95,7 +95,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       tenant: { status: "active" },
     },
     include: {
-      tenant: { select: { id: true, name: true, slug: true } },
+      tenant: { select: { id: true, name: true, slug: true, timeZone: true } },
       role: {
         select: {
           key: true,

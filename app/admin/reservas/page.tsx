@@ -7,6 +7,7 @@ import {
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { businessDateInZone, defaultReservationTimeZone } from "@/lib/reservations";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function AdminReservationsPage() {
   const [reservations, settings, blocks] = await Promise.all([
     prisma.reservation.findMany({
       where: { tenantId: context.tenant.id },
-      orderBy: [{ reservationDate: "asc" }, { reservationTime: "asc" }],
+      orderBy: [{ reservationDate: "desc" }, { reservationTime: "desc" }],
       take: 1000,
     }),
     prisma.reservationSettings.findUnique({ where: { tenantId: context.tenant.id } }),
@@ -38,13 +39,15 @@ export default async function AdminReservationsPage() {
     policy: "La reserva queda pendiente hasta recibir confirmación.",
     confirmationMode: "manual",
   };
+  const timeZone = context.tenant.timeZone ?? defaultReservationTimeZone;
 
   return (
     <ReservationBoard
       initialReservations={serialize(reservations) as unknown as ReservationItem[]}
       initialSettings={serialize(settings ?? fallbackSettings) as unknown as ReservationSettingsData}
       initialBlocks={serialize(blocks) as unknown as ReservationBlockData[]}
-      today={new Date().toISOString().slice(0, 10)}
+      today={businessDateInZone(timeZone)}
+      timeZone={timeZone}
     />
   );
 }

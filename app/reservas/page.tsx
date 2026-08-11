@@ -1,5 +1,6 @@
 import { ReservationForm } from "@/components/reservations/reservation-form";
 import { prisma } from "@/lib/prisma";
+import { businessDateInZone, defaultReservationTimeZone } from "@/lib/reservations";
 import { managedPageMetadata } from "@/lib/seo";
 import { getDefaultTenant } from "@/lib/tenant";
 
@@ -17,7 +18,7 @@ export default async function ReservationsPage() {
   const sectors = Array.isArray(settings?.sectors)
     ? settings.sectors.filter((sector): sector is string => typeof sector === "string")
     : ["Salón", "Exterior"];
-  const minimumDate = new Date().toISOString().slice(0, 10);
+  const minimumDate = businessDateInZone(tenant.timeZone ?? defaultReservationTimeZone);
 
   return (
     <main className="shell py-10 sm:py-16">

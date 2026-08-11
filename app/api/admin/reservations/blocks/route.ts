@@ -4,6 +4,7 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { defaultReservationTimeZone, zoneOffset } from "@/lib/reservations";
 
 const blockInput = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -25,8 +26,10 @@ export async function POST(request: Request) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = blockInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá las fechas del bloqueo" }, { status: 400 });
-  const startDate = new Date(`${parsed.data.startDate}T00:00:00-03:00`);
-  const endDate = new Date(`${parsed.data.endDate}T00:00:00-03:00`);
+  const timeZone = auth.tenant.timeZone ?? defaultReservationTimeZone;
+  const offset = zoneOffset(timeZone);
+  const startDate = new Date(`${parsed.data.startDate}T00:00:00${offset}`);
+  const endDate = new Date(`${parsed.data.endDate}T00:00:00${offset}`);
   if (startDate > endDate)
     return NextResponse.json({ error: "El rango de fechas está invertido" }, { status: 400 });
   const block = await prisma.reservationBlock.create({

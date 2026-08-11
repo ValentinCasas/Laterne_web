@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { reservationStatuses, reservationStatusLabel, type ReservationStatus } from "@/lib/reservations";
+import {
+  defaultReservationTimeZone,
+  reservationStatuses,
+  reservationStatusLabel,
+  type ReservationStatus,
+} from "@/lib/reservations";
 
 export type ReservationItem = {
   id: number;
@@ -63,62 +68,102 @@ function hourText(value: string | null) {
   return value.includes("T") ? value.slice(11, 16) : value.slice(0, 5);
 }
 
+/** @summary Desplaza una fecha AAAA-MM-DD una cantidad de días sin depender de la zona del navegador. */
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+/** @summary Nombre de una fecha para encabezados, resaltando hoy y mañana. */
+function dateLabel(date: string, today: string) {
+  if (date === today) return "Hoy";
+  if (date === addDays(today, 1)) return "Mañana";
+  return new Date(`${date}T12:00:00`).toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+type BoardTab = "upcoming" | "today" | "past" | "all";
+type DateRange = "all" | "today" | "tomorrow" | "week";
+
+const tabLabels: Record<BoardTab, string> = {
+  upcoming: "Próximas",
+  today: "Hoy",
+  past: "Pasadas",
+  all: "Todas",
+};
+
+const rangeLabels: Record<DateRange, string> = {
+  all: "Todas las próximas",
+  today: "Hoy",
+  tomorrow: "Mañana",
+  week: "Próximos 7 días",
+};
+
 /** @summary Organiza reservas, vistas temporales, estados, capacidad y bloqueos del negocio. */
 export function ReservationBoard({
   initialReservations,
   initialSettings,
   initialBlocks,
   today,
+  timeZone,
 }: {
   initialReservations: ReservationItem[];
   initialSettings: ReservationSettingsData;
   initialBlocks: ReservationBlockData[];
   today: string;
+  timeZone?: string;
 }) {
   const [reservations, setReservations] = useState(initialReservations);
   const [settings, setSettings] = useState(initialSettings);
   const [blocks, setBlocks] = useState(initialBlocks);
-  const [referenceDate, setReferenceDate] = useState(today);
-  const [view, setView] = useState<"day" | "week" | "month">("week");
+  const [tab, setTab] = useState<BoardTab>("upcoming");
+  const [range, setRange] = useState<DateRange>("all");
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ReservationItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const visibleReservations = useMemo(() => {
-    const anchor = new Date(`${referenceDate}T00:00:00`);
-    const weekStart = new Date(anchor);
-    weekStart.setDate(anchor.getDate() - ((anchor.getDay() + 6) % 7));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    const normalizedQuery = query.trim().toLocaleLowerCase("es");
+    const day = (reservation: ReservationItem) => dateText(reservation.reservationDate);
+    const key = (reservation: ReservationItem) =>
+      `${day(reservation)} ${hourText(reservation.reservationTime)}`;
+    const ascending = (first: ReservationItem, second: ReservationItem) =>
+      key(first).localeCompare(key(second));
+    const descending = (first: ReservationItem, second: ReservationItem) =>
+      key(second).localeCompare(key(first));
 
-    return reservations
-      .filter((reservation) => {
-        const date = dateText(reservation.reservationDate);
-        if (view === "day" && date !== referenceDate) return false;
-        if (view === "month" && date.slice(0, 7) !== referenceDate.slice(0, 7)) return false;
-        if (view === "week") {
-          const value = new Date(`${date}T00:00:00`);
-          if (value < weekStart || value > weekEnd) return false;
-        }
-        if (status !== "all" && reservation.status !== status) return false;
-        if (
-          normalizedQuery &&
-          !`${reservation.customerName} ${reservation.reference} ${reservation.phone} ${reservation.email}`
-            .toLocaleLowerCase("es")
-            .includes(normalizedQuery)
-        ) {
-          return false;
-        }
-        return true;
-      })
-      .sort((first, second) =>
-        `${first.reservationDate}${first.reservationTime}`.localeCompare(
-          `${second.reservationDate}${second.reservationTime}`,
-        ),
-      );
-  }, [query, referenceDate, reservations, status, view]);
+    let ordered: ReservationItem[];
+    if (tab === "today") {
+      ordered = reservations.filter((item) => day(item) === today).sort(ascending);
+    } else if (tab === "upcoming") {
+      ordered = reservations.filter((item) => day(item) >= today).sort(ascending);
+      if (range === "today") ordered = ordered.filter((item) => day(item) === today);
+      if (range === "tomorrow") ordered = ordered.filter((item) => day(item) === addDays(today, 1));
+      if (range === "week") ordered = ordered.filter((item) => day(item) <= addDays(today, 6));
+    } else if (tab === "past") {
+      ordered = reservations.filter((item) => day(item) < today).sort(descending);
+    } else {
+      ordered = [...reservations].sort(descending);
+    }
+
+    const normalizedQuery = query.trim().toLocaleLowerCase("es");
+    return ordered.filter((reservation) => {
+      if (status !== "all" && reservation.status !== status) return false;
+      if (
+        normalizedQuery &&
+        !`${reservation.customerName} ${reservation.reference} ${reservation.phone} ${reservation.email}`
+          .toLocaleLowerCase("es")
+          .includes(normalizedQuery)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [query, range, reservations, status, tab, today]);
 
   const groupedReservations = useMemo(() => {
     const groups = new Map<string, ReservationItem[]>();
@@ -128,6 +173,26 @@ export function ReservationBoard({
     }
     return [...groups.entries()];
   }, [visibleReservations]);
+
+  const counts = useMemo(
+    () => ({
+      upcoming: reservations.filter((item) => dateText(item.reservationDate) >= today).length,
+      today: reservations.filter((item) => dateText(item.reservationDate) === today).length,
+      pending: reservations.filter((item) => item.status === "pending").length,
+    }),
+    [reservations, today],
+  );
+
+  const hasRefinements = query.trim() !== "" || status !== "all";
+  const filtersActive = hasRefinements || range !== "all";
+
+  /** @summary Vuelve al estado inicial de la vista para que las nuevas reservas queden visibles. */
+  function clearFilters() {
+    setQuery("");
+    setStatus("all");
+    setTab("upcoming");
+    setRange("all");
+  }
 
   /** @summary Actualiza una reserva y sincroniza su estado en la lista y el detalle. */
   async function changeStatus(reservation: ReservationItem, nextStatus: ReservationStatus) {
@@ -234,6 +299,14 @@ export function ReservationBoard({
     if (response.ok) setBlocks((current) => current.filter((item) => item.id !== block.id));
   }
 
+  const selectedDayLabel = selected ? dateLabel(dateText(selected.reservationDate), today) : "";
+  const todayFormatted = new Intl.DateTimeFormat("es-AR", {
+    timeZone: timeZone ?? defaultReservationTimeZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${today}T12:00:00Z`));
+
   return (
     <section>
       <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-emerald-500/15 to-zinc-950 p-6 sm:p-8">
@@ -242,6 +315,7 @@ export function ReservationBoard({
           <div>
             <h1 className="text-4xl font-black sm:text-5xl">Reservas</h1>
             <p className="mt-3 text-zinc-500">Capacidad, confirmaciones, bloqueos y próximos visitantes.</p>
+            <p className="mt-1 text-xs text-zinc-600">Hoy · {todayFormatted}</p>
           </div>
           <button className="btn" onClick={() => setSettingsOpen((current) => !current)} type="button">
             {settingsOpen ? "Cerrar configuración" : "Configurar reservas"}
@@ -350,25 +424,19 @@ export function ReservationBoard({
         </section>
       )}
 
-      <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-3 md:grid-cols-[auto_auto_1fr_auto]">
+      <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-3 md:grid-cols-[auto_1fr_auto_auto]">
         <div className="flex rounded-xl bg-white/5 p-1">
-          {(["day", "week", "month"] as const).map((option) => (
+          {(["upcoming", "today", "past", "all"] as const).map((option) => (
             <button
-              className={`rounded-lg px-3 py-2 text-sm font-bold ${view === option ? "bg-pink-500" : "text-zinc-500"}`}
+              className={`rounded-lg px-3 py-2 text-sm font-bold ${tab === option ? "bg-pink-500" : "text-zinc-500"}`}
               key={option}
-              onClick={() => setView(option)}
+              onClick={() => setTab(option)}
               type="button"
             >
-              {option === "day" ? "Día" : option === "week" ? "Semana" : "Mes"}
+              {tabLabels[option]}
             </button>
           ))}
         </div>
-        <input
-          className="input py-2"
-          type="date"
-          value={referenceDate}
-          onChange={(event) => setReferenceDate(event.target.value)}
-        />
         <input
           className="input py-2"
           type="search"
@@ -389,19 +457,53 @@ export function ReservationBoard({
             </option>
           ))}
         </select>
+        {filtersActive && (
+          <button
+            className="rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 hover:border-pink-500/40 hover:text-white"
+            onClick={clearFilters}
+            type="button"
+          >
+            Limpiar filtros
+          </button>
+        )}
+      </div>
+
+      {tab === "upcoming" && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["all", "today", "tomorrow", "week"] as const).map((option) => (
+            <button
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                range === option
+                  ? "bg-pink-500/15 text-pink-300 ring-1 ring-pink-500/40"
+                  : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
+              }`}
+              key={option}
+              onClick={() => setRange(option)}
+              type="button"
+            >
+              {rangeLabels[option]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
+          {counts.upcoming} próximas
+        </span>
+        <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
+          {counts.today} hoy
+        </span>
+        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
+          {counts.pending} pendientes
+        </span>
       </div>
 
       <div className="mt-5 max-h-[720px] space-y-5 overflow-y-auto pr-1">
         {groupedReservations.map(([date, items]) => (
           <section className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4" key={date}>
-            <header className="mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-black">
-                {new Date(`${date}T12:00:00`).toLocaleDateString("es-AR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </h2>
+            <header className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-black">{dateLabel(date, today)}</h2>
               <span className="text-sm text-zinc-600">
                 {items.reduce((sum, item) => sum + item.partySize, 0)} personas
               </span>
@@ -414,14 +516,19 @@ export function ReservationBoard({
                       <p className="text-xs font-black text-pink-300">{reservation.reference}</p>
                       <h3 className="mt-1 font-black">{reservation.customerName}</h3>
                     </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
-                    >
-                      {reservationStatusLabel(reservation.status)}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-2xl font-black tabular-nums">
+                        {hourText(reservation.reservationTime)}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
+                      >
+                        {reservationStatusLabel(reservation.status)}
+                      </span>
+                    </div>
                   </div>
                   <p className="mt-3 text-sm text-zinc-400">
-                    {hourText(reservation.reservationTime)} · {reservation.partySize} personas
+                    {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
                     {reservation.sector ? ` · ${reservation.sector}` : ""}
                   </p>
                   <div className="mt-4 flex gap-2">
@@ -451,8 +558,23 @@ export function ReservationBoard({
           </section>
         ))}
         {!groupedReservations.length && (
-          <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center text-zinc-500">
-            No hay reservas para este período y filtro.
+          <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
+            {hasRefinements ? (
+              <>
+                <p className="font-bold text-zinc-400">No hay reservas que coincidan con estos filtros.</p>
+                <button className="btn btn-secondary mt-4" onClick={clearFilters} type="button">
+                  Limpiar filtros
+                </button>
+              </>
+            ) : (
+              <p className="text-zinc-500">
+                {tab === "upcoming" &&
+                  "No hay reservas próximas todavía. Cuando un cliente reserve desde la web, aparecerá acá."}
+                {tab === "today" && "No hay reservas para hoy todavía."}
+                {tab === "past" && "Todavía no hay reservas pasadas."}
+                {tab === "all" && "Todavía no hay reservas registradas."}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -482,7 +604,14 @@ export function ReservationBoard({
             </div>
             <dl className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
-                ["Fecha", dateText(selected.reservationDate)],
+                [
+                  "Fecha",
+                  `${dateText(selected.reservationDate)}${
+                    selectedDayLabel === "Hoy" || selectedDayLabel === "Mañana"
+                      ? ` · ${selectedDayLabel}`
+                      : ""
+                  }`,
+                ],
                 ["Horario", hourText(selected.reservationTime)],
                 ["Personas", String(selected.partySize)],
                 ["Sector", selected.sector ?? "Sin preferencia"],
@@ -502,7 +631,7 @@ export function ReservationBoard({
                 {selected.notes}
               </p>
             )}
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <a
                 className="btn"
                 href={`https://wa.me/${selected.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${selected.customerName}, te contactamos por tu reserva ${selected.reference} para el ${dateText(selected.reservationDate)} a las ${hourText(selected.reservationTime)}.`)}`}
@@ -511,6 +640,33 @@ export function ReservationBoard({
               >
                 Preparar WhatsApp
               </a>
+              {selected.status !== "confirmed" && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => changeStatus(selected, "confirmed")}
+                  type="button"
+                >
+                  Confirmar
+                </button>
+              )}
+              {selected.status !== "completed" && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => changeStatus(selected, "completed")}
+                  type="button"
+                >
+                  Marcar completada
+                </button>
+              )}
+              {selected.status !== "cancelled" && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => changeStatus(selected, "cancelled")}
+                  type="button"
+                >
+                  Cancelar
+                </button>
+              )}
               <select
                 className="input max-w-56"
                 value={selected.status}

@@ -3,10 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
   buildTimeSlots,
+  defaultReservationTimeZone,
   reservationAddressHash,
   reservationReference,
   reservationTime,
   timeText,
+  zoneOffset,
 } from "@/lib/reservations";
 import { getDefaultTenant } from "@/lib/tenant";
 
@@ -49,11 +51,6 @@ function requestSource(request: Request) {
   }
 }
 
-/** @summary Combina fecha y horario usando la zona horaria comercial de Argentina. */
-function reservationDateTime(date: string, time: string) {
-  return new Date(`${date}T${time}:00-03:00`);
-}
-
 /** @summary Comprueba si una franja se encuentra dentro de un bloqueo total o parcial. */
 function blockedTime(time: string, blocks: Array<{ startTime: Date | null; endTime: Date | null }>) {
   return blocks.some((block) => {
@@ -79,7 +76,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Indicá una fecha válida" }, { status: 400 });
   }
   const tenant = await getDefaultTenant();
-  const selectedDate = new Date(`${date}T00:00:00-03:00`);
+  const timeZone = tenant.timeZone ?? defaultReservationTimeZone;
+  const offset = zoneOffset(timeZone);
+  const selectedDate = new Date(`${date}T00:00:00${offset}`);
   const [settings, hours, blocks, reservations] = await Promise.all([
     prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } }),
     prisma.openingHour.findMany({ where: { tenantId: tenant.id } }),
@@ -101,7 +100,7 @@ export async function GET(request: Request) {
 
   const dayName = new Intl.DateTimeFormat("es-AR", {
     weekday: "long",
-    timeZone: "America/Argentina/Buenos_Aires",
+    timeZone,
   })
     .format(selectedDate)
     .toLocaleLowerCase("es");
@@ -125,7 +124,8 @@ export async function GET(request: Request) {
     .filter((time, index, values) => values.indexOf(time) === index)
     .filter(
       (time) =>
-        reservationDateTime(date, time).getTime() >= now.getTime() + settings.minimumLeadHours * 3_600_000,
+        new Date(`${date}T${time}:00${offset}`).getTime() >=
+        now.getTime() + settings.minimumLeadHours * 3_600_000,
     )
     .filter((time) => !blockedTime(time, blocks))
     .map((time) => ({ time, remaining: Math.max(0, settings.capacityPerSlot - (occupied.get(time) ?? 0)) }))
@@ -161,8 +161,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const selectedDate = new Date(`${parsed.data.date}T00:00:00-03:00`);
-  const selectedDateTime = reservationDateTime(parsed.data.date, parsed.data.time);
+  const timeZone = tenant.timeZone ?? defaultReservationTimeZone;
+  const offset = zoneOffset(timeZone);
+  const selectedDate = new Date(`${parsed.data.date}T00:00:00${offset}`);
+  const selectedDateTime = new Date(`${parsed.data.date}T${parsed.data.time}:00${offset}`);
   const now = new Date();
   if (selectedDateTime.getTime() < now.getTime() + settings.minimumLeadHours * 3_600_000) {
     return NextResponse.json({ error: "Ese horario ya no posee anticipación suficiente" }, { status: 409 });
