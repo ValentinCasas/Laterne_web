@@ -226,13 +226,11 @@ button {
   color: var(--brand-primary);
 }
 .marketing-theme {
-  --marketing-lime: #e8ff6a;
+  --marketing-lime: var(--mc-primary);
   background: #0b0d12;
   color: #f8fafc;
 }
-.menuclick-theme,
-.mc-platform-shell,
-.marketing-theme {
+.menuclick-theme {
   --mc-background: #0b0d12;
   --mc-background-alt: #10151d;
   --mc-surface: #151a24;
@@ -251,6 +249,26 @@ button {
   --mc-danger: #fb7185;
   --mc-info: #67e8f9;
 }
+.mc-platform-shell,
+.marketing-theme {
+  --mc-background: inherit;
+  --mc-background-alt: inherit;
+  --mc-surface: inherit;
+  --mc-surface-elevated: inherit;
+  --mc-primary: inherit;
+  --mc-primary-hover: inherit;
+  --mc-primary-soft: inherit;
+  --mc-secondary: inherit;
+  --mc-accent: inherit;
+  --mc-text: inherit;
+  --mc-text-muted: inherit;
+  --mc-border: inherit;
+  --mc-border-strong: inherit;
+  --mc-success: inherit;
+  --mc-warning: inherit;
+  --mc-danger: inherit;
+  --mc-info: inherit;
+}
 .menuclick-theme { background: var(--mc-background); color: var(--mc-text); }
 .menuclick-theme .marketing-theme { background: var(--mc-background); color: var(--mc-text); }
 .menuclick-theme [class*="text-pink-"], .menuclick-theme [class*="text-amber-"] { color: var(--mc-primary) !important; }
@@ -258,6 +276,10 @@ button {
 .menuclick-theme [class*="border-pink-"], .menuclick-theme [class*="border-amber-"] { border-color: color-mix(in srgb, var(--mc-primary) 55%, transparent) !important; }
 .menuclick-theme .btn { background: var(--mc-primary); color: var(--mc-background); }
 .menuclick-theme .btn:hover { background: var(--mc-primary-hover); }
+.menuclick-theme .marketing-theme main > section:first-child > div:first-child { background-image: radial-gradient(circle at 70% 20%, color-mix(in srgb, var(--mc-primary) 14%, transparent), transparent 30%), radial-gradient(circle at 20% 80%, color-mix(in srgb, var(--mc-secondary) 10%, transparent), transparent 32%) !important; }
+.menuclick-theme [class*="bg-\[#111720\]"], .menuclick-theme [class*="bg-\[#0f131a\]"], .menuclick-theme [class*="bg-\[#151a22\]"], .menuclick-theme [class*="bg-\[#1a202c\]"] { background-color: var(--mc-background-alt) !important; }
+.menuclick-theme [class*="text-slate-"] { color: var(--mc-text-muted) !important; }
+.menuclick-theme [class*="border-white"] { border-color: color-mix(in srgb, var(--mc-border) 75%, transparent) !important; }
 .mc-eyebrow { color: var(--mc-primary); font-size: .72rem; font-weight: 900; letter-spacing: .22em; text-transform: uppercase; }
 .mc-panel { border: 1px solid var(--mc-border); border-radius: 1rem; background: var(--mc-surface); }
 .mc-input { min-height: 2.8rem; width: 100%; border: 1px solid var(--mc-border); border-radius: .65rem; background: var(--mc-surface-elevated); padding: .7rem .85rem; color: var(--mc-text); outline: none; }
@@ -307,7 +329,8 @@ button {
 .mc-sidebar-label { padding: 0 .65rem; color: var(--mc-text-muted); font-size: .65rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .mc-sidebar-link { border-radius: .6rem; padding: .6rem .65rem; color: var(--mc-text-muted); font-size: .85rem; font-weight: 750; }
 .mc-sidebar-link:hover { background: var(--mc-primary-soft); color: var(--mc-text); }
-.mc-sidebar-link.is-active { background: var(--mc-primary-soft); color: var(--mc-primary); }
+.mc-sidebar-link.is-active { position: relative; background: var(--mc-primary-soft); color: var(--mc-primary); }
+.mc-sidebar-link.is-active::before { position: absolute; left: 0; top: .5rem; bottom: .5rem; width: 3px; border-radius: 999px; background: var(--mc-primary); content: ""; }
 .mc-menu-trigger { display: inline-grid; height: 2.45rem; width: 2.45rem; place-items: center; border: 1px solid var(--mc-border); border-radius: .6rem; color: var(--mc-text); font-size: 1.2rem; }
 .mc-drawer-backdrop { position: fixed; inset: 0; z-index: 80; background: rgb(0 0 0 / .7); padding: .75rem; }
 .mc-platform-drawer { height: 100%; max-width: 20rem; border: 1px solid var(--mc-border); border-radius: 1rem; background: var(--mc-surface); padding: 1rem; }

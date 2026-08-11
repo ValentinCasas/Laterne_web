@@ -5,8 +5,11 @@ import { menuClickCssVariables, type MenuClickTheme } from "@/lib/menuclick-them
 
 function applyTheme(theme: MenuClickTheme) {
   const variables = menuClickCssVariables(theme) as Record<string, string>;
-  for (const [name, value] of Object.entries(variables)) document.documentElement.style.setProperty(name, value);
+  for (const target of [document.documentElement, document.body]) {
+    for (const [name, value] of Object.entries(variables)) target.style.setProperty(name, value);
+  }
   document.documentElement.style.colorScheme = theme.baseMode;
+  document.body.style.colorScheme = theme.baseMode;
 }
 
 /** @summary Mantiene la identidad de MenuClick sincronizada sin recargar ni tocar temas de tenants. */
