@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { orderStatusLabel, orderTokenHash, whatsappPhone } from "@/lib/orders";
+import { asOrderType, orderFlow } from "@/lib/order-status";
+import { orderStatusLabel, orderTokenHash, whatsappPhone, type OrderStatus } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
@@ -8,8 +9,6 @@ type OrderTrackingProps = {
   params: Promise<{ reference: string }>;
   searchParams: Promise<{ token?: string }>;
 };
-
-const flow = ["received", "confirmed", "preparing", "ready", "on_the_way", "delivered"];
 
 /** @summary Formatea importes almacenados para la pantalla privada de seguimiento. */
 function formatPrice(value: number, currency: string) {
@@ -29,7 +28,8 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
     prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
   ]);
   if (!order) notFound();
-  const currentIndex = flow.indexOf(order.status);
+  const flow = orderFlow(asOrderType(order.orderType));
+  const currentIndex = flow.indexOf(order.status as OrderStatus);
   const message = `Hola, consulto por el pedido ${order.reference}.`;
 
   return (
@@ -100,9 +100,14 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
               <span>{formatPrice(Number(order.subtotal), order.currency)}</span>
             </div>
             {Number(order.discount) > 0 && (
-              <div className="mt-2 flex justify-between text-sm text-emerald-300">
-                <span>Descuento</span>
-                <span>− {formatPrice(Number(order.discount), order.currency)}</span>
+              <div className="mt-2 text-sm text-emerald-300">
+                <div className="flex justify-between">
+                  <span>Descuento</span>
+                  <span>− {formatPrice(Number(order.discount), order.currency)}</span>
+                </div>
+                {order.promotionLabel && (
+                  <p className="mt-1 text-xs text-emerald-300/70">{order.promotionLabel}</p>
+                )}
               </div>
             )}
             {Number(order.deliveryFee) > 0 && (

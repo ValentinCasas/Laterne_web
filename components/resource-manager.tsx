@@ -15,7 +15,7 @@ import {
   writeBrowserText,
 } from "@/lib/browser-compat";
 
-export type ResourceOption = { value: string; label: string; image?: string };
+export type ResourceOption = { value: string; label: string; image?: string; disabled?: boolean };
 export type ResourceField = {
   key: string;
   label: string;
@@ -297,7 +297,7 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
         >
           {!field.required && <option value="">Sin especificar</option>}
           {field.options?.map((option) => (
-            <option value={option.value} key={option.value}>
+            <option value={option.value} key={option.value} disabled={option.disabled}>
               {option.label}
             </option>
           ))}

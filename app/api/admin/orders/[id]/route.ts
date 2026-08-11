@@ -3,7 +3,9 @@ import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
-import { orderStatuses } from "@/lib/orders";
+import { restoreOrderStock } from "@/lib/order-stock";
+import { asOrderType, transitionError } from "@/lib/order-status";
+import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { loyaltyPoints, loyaltyTier } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 
@@ -27,50 +29,74 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   });
   if (!current) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
 
-  const updated = await prisma.$transaction(async (transaction) => {
-    const order = await transaction.customerOrder.update({
-      where: { id },
-      data: { status: parsed.data.status },
-    });
-    await transaction.orderStatusHistory.create({
-      data: {
-        orderId: id,
-        userId: auth.session.userId,
-        fromStatus: current.status,
-        toStatus: parsed.data.status,
-        note: parsed.data.note || null,
-      },
-    });
-    await transaction.notification.create({
-      data: {
-        tenantId: auth.tenant.id,
-        type: "order.status",
-        title: `${current.reference} · ${parsed.data.status}`,
-        message: `El pedido de ${current.customerName} cambió de estado.`,
-        link: "/admin/pedidos",
-      },
-    });
-    if (parsed.data.status === "delivered" && current.customerId) {
-      const existingReward = await transaction.loyaltyTransaction.findFirst({
-        where: { customerId: current.customerId, reference: current.reference },
+  const orderType = asOrderType(current.orderType);
+  const invalidTransition = transitionError(current.status as OrderStatus, parsed.data.status, orderType);
+  if (invalidTransition) {
+    return NextResponse.json({ error: invalidTransition }, { status: 409 });
+  }
+
+  let updated;
+  try {
+    updated = await prisma.$transaction(async (transaction) => {
+      const guarded = await transaction.customerOrder.updateMany({
+        where: { id, tenantId: auth.tenant.id, status: current.status },
+        data: { status: parsed.data.status },
       });
-      if (!existingReward) {
-        const points = loyaltyPoints(Number(current.total));
-        const customer = await transaction.loyaltyCustomer.update({
-          where: { id: current.customerId },
-          data: { points: { increment: points } },
-        });
-        await transaction.loyaltyCustomer.update({
-          where: { id: customer.id },
-          data: { tier: loyaltyTier(customer.points) },
-        });
-        await transaction.loyaltyTransaction.create({
-          data: { customerId: customer.id, points, reason: "Pedido entregado", reference: current.reference },
-        });
+      if (guarded.count !== 1) throw new Error("El pedido cambió de estado mientras tanto");
+      const order = await transaction.customerOrder.findUniqueOrThrow({ where: { id } });
+      await transaction.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          userId: auth.session.userId,
+          fromStatus: current.status,
+          toStatus: parsed.data.status,
+          note: parsed.data.note || null,
+        },
+      });
+      await transaction.notification.create({
+        data: {
+          tenantId: auth.tenant.id,
+          type: "order.status",
+          title: `${current.reference} · ${orderStatusLabel(parsed.data.status)}`,
+          message: `El pedido de ${current.customerName} cambió de estado.`,
+          link: "/admin/pedidos",
+        },
+      });
+      if (parsed.data.status === "cancelled") {
+        await restoreOrderStock(transaction, { id, reference: current.reference });
       }
+      if (parsed.data.status === "delivered" && current.customerId) {
+        const existingReward = await transaction.loyaltyTransaction.findFirst({
+          where: { customerId: current.customerId, reference: current.reference },
+        });
+        if (!existingReward) {
+          const points = loyaltyPoints(Number(current.total));
+          const customer = await transaction.loyaltyCustomer.update({
+            where: { id: current.customerId },
+            data: { points: { increment: points } },
+          });
+          await transaction.loyaltyCustomer.update({
+            where: { id: customer.id },
+            data: { tier: loyaltyTier(customer.points) },
+          });
+          await transaction.loyaltyTransaction.create({
+            data: {
+              customerId: customer.id,
+              points,
+              reason: "Pedido entregado",
+              reference: current.reference,
+            },
+          });
+        }
+      }
+      return order;
+    });
+  } catch (reason) {
+    if (reason instanceof Error && reason.message.includes("cambió de estado mientras tanto")) {
+      return NextResponse.json({ error: reason.message }, { status: 409 });
     }
-    return order;
-  });
+    throw reason;
+  }
   await recordAudit({
     context: auth,
     action: "status-change",

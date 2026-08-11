@@ -3,7 +3,12 @@ import Link from "next/link";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
-import { isPromotionActive, promotionBenefit, promotionTypeLabel } from "@/lib/promotion";
+import {
+  isPromotionActive,
+  isPromotionImplemented,
+  promotionBenefit,
+  promotionTypeLabel,
+} from "@/lib/promotion";
 import { getDefaultTenant } from "@/lib/tenant";
 import { managedPageMetadata } from "@/lib/seo";
 
@@ -34,12 +39,7 @@ export default async function PromotionsPage() {
     readdir(path.join(process.cwd(), "public", "images", "images_promotions")).catch(() => []),
   ]);
   const availableImages = new Set(imageFiles);
-  const promotions = records.filter(
-    (promotion) =>
-      (promotion.status === "published" ||
-        (promotion.status === "scheduled" && promotion.publishAt && promotion.publishAt <= now)) &&
-      isPromotionActive(promotion, now),
-  );
+  const promotions = records.filter((promotion) => isPromotionActive(promotion, now, tenant.timeZone));
 
   return (
     <main>
@@ -81,12 +81,18 @@ export default async function PromotionsPage() {
                           promotion.discountValue ? Number(promotion.discountValue) : null,
                           promotion.buyQuantity,
                           promotion.receiveQuantity,
+                          tenant.defaultCurrency,
                         )}
                       </div>
                     )}
                     <span className="absolute left-5 top-5 rounded-full bg-black/75 px-3 py-1.5 text-xs font-black uppercase text-pink-300 backdrop-blur">
                       {promotionTypeLabel(promotion.type)}
                     </span>
+                    {!isPromotionImplemented(promotion.type) && (
+                      <span className="absolute right-5 top-5 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-black uppercase text-black">
+                        Próximamente
+                      </span>
+                    )}
                   </div>
                   <div className="p-6 sm:p-8">
                     <p className="text-3xl font-black text-pink-300">
@@ -95,6 +101,7 @@ export default async function PromotionsPage() {
                         promotion.discountValue ? Number(promotion.discountValue) : null,
                         promotion.buyQuantity,
                         promotion.receiveQuantity,
+                        tenant.defaultCurrency,
                       )}
                     </p>
                     <h2 className="mt-2 text-3xl font-black">{promotion.name}</h2>

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { stockMovementTypeLabels } from "@/lib/order-stock";
 
 type Branch = { id: number; name: string; active: boolean };
 type Product = { id: number; name: string; imageUrl: string; availability: string | null };
@@ -219,8 +220,9 @@ export function InventoryManager({
               <div>
                 <strong>{movement.stock.product.name}</strong>
                 <p className="text-sm text-zinc-500">
-                  {movement.stock.branch.name} · {movement.reason}
+                  {stockMovementTypeLabels[movement.type] ?? "Movimiento"} · {movement.stock.branch.name}
                 </p>
+                <p className="text-xs text-zinc-600">{movement.reason}</p>
               </div>
               <p className="text-sm font-bold">
                 {Number(movement.quantity) > 0 ? "+" : ""}

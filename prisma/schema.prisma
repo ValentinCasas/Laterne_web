@@ -506,6 +506,7 @@ model Promotion {
   imageUrl        String?             @db.VarChar(255)
   type            String              @db.VarChar(30)
   discountValue   Decimal?            @db.Decimal(12, 2)
+  minimumPurchase Decimal?            @db.Decimal(12, 2)
   buyQuantity     Int?
   receiveQuantity Int?
   startAt         DateTime?
@@ -523,6 +524,7 @@ model Promotion {
   tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products        PromotionProduct[]
   categories      PromotionCategory[]
+  orders          CustomerOrder[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, startAt, endAt])
@@ -723,6 +725,9 @@ model CustomerOrder {
   requestedAt     DateTime?
   subtotal        Decimal              @db.Decimal(12, 2)
   discount        Decimal              @default(0) @db.Decimal(12, 2)
+  promotionId     Int?
+  promotionCode   String?              @db.VarChar(80)
+  promotionLabel  String?              @db.VarChar(200)
   deliveryFee     Decimal              @default(0) @db.Decimal(12, 2)
   tip             Decimal              @default(0) @db.Decimal(12, 2)
   total           Decimal              @db.Decimal(12, 2)
@@ -737,6 +742,7 @@ model CustomerOrder {
   table           DiningTable?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
   branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
   customer        LoyaltyCustomer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  promotion       Promotion?           @relation(fields: [promotionId], references: [id], onDelete: SetNull)
   items           OrderItem[]
   history         OrderStatusHistory[]
   stockMovements  StockMovement[]
@@ -746,6 +752,7 @@ model CustomerOrder {
   @@index([tenantId, tableId, createdAt])
   @@index([tenantId, branchId, createdAt])
   @@index([tenantId, customerId, createdAt])
+  @@index([tenantId, promotionId, createdAt])
   @@index([publicTokenHash])
   @@map("customerorder")
 }

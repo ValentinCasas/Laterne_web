@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 
 export type AdminOrderItem = {
@@ -158,11 +159,14 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                       onChange={(event) => updateStatus(order, event.target.value as OrderStatus)}
                       aria-label={`Estado de ${order.reference}`}
                     >
-                      {orderStatuses.map((candidate) => (
-                        <option key={candidate} value={candidate}>
-                          {orderStatusLabel(candidate)}
-                        </option>
-                      ))}
+                      <option value={order.status}>{orderStatusLabel(order.status)}</option>
+                      {allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).map(
+                        (candidate) => (
+                          <option key={candidate} value={candidate}>
+                            {orderStatusLabel(candidate)}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </article>
                 ))}
@@ -230,11 +234,14 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                 value={selected.status}
                 onChange={(event) => updateStatus(selected, event.target.value as OrderStatus)}
               >
-                {orderStatuses.map((candidate) => (
-                  <option key={candidate} value={candidate}>
-                    {orderStatusLabel(candidate)}
-                  </option>
-                ))}
+                <option value={selected.status}>{orderStatusLabel(selected.status)}</option>
+                {allowedTransitions(selected.status as OrderStatus, asOrderType(selected.orderType)).map(
+                  (candidate) => (
+                    <option key={candidate} value={candidate}>
+                      {orderStatusLabel(candidate)}
+                    </option>
+                  ),
+                )}
               </select>
               <a
                 className="btn"

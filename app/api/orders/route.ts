@@ -5,6 +5,7 @@ import { loyaltyTokenHash } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
+import { resolveOrderPromotion, type PromotionCandidate, type PromotionItem } from "@/lib/promotion";
 
 const orderInput = z.object({
   customerName: z.string().trim().min(2).max(160),
@@ -52,33 +53,6 @@ async function uniqueReference(prefix?: string) {
     if (!exists) return reference;
   }
   throw new Error("No se pudo generar la referencia del pedido");
-}
-
-/** @summary Calcula un descuento activo a partir de un código promocional válido. */
-async function promotionDiscount(tenantId: number, code: string | undefined, subtotal: number) {
-  if (!code) return 0;
-  const now = new Date();
-  const promotion = await prisma.promotion.findFirst({
-    where: {
-      tenantId,
-      code: code.trim(),
-      AND: [
-        {
-          OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
-        },
-        { OR: [{ startAt: null }, { startAt: { lte: now } }] },
-        { OR: [{ endAt: null }, { endAt: { gte: now } }] },
-      ],
-    },
-  });
-  if (!promotion) return 0;
-  if (promotion.type === "percentage" && promotion.discountValue) {
-    return Math.min(subtotal, subtotal * (Number(promotion.discountValue) / 100));
-  }
-  if (promotion.type === "special_price" && promotion.discountValue) {
-    return Math.min(subtotal, Number(promotion.discountValue));
-  }
-  return 0;
 }
 
 /** @summary Valida precios en el servidor, almacena el pedido y devuelve su acceso de seguimiento. */
@@ -200,7 +174,63 @@ export async function POST(request: Request) {
     );
   }
   const subtotal = calculatedItems.reduce((sum, item) => sum + item.lineTotal, 0);
-  const discount = await promotionDiscount(tenant.id, parsed.data.promotionCode, subtotal);
+  const [promotions, productCategories] = await Promise.all([
+    prisma.promotion.findMany({
+      where: { tenantId: tenant.id, status: { in: ["published", "scheduled"] } },
+      include: {
+        products: { select: { productId: true } },
+        categories: { select: { categoryId: true } },
+      },
+    }),
+    prisma.productCategory.findMany({
+      where: { tenantId: tenant.id, productId: { in: productIds } },
+      select: { productId: true, categoryId: true },
+    }),
+  ]);
+  const categoryByProduct = new Map<number, number[]>();
+  for (const link of productCategories) {
+    const categories = categoryByProduct.get(link.productId) ?? [];
+    categories.push(link.categoryId);
+    categoryByProduct.set(link.productId, categories);
+  }
+  const candidates: PromotionCandidate[] = promotions.map((promotion) => ({
+    id: promotion.id,
+    name: promotion.name,
+    type: promotion.type,
+    discountValue: promotion.discountValue === null ? null : Number(promotion.discountValue),
+    minimumPurchase: promotion.minimumPurchase === null ? null : Number(promotion.minimumPurchase),
+    buyQuantity: promotion.buyQuantity,
+    receiveQuantity: promotion.receiveQuantity,
+    code: promotion.code,
+    status: promotion.status,
+    publishAt: promotion.publishAt,
+    startAt: promotion.startAt,
+    endAt: promotion.endAt,
+    startTime: promotion.startTime,
+    endTime: promotion.endTime,
+    daysOfWeek: promotion.daysOfWeek,
+    priority: promotion.priority,
+    productIds: promotion.products.map((link) => link.productId),
+    categoryIds: promotion.categories.map((link) => link.categoryId),
+  }));
+  const promotionItems: PromotionItem[] = calculatedItems.map((item) => ({
+    productId: item.productId,
+    categoryIds: categoryByProduct.get(item.productId) ?? [],
+    unitPrice: item.unitPrice,
+    perUnit: item.unitPrice + item.variantPrice + item.extrasTotal,
+    linePrice: item.lineTotal,
+    quantity: item.quantity,
+  }));
+  const promotion = resolveOrderPromotion(
+    candidates,
+    promotionItems,
+    subtotal,
+    parsed.data.promotionCode,
+    new Date(),
+    tenant.timeZone,
+    tenant.defaultCurrency,
+  );
+  const discount = promotion.discount;
   const tip = parsed.data.tip;
   const deliveryFee = parsed.data.orderType === "delivery" ? Number(branch.deliveryFee) : 0;
   if (parsed.data.orderType === "delivery" && subtotal < Number(branch.minimumOrder)) {
@@ -272,6 +302,9 @@ export async function POST(request: Request) {
           requestedAt,
           subtotal,
           discount,
+          promotionId: promotion.promotionId,
+          promotionCode: promotion.promotionCode,
+          promotionLabel: promotion.promotionLabel,
           deliveryFee,
           tip,
           total,

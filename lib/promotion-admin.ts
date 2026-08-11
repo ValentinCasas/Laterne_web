@@ -3,6 +3,7 @@ import { uniquePromotionSlug } from "@/lib/slug";
 
 const promotionTypes = new Set([
   "percentage",
+  "fixed_amount",
   "special_price",
   "two_for_one",
   "happy_hour",
@@ -13,7 +14,16 @@ const promotionTypes = new Set([
   "birthday",
 ]);
 const publicationStatuses = new Set(["published", "draft", "scheduled", "hidden", "archived"]);
-const validDays = new Set(["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]);
+const canonicalDays: Record<string, string> = {
+  lunes: "lunes",
+  martes: "martes",
+  miercoles: "miércoles",
+  jueves: "jueves",
+  viernes: "viernes",
+  sabado: "sábado",
+  domingo: "domingo",
+};
+const validDays = new Set(Object.keys(canonicalDays));
 
 /** @summary Convierte una lista separada por comas en identificadores enteros únicos. */
 function relationIds(value: string) {
@@ -66,11 +76,18 @@ export async function promotionData(input: Record<string, string>, tenantId: num
     ...new Set(
       (input.daysOfWeek ?? "")
         .split(",")
-        .map((day) => day.trim().toLowerCase())
-        .filter(Boolean),
+        .map((day) =>
+          day
+            .trim()
+            .toLocaleLowerCase("es")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, ""),
+        )
+        .filter(Boolean)
+        .map((day) => canonicalDays[day] ?? day),
     ),
   ];
-  if (daysOfWeek.some((day) => !validDays.has(day))) {
+  if (daysOfWeek.some((day) => !validDays.has(day.normalize("NFD").replace(/[\u0300-\u036f]/g, "")))) {
     throw new Error("Usá nombres de días completos separados por comas");
   }
 
@@ -79,6 +96,10 @@ export async function promotionData(input: Record<string, string>, tenantId: num
   const discountValue = input.discountValue ? Number(input.discountValue) : null;
   if (discountValue !== null && (!Number.isFinite(discountValue) || discountValue < 0)) {
     throw new Error("El valor del beneficio no es válido");
+  }
+  const minimumPurchase = input.minimumPurchase ? Number(input.minimumPurchase) : null;
+  if (minimumPurchase !== null && (!Number.isFinite(minimumPurchase) || minimumPurchase < 0)) {
+    throw new Error("La compra mínima no es válida");
   }
 
   return {
@@ -89,6 +110,7 @@ export async function promotionData(input: Record<string, string>, tenantId: num
     imageUrl,
     type,
     discountValue,
+    minimumPurchase,
     buyQuantity: input.buyQuantity ? Math.max(1, Number(input.buyQuantity)) : null,
     receiveQuantity: input.receiveQuantity ? Math.max(1, Number(input.receiveQuantity)) : null,
     startAt,
