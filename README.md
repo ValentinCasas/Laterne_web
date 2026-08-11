@@ -78,7 +78,7 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 5. Ejecutar `npx prisma migrate deploy` para aplicar las migraciones pendientes.
 6. Ejecutar `npm run dev`.
 
-En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base real, sin protocolo. `DEV_ROOT_DOMAIN` se usa únicamente con `next dev` y debe ser un dominio reservado para desarrollo, como `menu-click.test`. Los dominios personalizados deben apuntar al mismo despliegue.
+En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base real, sin protocolo. `DEV_ROOT_DOMAIN` se usa únicamente con `next dev`; el valor local recomendado es `lvh.me`, cuyo wildcard resuelve sus subdominios a `127.0.0.1` sin editar el archivo hosts por cada tenant. Los dominios personalizados deben apuntar al mismo despliegue.
 
 `EMAIL_WEBHOOK_URL` permite conectar recuperación de acceso con un proveedor de correo sin acoplar el sistema a una marca. El endpoint debe usar HTTPS en producción y aceptar una solicitud JSON autenticada mediante `EMAIL_API_KEY`. Si no se configura, la solicitud queda registrada de forma segura y el panel recibe una notificación, pero no se envía el enlace por correo.
 

@@ -19,7 +19,7 @@ export type Session = {
 
 export type AuthorizationContext = {
   session: Session;
-  tenant: { id: number; name: string; slug: string; timeZone: string };
+  tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null };
   membership: { id: number; role: { key: string; name: string } };
   permissions: string[];
 };
@@ -129,7 +129,15 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       tenant: publicTenantWhere(),
     },
     include: {
-      tenant: { select: { id: true, name: true, slug: true, timeZone: true } },
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          timeZone: true,
+          brandSettings: { select: { customDomain: true } },
+        },
+      },
       role: {
         select: {
           key: true,
@@ -149,7 +157,10 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
 
   return {
     session,
-    tenant: membership.tenant,
+    tenant: {
+      ...membership.tenant,
+      customDomain: membership.tenant.brandSettings?.customDomain,
+    },
     membership: { id: membership.id, role: { key: membership.role.key, name: membership.role.name } },
     permissions,
   };

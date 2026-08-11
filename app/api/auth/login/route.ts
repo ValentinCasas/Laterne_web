@@ -14,6 +14,7 @@ const credentials = z.object({
     .max(190)
     .transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(200),
+  tenantId: z.coerce.number().int().positive().optional(),
 });
 const invalidPasswordHash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.";
 const maximumFailedAttempts = 8;
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     },
   });
 
-  if (failedAttempts >= maximumFailedAttempts) {
+  if (process.env.NODE_ENV !== "development" && failedAttempts >= maximumFailedAttempts) {
     return NextResponse.json(
       { error: "Demasiados intentos. Esperá unos minutos antes de volver a probar." },
       { status: 429, headers: { "Retry-After": "900" } },
@@ -83,7 +84,6 @@ export async function POST(request: Request) {
         where: { status: "active", tenant: { status: "active" } },
         include: { role: true, tenant: true },
         orderBy: { id: "asc" },
-        take: 1,
       },
     },
   });
@@ -95,7 +95,6 @@ export async function POST(request: Request) {
   }
 
   await recordAttempt(emailHash, ipHash, true);
-  const membership = user.memberships[0];
   const isPlatformStaff = Boolean(
     user.isSuperAdmin ||
     (user.platformRole && ["superadmin", "admin", "support", "sales"].includes(user.platformRole)),
@@ -105,7 +104,27 @@ export async function POST(request: Request) {
     .trim()
     .split(":")[0];
   const platformContext = classifyHost(host).kind === "platform";
-  if (platformContext !== isPlatformStaff || (!platformContext && !membership))
+  let membership = platformContext ? undefined : user.memberships[0];
+  if (!platformContext && parsed.data.tenantId) {
+    membership = user.memberships.find((item) => item.tenantId === parsed.data.tenantId);
+    if (!membership)
+      return NextResponse.json({ error: "El negocio seleccionado no está disponible" }, { status: 403 });
+  }
+  if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId) {
+    return NextResponse.json(
+      {
+        error: "Seleccioná el negocio al que querés ingresar",
+        requiresTenantSelection: true,
+        tenants: user.memberships.map((item) => ({
+          id: item.tenantId,
+          name: item.tenant.name,
+          slug: item.tenant.slug,
+        })),
+      },
+      { status: 409 },
+    );
+  }
+  if ((platformContext && !isPlatformStaff) || (!platformContext && !membership))
     return NextResponse.json({ error: "Tu usuario no tiene un negocio activo" }, { status: 403 });
   const response = NextResponse.json({ ok: true });
   response.cookies.set(

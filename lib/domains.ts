@@ -13,6 +13,7 @@ export const DEVELOPMENT_ROOT_DOMAIN = normalizeConfiguredDomain(process.env.DEV
 const PLATFORM_SUBDOMAIN = (process.env.PLATFORM_SUBDOMAIN ?? "platform").trim().toLocaleLowerCase("es");
 const APP_SUBDOMAIN = (process.env.APP_SUBDOMAIN ?? "app").trim().toLocaleLowerCase("es");
 const ACTIVE_ROOT_DOMAIN = isDevelopmentEnvironment ? DEVELOPMENT_ROOT_DOMAIN : PRODUCTION_ROOT_DOMAIN;
+const DEVELOPMENT_PORT = (process.env.DEV_PORT ?? "").trim().match(/^\d+$/)?.[0] ?? "";
 
 /** @summary Slug configurado para resolver el tenant local, sin elegir negocios implícitamente. */
 export const DEV_TENANT_SLUG = (process.env.DEV_TENANT_SLUG ?? "").trim().toLocaleLowerCase("es");
@@ -31,6 +32,7 @@ export function developmentAllowedOrigins() {
   return [
     "localhost",
     "127.0.0.1",
+    `*.${DEVELOPMENT_ROOT_DOMAIN}`,
     DEV_PLATFORM_HOST,
     DEV_APP_HOST,
     DEV_TENANT_SLUG ? `${DEV_TENANT_SLUG}.${DEVELOPMENT_ROOT_DOMAIN}` : "",
@@ -69,9 +71,11 @@ export function tenantHost(slug: string) {
   return `${slug.toLocaleLowerCase("es")}.${ROOT_DOMAIN_NAME}`;
 }
 
-/** @summary URL pública de un negocio usando HTTP local y HTTPS en producción. */
-export function publicTenantUrl(slug: string) {
-  return `${isDevelopmentEnvironment ? "http" : "https"}://${tenantHost(slug)}`;
+/** @summary URL pública de un negocio usando HTTP local, HTTPS en producción y dominio propio cuando corresponde. */
+export function publicTenantUrl(slug: string, customDomain?: string | null) {
+  const host = !isDevelopmentEnvironment && customDomain?.trim() ? customDomain.trim() : tenantHost(slug);
+  const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
+  return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}`;
 }
 
 /** @summary Determina si el host corresponde al panel de control de la plataforma. */
