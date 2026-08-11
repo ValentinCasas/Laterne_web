@@ -3,7 +3,7 @@ import type { AuthorizationContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type AuditInput = {
-  context: AuthorizationContext;
+  context: Pick<AuthorizationContext, "session"> & { tenant?: { id: number } };
   action: string;
   entityType: string;
   entityId?: string | number;
@@ -32,7 +32,7 @@ function requestAddress(request?: Request) {
 export async function recordAudit(input: AuditInput) {
   await prisma.auditLog.create({
     data: {
-      tenantId: input.context.tenant.id,
+      tenantId: input.context.tenant?.id ?? null,
       userId: input.context.session.userId,
       action: input.action,
       entityType: input.entityType,

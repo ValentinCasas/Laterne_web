@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorizeSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isReservedSlug } from "@/lib/domains";
 import { slugify } from "@/lib/slug";
 
 const tenantInput = z.object({
@@ -21,7 +23,8 @@ const tenantInput = z.object({
 
 /** @summary Genera un identificador público de negocio que no colisiona con otro cliente. */
 async function uniqueTenantSlug(value: string) {
-  const base = slugify(value).slice(0, 100) || "negocio";
+  const slug = slugify(value).slice(0, 100) || "negocio";
+  const base = isReservedSlug(slug) ? `${slug}-negocio` : slug;
   let candidate = base;
   let suffix = 2;
   while (await prisma.tenant.findUnique({ where: { slug: candidate }, select: { id: true } })) {
@@ -40,8 +43,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Revisá los datos del cliente y la contraseña" }, { status: 400 });
   if (await prisma.user.findUnique({ where: { email: parsed.data.ownerEmail } }))
     return NextResponse.json({ error: "El email ya pertenece a un usuario" }, { status: 409 });
-  if (parsed.data.planId && !(await prisma.plan.findUnique({ where: { id: parsed.data.planId } })))
-    return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
+  const selectedPlan = parsed.data.planId
+    ? await prisma.plan.findUnique({
+        where: { id: parsed.data.planId },
+        select: { id: true, trialDays: true, active: true },
+      })
+    : null;
+  if (parsed.data.planId && (!selectedPlan || !selectedPlan.active))
+    return NextResponse.json({ error: "Plan no encontrado o inactivo" }, { status: 404 });
   const tenant = await prisma.$transaction(async (transaction) => {
     const created = await transaction.tenant.create({
       data: {
@@ -91,10 +100,26 @@ export async function POST(request: Request) {
       transaction.onboardingProgress.create({ data: { tenantId: created.id, completedSteps: [] } }),
       transaction.reservationSettings.create({ data: { tenantId: created.id } }),
       transaction.tenantSubscription.create({
-        data: { tenantId: created.id, planId: parsed.data.planId ?? null, status: "active" },
+        data: {
+          tenantId: created.id,
+          planId: parsed.data.planId ?? null,
+          status: parsed.data.planId ? "TRIAL" : "ACTIVE",
+          trialEndsAt: parsed.data.planId
+            ? new Date(Date.now() + (selectedPlan?.trialDays ?? 7) * 24 * 60 * 60 * 1000)
+            : null,
+          currentPeriodStart: new Date(),
+        },
       }),
     ]);
     return created;
+  });
+  await recordAudit({
+    context: superAdmin,
+    action: "create",
+    entityType: "tenant",
+    entityId: tenant.id,
+    newValues: toAuditValue(tenant),
+    request,
   });
   return NextResponse.json({ tenant }, { status: 201 });
 }

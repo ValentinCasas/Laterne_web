@@ -13,9 +13,20 @@ function configuredLimit(value: unknown, kind: LimitKind) {
 export async function ensureTenantCapacity(tenantId: number, kind: LimitKind, increment = 1) {
   const subscription = await prisma.tenantSubscription.findUnique({
     where: { tenantId },
-    select: { limits: true },
+    select: { limits: true, overrides: true, plan: { select: { capacity: true } } },
   });
-  const limit = configuredLimit(subscription?.limits, kind);
+  const configured = {
+    ...(subscription?.plan?.capacity && typeof subscription.plan.capacity === "object"
+      ? (subscription.plan.capacity as Record<string, unknown>)
+      : {}),
+    ...(subscription?.limits && typeof subscription.limits === "object"
+      ? (subscription.limits as Record<string, unknown>)
+      : {}),
+    ...(subscription?.overrides && typeof subscription.overrides === "object"
+      ? (subscription.overrides as Record<string, unknown>)
+      : {}),
+  };
+  const limit = configuredLimit(configured, kind);
   if (!limit) return;
 
   let current = 0;

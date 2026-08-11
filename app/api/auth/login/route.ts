@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSession } from "@/lib/auth";
+import { classifyHost } from "@/lib/domains";
 import { prisma } from "@/lib/prisma";
 
 const credentials = z.object({
@@ -95,7 +96,16 @@ export async function POST(request: Request) {
 
   await recordAttempt(emailHash, ipHash, true);
   const membership = user.memberships[0];
-  if (!membership)
+  const isPlatformStaff = Boolean(
+    user.isSuperAdmin ||
+    (user.platformRole && ["superadmin", "admin", "support", "sales"].includes(user.platformRole)),
+  );
+  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0];
+  const platformContext = classifyHost(host).kind === "platform";
+  if (platformContext !== isPlatformStaff || (!platformContext && !membership))
     return NextResponse.json({ error: "Tu usuario no tiene un negocio activo" }, { status: 403 });
   const response = NextResponse.json({ ok: true });
   response.cookies.set(
@@ -103,9 +113,12 @@ export async function POST(request: Request) {
     await createSession({
       userId: user.id,
       role: user.role,
-      tenantId: membership.tenantId,
-      membershipId: membership.id,
-      roleKey: membership.role.key,
+      ...(platformContext
+        ? {}
+        : membership
+          ? { tenantId: membership.tenantId, membershipId: membership.id, roleKey: membership.role.key }
+          : {}),
+      context: platformContext ? "platform" : "tenant",
     }),
     {
       httpOnly: true,

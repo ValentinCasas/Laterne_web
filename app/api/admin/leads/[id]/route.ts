@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorizeSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const statusSchema = z.object({
@@ -11,7 +11,7 @@ const statusSchema = z.object({
 
 /** @summary Cambia el estado comercial de una oportunidad y conserva su historial. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await authorize("lead.manage");
+  const auth = await authorizeSuperAdmin();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const id = Number((await context.params).id);
   const parsed = statusSchema.safeParse(await request.json());

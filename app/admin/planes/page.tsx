@@ -1,11 +1,11 @@
 import { PlanManager } from "@/components/admin/plan-manager";
-import { requirePermission } from "@/lib/auth";
+import { requireSuperAdmin } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 /** @summary Carga el catálogo comercial completo para administrarlo desde el panel. */
 export default async function AdminPlansPage() {
-  await requirePermission("plan.manage");
+  await requireSuperAdmin();
   const [plans, features] = await Promise.all([
     prisma.plan.findMany({
       include: {

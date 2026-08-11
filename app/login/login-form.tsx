@@ -1,10 +1,11 @@
 "use client";
+import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-/** @summary Gestiona el formulario de acceso y redirige al panel con credenciales válidas. */
-export function LoginForm() {
+/** @summary Gestiona el formulario de acceso y redirige al panel correcto con credenciales válidas. */
+export function LoginForm({ redirectTo = "/admin" }: { redirectTo?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -25,7 +26,7 @@ export function LoginForm() {
       setError(body.error ?? "No se pudo ingresar");
       return;
     }
-    router.push("/admin");
+    router.push(redirectTo as Route);
     router.refresh();
   }
   return (

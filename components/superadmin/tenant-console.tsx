@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import Swal from "sweetalert2";
 
@@ -21,6 +22,13 @@ export type PlatformTenant = {
     plan: { name: string } | null;
   } | null;
   brandSettings: { customDomain: string | null } | null;
+  platformPayments: Array<{
+    amount: string | number;
+    currency: string;
+    paidAt: string;
+    method: string;
+    reference: string | null;
+  }>;
   storageBytes: number;
   _count: {
     products: number;
@@ -169,6 +177,9 @@ export function TenantConsole({
         <p className="mt-3 max-w-2xl text-zinc-400">
           Clientes, planes, límites, vencimientos, uso y pagos manuales en una vista reservada.
         </p>
+        <Link className="btn btn-secondary mt-5" href="/superadmin/planes">
+          Administrar planes y funcionalidades
+        </Link>
       </header>
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
@@ -270,6 +281,13 @@ export function TenantConsole({
                 <span>· límite {limitValue(tenant, "products")} productos</span>
               )}
             </div>
+            {tenant.platformPayments[0] && (
+              <p className="mt-3 text-xs text-emerald-300">
+                Último pago: {tenant.platformPayments[0].currency}{" "}
+                {Number(tenant.platformPayments[0].amount).toLocaleString("es-AR")} ·{" "}
+                {new Date(tenant.platformPayments[0].paidAt).toLocaleDateString("es-AR")}
+              </p>
+            )}
           </article>
         ))}
       </div>

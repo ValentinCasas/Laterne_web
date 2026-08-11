@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/** @summary Estados comerciales que atraviesa la suscripción de un cliente de MenuClick. */
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAYMENT_PENDING
+  GRACE_PERIOD
+  SUSPENDED
+  CANCELLED
+}
+
 model BusinessInfo {
   id           Int     @id @default(autoincrement())
   tenantId     Int     @unique
@@ -174,6 +184,7 @@ model User {
   auditLogs     AuditLog[]
   assignedLeads SalesLead[]        @relation("AssignedSalesLeads")
   isSuperAdmin  Boolean            @default(false)
+  platformRole  String?            @db.VarChar(40)
   mediaAssets   MediaAsset[]
   platformPayments PlatformPayment[] @relation("PlatformPaymentCreatedBy")
 
@@ -298,15 +309,17 @@ model TenantMembership {
 model AuthSession {
   id           Int              @id @default(autoincrement())
   userId       Int
-  membershipId Int
+  membershipId Int?
+  context      String           @default("tenant") @db.VarChar(20)
   expiresAt    DateTime
   revokedAt    DateTime?
   createdAt    DateTime         @default(now())
   lastSeenAt   DateTime         @default(now())
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  membership   TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  membership   TenantMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+  @@index([membershipId, context])
   @@map("authsession")
 }
 
@@ -324,7 +337,7 @@ model LoginAttempt {
 
 model AuditLog {
   id         BigInt   @id @default(autoincrement())
-  tenantId   Int
+  tenantId   Int?
   userId     Int?
   action     String   @db.VarChar(80)
   entityType String   @db.VarChar(80)
@@ -334,7 +347,7 @@ model AuditLog {
   ipAddress  String?  @db.VarChar(64)
   result     String   @default("success") @db.VarChar(20)
   createdAt  DateTime @default(now())
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
@@ -354,6 +367,8 @@ model Plan {
   highlighted   Boolean              @default(false)
   active        Boolean              @default(true)
   displayOrder  Int                  @default(0)
+  trialDays     Int                  @default(7)
+  capacity      Json?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   prices        PlanPrice[]
@@ -857,26 +872,36 @@ model BrandSettings {
   updatedAt       DateTime @updatedAt
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([customDomain])
   @@map("brandsettings")
 }
 
 model TenantSubscription {
-  id            Int       @id @default(autoincrement())
-  tenantId      Int       @unique
-  planId        Int?
-  status        String    @default("active") @db.VarChar(24)
-  startsAt      DateTime  @default(now())
-  endsAt        DateTime?
-  renewalAmount Decimal?  @db.Decimal(14, 2)
-  limits        Json?
-  enabled       Json?
-  notes         String?   @db.Text
-  lastPaymentAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan          Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  id                Int                @id @default(autoincrement())
+  tenantId          Int                @unique
+  planId            Int?
+  status            SubscriptionStatus @default(ACTIVE)
+  startsAt          DateTime           @default(now())
+  endsAt            DateTime?
+  trialEndsAt       DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd  DateTime?
+  gracePeriodEndsAt DateTime?
+  suspendedAt       DateTime?
+  cancelledAt       DateTime?
+  planChangedAt     DateTime?
+  renewalAmount     Decimal?           @db.Decimal(14, 2)
+  limits            Json?
+  overrides         Json?
+  enabled           Json?
+  notes             String?            @db.Text
+  lastPaymentAt     DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan              Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
 
+  @@index([status, currentPeriodEnd])
   @@index([status, endsAt])
   @@map("tenantsubscription")
 }

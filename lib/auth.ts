@@ -1,7 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isLocalDevelopmentHost } from "@/lib/domains";
+import { resolveHostKind } from "@/lib/host-gate";
+import { publicTenantWhere } from "@/lib/subscription-access";
 
 export type Session = {
   userId: number;
@@ -10,6 +14,7 @@ export type Session = {
   membershipId?: number;
   roleKey?: string;
   sessionId?: number;
+  context?: "platform" | "tenant";
 };
 
 export type AuthorizationContext = {
@@ -29,10 +34,20 @@ const key = () => {
 };
 
 /** @summary Crea un token de sesión firmado con una vigencia máxima de ocho horas. */
-export async function createSession(session: Omit<Session, "sessionId"> & { membershipId: number }) {
+export async function createSession(
+  session: Omit<Session, "sessionId" | "context"> & {
+    membershipId?: number;
+    context?: "platform" | "tenant";
+  },
+) {
   const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
   const storedSession = await prisma.authSession.create({
-    data: { userId: session.userId, membershipId: session.membershipId, expiresAt },
+    data: {
+      userId: session.userId,
+      membershipId: session.membershipId ?? null,
+      context: session.context ?? (session.membershipId ? "tenant" : "platform"),
+      expiresAt,
+    },
   });
 
   return new SignJWT({ ...session, sessionId: storedSession.id })
@@ -55,6 +70,8 @@ export async function getSession(): Promise<Session | null> {
       membershipId: payload.membershipId === undefined ? undefined : Number(payload.membershipId),
       roleKey: typeof payload.roleKey === "string" ? payload.roleKey : undefined,
       sessionId: payload.sessionId === undefined ? undefined : Number(payload.sessionId),
+      context:
+        payload.context === "platform" ? "platform" : payload.context === "tenant" ? "tenant" : undefined,
     };
 
     if (session.sessionId) {
@@ -65,9 +82,15 @@ export async function getSession(): Promise<Session | null> {
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
-        select: { id: true, lastSeenAt: true },
+        select: { id: true, lastSeenAt: true, membershipId: true, context: true },
       });
       if (!activeSession) return null;
+      if (
+        (session.membershipId ?? null) !== activeSession.membershipId ||
+        (session.context ?? "tenant") !== activeSession.context
+      )
+        return null;
+      if (!session.context) session.context = activeSession.context === "platform" ? "platform" : "tenant";
       if (activeSession.lastSeenAt.getTime() < Date.now() - 5 * 60 * 1000) {
         await prisma.authSession.update({
           where: { id: activeSession.id },
@@ -85,14 +108,25 @@ export async function getSession(): Promise<Session | null> {
 /** @summary Resuelve la membresía vigente y comprueba opcionalmente un permiso administrativo. */
 export async function authorize(permission?: string): Promise<AuthorizationContext | null> {
   const session = await getSession();
-  if (!session) return null;
+  if (!session || session.context !== "tenant" || !session.membershipId) return null;
+  if (permission && ["plan.manage", "lead.manage"].includes(permission)) return null;
+
+  const requestHeaders = await headers();
+  const host = (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLocaleLowerCase("es");
+  const hostContext = await resolveHostKind(host);
+  if (hostContext.kind !== "app" && !(isLocalDevelopmentHost(host) && process.env.NODE_ENV === "development"))
+    return null;
 
   const membership = await prisma.tenantMembership.findFirst({
     where: {
-      ...(session.membershipId ? { id: session.membershipId } : { userId: session.userId }),
+      id: session.membershipId,
       userId: session.userId,
       status: "active",
-      tenant: { status: "active" },
+      tenant: publicTenantWhere(),
     },
     include: {
       tenant: { select: { id: true, name: true, slug: true, timeZone: true } },
@@ -108,7 +142,9 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
   });
   if (!membership) return null;
 
-  const permissions = membership.role.permissions.map((item) => item.permission.key);
+  const permissions = membership.role.permissions
+    .map((item) => item.permission.key)
+    .filter((permissionKey) => !["plan.manage", "lead.manage"].includes(permissionKey));
   if (permission && !permissions.includes(permission)) return null;
 
   return {
@@ -134,12 +170,23 @@ export async function requirePermission(permission: string) {
   return context;
 }
 
-/** @summary Comprueba si la sesión pertenece al propietario global de la plataforma. */
+/** @summary Comprueba si la sesión pertenece a personal de la plataforma MenuClick. */
 export async function authorizeSuperAdmin() {
   const session = await getSession();
-  if (!session) return null;
+  if (!session || session.context !== "platform" || session.membershipId) return null;
+  const requestHeaders = await headers();
+  const host = (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLocaleLowerCase("es");
+  const hostContext = await resolveHostKind(host);
+  if (hostContext.kind !== "platform") return null;
   const user = await prisma.user.findFirst({
-    where: { id: session.userId, isSuperAdmin: true },
+    where: {
+      id: session.userId,
+      OR: [{ isSuperAdmin: true }, { platformRole: { in: ["superadmin", "admin", "support", "sales"] } }],
+    },
     select: { id: true, name: true, email: true },
   });
   return user ? { session, user } : null;

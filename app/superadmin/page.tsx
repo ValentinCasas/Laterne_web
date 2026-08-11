@@ -11,6 +11,11 @@ export default async function SuperAdminPage() {
       include: {
         subscription: { include: { plan: { select: { name: true } } } },
         brandSettings: { select: { customDomain: true } },
+        platformPayments: {
+          select: { amount: true, currency: true, paidAt: true, method: true, reference: true },
+          orderBy: { paidAt: "desc" },
+          take: 3,
+        },
         _count: {
           select: {
             products: true,

@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
+import { developmentAllowedOrigins } from "./lib/domains";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
-  // Next bloquea los módulos del cliente al abrir el servidor de desarrollo desde otro equipo.
-  // Estos rangos se aplican solamente a `next dev` y permiten probar la aplicación en la red local.
-  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
+  // Next bloquea recursos internos de dev cuando se accede mediante hosts alternativos.
+  // Solo se permiten los hosts .test configurados y los aliases locales básicos.
+  allowedDevOrigins: process.env.NODE_ENV === "development" ? developmentAllowedOrigins() : undefined,
   /** @summary Habilita seguimiento espacial únicamente para experiencias AR del mismo origen. */
   async headers() {
     return [

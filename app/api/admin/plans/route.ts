@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorizeSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 
@@ -25,7 +25,7 @@ const planSchema = z.object({
 
 /** @summary Crea un plan comercial con precio y funcionalidades administrables. */
 export async function POST(request: Request) {
-  const auth = await authorize("plan.manage");
+  const auth = await authorizeSuperAdmin();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = planSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Revisá la información del plan" }, { status: 400 });

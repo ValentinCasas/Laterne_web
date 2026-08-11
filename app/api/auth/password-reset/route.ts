@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requestOrigin } from "@/lib/domains";
 import { passwordResetHash, passwordResetToken } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
       expiresAt: new Date(Date.now() + 30 * 60 * 1000),
     },
   });
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  const origin = requestOrigin(request.headers) || new URL(request.url).origin;
   const delivered = await deliverReset(
     email,
     `${origin}/restablecer-acceso?token=${encodeURIComponent(token)}`,

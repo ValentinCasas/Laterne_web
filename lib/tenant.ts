@@ -5,9 +5,10 @@ import {
   DEV_TENANT_SLUG,
   ROOT_DOMAIN_NAME,
   isAppHost,
-  isLocalhost,
+  isLocalDevelopmentHost,
   isPlatformHost,
 } from "@/lib/domains";
+import { publicTenantWhere } from "@/lib/subscription-access";
 
 /** @summary Indica que el host de la solicitud no se puede asociar a ningún negocio. */
 export class UnknownHostError extends Error {
@@ -29,17 +30,23 @@ function requestHost(requestHeaders: Headers) {
 /** @summary Resuelve el negocio de un host mediante dominio propio o subdominio del producto. */
 export const resolveTenantByHost = cache(async (host: string) => {
   if (!host) return null;
+  if (isPlatformHost(host) || isAppHost(host) || isLocalDevelopmentHost(host)) return null;
 
   const customDomain = await prisma.brandSettings.findFirst({
-    where: { customDomain: host },
+    where: { customDomain: host, tenant: publicTenantWhere() },
     select: { tenant: true },
   });
   if (customDomain) return customDomain.tenant;
 
-  if (!isPlatformHost(host) && !isAppHost(host) && host.endsWith(`.${ROOT_DOMAIN_NAME}`)) {
-    const slug = host.slice(0, -(ROOT_DOMAIN_NAME.length + 1)).split(".").at(-1);
-    if (slug) {
-      return prisma.tenant.findUnique({ where: { slug } });
+  if (
+    ROOT_DOMAIN_NAME &&
+    !isPlatformHost(host) &&
+    !isAppHost(host) &&
+    host.endsWith(`.${ROOT_DOMAIN_NAME}`)
+  ) {
+    const slug = host.slice(0, -(ROOT_DOMAIN_NAME.length + 1));
+    if (slug && !slug.includes(".")) {
+      return prisma.tenant.findFirst({ where: { slug, ...publicTenantWhere() } });
     }
   }
   return null;
@@ -53,14 +60,11 @@ export const getDefaultTenant = cache(async () => {
   const resolved = await resolveTenantByHost(host);
   if (resolved) return resolved;
 
-  if (isLocalhost(host) && process.env.NODE_ENV !== "production") {
-    const devTenant = await prisma.tenant.findUnique({ where: { slug: DEV_TENANT_SLUG } });
-    if (devTenant) return devTenant;
-    const firstActive = await prisma.tenant.findFirst({
-      where: { status: "active" },
-      orderBy: { id: "asc" },
+  if (process.env.NODE_ENV === "development" && isLocalDevelopmentHost(host) && DEV_TENANT_SLUG) {
+    const devTenant = await prisma.tenant.findFirst({
+      where: { slug: DEV_TENANT_SLUG, ...publicTenantWhere() },
     });
-    if (firstActive) return firstActive;
+    if (devTenant) return devTenant;
   }
 
   throw new UnknownHostError(host);
@@ -68,5 +72,5 @@ export const getDefaultTenant = cache(async () => {
 
 /** @summary Busca un negocio activo mediante su identificador público legible. */
 export const getTenantBySlug = cache(async (slug: string) => {
-  return prisma.tenant.findFirst({ where: { slug, status: "active" } });
+  return prisma.tenant.findFirst({ where: { slug, ...publicTenantWhere() } });
 });

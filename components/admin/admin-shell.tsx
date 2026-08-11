@@ -121,8 +121,6 @@ const navigationGroups = [
         icon: "NO",
         permission: "notification.manage",
       },
-      { href: "/admin/oportunidades", label: "Oportunidades", icon: "OP", permission: "lead.manage" },
-      { href: "/admin/planes", label: "Planes", icon: "PL", permission: "plan.manage" },
       { href: "/admin/usuarios", label: "Usuarios", icon: "US", permission: "user.manage" },
       { href: "/admin/auditoria", label: "Auditoría", icon: "AU", permission: "audit.read" },
       { href: "/admin/errores", label: "Registro de errores", icon: "ER", permission: "audit.read" },

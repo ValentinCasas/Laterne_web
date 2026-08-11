@@ -11,7 +11,13 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const sessions = await prisma.authSession.findMany({
-    where: { userId: session.userId, revokedAt: null, expiresAt: { gt: new Date() } },
+    where: {
+      userId: session.userId,
+      context: session.context ?? "tenant",
+      membershipId: session.membershipId ?? null,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
     select: {
       id: true,
       createdAt: true,
@@ -30,7 +36,13 @@ export async function DELETE(request: Request) {
   const parsed = revokeInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   await prisma.authSession.updateMany({
-    where: { id: parsed.data.id, userId: session.userId, revokedAt: null },
+    where: {
+      id: parsed.data.id,
+      userId: session.userId,
+      context: session.context ?? "tenant",
+      membershipId: session.membershipId ?? null,
+      revokedAt: null,
+    },
     data: { revokedAt: new Date() },
   });
   return NextResponse.json({ ok: true });

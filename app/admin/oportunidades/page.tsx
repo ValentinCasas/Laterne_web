@@ -1,11 +1,11 @@
 import { LeadBoard } from "@/components/admin/lead-board";
-import { requirePermission } from "@/lib/auth";
+import { requireSuperAdmin } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 /** @summary Carga las solicitudes comerciales y las organiza dentro del tablero de oportunidades. */
 export default async function OpportunitiesPage() {
-  await requirePermission("lead.manage");
+  await requireSuperAdmin();
   const leads = await prisma.salesLead.findMany({
     include: { plan: { select: { name: true } } },
     orderBy: { createdAt: "desc" },

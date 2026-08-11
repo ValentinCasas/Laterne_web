@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorizeSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 
@@ -25,7 +25,7 @@ const planSchema = z.object({
 
 /** @summary Actualiza un plan y conserva un historial de precios mediante nuevas vigencias. */
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await authorize("plan.manage");
+  const auth = await authorizeSuperAdmin();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const id = Number((await context.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ error: "Plan inválido" }, { status: 404 });
@@ -108,7 +108,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
 /** @summary Oculta un plan comercial sin borrar sus precios históricos ni oportunidades asociadas. */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await authorize("plan.manage");
+  const auth = await authorizeSuperAdmin();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const id = Number((await context.params).id);
   const oldPlan = Number.isInteger(id) ? await prisma.plan.findUnique({ where: { id } }) : null;
