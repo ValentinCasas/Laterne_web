@@ -62,6 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
         ? "Carta digital, pedidos, reservas, stock y sucursales para negocios gastronómicos."
         : "Carta digital, pedidos, reservas y administración gastronómica.",
       manifest: "/manifest.webmanifest",
+      icons: { icon: "/favicon.ico" },
       alternates: siteUrl ? { canonical: siteUrl } : undefined,
       robots: kind === "unknown" ? { index: false, follow: false } : undefined,
     };
