@@ -169,10 +169,12 @@ async function values(resource: string, input: Record<string, string>, tenantId:
         "testimonial",
         "websiteUrl",
         "planName",
+        "isPublicCaseStudy",
         "status",
       ]),
       slug: slugify(input.slug || input.businessName) || `caso-${id}`,
       status: input.status || "published",
+      isPublicCaseStudy: booleanValue(input.isPublicCaseStudy),
       sortOrder: Number(input.sortOrder || 0),
     };
   }

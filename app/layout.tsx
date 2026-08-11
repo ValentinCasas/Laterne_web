@@ -55,13 +55,14 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       metadataBase: siteUrl ? new URL(siteUrl) : undefined,
       title: {
-        default: platform ? "MenuClick" : "MenuClick",
+        default: platform ? "MenuClick | Operación gastronómica conectada" : "MenuClick",
         template: `%s · ${platform ? "MenuClick" : "MenuClick"}`,
       },
       description: platform
-        ? "La plataforma de cartas digitales, pedidos y reservas."
+        ? "Carta digital, pedidos, reservas, stock y sucursales para negocios gastronómicos."
         : "Carta digital, pedidos, reservas y administración gastronómica.",
       manifest: "/manifest.webmanifest",
+      alternates: siteUrl ? { canonical: siteUrl } : undefined,
       robots: kind === "unknown" ? { index: false, follow: false } : undefined,
     };
   }

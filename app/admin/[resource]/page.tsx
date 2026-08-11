@@ -581,6 +581,7 @@ function createDefinition(
         { key: "testimonial", label: "Testimonio", control: "textarea" },
         { key: "websiteUrl", label: "Sitio web", type: "url" },
         { key: "planName", label: "Plan contratado" },
+        { key: "isPublicCaseStudy", label: "Mostrar como caso público de MenuClick", control: "checkbox" },
         {
           key: "status",
           label: "Publicación",

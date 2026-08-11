@@ -225,6 +225,36 @@ button {
   letter-spacing: 0.24em;
   color: var(--brand-primary);
 }
+.marketing-theme {
+  --marketing-lime: #e8ff6a;
+  background: #0b0d12;
+  color: #f8fafc;
+}
+.marketing-eyebrow {
+  color: var(--marketing-lime);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.marketing-theme a,
+.marketing-theme button {
+  transition: color .2s, background-color .2s, border-color .2s, transform .2s;
+}
+.marketing-theme .story-step {
+  opacity: .58;
+  transition: opacity .4s, transform .4s;
+}
+.marketing-theme .story-step.is-active {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-theme .story-step,
+  .marketing-theme .story-step.is-active {
+    opacity: 1;
+    transition: none;
+  }
+}
 .section-title {
   font-size: clamp(2.5rem, 6vw, 4.5rem);
   line-height: 0.95;

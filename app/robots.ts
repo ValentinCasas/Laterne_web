@@ -6,7 +6,7 @@ import { requestOrigin } from "@/lib/domains";
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const baseUrl = requestOrigin(await headers()) ?? "";
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin/", "/api/", "/login"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin/", "/api/", "/login", "/superadmin/"] },
     sitemap: `${baseUrl}/sitemap.xml`,
     host: baseUrl,
   };

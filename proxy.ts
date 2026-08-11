@@ -4,7 +4,7 @@ import { resolveHostKind } from "@/lib/host-gate";
 import { isLocalDevelopmentHost } from "@/lib/domains";
 
 /** @summary Rutas exclusivas de la experiencia de plataforma (Panel MenuClick). */
-const PLATFORM_PREFIXES = ["/superadmin", "/planes", "/para-negocios", "/solicitar-demo", "/legal", "/cliente"];
+const PLATFORM_PREFIXES = ["/superadmin", "/planes", "/para-negocios", "/solicitar-demo", "/legal", "/cliente", "/clientes", "/funcionalidades", "/multi-sucursal"];
 const PLATFORM_PATHS = new Set(["/login", "/recuperar-acceso", "/restablecer-acceso", "/403", "/404"]);
 
 /** @summary Rutas exclusivas de la experiencia de administración de los negocios. */
@@ -12,7 +12,7 @@ const APP_PREFIXES = ["/admin"];
 const APP_PATHS = new Set(["/login", "/recuperar-acceso", "/restablecer-acceso", "/403", "/404"]);
 
 /** @summary Rutas de la plataforma que no deben servirse dentro del sitio público de un negocio. */
-const TENANT_BLOCKED_PREFIXES = ["/admin", "/superadmin", "/planes", "/para-negocios"];
+const TENANT_BLOCKED_PREFIXES = ["/admin", "/superadmin", "/planes", "/para-negocios", "/clientes", "/solicitar-demo", "/funcionalidades", "/multi-sucursal"];
 
 function startsWithAny(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -20,7 +20,7 @@ function startsWithAny(pathname: string, prefixes: string[]) {
 
 /** @summary Indica si la ruta pertenece a la experiencia de plataforma. */
 function isPlatformRoute(pathname: string) {
-  return PLATFORM_PATHS.has(pathname) || startsWithAny(pathname, PLATFORM_PREFIXES);
+  return pathname === "/" || PLATFORM_PATHS.has(pathname) || startsWithAny(pathname, PLATFORM_PREFIXES);
 }
 
 /** @summary Indica si la ruta pertenece a la experiencia de administración. */
@@ -36,7 +36,6 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (kind === "platform") {
-    if (pathname === "/") return NextResponse.rewrite(new URL("/login", request.url));
     if (!isPlatformRoute(pathname)) return NextResponse.rewrite(new URL("/404", request.url));
     return NextResponse.next();
   }
@@ -50,7 +49,7 @@ export async function proxy(request: NextRequest) {
   if (kind === "tenant") {
     // Local development keeps the public commercial routes reachable while the
     // configured DEV_TENANT_SLUG serves the tenant experience on localhost.
-    if (isLocalDevelopmentHost(host) && startsWithAny(pathname, ["/planes", "/para-negocios", "/solicitar-demo", "/legal"])) {
+    if (isLocalDevelopmentHost(host) && startsWithAny(pathname, ["/planes", "/para-negocios", "/solicitar-demo", "/legal", "/clientes", "/funcionalidades", "/multi-sucursal"])) {
       return NextResponse.next();
     }
     if (startsWithAny(pathname, TENANT_BLOCKED_PREFIXES))

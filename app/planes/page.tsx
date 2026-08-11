@@ -2,13 +2,14 @@ import Link from "next/link";
 import { PricingCatalog, type CommercialPlan } from "@/components/commercial/pricing-catalog";
 import { prisma } from "@/lib/prisma";
 import { managedPageMetadata } from "@/lib/seo";
+import { MarketingShell } from "@/components/commercial/marketing-shell";
 
 /** @summary Recupera la configuración SEO administrable de planes comerciales. */
 export function generateMetadata() {
   return managedPageMetadata(
     "/planes",
     "Planes y precios",
-    "Planes para cartas digitales, gestión gastronómica, reservas, pedidos y experiencias 3D.",
+    "Planes MenuClick para cartas digitales, gestión gastronómica, reservas, pedidos y experiencias 3D.",
   );
 }
 
@@ -59,6 +60,7 @@ export default async function PlansPage() {
   }));
 
   return (
+    <MarketingShell>
     <main>
       <section className="relative overflow-hidden py-20 sm:py-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(236,72,153,.25),transparent_45%)]" />
@@ -123,5 +125,6 @@ export default async function PlansPage() {
         </div>
       </section>
     </main>
+    </MarketingShell>
   );
 }

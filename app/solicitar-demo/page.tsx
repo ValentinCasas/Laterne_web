@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DemoForm } from "@/components/commercial/demo-form";
 import { prisma } from "@/lib/prisma";
 import { managedPageMetadata } from "@/lib/seo";
+import { MarketingShell } from "@/components/commercial/marketing-shell";
 
 /** @summary Recupera la configuración SEO administrable de la solicitud comercial. */
 export function generateMetadata() {
@@ -22,6 +23,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
   });
 
   return (
+    <MarketingShell>
     <main>
       <section className="shell py-16 sm:py-24">
         <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href="/para-negocios">
@@ -41,7 +43,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
         </div>
       </section>
       <section className="shell grid gap-8 pb-24 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <DemoForm plans={plans} initialPlanId={plans.find((plan) => plan.slug === selectedSlug)?.id} />
+        <DemoForm plans={plans} initialPlanId={plans.find((plan) => plan.slug === selectedSlug || plan.name === selectedSlug)?.id} />
         <aside className="h-fit rounded-[2rem] border border-white/10 bg-white/[.04] p-6 lg:sticky lg:top-24">
           <p className="section-eyebrow">Qué sigue</p>
           <ol className="mt-5 space-y-5">
@@ -65,5 +67,6 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
         </aside>
       </section>
     </main>
+    </MarketingShell>
   );
 }

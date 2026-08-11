@@ -189,10 +189,12 @@ async function normalize(resource: string, input: Record<string, string>, tenant
         "testimonial",
         "websiteUrl",
         "planName",
+        "isPublicCaseStudy",
         "status",
       ]),
       slug: slugify(input.slug || input.businessName) || "caso",
       status: input.status || "published",
+      isPublicCaseStudy: booleanValue(input.isPublicCaseStudy),
       sortOrder: Number(input.sortOrder || 0),
     };
   }

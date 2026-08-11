@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getDefaultTenant } from "@/lib/tenant";
 import { managedPageMetadata } from "@/lib/seo";
+import { MarketingShell } from "@/components/commercial/marketing-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -11,25 +11,26 @@ export function generateMetadata() {
   return managedPageMetadata(
     "/clientes",
     "Clientes y casos de éxito",
-    "Experiencias gastronómicas transformadas con Laterne Web.",
+    "Negocios gastronómicos que conectan su carta y operación con MenuClick.",
   );
 }
 
 /** @summary Presenta implementaciones reales publicadas como portfolio comercial. */
 export default async function ClientsPage() {
-  const tenant = await getDefaultTenant();
   const cases = await prisma.successCase.findMany({
-    where: { tenantId: tenant.id, status: "published" },
+    where: { isPublicCaseStudy: true, status: "published" },
+    include: { tenant: { select: { name: true } } },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
   });
   return (
+    <MarketingShell>
     <main className="shell py-12 sm:py-20">
-      <p className="section-eyebrow">Casos de éxito</p>
+      <p className="section-eyebrow">Clientes MenuClick</p>
       <h1 className="mt-3 max-w-4xl text-5xl font-black sm:text-7xl">
         Tecnología que se nota en la experiencia.
       </h1>
       <p className="mt-5 max-w-2xl text-zinc-400">
-        Negocios, problemas reales y soluciones implementadas con Laterne Web.
+        Casos públicos autorizados por negocios que usan MenuClick. Sin métricas inventadas, solo experiencias reales.
       </p>
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         {cases.map((item) => (
@@ -50,7 +51,7 @@ export default async function ClientsPage() {
             </div>
             <div className="p-6">
               <p className="text-xs font-black uppercase tracking-widest text-pink-300">
-                {item.businessType} · {item.location}
+                 {item.tenant.name} · {item.businessType} · {item.location}
               </p>
               <h2 className="mt-2 text-3xl font-black">{item.businessName}</h2>
               <p className="mt-3 line-clamp-3 text-zinc-400">{item.results}</p>
@@ -65,5 +66,6 @@ export default async function ClientsPage() {
         )}
       </div>
     </main>
+    </MarketingShell>
   );
 }

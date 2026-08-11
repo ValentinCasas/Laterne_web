@@ -1134,6 +1134,7 @@ model SuccessCase {
   websiteUrl     String?  @db.VarChar(500)
   planName       String?  @db.VarChar(120)
   status         String   @default("published") @db.VarChar(20)
+  isPublicCaseStudy Boolean @default(false)
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

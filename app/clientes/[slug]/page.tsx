@@ -1,22 +1,24 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getDefaultTenant } from "@/lib/tenant";
+import { MarketingShell } from "@/components/commercial/marketing-shell";
 
 type ClientCaseProps = { params: Promise<{ slug: string }> };
 
 /** @summary Detalla el desafío, implementación y resultados de un caso de éxito publicado. */
 export default async function ClientCasePage({ params }: ClientCaseProps) {
-  const [{ slug }, tenant] = await Promise.all([params, getDefaultTenant()]);
+  const { slug } = await params;
   const item = await prisma.successCase.findFirst({
-    where: { tenantId: tenant.id, slug, status: "published" },
+    where: { slug, status: "published", isPublicCaseStudy: true },
+    include: { tenant: { select: { name: true } } },
   });
   if (!item) notFound();
   return (
+    <MarketingShell>
     <main className="shell py-12 sm:py-20">
       <article className="mx-auto max-w-5xl">
         <p className="section-eyebrow">
-          {item.businessType} · {item.location}
+          {item.tenant.name} · {item.businessType} · {item.location}
         </p>
         <h1 className="mt-3 text-5xl font-black sm:text-8xl">{item.businessName}</h1>
         {item.coverUrl && (
@@ -60,5 +62,6 @@ export default async function ClientCasePage({ params }: ClientCaseProps) {
         )}
       </article>
     </main>
+    </MarketingShell>
   );
 }

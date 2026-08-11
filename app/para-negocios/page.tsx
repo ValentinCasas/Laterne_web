@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { managedPageMetadata } from "@/lib/seo";
+import { MarketingShell } from "@/components/commercial/marketing-shell";
 
 /** @summary Recupera la configuración SEO administrable de la propuesta para negocios. */
 export function generateMetadata() {
   return managedPageMetadata(
     "/para-negocios",
-    "Laterne Web para negocios gastronómicos",
+    "MenuClick para negocios gastronómicos",
     "Carta digital, pedidos, reservas, promociones, administración y experiencias 3D.",
   );
 }
@@ -46,7 +47,7 @@ const benefits = [
   ["Administración propia", "El equipo actualiza el negocio desde un panel protegido sin tocar código."],
 ];
 
-/** @summary Explica la propuesta comercial de Laterne Web para distintos modelos gastronómicos. */
+/** @summary Explica la propuesta comercial de MenuClick para distintos modelos gastronómicos. */
 export default async function BusinessPage() {
   const [plans, faqs] = await Promise.all([
     prisma.plan.findMany({
@@ -61,6 +62,7 @@ export default async function BusinessPage() {
   ]);
 
   return (
+    <MarketingShell>
     <main>
       <section className="relative min-h-[calc(100vh-4rem)] overflow-hidden py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(236,72,153,.3),transparent_32%),radial-gradient(circle_at_85%_70%,rgba(99,102,241,.18),transparent_32%)]" />
@@ -204,5 +206,6 @@ export default async function BusinessPage() {
         </section>
       )}
     </main>
+    </MarketingShell>
   );
 }

@@ -11,6 +11,9 @@ import { TestimonialForm } from "@/components/testimonial-form";
 import { prisma } from "@/lib/prisma";
 import { time } from "@/lib/format";
 import { getDefaultTenant } from "@/lib/tenant";
+import { headers } from "next/headers";
+import { classifyHost } from "@/lib/domains";
+import { MenuClickHome } from "@/components/commercial/menuclick-home";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +72,15 @@ function formatOpeningHours(group: {
 
 /** @summary Construye la página pública con los datos actuales almacenados en MySQL. */
 export default async function LandingPage() {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
+  if (classifyHost(host).kind === "platform") {
+    const [plans, cases] = await Promise.all([
+      prisma.plan.findMany({ where: { active: true }, include: { prices: { where: { active: true }, orderBy: { validFrom: "desc" }, take: 1 } }, orderBy: [{ type: "asc" }, { displayOrder: "asc" }], take: 4 }),
+      prisma.successCase.findMany({ where: { isPublicCaseStudy: true, status: "published" }, include: { tenant: { select: { name: true } } }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] }),
+    ]);
+    return <MenuClickHome plans={plans.map((plan) => ({ id: plan.id, slug: plan.slug, name: plan.name, summary: plan.summary, highlighted: plan.highlighted, price: plan.prices[0] ? { amount: plan.prices[0].amount ? Number(plan.prices[0].amount) : null, currency: plan.prices[0].currency, billingPeriod: plan.prices[0].billingPeriod } : null }))} cases={cases.map((item) => ({ id: item.id, slug: item.slug, businessName: item.businessName, businessType: item.businessType, location: item.location, coverUrl: item.coverUrl, results: item.results, tenantName: item.tenant.name }))} />;
+  }
   const tenant = await getDefaultTenant();
   const now = new Date();
   const [business, events, hours, testimonials, avatarFiles, eventImageFiles] = await Promise.all([
