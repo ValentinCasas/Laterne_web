@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export type NotificationSettingsData = {
   panel: boolean;
@@ -57,13 +58,12 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
 
   return (
     <form onSubmit={save}>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Avisos</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Notificaciones</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Elegí qué eventos seguir y prepará canales para integraciones autorizadas.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Avisos"
+        title="Notificaciones"
+        description="Elegí qué eventos seguir y prepará canales para integraciones autorizadas."
+        section="notificaciones"
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Canales</h2>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type ValidationResult = {
   ok?: boolean;
@@ -134,13 +135,12 @@ export function DataPortability() {
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Portabilidad</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Importar y exportar</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Tus datos pueden salir en formatos abiertos. La importación siempre se valida antes de escribir.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Portabilidad"
+        title="Importar y exportar"
+        description="Tus datos pueden salir en formatos abiertos. La importación siempre se valida antes de escribir."
+        section="datos"
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Exportaciones CSV</h2>

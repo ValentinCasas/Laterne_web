@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type ErrorEntry = {
   id: string;
@@ -39,16 +40,12 @@ export function ErrorLogManager({ initialErrors }: { initialErrors: ErrorEntry[]
 
   return (
     <section>
-      <header className="admin-hero">
-        <div>
-          <p className="section-eyebrow">Observabilidad</p>
-          <h1 className="mt-2 text-4xl font-black sm:text-5xl">Errores técnicos</h1>
-          <p className="mt-3 max-w-2xl text-zinc-500">
-            Incidentes reducidos y agrupables, sin trazas privadas ni datos personales enviados desde el
-            navegador.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader
+        eyebrow="Observabilidad"
+        title="Errores técnicos"
+        description="Incidentes reducidos y agrupables, sin trazas privadas ni datos personales enviados desde el navegador."
+        section="errores"
+      />
       <div className="card mt-6 grid gap-3 p-4 sm:grid-cols-[1fr_auto]">
         <input
           className="input"

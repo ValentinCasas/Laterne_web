@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export type LoyaltyCustomerData = {
   id: number;
@@ -72,12 +73,12 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Fidelización</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Clientes frecuentes</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Perfiles consentidos, niveles, pedidos y movimientos de puntos.
-        </p>
+      <AdminPageHeader
+        eyebrow="Fidelización"
+        title="Clientes frecuentes"
+        description="Perfiles consentidos, niveles, pedidos y movimientos de puntos."
+        section="clientes-frecuentes"
+      >
         <input
           className="input mt-5 max-w-md"
           value={query}
@@ -85,7 +86,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
           type="search"
           placeholder="Buscar nombre, email o teléfono"
         />
-      </header>
+      </AdminPageHeader>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {visible.map((customer) => (
           <article className="card p-5" key={customer.id}>

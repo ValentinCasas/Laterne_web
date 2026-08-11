@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export type BrandData = {
   logoUrl: string | null;
@@ -144,13 +145,12 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
 
   return (
     <form onSubmit={save}>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Identidad centralizada</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Marca y presencia digital</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Una sola configuración controla colores, tipografía, recursos, textos y perfiles sociales.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Identidad centralizada"
+        title="Marca y presencia digital"
+        description="Una sola configuración controla colores, tipografía, recursos, textos y perfiles sociales."
+        section="marca"
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Recursos visuales</h2>

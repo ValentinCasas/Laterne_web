@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type LeadStatus = "new" | "contacted" | "demo_scheduled" | "quote_sent" | "negotiation" | "won" | "lost";
 type Lead = {
@@ -85,13 +86,12 @@ export function LeadBoard({ initialLeads }: { initialLeads: Lead[] }) {
 
   return (
     <section>
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-sky-500/15 via-zinc-950 to-zinc-950 p-6 sm:p-8">
-        <p className="section-eyebrow text-sky-300">Proceso comercial</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <h1 className="text-4xl font-black sm:text-5xl">Oportunidades</h1>
-            <p className="mt-3 text-zinc-500">Consultas recibidas desde la solicitud de demostración.</p>
-          </div>
+      <AdminPageHeader
+        eyebrow="Proceso comercial"
+        title="Oportunidades"
+        description="Consultas recibidas desde la solicitud de demostración."
+        section="oportunidades"
+        actions={
           <label>
             <span className="sr-only">Buscar oportunidades</span>
             <input
@@ -102,8 +102,8 @@ export function LeadBoard({ initialLeads }: { initialLeads: Lead[] }) {
               type="search"
             />
           </label>
-        </div>
-      </header>
+        }
+      />
 
       <div className="mt-6 flex gap-4 overflow-x-auto pb-5 [scrollbar-color:#ec4899_#27272a]">
         {statuses.map((status) => {

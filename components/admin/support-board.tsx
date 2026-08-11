@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export type SupportTicketData = {
   id: number;
@@ -74,13 +75,12 @@ export function SupportBoard({ initialTickets }: { initialTickets: SupportTicket
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Atención registrada</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Soporte</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Consultas enviadas desde el centro de ayuda con estado y notas internas.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Atención registrada"
+        title="Soporte"
+        description="Consultas enviadas desde el centro de ayuda con estado y notas internas."
+        section="soporte"
+      />
       <div className="flex gap-4 overflow-x-auto pb-5">
         {statuses.map(([status, label]) => {
           const items = tickets.filter((ticket) => ticket.status === status);

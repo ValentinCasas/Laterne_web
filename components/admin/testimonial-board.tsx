@@ -2,6 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type ModerationStatus = "approved" | "pending" | "rejected";
 type TestimonialItem = {
@@ -154,13 +155,12 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
 
   return (
     <section>
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-pink-500/15 to-zinc-950 p-6 sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.28em] text-pink-400">Moderación</p>
-        <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Testimonios</h1>
-        <p className="mt-3 max-w-2xl leading-relaxed text-zinc-500">
-          Arrastrá cada opinión entre columnas. En celulares también podés usar sus botones rápidos.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Moderación"
+        title="Testimonios"
+        description="Arrastrá cada opinión entre columnas. En celulares también podés usar sus botones rápidos."
+        section="testimonios"
+      />
 
       <div className="mt-6 grid min-w-0 gap-5 xl:grid-cols-3">
         {columns.map((column) => {

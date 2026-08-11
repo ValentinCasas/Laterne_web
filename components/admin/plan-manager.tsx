@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type FeatureOption = { id: number; name: string; category: string };
 type PlanData = {
@@ -126,20 +127,17 @@ export function PlanManager({
 
   return (
     <section>
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-pink-500/20 to-zinc-950 p-6 sm:p-8">
-        <p className="section-eyebrow">Oferta comercial</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <h1 className="text-4xl font-black sm:text-5xl">Planes y precios</h1>
-            <p className="mt-3 max-w-2xl text-zinc-500">
-              Los cambios se reflejan en la página pública sin modificar componentes.
-            </p>
-          </div>
+      <AdminPageHeader
+        eyebrow="Oferta comercial"
+        title="Planes y precios"
+        description="Los cambios se reflejan en la página pública sin modificar componentes."
+        section="planes"
+        actions={
           <button className="btn" onClick={() => setEditing("new")} type="button">
             Crear plan
           </button>
-        </div>
-      </header>
+        }
+      />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {plans.map((plan) => {

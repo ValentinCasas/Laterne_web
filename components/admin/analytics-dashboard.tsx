@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type Metric = { eventType: string; count: number };
 type ProductMetric = { id: number; name: string; views: number; additions: number };
@@ -70,29 +71,28 @@ export function AnalyticsDashboard({
   });
   return (
     <section>
-      <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
-        <div>
-          <p className="section-eyebrow">Información para decidir</p>
-          <h1 className="mt-2 text-3xl font-black sm:text-5xl">Analítica</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Datos propios y anónimos; no dependen de servicios de terceros.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {[7, 30, 90].map((value) => (
-            <Link
-              className={`rounded-xl border px-4 py-2 text-sm font-bold ${days === value ? "border-pink-500 bg-pink-500/15" : "border-white/10"}`}
-              href={`/admin/estadisticas?days=${value}`}
-              key={value}
-            >
-              {value} días
-            </Link>
-          ))}
-          <a className="btn btn-secondary" href={`/api/admin/analytics/export?days=${days}`}>
-            Exportar CSV
-          </a>
-        </div>
-      </header>
+      <AdminPageHeader
+        eyebrow="Información para decidir"
+        title="Analítica"
+        description="Datos propios y anónimos; no dependen de servicios de terceros."
+        section="estadisticas"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {[7, 30, 90].map((value) => (
+              <Link
+                className={`rounded-xl border px-4 py-2 text-sm font-bold ${days === value ? "border-pink-500 bg-pink-500/15" : "border-white/10"}`}
+                href={`/admin/estadisticas?days=${value}`}
+                key={value}
+              >
+                {value} días
+              </Link>
+            ))}
+            <a className="btn btn-secondary" href={`/api/admin/analytics/export?days=${days}`}>
+              Exportar CSV
+            </a>
+          </div>
+        }
+      />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="card p-5">
           <p className="text-sm text-zinc-500">Aperturas de carta</p>

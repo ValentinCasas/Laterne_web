@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { stockMovementTypeLabels } from "@/lib/order-stock";
 
 type Branch = { id: number; name: string; active: boolean };
@@ -105,15 +106,12 @@ export function InventoryManager({
 
   return (
     <section>
-      <header className="admin-hero">
-        <div>
-          <p className="section-eyebrow">Operación</p>
-          <h1 className="mt-2 text-4xl font-black sm:text-5xl">Stock por sucursal</h1>
-          <p className="mt-3 max-w-2xl text-zinc-500">
-            Activá el control solo en los productos que realmente quieras descontar con cada pedido.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader
+        eyebrow="Operación"
+        title="Stock por sucursal"
+        description="Activá el control solo en los productos que realmente quieras descontar con cada pedido."
+        section="inventario"
+      />
       <div className="card mt-6 grid gap-3 p-4 sm:grid-cols-[220px_1fr_auto]">
         <select
           className="input"

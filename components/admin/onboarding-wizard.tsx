@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 const steps = [
   [1, "Datos del negocio", "Dirección, contacto y redes", "/admin/negocio"],
@@ -61,29 +62,27 @@ export function OnboardingWizard({
 
   return (
     <section>
-      <header className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(236,72,153,.3),transparent_45%),#09090b] p-6 sm:p-9">
-        <p className="section-eyebrow">Puesta en marcha</p>
-        <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-4xl font-black sm:text-6xl">Tu negocio, paso a paso</h1>
-            <p className="mt-3 max-w-2xl text-zinc-400">
-              Podés salir, volver y continuar. Los pasos con información real se reconocen automáticamente.
-            </p>
+      <AdminPageHeader
+        eyebrow="Puesta en marcha"
+        title="Tu negocio, paso a paso"
+        description="Podés salir, volver y continuar. Los pasos con información real se reconocen automáticamente."
+        section="onboarding"
+      >
+        <div className="mt-6 flex items-end gap-4">
+          <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
+            <span
+              className="block h-full rounded-full bg-pink-500 transition-all"
+              style={{ width: `${percentage}%` }}
+            />
           </div>
-          <strong className="text-5xl text-pink-300">{percentage}%</strong>
-        </div>
-        <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
-          <span
-            className="block h-full rounded-full bg-pink-500 transition-all"
-            style={{ width: `${percentage}%` }}
-          />
+          <strong className="text-3xl text-pink-300">{percentage}%</strong>
         </div>
         {publishedAt && (
           <p className="mt-3 text-sm text-emerald-300">
             Última publicación: {new Date(publishedAt).toLocaleString("es-AR")}
           </p>
         )}
-      </header>
+      </AdminPageHeader>
       <div className="grid gap-4 sm:grid-cols-2">
         {steps.map(([number, title, description, href]) => {
           const done = completed.includes(number);

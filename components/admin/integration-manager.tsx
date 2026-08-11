@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type Integration = {
   provider: "mercado_pago" | "email" | "whatsapp" | "web_push" | "storage";
@@ -88,16 +89,12 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
 
   return (
     <section>
-      <header className="admin-hero">
-        <div>
-          <p className="section-eyebrow">Conexiones</p>
-          <h1 className="mt-2 text-4xl font-black sm:text-5xl">Integraciones</h1>
-          <p className="mt-3 max-w-2xl text-zinc-500">
-            Las claves privadas se configuran únicamente en el servidor. Nunca se guardan ni se muestran en el
-            panel.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader
+        eyebrow="Conexiones"
+        title="Integraciones"
+        description="Las claves privadas se configuran únicamente en el servidor. Nunca se guardan ni se muestran en el panel."
+        section="integraciones"
+      />
       <div className="mt-6 grid gap-5 xl:grid-cols-2">
         {integrations.map((integration) => {
           const details = providerDetails[integration.provider];

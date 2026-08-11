@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 
@@ -101,26 +102,22 @@ export default async function Dashboard() {
 
   return (
     <section className="space-y-6">
-      <header className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-pink-600/25 via-zinc-950 to-zinc-950 p-6 shadow-2xl shadow-black/30 sm:p-9">
-        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-pink-500/20 blur-3xl" />
-        <div className="relative max-w-2xl">
-          <p className="text-xs font-black uppercase tracking-[.28em] text-pink-300">Centro de control</p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">
-            Tu negocio, en un solo lugar.
-          </h1>
-          <p className="mt-4 max-w-xl leading-relaxed text-zinc-400">
-            Actualizá la carta, publicá eventos y moderá opiniones sin tocar código.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
+      <AdminPageHeader
+        eyebrow="Centro de control"
+        title="Tu negocio, en un solo lugar."
+        description="Actualizá la carta, publicá eventos y moderá opiniones sin tocar código."
+        section="resumen"
+        actions={
+          <>
             <Link className="btn" href="/admin/productos">
               Agregar producto
             </Link>
             <Link className="btn btn-secondary" href="/admin/eventos">
               Nuevo evento
             </Link>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {visibleStats.map((stat, index) => (

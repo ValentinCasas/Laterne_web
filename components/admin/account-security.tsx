@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type SessionData = {
   id: number;
@@ -67,11 +68,12 @@ export function AccountSecurity() {
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Cuenta</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Seguridad personal</h1>
-        <p className="mt-2 text-sm text-zinc-400">Contraseña robusta y control de sesiones abiertas.</p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Cuenta"
+        title="Seguridad personal"
+        description="Contraseña robusta y control de sesiones abiertas."
+        section="cuenta"
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <form className="card p-5 sm:p-7" onSubmit={changePassword}>
           <h2 className="text-2xl font-black">Cambiar contraseña</h2>

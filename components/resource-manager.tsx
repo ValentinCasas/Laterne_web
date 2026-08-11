@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AssetPicker } from "@/components/admin/asset-picker";
 import { ImagePicker } from "@/components/admin/image-picker";
 import { LocationPicker } from "@/components/admin/location-picker";
@@ -638,16 +639,17 @@ export function ResourceManager({
 
   return (
     <section>
-      <header className="flex flex-wrap items-end justify-between gap-5 rounded-[2rem] border border-white/10 bg-zinc-950/70 p-6 sm:p-8">
-        <div className="max-w-2xl">
-          <p className="text-xs font-black uppercase tracking-[.28em] text-pink-400">Administración</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">{title}</h1>
-          <p className="mt-3 leading-relaxed text-zinc-500">{description}</p>
-        </div>
-        <button className="btn" onClick={() => openForm(singular ? (items[0] ?? null) : null)} type="button">
-          {singular && items.length ? "Editar información" : `+ Crear ${title.toLowerCase()}`}
-        </button>
-      </header>
+      <AdminPageHeader
+        eyebrow="Administración"
+        title={title}
+        description={description}
+        section={resource}
+        actions={
+          <button className="btn" onClick={() => openForm(singular ? (items[0] ?? null) : null)} type="button">
+            {singular && items.length ? "Editar información" : `+ Crear ${title.toLocaleLowerCase("es")}`}
+          </button>
+        }
+      />
 
       {formOpen && (
         <div className="scroll-mt-24" ref={formPanel}>

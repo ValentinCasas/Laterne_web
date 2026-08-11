@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type ProductOption = {
   id: number;
@@ -160,12 +161,12 @@ export function ProductOptionsManager({
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Carta avanzada</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Variantes y agregados</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Ofrecé tamaños, presentaciones y extras sin duplicar productos.
-        </p>
+      <AdminPageHeader
+        eyebrow="Carta avanzada"
+        title="Variantes y agregados"
+        description="Ofrecé tamaños, presentaciones y extras sin duplicar productos."
+        section="opciones-producto"
+      >
         <label className="mt-5 block max-w-lg">
           <span className="label">Producto</span>
           <select
@@ -180,7 +181,7 @@ export function ProductOptionsManager({
             ))}
           </select>
         </label>
-      </header>
+      </AdminPageHeader>
       {selectedProduct ? (
         <div className="grid gap-6 xl:grid-cols-2">
           {(

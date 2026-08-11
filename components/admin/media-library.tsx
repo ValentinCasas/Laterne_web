@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export type MediaAssetData = {
   id: number;
@@ -150,12 +151,12 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Recursos del negocio</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-5xl">Biblioteca multimedia</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Archivos nuevos, modelos 3D, formatos, pesos, autores y textos alternativos.
-        </p>
+      <AdminPageHeader
+        eyebrow="Recursos del negocio"
+        title="Biblioteca multimedia"
+        description="Archivos nuevos, modelos 3D, formatos, pesos, autores y textos alternativos."
+        section="archivos"
+      >
         <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_220px_auto]">
           <input
             className="input"
@@ -177,7 +178,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
             {view === "grid" ? "Ver lista" : "Ver grilla"}
           </button>
         </div>
-      </header>
+      </AdminPageHeader>
       <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
         {visible.map((asset) => (
           <article

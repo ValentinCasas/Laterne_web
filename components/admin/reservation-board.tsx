@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   defaultReservationTimeZone,
   reservationStatuses,
@@ -309,19 +310,19 @@ export function ReservationBoard({
 
   return (
     <section>
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-emerald-500/15 to-zinc-950 p-6 sm:p-8">
-        <p className="section-eyebrow text-emerald-300">Operación de salón</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <h1 className="text-4xl font-black sm:text-5xl">Reservas</h1>
-            <p className="mt-3 text-zinc-500">Capacidad, confirmaciones, bloqueos y próximos visitantes.</p>
-            <p className="mt-1 text-xs text-zinc-600">Hoy · {todayFormatted}</p>
-          </div>
+      <AdminPageHeader
+        eyebrow="Operación de salón"
+        title="Reservas"
+        description="Capacidad, confirmaciones, bloqueos y próximos visitantes."
+        section="reservas"
+        actions={
           <button className="btn" onClick={() => setSettingsOpen((current) => !current)} type="button">
             {settingsOpen ? "Cerrar configuración" : "Configurar reservas"}
           </button>
-        </div>
-      </header>
+        }
+      >
+        <p className="mt-2 text-xs text-zinc-600">Hoy · {todayFormatted}</p>
+      </AdminPageHeader>
 
       {settingsOpen && (
         <section className="mt-6 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">

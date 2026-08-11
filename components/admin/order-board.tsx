@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 
@@ -92,25 +93,24 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
 
   return (
     <section>
-      <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
-        <div>
-          <p className="section-eyebrow">Operación</p>
-          <h1 className="mt-2 text-3xl font-black sm:text-5xl">Pedidos</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Cada pedido queda almacenado con precios verificados e historial de estados.
-          </p>
-        </div>
-        <label className="w-full sm:max-w-xs">
-          <span className="sr-only">Buscar pedidos</span>
-          <input
-            className="input"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar referencia, cliente o mesa"
-            type="search"
-          />
-        </label>
-      </header>
+      <AdminPageHeader
+        eyebrow="Operación"
+        title="Pedidos"
+        description="Cada pedido queda almacenado con precios verificados e historial de estados."
+        section="pedidos"
+        actions={
+          <label className="w-full sm:max-w-xs">
+            <span className="sr-only">Buscar pedidos</span>
+            <input
+              className="input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar referencia, cliente o mesa"
+              type="search"
+            />
+          </label>
+        }
+      />
 
       <div className="flex snap-x gap-4 overflow-x-auto pb-5">
         {orderStatuses.map((status) => {

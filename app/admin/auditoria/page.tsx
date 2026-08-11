@@ -1,31 +1,48 @@
+import Link from "next/link";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+const AUDIT_PAGE_SIZE = 50;
 
 /** @summary Convierte una captura de auditoría en JSON legible sin alterar su contenido. */
 function formatAuditValue(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
-/** @summary Presenta las operaciones administrativas recientes del negocio para su revisión. */
-export default async function AuditPage() {
+/** @summary Presenta las operaciones administrativas del negocio paginadas para su revisión. */
+export default async function AuditPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const context = await requirePermission("audit.read");
-  const logs = await prisma.auditLog.findMany({
-    where: { tenantId: context.tenant.id },
-    include: { user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 150,
-  });
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where: { tenantId: context.tenant.id },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * AUDIT_PAGE_SIZE,
+      take: AUDIT_PAGE_SIZE + 1,
+    }),
+    prisma.auditLog.count({ where: { tenantId: context.tenant.id } }),
+  ]);
+  const hasMore = logs.length > AUDIT_PAGE_SIZE;
+  const visibleLogs = logs.slice(0, AUDIT_PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
+
   return (
     <section>
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-violet-500/15 to-zinc-950 p-6 sm:p-8">
-        <p className="section-eyebrow text-violet-300">Seguridad y trazabilidad</p>
-        <h1 className="mt-2 text-4xl font-black sm:text-5xl">Auditoría</h1>
-        <p className="mt-3 max-w-2xl text-zinc-500">
-          Últimas operaciones sensibles realizadas dentro de {context.tenant.name}.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Seguridad y trazabilidad"
+        title="Auditoría"
+        description={`Quién realizó cambios importantes y cuándo, dentro de ${context.tenant.name}.`}
+        section="auditoria"
+      />
       <div className="mt-6 space-y-3">
-        {logs.map((log) => (
+        {visibleLogs.map((log) => (
           <article
             className="grid gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-4 sm:grid-cols-[170px_1fr_auto] sm:items-center"
             key={log.id.toString()}
@@ -73,12 +90,29 @@ export default async function AuditPage() {
             )}
           </article>
         ))}
-        {!logs.length && (
+        {!visibleLogs.length && (
           <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center text-zinc-500">
             Todavía no hay operaciones registradas.
           </div>
         )}
       </div>
+      <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-500">
+        <p>
+          Página {page} de {totalPages} · {total} operaciones
+        </p>
+        <div className="flex gap-3">
+          {page > 1 && (
+            <Link className="btn btn-secondary" href={`/admin/auditoria?page=${page - 1}`}>
+              ← Anterior
+            </Link>
+          )}
+          {hasMore && (
+            <Link className="btn btn-secondary" href={`/admin/auditoria?page=${page + 1}`}>
+              Siguiente →
+            </Link>
+          )}
+        </div>
+      </nav>
     </section>
   );
 }

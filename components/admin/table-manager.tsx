@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export type DiningTableData = {
   id: number;
@@ -145,20 +146,17 @@ export function TableManager({
 
   return (
     <section>
-      <header className="mb-6 rounded-3xl border border-white/10 bg-zinc-950/80 p-5 sm:p-7">
-        <p className="section-eyebrow">Salón y QR</p>
-        <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-black sm:text-5xl">Mesas</h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              Cada QR reconoce la mesa y lleva al cliente directamente a la carta.
-            </p>
-          </div>
+      <AdminPageHeader
+        eyebrow="Salón y QR"
+        title="Mesas"
+        description="Cada QR reconoce la mesa y lleva al cliente directamente a la carta."
+        section="mesas"
+        actions={
           <button className="btn btn-secondary print:hidden" onClick={() => window.print()} type="button">
             Imprimir todos los carteles
           </button>
-        </div>
-      </header>
+        }
+      />
 
       <form
         className="card mb-6 grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_140px_auto_auto] lg:items-end"

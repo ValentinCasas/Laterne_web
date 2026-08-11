@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 export type HelpArticleData = {
@@ -8,6 +9,7 @@ export type HelpArticleData = {
   summary: string;
   content: string;
   category: string;
+  slug: string;
 };
 
 /** @summary Permite buscar respuestas y enviar una consulta cuando la documentación no alcanza. */
@@ -68,6 +70,12 @@ export function HelpCenter({ articles, whatsapp }: { articles: HelpArticleData[]
               <div className="mt-4 whitespace-pre-wrap border-t border-white/10 pt-4 leading-relaxed text-zinc-300">
                 {article.content}
               </div>
+              <Link
+                className="mt-4 inline-block text-sm font-bold text-pink-300 hover:text-pink-200"
+                href={`/ayuda/${article.slug}`}
+              >
+                Ver guía completa en una página →
+              </Link>
             </details>
           ))}
           {!filtered.length && (

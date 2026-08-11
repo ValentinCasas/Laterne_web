@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 type Invoice = {
   id: number;
@@ -92,16 +93,12 @@ export function InvoiceManager({
 
   return (
     <section>
-      <header className="admin-hero">
-        <div>
-          <p className="section-eyebrow">Documentación</p>
-          <h1 className="mt-2 text-4xl font-black sm:text-5xl">Comprobantes</h1>
-          <p className="mt-3 max-w-2xl text-zinc-500">
-            Estos documentos son internos y no sustituyen una factura fiscal. La integración fiscal queda
-            lista para conectarse a un proveedor autorizado.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader
+        eyebrow="Documentación"
+        title="Comprobantes"
+        description="Estos documentos son internos y no sustituyen una factura fiscal. La integración fiscal queda lista para conectarse a un proveedor autorizado."
+        section="facturacion"
+      />
       <section className="card mt-6 p-5">
         <h2 className="text-xl font-black">Pedidos sin comprobante</h2>
         <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
