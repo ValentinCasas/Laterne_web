@@ -175,6 +175,7 @@ model User {
   assignedLeads SalesLead[]        @relation("AssignedSalesLeads")
   isSuperAdmin  Boolean            @default(false)
   mediaAssets   MediaAsset[]
+  platformPayments PlatformPayment[] @relation("PlatformPaymentCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -184,6 +185,7 @@ model Tenant {
   id                    Int                    @id @default(autoincrement())
   name                  String                 @db.VarChar(160)
   slug                  String                 @unique @db.VarChar(120)
+  businessType          String?                @db.VarChar(80)
   status                String                 @default("active") @db.VarChar(20)
   defaultCurrency       String                 @default("ARS") @db.VarChar(3)
   locale                String                 @default("es-AR") @db.VarChar(12)
@@ -232,6 +234,7 @@ model Tenant {
   redirectRules         RedirectRule[]
   errorLogs             ErrorLog[]
   passwordResetRequests PasswordResetRequest[]
+  platformPayments      PlatformPayment[]
 
   @@map("tenant")
 }
@@ -1236,4 +1239,26 @@ model PasswordResetRequest {
   @@index([emailHash, createdAt])
   @@index([tokenHash])
   @@map("passwordresetrequest")
+}
+
+model PlatformPayment {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  period      String   @db.VarChar(7)
+  paidAt      DateTime
+  amount      Decimal  @db.Decimal(14, 2)
+  currency    String   @default("ARS") @db.VarChar(3)
+  method      String   @db.VarChar(40)
+  reference   String?  @db.VarChar(120)
+  note        String?  @db.Text
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("PlatformPaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, paidAt])
+  @@index([tenantId, period])
+  @@index([createdById])
+  @@map("platformpayment")
 }

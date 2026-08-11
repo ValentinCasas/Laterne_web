@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-type LimitKind = "products" | "users" | "storageMb";
+type LimitKind = "products" | "users" | "storageMb" | "branches";
 
 /** @summary Recupera un límite positivo desde la configuración de suscripción o informa que es ilimitado. */
 function configuredLimit(value: unknown, kind: LimitKind) {
@@ -21,6 +21,7 @@ export async function ensureTenantCapacity(tenantId: number, kind: LimitKind, in
   let current = 0;
   if (kind === "products") current = await prisma.product.count({ where: { tenantId } });
   if (kind === "users") current = await prisma.tenantMembership.count({ where: { tenantId } });
+  if (kind === "branches") current = await prisma.branch.count({ where: { tenantId } });
   if (kind === "storageMb") {
     const storage = await prisma.mediaAsset.aggregate({
       where: { tenantId },
@@ -31,7 +32,14 @@ export async function ensureTenantCapacity(tenantId: number, kind: LimitKind, in
   }
 
   if (current + increment > limit) {
-    const label = kind === "products" ? "productos" : kind === "users" ? "usuarios" : "almacenamiento en MB";
+    const label =
+      kind === "products"
+        ? "productos"
+        : kind === "users"
+          ? "usuarios"
+          : kind === "branches"
+            ? "sucursales"
+            : "almacenamiento en MB";
     throw new Error(`Se alcanzó el límite de ${label} del plan actual`);
   }
 }

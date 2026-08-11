@@ -26,7 +26,8 @@ function requestAddressHash(request: Request) {
 export async function POST(request: Request) {
   const parsed = errorInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 });
-  const tenant = await getDefaultTenant();
+  const tenant = await getDefaultTenant().catch(() => null);
+  if (!tenant) return new NextResponse(null, { status: 204 });
   const addressHash = requestAddressHash(request);
   const recentFromAddress = await prisma.errorLog.count({
     where: {

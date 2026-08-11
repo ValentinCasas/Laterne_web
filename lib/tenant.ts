@@ -1,40 +1,69 @@
 import { cache } from "react";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import {
+  DEV_TENANT_SLUG,
+  ROOT_DOMAIN_NAME,
+  isAppHost,
+  isLocalhost,
+  isPlatformHost,
+} from "@/lib/domains";
 
-/** @summary Obtiene el negocio principal que conserva todos los datos históricos de Laterne. */
-export const getDefaultTenant = cache(async () => {
-  const requestHeaders = await headers();
-  const requestHost = (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
+/** @summary Indica que el host de la solicitud no se puede asociar a ningún negocio. */
+export class UnknownHostError extends Error {
+  constructor(host: string) {
+    super(`No existe un negocio para el dominio ${host || "desconocido"}`);
+    this.name = "UnknownHostError";
+  }
+}
+
+/** @summary Extrae el host normalizado de la solicitud ignorando proxies y puertos. */
+function requestHost(requestHeaders: Headers) {
+  return (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
     .split(",")[0]
     .trim()
     .split(":")[0]
     .toLocaleLowerCase("es");
-  if (requestHost && !["localhost", "127.0.0.1"].includes(requestHost)) {
-    const customDomain = await prisma.brandSettings.findFirst({
-      where: { customDomain: requestHost, tenant: { status: "active" } },
-      select: { tenant: true },
-    });
-    if (customDomain) return customDomain.tenant;
+}
 
-    const rootDomain = process.env.ROOT_DOMAIN?.toLocaleLowerCase("es");
-    if (rootDomain && requestHost.endsWith(`.${rootDomain}`)) {
-      const slug = requestHost
-        .slice(0, -(rootDomain.length + 1))
-        .split(".")
-        .at(-1);
-      if (slug) {
-        const tenant = await prisma.tenant.findFirst({ where: { slug, status: "active" } });
-        if (tenant) return tenant;
-      }
+/** @summary Resuelve el negocio de un host mediante dominio propio o subdominio del producto. */
+export const resolveTenantByHost = cache(async (host: string) => {
+  if (!host) return null;
+
+  const customDomain = await prisma.brandSettings.findFirst({
+    where: { customDomain: host },
+    select: { tenant: true },
+  });
+  if (customDomain) return customDomain.tenant;
+
+  if (!isPlatformHost(host) && !isAppHost(host) && host.endsWith(`.${ROOT_DOMAIN_NAME}`)) {
+    const slug = host.slice(0, -(ROOT_DOMAIN_NAME.length + 1)).split(".").at(-1);
+    if (slug) {
+      return prisma.tenant.findUnique({ where: { slug } });
     }
   }
-  const tenant =
-    (await prisma.tenant.findUnique({ where: { slug: "laterne" } })) ??
-    (await prisma.tenant.findFirst({ where: { status: "active" }, orderBy: { id: "asc" } }));
+  return null;
+});
 
-  if (!tenant) throw new Error("No existe un negocio activo configurado");
-  return tenant;
+/** @summary Devuelve el negocio del host solicitado sin permitir coincidencias por defecto. */
+export const getDefaultTenant = cache(async () => {
+  const requestHeaders = await headers();
+  const host = requestHost(requestHeaders);
+
+  const resolved = await resolveTenantByHost(host);
+  if (resolved) return resolved;
+
+  if (isLocalhost(host) && process.env.NODE_ENV !== "production") {
+    const devTenant = await prisma.tenant.findUnique({ where: { slug: DEV_TENANT_SLUG } });
+    if (devTenant) return devTenant;
+    const firstActive = await prisma.tenant.findFirst({
+      where: { status: "active" },
+      orderBy: { id: "asc" },
+    });
+    if (firstActive) return firstActive;
+  }
+
+  throw new UnknownHostError(host);
 });
 
 /** @summary Busca un negocio activo mediante su identificador público legible. */

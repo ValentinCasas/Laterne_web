@@ -95,8 +95,9 @@ export async function POST(request: Request) {
     return created;
   });
 
-  const tenant = await getDefaultTenant();
-  const business = await prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } });
+  const business = await getDefaultTenant()
+    .then(async (tenant) => prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }))
+    .catch(() => null);
   const phone = business?.phoneNumber?.toString() ?? "";
   const message = `Hola, soy ${lead.fullName} de ${lead.businessName}. Acabo de solicitar una demostración de Laterne Web (consulta #${lead.id}).`;
 

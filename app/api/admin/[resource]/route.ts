@@ -298,6 +298,9 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     if (resource === "usuarios") {
       await ensureTenantCapacity(auth.tenant.id, "users");
     }
+    if (resource === "sucursales") {
+      await ensureTenantCapacity(auth.tenant.id, "branches");
+    }
     const item =
       resource === "usuarios"
         ? await createMember(input, auth.tenant.id)
