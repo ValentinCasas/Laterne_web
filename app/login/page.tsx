@@ -15,9 +15,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (await getSession()) redirect(redirectTo);
   const requestedTenantId = (await searchParams).tenantId;
   return (
-    <main className="shell grid min-h-[calc(100vh-4rem)] place-items-center py-12">
-      <section className="card w-full max-w-md p-8">
-        <p className="font-bold uppercase tracking-widest text-pink-400">
+    <main className="mc-login-shell grid min-h-[calc(100vh-4rem)] place-items-center py-12">
+      <section className="mc-login-card w-full max-w-md p-8">
+        <p className="mc-eyebrow">
           {platform ? "Plataforma MenuClick" : "Acceso MenuClick"}
         </p>
         <h1 className="mt-2 text-3xl font-black">Ingresar</h1>

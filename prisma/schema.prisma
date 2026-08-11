@@ -255,6 +255,52 @@ model Tenant {
   @@map("tenant")
 }
 
+/** @summary Configuración global de MenuClick, independiente de cualquier tenant. */
+model PlatformSettings {
+  id               Int              @id @default(1)
+  name             String           @default("MenuClick") @db.VarChar(120)
+  logoUrl          String?          @db.VarChar(500)
+  isotypeUrl       String?          @db.VarChar(500)
+  faviconUrl       String?          @db.VarChar(500)
+  activePaletteId  Int?
+  activePalette    PlatformPalette? @relation("PlatformActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
+  palettes         PlatformPalette[] @relation("PlatformPalettes")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@map("platformsettings")
+}
+
+/** @summary Paleta global de MenuClick para marketing, login y Platform. */
+model PlatformPalette {
+  id             Int              @id @default(autoincrement())
+  settingsId     Int              @default(1)
+  name           String           @db.VarChar(120)
+  isSystem       Boolean          @default(false)
+  presetKey      String?          @db.VarChar(50)
+  baseMode       String           @default("dark") @db.VarChar(10)
+  primary        String           @db.VarChar(7)
+  secondary      String           @db.VarChar(7)
+  accent         String           @db.VarChar(7)
+  background     String           @db.VarChar(7)
+  surface        String           @db.VarChar(7)
+  surfaceElevated String          @db.VarChar(7)
+  text           String           @db.VarChar(7)
+  textMuted      String           @db.VarChar(7)
+  border         String           @db.VarChar(7)
+  success        String           @db.VarChar(7)
+  warning        String           @db.VarChar(7)
+  danger         String           @db.VarChar(7)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  settings       PlatformSettings @relation("PlatformPalettes", fields: [settingsId], references: [id], onDelete: Cascade)
+  activeFor      PlatformSettings[] @relation("PlatformActivePalette")
+
+  @@unique([settingsId, presetKey])
+  @@index([settingsId, isSystem, name])
+  @@map("platformpalette")
+}
+
 model Role {
   id          Int                @id @default(autoincrement())
   tenantId    Int

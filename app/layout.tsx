@@ -13,6 +13,8 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultTenant, UnknownHostError } from "@/lib/tenant";
 import { classifyHost, requestOrigin } from "@/lib/domains";
 import { defaultPalette, paletteCssVariables, paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
+import { defaultMenuClickTheme, menuClickCssVariables, menuClickThemeFromRecord, type MenuClickTheme } from "@/lib/menuclick-theme";
+import { MenuClickThemeProvider } from "@/components/platform/menuclick-theme-provider";
 
 /** @summary Resuelve la experiencia y el negocio del host para el render de la solicitud. */
 async function resolveRequestContext() {
@@ -23,6 +25,14 @@ async function resolveRequestContext() {
   let tenant: Awaited<ReturnType<typeof getDefaultTenant>> | null = null;
   let brand: Awaited<ReturnType<typeof prisma.brandSettings.findUnique>> | null = null;
   let palette: PaletteColors = defaultPalette;
+  let menuTheme: MenuClickTheme = defaultMenuClickTheme;
+  let platformSettings: Awaited<ReturnType<typeof prisma.platformSettings.findUnique>> & { activePalette?: Awaited<ReturnType<typeof prisma.platformPalette.findUnique>> | null } | null = null;
+  if (kind === "platform") {
+    platformSettings = await prisma.platformSettings.findUnique({ where: { id: 1 }, include: { activePalette: true } });
+    if (platformSettings?.activePalette) {
+      menuTheme = menuClickThemeFromRecord(platformSettings.activePalette);
+    }
+  }
   if (kind === "tenant") {
     try {
       tenant = await getDefaultTenant();
@@ -41,13 +51,13 @@ async function resolveRequestContext() {
       if (!(error instanceof UnknownHostError)) throw error;
     }
   }
-  return { kind, tenant, brand, palette };
+  return { kind, tenant, brand, palette, menuTheme, platformSettings };
 }
 
 /** @summary Construye metadatos globales administrables para la experiencia resuelta por dominio. */
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
-  const { kind, tenant, brand } = await resolveRequestContext();
+  const { kind, tenant, brand, platformSettings } = await resolveRequestContext();
   const siteUrl = requestOrigin(requestHeaders);
 
   if (!tenant) {
@@ -62,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
         ? "Carta digital, pedidos, reservas, stock y sucursales para negocios gastronómicos."
         : "Carta digital, pedidos, reservas y administración gastronómica.",
       manifest: "/manifest.webmanifest",
-      icons: { icon: "/favicon.ico" },
+      icons: { icon: platformSettings?.faviconUrl || "/favicon.ico" },
       alternates: siteUrl ? { canonical: siteUrl } : undefined,
       robots: kind === "unknown" ? { index: false, follow: false } : undefined,
     };
@@ -96,9 +106,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** @summary Define la estructura global y solo añade la navegación pública cuando existe un negocio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { tenant, brand, palette } = await resolveRequestContext();
+  const { kind, tenant, brand, palette, menuTheme } = await resolveRequestContext();
   const style = {
     ...paletteCssVariables(palette),
+    ...(kind === "platform" ? menuClickCssVariables(menuTheme) : {}),
     colorScheme: palette.baseMode,
     "--brand-font": brand?.fontFamily ?? "Inter",
     "--brand-button-radius":
@@ -110,12 +121,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">
-      <body className={tenant ? "tenant-theme" : undefined} style={style}>
+      <body className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined} style={style}>
         {tenant && <SiteHeader brandName={name} logoUrl={brand?.logoUrl} />}
         {tenant && <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />}
         <PwaRegister />
         {tenant && <CookieBanner />}
-        {children}
+        {kind === "platform" ? <MenuClickThemeProvider initialTheme={menuTheme}>{children}</MenuClickThemeProvider> : children}
         {tenant && <SiteFooter businessName={name} />}
       </body>
     </html>
