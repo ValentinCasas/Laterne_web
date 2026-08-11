@@ -6,6 +6,7 @@ import { authorizeSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isReservedSlug } from "@/lib/domains";
 import { slugify } from "@/lib/slug";
+import { defaultPalette } from "@/lib/theme-palettes";
 
 const tenantInput = z.object({
   name: z.string().trim().min(2).max(160),
@@ -94,6 +95,26 @@ export async function POST(request: Request) {
       },
     });
     await transaction.branchMembership.create({ data: { membershipId: membership.id, branchId: branch.id } });
+    const palette = await transaction.themePalette.create({
+      data: {
+        tenantId: created.id,
+        name: "Original",
+        primary: defaultPalette.primary,
+        secondary: defaultPalette.secondary,
+        accent: defaultPalette.accent,
+        background: defaultPalette.background,
+        surface: defaultPalette.surface,
+        surfaceElevated: defaultPalette.surfaceElevated,
+        text: defaultPalette.text,
+        textMuted: defaultPalette.textMuted,
+        border: defaultPalette.border,
+        success: defaultPalette.success,
+        warning: defaultPalette.warning,
+        danger: defaultPalette.danger,
+        baseMode: defaultPalette.baseMode,
+      },
+    });
+    await transaction.tenant.update({ where: { id: created.id }, data: { activePaletteId: palette.id } });
     await Promise.all([
       transaction.businessInfo.create({ data: { tenantId: created.id } }),
       transaction.brandSettings.create({ data: { tenantId: created.id } }),

@@ -4,7 +4,7 @@ import { resolveHostKind } from "@/lib/host-gate";
 import { isLocalDevelopmentHost } from "@/lib/domains";
 
 /** @summary Rutas exclusivas de la experiencia de plataforma (Panel MenuClick). */
-const PLATFORM_PREFIXES = ["/superadmin", "/planes", "/para-negocios", "/solicitar-demo", "/legal"];
+const PLATFORM_PREFIXES = ["/superadmin", "/planes", "/para-negocios", "/solicitar-demo", "/legal", "/cliente"];
 const PLATFORM_PATHS = new Set(["/login", "/recuperar-acceso", "/restablecer-acceso", "/403", "/404"]);
 
 /** @summary Rutas exclusivas de la experiencia de administración de los negocios. */

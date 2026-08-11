@@ -12,6 +12,7 @@ import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant, UnknownHostError } from "@/lib/tenant";
 import { classifyHost, requestOrigin } from "@/lib/domains";
+import { defaultPalette, paletteCssVariables, paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
 
 /** @summary Resuelve la experiencia y el negocio del host para el render de la solicitud. */
 async function resolveRequestContext() {
@@ -21,15 +22,26 @@ async function resolveRequestContext() {
 
   let tenant: Awaited<ReturnType<typeof getDefaultTenant>> | null = null;
   let brand: Awaited<ReturnType<typeof prisma.brandSettings.findUnique>> | null = null;
+  let palette: PaletteColors = defaultPalette;
   if (kind === "tenant") {
     try {
       tenant = await getDefaultTenant();
-      if (tenant) brand = await prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } });
+      if (tenant) {
+        brand = await prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } });
+        const activePalette = tenant.activePaletteId
+          ? await prisma.themePalette.findFirst({ where: { id: tenant.activePaletteId, tenantId: tenant.id } })
+          : null;
+        palette = activePalette
+          ? { ...activePalette, baseMode: activePalette.baseMode === "light" ? "light" : "dark" }
+          : brand
+            ? paletteFromLegacy(brand.primaryColor, brand.secondaryColor, brand.backgroundColor)
+            : defaultPalette;
+      }
     } catch (error) {
       if (!(error instanceof UnknownHostError)) throw error;
     }
   }
-  return { kind, tenant, brand };
+  return { kind, tenant, brand, palette };
 }
 
 /** @summary Construye metadatos globales administrables para la experiencia resuelta por dominio. */
@@ -82,11 +94,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** @summary Define la estructura global y solo añade la navegación pública cuando existe un negocio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { tenant, brand } = await resolveRequestContext();
+  const { tenant, brand, palette } = await resolveRequestContext();
   const style = {
-    "--brand-primary": brand?.primaryColor ?? "#ec4899",
-    "--brand-secondary": brand?.secondaryColor ?? "#f5c542",
-    "--brand-background": brand?.backgroundColor ?? "#09090b",
+    ...paletteCssVariables(palette),
+    colorScheme: palette.baseMode,
     "--brand-font": brand?.fontFamily ?? "Inter",
     "--brand-button-radius":
       brand?.buttonStyle === "pill" ? "999px" : brand?.buttonStyle === "square" ? ".25rem" : ".75rem",
@@ -97,7 +108,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">
-      <body style={style}>
+      <body className={tenant ? "tenant-theme" : undefined} style={style}>
         {tenant && <SiteHeader brandName={name} logoUrl={brand?.logoUrl} />}
         {tenant && <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />}
         <PwaRegister />

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isLocalDevelopmentHost } from "@/lib/domains";
 import { resolveHostKind } from "@/lib/host-gate";
 import { publicTenantWhere } from "@/lib/subscription-access";
+import { paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
 
 export type Session = {
   userId: number;
@@ -19,7 +20,7 @@ export type Session = {
 
 export type AuthorizationContext = {
   session: Session;
-  tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null; adminTheme: string; adminAccent: string };
+  tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null; adminTheme: string; adminAccent: string; palette: PaletteColors | null };
   membership: { id: number; role: { key: string; name: string } };
   permissions: string[];
   branches: Array<{ id: number; name: string; active: boolean; isPrimary: boolean }>;
@@ -136,7 +137,8 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           name: true,
           slug: true,
           timeZone: true,
-           brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true } },
+           brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true, primaryColor: true, secondaryColor: true, backgroundColor: true } },
+           activePalette: { select: { primary: true, secondary: true, accent: true, background: true, surface: true, surfaceElevated: true, text: true, textMuted: true, border: true, success: true, warning: true, danger: true, baseMode: true } },
         },
       },
       role: {
@@ -167,6 +169,11 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       customDomain: membership.tenant.brandSettings?.customDomain,
       adminTheme: membership.tenant.brandSettings?.adminTheme ?? "menuclick-dark",
       adminAccent: membership.tenant.brandSettings?.adminAccent ?? "#ec4899",
+      palette: membership.tenant.activePalette
+        ? { ...membership.tenant.activePalette, baseMode: membership.tenant.activePalette.baseMode === "light" ? "light" : "dark" }
+        : membership.tenant.brandSettings
+          ? paletteFromLegacy(membership.tenant.brandSettings.primaryColor, membership.tenant.brandSettings.secondaryColor, membership.tenant.brandSettings.backgroundColor)
+          : null,
     },
     membership: { id: membership.id, role: { key: membership.role.key, name: membership.role.name } },
     permissions,

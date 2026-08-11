@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PaletteManager, type PaletteRecord } from "@/components/admin/palette-manager";
+import type { PalettePreset } from "@/lib/theme-palettes";
 
 export type BrandData = {
   logoUrl: string | null;
@@ -40,7 +42,7 @@ function socialValue(value: unknown, key: string) {
 }
 
 /** @summary Administra identidad, textos, estilos, redes y configuración de presencia digital. */
-export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
+export function BrandManager({ initialBrand, palettes, activePaletteId, presets }: { initialBrand: BrandData; palettes: PaletteRecord[]; activePaletteId: number | null; presets: PalettePreset[] }) {
   const [brand, setBrand] = useState(initialBrand);
   const [uploading, setUploading] = useState<BrandAsset | null>(null);
   const [deleting, setDeleting] = useState<BrandAsset | null>(null);
@@ -201,36 +203,7 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
               </label>
             ))}
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <label>
-              <span className="label">Color principal</span>
-              <input
-                className="input h-12 p-1"
-                name="primaryColor"
-                type="color"
-                defaultValue={brand.primaryColor}
-              />
-            </label>
-            <label>
-              <span className="label">Color secundario</span>
-              <input
-                className="input h-12 p-1"
-                name="secondaryColor"
-                type="color"
-                defaultValue={brand.secondaryColor}
-              />
-            </label>
-            <label>
-              <span className="label">Fondo</span>
-              <input
-                className="input h-12 p-1"
-                name="backgroundColor"
-                type="color"
-                defaultValue={brand.backgroundColor}
-              />
-            </label>
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <label>
               <span className="label">Tipografía</span>
               <select className="input" name="fontFamily" defaultValue={brand.fontFamily}>
@@ -258,15 +231,7 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
             </label>
           </div>
         </section>
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Tema del panel</h2>
-          <p className="mt-2 text-sm text-zinc-400">Cambia la interfaz administrativa sin afectar la carta pública.</p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label><span className="label">Combinación</span><select className="input" name="adminTheme" defaultValue={brand.adminTheme}><option value="menuclick-dark">MenuClick Dark</option><option value="grafito">Grafito</option><option value="medianoche">Medianoche</option><option value="alto-contraste">Contraste alto</option></select></label>
-            <label><span className="label">Color de acento accesible</span><input className="input h-12 p-1" name="adminAccent" type="color" defaultValue={brand.adminAccent} /></label>
-          </div>
-          <p className="mt-3 text-xs text-zinc-500">Los fondos y textos mantienen contraste alto; el acento se limita a controles interactivos.</p>
-        </section>
+        <PaletteManager initialPalettes={palettes} initialActiveId={activePaletteId} presets={presets} />
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Voz y portada</h2>
           <div className="mt-5 space-y-4">

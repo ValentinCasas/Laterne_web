@@ -21,6 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       publicSiteUrl={publicTenantUrl(context.tenant.slug, context.tenant.customDomain)}
       adminTheme={context.tenant.adminTheme}
       adminAccent={context.tenant.adminAccent}
+      palette={context.tenant.palette ?? undefined}
     >
       {children}
     </AdminShell>

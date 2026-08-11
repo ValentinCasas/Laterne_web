@@ -59,6 +59,18 @@
   --admin-warning: #f5c15d;
   --admin-danger: #fb7185;
   --admin-glow: rgb(236 72 153 / 0.14);
+  --color-primary: #ec4899;
+  --color-secondary: #f5c542;
+  --color-accent: #f9a8d4;
+  --color-background: #09090b;
+  --color-surface: #18181b;
+  --color-surface-elevated: #27272a;
+  --color-text: #fafafa;
+  --color-text-muted: #a1a1aa;
+  --color-border: #3f3f46;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
 }
 html {
   scroll-behavior: smooth;
@@ -69,6 +81,39 @@ body {
   color: #fafafa;
   font-family: var(--brand-font), var(--font-sans);
 }
+.tenant-theme {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+.tenant-theme .card {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+.tenant-theme .btn {
+  background: var(--color-primary);
+  color: var(--color-text);
+}
+.tenant-theme .input {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+.tenant-theme [class*="text-pink-"] { color: var(--color-primary) !important; }
+.tenant-theme [class*="bg-pink-"] { background-color: color-mix(in srgb, var(--color-primary) 18%, transparent) !important; }
+.tenant-theme [class*="border-pink-"] { border-color: color-mix(in srgb, var(--color-primary) 65%, transparent) !important; }
+.tenant-theme [class*="from-pink-"] { --tw-gradient-from: var(--color-primary) !important; }
+.tenant-theme [class*="to-pink-"] { --tw-gradient-to: color-mix(in srgb, var(--color-primary) 20%, transparent) !important; }
+.tenant-theme [class*="accent-pink-"] { accent-color: var(--color-primary) !important; }
+.tenant-theme [class*="bg-zinc-950"],
+.tenant-theme [class*="bg-black"] { background-color: var(--color-background) !important; }
+.tenant-theme [class*="bg-zinc-900"],
+.tenant-theme [class*="bg-zinc-800"] { background-color: var(--color-surface-elevated) !important; }
+.tenant-theme [class*="text-zinc-100"],
+.tenant-theme [class*="text-zinc-200"] { color: var(--color-text) !important; }
+.tenant-theme [class*="text-zinc-300"],
+.tenant-theme [class*="text-zinc-400"],
+.tenant-theme [class*="text-zinc-500"],
+.tenant-theme [class*="text-zinc-600"] { color: var(--color-text-muted) !important; }
 a,
 button {
   transition:
@@ -155,6 +200,16 @@ button {
 .admin-theme .text-zinc-600 {
   color: var(--admin-muted);
 }
+.admin-theme [class*="text-pink-"] { color: var(--color-primary) !important; }
+.admin-theme [class*="bg-pink-"] { background-color: color-mix(in srgb, var(--color-primary) 18%, transparent) !important; }
+.admin-theme [class*="border-pink-"] { border-color: color-mix(in srgb, var(--color-primary) 65%, transparent) !important; }
+.admin-theme [class*="accent-pink-"] { accent-color: var(--color-primary) !important; }
+.admin-theme [class*="bg-zinc-950"],
+.admin-theme [class*="bg-black"] { background-color: var(--admin-background) !important; }
+.admin-theme [class*="bg-zinc-900"],
+.admin-theme [class*="bg-zinc-800"] { background-color: var(--admin-surface-elevated) !important; }
+.admin-theme [class*="text-zinc-100"],
+.admin-theme [class*="text-zinc-200"] { color: var(--admin-text) !important; }
 @media (min-width: 1024px) {
   .admin-main {
     min-width: 0;

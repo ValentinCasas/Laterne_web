@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { NotificationCenter } from "@/components/admin/notification-center";
+import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
 
 type NavigationLink = {
   href: string;
@@ -162,6 +163,7 @@ export function AdminShell({
   isSuperAdmin = false,
   adminTheme = "menuclick-dark",
   adminAccent = "#ec4899",
+  palette = defaultPalette,
 }: {
   children: React.ReactNode;
   permissions: string[];
@@ -170,6 +172,7 @@ export function AdminShell({
   isSuperAdmin?: boolean;
   adminTheme?: string;
   adminAccent?: string;
+  palette?: PaletteColors;
 }) {
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
@@ -235,7 +238,7 @@ export function AdminShell({
   }
 
   return (
-    <div className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`} style={{ "--admin-primary-strong": adminAccent, "--admin-primary": adminAccent } as React.CSSProperties}>
+    <div className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`} style={{ ...paletteCssVariables(palette), colorScheme: palette.baseMode, "--admin-primary-strong": palette.primary, "--admin-primary": palette.primary, "--admin-accent-legacy": adminAccent } as React.CSSProperties}>
       <div className="admin-shell shell grid gap-6 py-6 lg:grid-cols-[288px_minmax(0,1fr)] lg:gap-9 lg:py-9">
         <aside className="sticky top-20 z-40 h-fit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl">
           <div className="hidden border-b border-white/10 p-6 lg:block">
