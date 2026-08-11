@@ -99,6 +99,7 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
         {integrations.map((integration) => {
           const details = providerDetails[integration.provider];
           const payment = integration.provider === "mercado_pago";
+          const upcoming = integration.provider !== "storage";
           return (
             <form
               className="card p-6"
@@ -115,6 +116,11 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                 >
                   {integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
                 </span>
+                {upcoming && (
+                  <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-black uppercase text-zinc-400">
+                    Próximamente
+                  </span>
+                )}
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <label>
@@ -152,15 +158,15 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                     name="enabled"
                     type="checkbox"
                     defaultChecked={integration.enabled}
-                    disabled={payment || !integration.secretConfigured}
+                    disabled={payment || upcoming || !integration.secretConfigured}
                   />{" "}
                   Habilitada
                 </label>
                 <button className="btn">Guardar</button>
               </div>
-              {payment && (
+              {(payment || upcoming) && (
                 <p className="mt-3 text-xs text-amber-300">
-                  Preparado pero bloqueado deliberadamente, tal como define el alcance actual.
+                  Disponible próximamente. Esta integración todavía no envía ni recibe información.
                 </p>
               )}
             </form>

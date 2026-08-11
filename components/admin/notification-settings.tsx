@@ -61,7 +61,7 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
       <AdminPageHeader
         eyebrow="Avisos"
         title="Notificaciones"
-        description="Elegí qué eventos seguir y prepará canales para integraciones autorizadas."
+        description="Elegí qué eventos se muestran en el panel. Los canales externos estarán disponibles próximamente."
         section="notificaciones"
       />
       <div className="grid gap-6 xl:grid-cols-2">
@@ -75,26 +75,41 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
               </span>
               <input name="panel" type="checkbox" defaultChecked={initialSettings.panel} />
             </label>
-            <label className="flex justify-between rounded-2xl border border-white/10 p-4">
+            <label className="flex justify-between rounded-2xl border border-white/10 p-4 opacity-70">
               <span>
                 <strong>Email</strong>
-                <small className="block text-zinc-500">Requiere proveedor SMTP o transaccional</small>
+                <small className="block text-zinc-500">Próximamente · requiere proveedor de correo transaccional</small>
               </span>
-              <input name="email" type="checkbox" defaultChecked={initialSettings.email} />
+              <span className="flex items-center gap-3">
+                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
+                  Próximamente
+                </span>
+                <input name="email" type="checkbox" disabled />
+              </span>
             </label>
-            <label className="flex justify-between rounded-2xl border border-white/10 p-4">
+            <label className="flex justify-between rounded-2xl border border-white/10 p-4 opacity-70">
               <span>
                 <strong>WhatsApp</strong>
-                <small className="block text-zinc-500">Requiere API oficial autorizada</small>
+                <small className="block text-zinc-500">Próximamente · requiere API oficial autorizada</small>
               </span>
-              <input name="whatsapp" type="checkbox" defaultChecked={initialSettings.whatsapp} />
+              <span className="flex items-center gap-3">
+                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
+                  Próximamente
+                </span>
+                <input name="whatsapp" type="checkbox" disabled />
+              </span>
             </label>
-            <label className="flex justify-between rounded-2xl border border-white/10 p-4">
+            <label className="flex justify-between rounded-2xl border border-white/10 p-4 opacity-70">
               <span>
                 <strong>Web push</strong>
-                <small className="block text-zinc-500">Preparado para claves VAPID</small>
+                <small className="block text-zinc-500">Próximamente · requiere claves VAPID</small>
               </span>
-              <input name="webPush" type="checkbox" defaultChecked={initialSettings.webPush} />
+              <span className="flex items-center gap-3">
+                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
+                  Próximamente
+                </span>
+                <input name="webPush" type="checkbox" disabled />
+              </span>
             </label>
           </div>
         </section>

@@ -211,6 +211,7 @@ model Tenant {
   productExtras         ProductExtra[]
   diningTables          DiningTable[]
   customerOrders        CustomerOrder[]
+  orderIdempotencies    OrderIdempotency[]
   analyticsEvents       AnalyticsEvent[]
   brandSettings         BrandSettings?
   subscription          TenantSubscription?
@@ -747,6 +748,7 @@ model CustomerOrder {
   history         OrderStatusHistory[]
   stockMovements  StockMovement[]
   invoice         InvoiceRecord?
+  idempotencies   OrderIdempotency[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
@@ -755,6 +757,23 @@ model CustomerOrder {
   @@index([tenantId, promotionId, createdAt])
   @@index([publicTokenHash])
   @@map("customerorder")
+}
+
+model OrderIdempotency {
+  id        Int            @id @default(autoincrement())
+  tenantId  Int
+  orderId   Int
+  key       String         @db.VarChar(120)
+  reference String         @db.VarChar(24)
+  token     String         @db.VarChar(120)
+  total     Decimal        @default(0) @db.Decimal(12, 2)
+  createdAt DateTime       @default(now())
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     CustomerOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([createdAt])
+  @@map("orderidempotency")
 }
 
 model OrderItem {

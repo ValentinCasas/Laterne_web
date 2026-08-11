@@ -41,6 +41,7 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
       "Podés limitar días y horarios de disponibilidad, y marcar un producto como Agotado.",
       "Los productos pueden tener variantes (tamaños, presentaciones) y agregados (extras) que se eligen en el panel de Variantes y agregados.",
       "Si el producto tiene control de stock activo, los pedidos verifican existencias antes de confirmarse.",
+      "La experiencia 3D y realidad aumentada (modelos, medidas, escala y superficie) se configura en la sección avanzada del formulario del producto.",
     ],
     warning: "El precio que ve el cliente siempre es el precio promocional si existe; revisalo antes de publicar.",
     related: ["opciones-producto", "categorias", "inventario"],

@@ -51,6 +51,9 @@ function requestSource(request: Request) {
   }
 }
 
+/** @summary Indica que la franja seleccionada perdió capacidad durante la confirmación. */
+class ReservationCapacityError extends Error {}
+
 /** @summary Comprueba si una franja se encuentra dentro de un bloqueo total o parcial. */
 function blockedTime(time: string, blocks: Array<{ startTime: Date | null; endTime: Date | null }>) {
   return blocks.some((block) => {
@@ -183,66 +186,76 @@ export async function POST(request: Request) {
   if (recentRequests >= 5) {
     return NextResponse.json({ error: "Alcanzaste el límite temporal de solicitudes" }, { status: 429 });
   }
-  const [blocks, occupied] = await Promise.all([
+  const [blocks] = await Promise.all([
     prisma.reservationBlock.findMany({
       where: { tenantId: tenant.id, startDate: { lte: selectedDate }, endDate: { gte: selectedDate } },
-    }),
-    prisma.reservation.aggregate({
-      where: {
-        tenantId: tenant.id,
-        reservationDate: selectedDate,
-        reservationTime: reservationTime(parsed.data.time),
-        status: { in: ["pending", "confirmed"] },
-      },
-      _sum: { partySize: true },
     }),
   ]);
   if (blockedTime(parsed.data.time, blocks)) {
     return NextResponse.json({ error: "Ese horario se encuentra bloqueado" }, { status: 409 });
   }
-  if ((occupied._sum.partySize ?? 0) + parsed.data.partySize > settings.capacityPerSlot) {
-    return NextResponse.json(
-      { error: "La franja seleccionada ya no tiene capacidad suficiente" },
-      { status: 409 },
-    );
-  }
 
   const status = settings.confirmationMode === "automatic" ? "confirmed" : "pending";
   const reference = await uniqueReference();
-  await prisma.$transaction(async (transaction) => {
-    const reservation = await transaction.reservation.create({
-      data: {
-        tenantId: tenant.id,
-        reference,
-        status,
-        reservationDate: selectedDate,
-        reservationTime: reservationTime(parsed.data.time),
-        partySize: parsed.data.partySize,
-        sector: parsed.data.sector || null,
-        customerName: parsed.data.customerName,
-        phone: parsed.data.phone,
-        email: parsed.data.email,
-        notes: parsed.data.notes || null,
-        reason: parsed.data.reason || null,
-        acceptedPolicy: true,
-        source: requestSource(request),
-        ipHash,
-        estimatedDuration: settings.defaultDuration,
-      },
+  try {
+    await prisma.$transaction(async (transaction) => {
+      // Bloquea la fila de configuración del negocio para serializar las escrituras
+      // sobre la misma franja y evitar que dos solicitudes simultáneas sobrevendan la capacidad.
+      await transaction.$queryRaw`SELECT id FROM reservationsettings WHERE tenantId = ${tenant.id} FOR UPDATE`;
+      const occupied = await transaction.reservation.aggregate({
+        where: {
+          tenantId: tenant.id,
+          reservationDate: selectedDate,
+          reservationTime: reservationTime(parsed.data.time),
+          status: { in: ["pending", "confirmed"] },
+        },
+        _sum: { partySize: true },
+      });
+      if ((occupied._sum.partySize ?? 0) + parsed.data.partySize > settings.capacityPerSlot) {
+        throw new ReservationCapacityError();
+      }
+      const reservation = await transaction.reservation.create({
+        data: {
+          tenantId: tenant.id,
+          reference,
+          status,
+          reservationDate: selectedDate,
+          reservationTime: reservationTime(parsed.data.time),
+          partySize: parsed.data.partySize,
+          sector: parsed.data.sector || null,
+          customerName: parsed.data.customerName,
+          phone: parsed.data.phone,
+          email: parsed.data.email,
+          notes: parsed.data.notes || null,
+          reason: parsed.data.reason || null,
+          acceptedPolicy: true,
+          source: requestSource(request),
+          ipHash,
+          estimatedDuration: settings.defaultDuration,
+        },
+      });
+      await transaction.reservationStatusHistory.create({
+        data: { reservationId: reservation.id, toStatus: status, note: "Solicitud creada desde la web" },
+      });
+      await transaction.notification.create({
+        data: {
+          tenantId: tenant.id,
+          type: "reservation.new",
+          title: `Nueva reserva · ${parsed.data.customerName}`,
+          message: `${parsed.data.partySize} personas el ${parsed.data.date} a las ${parsed.data.time}.`,
+          link: "/admin/reservas",
+        },
+      });
     });
-    await transaction.reservationStatusHistory.create({
-      data: { reservationId: reservation.id, toStatus: status, note: "Solicitud creada desde la web" },
-    });
-    await transaction.notification.create({
-      data: {
-        tenantId: tenant.id,
-        type: "reservation.new",
-        title: `Nueva reserva · ${parsed.data.customerName}`,
-        message: `${parsed.data.partySize} personas el ${parsed.data.date} a las ${parsed.data.time}.`,
-        link: "/admin/reservas",
-      },
-    });
-  });
+  } catch (error) {
+    if (error instanceof ReservationCapacityError) {
+      return NextResponse.json(
+        { error: "La franja seleccionada ya no tiene capacidad suficiente" },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: "No se pudo concretar la reserva" }, { status: 409 });
+  }
 
   return NextResponse.json({ ok: true, reference, status }, { status: 201 });
 }

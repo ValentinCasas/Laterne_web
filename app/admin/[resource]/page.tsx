@@ -62,7 +62,8 @@ function createDefinition(
   const definitions: Record<string, ResourceDefinition> = {
     productos: {
       title: "Productos",
-      description: "Organizá la carta, sus precios, disponibilidad, categoría e imagen principal.",
+      description:
+        "Organizá la carta, sus precios, disponibilidad, categoría e imagen principal. La experiencia 3D y AR se configura en la sección avanzada del formulario.",
       model: "product",
       fields: [
         { key: "name", label: "Nombre", required: true, placeholder: "Ej. Hamburguesa Laterne" },
@@ -164,6 +165,7 @@ function createDefinition(
           accept: ".glb,.gltf,model/gltf-binary,model/gltf+json",
           help: "GLB hasta 40 MB o GLTF autónomo hasta 15 MB.",
           previewModel: true,
+          group: "Experiencia 3D y realidad aumentada",
         },
         {
           key: "usdzUrl",
@@ -171,8 +173,14 @@ function createDefinition(
           control: "asset",
           accept: ".usdz,model/vnd.usdz+zip,application/octet-stream",
           help: "Opcional. Quick Look puede utilizar este archivo de hasta 60 MB.",
+          group: "Experiencia 3D y realidad aumentada",
         },
-        { key: "arEnabled", label: "Habilitar experiencia 3D y AR", control: "checkbox" },
+        {
+          key: "arEnabled",
+          label: "Habilitar experiencia 3D y AR",
+          control: "checkbox",
+          group: "Experiencia 3D y realidad aumentada",
+        },
         {
           key: "arScale",
           label: "Escala inicial del modelo",
@@ -181,6 +189,7 @@ function createDefinition(
           max: 20,
           step: 0.01,
           help: "1 representa el tamaño original",
+          group: "Experiencia 3D y realidad aumentada",
         },
         {
           key: "modelWidthCm",
@@ -190,6 +199,7 @@ function createDefinition(
           max: 1000,
           step: 0.1,
           help: "Centímetros",
+          group: "Experiencia 3D y realidad aumentada",
         },
         {
           key: "modelHeightCm",
@@ -199,6 +209,7 @@ function createDefinition(
           max: 1000,
           step: 0.1,
           help: "Centímetros",
+          group: "Experiencia 3D y realidad aumentada",
         },
         {
           key: "modelDepthCm",
@@ -208,12 +219,14 @@ function createDefinition(
           max: 1000,
           step: 0.1,
           help: "Centímetros",
+          group: "Experiencia 3D y realidad aumentada",
         },
         {
           key: "modelOrientation",
           label: "Rotación inicial",
           placeholder: "0deg 0deg 0deg",
           help: "Giro, inclinación y orientación",
+          group: "Experiencia 3D y realidad aumentada",
         },
         {
           key: "arPlacement",
@@ -224,8 +237,14 @@ function createDefinition(
             { value: "floor", label: "Horizontal, como una mesa" },
             { value: "wall", label: "Vertical, como una pared" },
           ],
+          group: "Experiencia 3D y realidad aumentada",
         },
-        { key: "arAllowScale", label: "Permitir ajustar tamaño en AR", control: "checkbox" },
+        {
+          key: "arAllowScale",
+          label: "Permitir ajustar tamaño en AR",
+          control: "checkbox",
+          group: "Experiencia 3D y realidad aumentada",
+        },
       ],
     },
     categorias: {

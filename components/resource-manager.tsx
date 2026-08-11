@@ -25,6 +25,7 @@ export type ResourceField = {
   max?: number;
   step?: number | string;
   required?: boolean;
+  group?: string;
   control?:
     "input" | "textarea" | "select" | "choice" | "multichoice" | "image" | "asset" | "location" | "checkbox";
   placeholder?: string;
@@ -675,9 +676,41 @@ export function ResourceManager({
               </button>
             </div>
 
-            {fields.map((field) => (
-              <FormField field={field} item={editing ?? draftItem} key={field.key} />
-            ))}
+            {(() => {
+              const renderedGroups = new Set<string>();
+              return fields.map((field) => {
+                if (field.group && !renderedGroups.has(field.group)) {
+                  renderedGroups.add(field.group);
+                  const groupedFields = fields.filter((candidate) => candidate.group === field.group);
+                  return (
+                    <details
+                      className="group md:col-span-2 rounded-2xl border border-white/10 bg-white/[.02]"
+                      key={field.group}
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 select-none [&::-webkit-details-marker]:hidden">
+                        <span className="text-sm font-bold text-zinc-200">
+                          {field.group}
+                          <small className="mt-0.5 block font-normal text-zinc-600">
+                            Configuración avanzada · opcional
+                          </small>
+                        </span>
+                        <span className="text-xs text-zinc-500 transition group-open:rotate-180">▾</span>
+                      </summary>
+                      <div className="grid gap-5 border-t border-white/10 p-4 sm:p-5 md:grid-cols-2">
+                        {groupedFields.map((groupedField) => (
+                          <FormField
+                            field={groupedField}
+                            item={editing ?? draftItem}
+                            key={groupedField.key}
+                          />
+                        ))}
+                      </div>
+                    </details>
+                  );
+                }
+                return <FormField field={field} item={editing ?? draftItem} key={field.key} />;
+              });
+            })()}
 
             <div className="flex flex-wrap gap-3 border-t border-white/10 pt-5 md:col-span-2">
               <button className="btn min-w-40 disabled:cursor-wait disabled:opacity-60" disabled={saving}>

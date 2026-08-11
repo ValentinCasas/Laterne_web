@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { readBrowserJson, readBrowserText, removeBrowserText, writeBrowserJson } from "@/lib/browser-compat";
 
@@ -69,6 +69,16 @@ export function CheckoutForm({
   const [orderType, setOrderType] = useState<"takeaway" | "dine_in" | "delivery">("takeaway");
   const [tableCode, setTableCode] = useState("");
   const [branchId, setBranchId] = useState(branches[0]?.id ?? 0);
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  function idempotencyKey() {
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+        `ck-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    }
+    return idempotencyKeyRef.current;
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -126,6 +136,7 @@ export function CheckoutForm({
       paymentMethod: form.get("paymentMethod"),
       website: form.get("website"),
       loyaltyToken: readBrowserText("laterne_cliente_token") || undefined,
+      idempotencyKey: idempotencyKey(),
       items: items.map((item) => ({
         productId: item.id,
         quantity: item.quantity,

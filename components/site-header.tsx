@@ -66,10 +66,12 @@ export function SiteHeader({
 
   const activeGroup = getGroupId(pathname);
 
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setOpenGroup(null);
     setMobileGroupOpen(null);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {

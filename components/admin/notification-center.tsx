@@ -21,22 +21,27 @@ export function NotificationCenter() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/admin/notifications")
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return response.json() as Promise<{
+    async function refresh() {
+      try {
+        const response = await fetch("/api/admin/notifications");
+        if (!response.ok) return;
+        const result = (await response.json()) as {
           notifications: AdminNotification[];
           unread: number;
-        }>;
-      })
-      .then((result) => {
-        if (active && result) {
+        };
+        if (active) {
           setItems(result.notifications);
           setUnread(result.unread);
         }
-      });
+      } catch {
+        // Sin conexión o sesión expirada: se conserva el estado actual.
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 60000);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, []);
 

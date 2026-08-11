@@ -22,6 +22,7 @@ const orderInput = z.object({
   website: z.string().max(0).optional(),
   loyaltyToken: z.string().max(100).optional(),
   paymentMethod: z.enum(["on_delivery", "cash", "card_on_delivery", "transfer"]).default("on_delivery"),
+  idempotencyKey: z.string().trim().min(8).max(120).optional(),
   items: z
     .array(
       z.object({
@@ -64,6 +65,25 @@ export async function POST(request: Request) {
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
 
   const tenant = await getDefaultTenant();
+  const idempotencyKey = parsed.data.idempotencyKey?.trim() || null;
+  if (idempotencyKey) {
+    // Reintento de un pedido ya confirmado: devuelve la misma respuesta sin duplicar la operación.
+    const existing = await prisma.orderIdempotency.findUnique({
+      where: { tenantId_key: { tenantId: tenant.id, key: idempotencyKey } },
+    });
+    if (existing) {
+      return NextResponse.json(
+        {
+          ok: true,
+          reference: existing.reference,
+          token: existing.token,
+          status: "received",
+          total: Number(existing.total),
+        },
+        { status: 201 },
+      );
+    }
+  }
   const ipHash = orderAddressHash(requestAddress(request));
   const recent = await prisma.customerOrder.count({
     where: { ipHash, createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } },
@@ -317,6 +337,11 @@ export async function POST(request: Request) {
           history: { create: { toStatus: "received", note: "Pedido creado desde la carta" } },
         },
       });
+      if (idempotencyKey) {
+        await transaction.orderIdempotency.create({
+          data: { tenantId: tenant.id, key: idempotencyKey, orderId: order.id, reference, token, total },
+        });
+      }
       for (const stock of trackedStocks) {
         const quantity = quantities.get(stock.productId) ?? 0;
         if (!quantity) continue;
@@ -371,6 +396,24 @@ export async function POST(request: Request) {
       });
     });
   } catch (reason) {
+    if (idempotencyKey) {
+      // Dos envíos simultáneos con la misma clave: el que perdió la carrera responde con el pedido ganador.
+      const existing = await prisma.orderIdempotency.findUnique({
+        where: { tenantId_key: { tenantId: tenant.id, key: idempotencyKey } },
+      });
+      if (existing) {
+        return NextResponse.json(
+          {
+            ok: true,
+            reference: existing.reference,
+            token: existing.token,
+            status: "received",
+            total: Number(existing.total),
+          },
+          { status: 201 },
+        );
+      }
+    }
     return NextResponse.json(
       {
         error:
