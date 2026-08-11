@@ -2,7 +2,7 @@
 
 import type { Route } from "next";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { NotificationCenter } from "@/components/admin/notification-center";
@@ -160,15 +160,18 @@ export function AdminShell({
   tenantName,
   publicSiteUrl,
   isSuperAdmin = false,
+  adminTheme = "menuclick-dark",
+  adminAccent = "#ec4899",
 }: {
   children: React.ReactNode;
   permissions: string[];
   tenantName: string;
   publicSiteUrl: string;
   isSuperAdmin?: boolean;
+  adminTheme?: string;
+  adminAccent?: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -227,17 +230,16 @@ export function AdminShell({
     });
 
     if (!result.isConfirmed) return;
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
+    window.location.replace("/login");
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,rgba(236,72,153,.12),transparent_30%),#09090b]">
-      <div className="shell grid gap-5 py-5 lg:grid-cols-[270px_minmax(0,1fr)] lg:gap-8 lg:py-8">
+    <div className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`} style={{ "--admin-primary-strong": adminAccent, "--admin-primary": adminAccent } as React.CSSProperties}>
+      <div className="admin-shell shell grid gap-6 py-6 lg:grid-cols-[288px_minmax(0,1fr)] lg:gap-9 lg:py-9">
         <aside className="sticky top-20 z-40 h-fit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl">
           <div className="hidden border-b border-white/10 p-6 lg:block">
-            <p className="text-xs font-black uppercase tracking-[.28em] text-pink-400">{tenantName} Studio</p>
+            <p className="text-xs font-black uppercase tracking-[.28em] text-[var(--admin-primary)]">{tenantName} Studio</p>
             <h2 className="mt-2 text-2xl font-black">Administración</h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-500">
               Gestioná el contenido que ven tus clientes.
@@ -438,7 +440,7 @@ export function AdminShell({
           </div>
         </aside>
 
-        <main className="min-w-0">{children}</main>
+         <main className="admin-main min-w-0">{children}</main>
       </div>
       {commandOpen && (
         <div

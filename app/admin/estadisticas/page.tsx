@@ -26,7 +26,7 @@ export default async function AdminAnalyticsPage({ searchParams }: AnalyticsPage
       take: 100_000,
     }),
     prisma.customerOrder.findMany({
-      where: { tenantId: context.tenant.id, createdAt: { gte: previousSince } },
+      where: { tenantId: context.tenant.id, branchId: { in: context.branches.map((branch) => branch.id) }, createdAt: { gte: previousSince } },
       select: { createdAt: true, status: true, total: true },
     }),
     prisma.reservation.count({

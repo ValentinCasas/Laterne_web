@@ -34,7 +34,7 @@ async function deliverReset(email: string, resetUrl: string) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       to: email,
-      subject: "Restablecer acceso a Laterne Web",
+      subject: "Restablecer acceso a MenuClick",
       text: `Usá este enlace durante los próximos 30 minutos: ${resetUrl}`,
     }),
   });

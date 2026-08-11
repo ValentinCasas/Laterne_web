@@ -20,10 +20,10 @@ const beers = ["neipa-tapa.png", "amber-tapa.png", "apa-tapa.png", "american-amb
 const stories = [
   {
     image: "/images/banners/laterne2.jpg",
-    imageAlt: "Interior de Laterne",
+    imageAlt: "Interior del negocio",
     eyebrow: "Nuestra historia",
-    title: "Laterne",
-    text: "Hace muchos años que Laterne es sinónimo de birra, amistad, momentos compartidos y buena cerveza artesanal.",
+    title: "Nuestra identidad",
+    text: "Una experiencia de sabores, encuentros y momentos compartidos.",
   },
   {
     image: "/images/banners/banner-section-beer.png",
@@ -34,7 +34,7 @@ const stories = [
   },
   {
     image: "/images/banners/banner-eventos2.png",
-    imageAlt: "Evento en Laterne",
+    imageAlt: "Evento del negocio",
     eyebrow: "Lo que importa",
     title: "Momentos",
     text: "Birra, música, amigos, familia y esas noches que se vuelven parte de una historia compartida.",
@@ -158,7 +158,7 @@ export default async function LandingPage() {
       <section className="relative min-h-[calc(100vh-4rem)]">
         <Image
           src="/images/banners/new_banner2_750.jpg"
-          alt="Cervezas Laterne"
+          alt={`Productos de ${tenant.name}`}
           fill
           priority
           sizes="100vw"
@@ -168,7 +168,7 @@ export default async function LandingPage() {
         <div className="shell relative flex min-h-[calc(100vh-4rem)] flex-col justify-center py-24">
           <p className="font-bold uppercase tracking-[.3em] text-pink-400">La Punta · San Luis</p>
           <h1 className="mt-4 max-w-5xl text-6xl font-black leading-[.92] tracking-tight sm:text-8xl lg:text-9xl">
-            Laterne es
+            {tenant.name} es
             <br />
             <span className="hero-word">birra.</span>
           </h1>
@@ -188,7 +188,7 @@ export default async function LandingPage() {
       </section>
 
       <section id="eventos" className="shell scroll-mt-24 py-24">
-        <p className="section-eyebrow">Agenda Laterne</p>
+        <p className="section-eyebrow">Agenda {tenant.name}</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <h2 className="section-title">Próximos eventos</h2>
           <p className="max-w-md text-zinc-400">Música, encuentros y noches para compartir.</p>
@@ -207,7 +207,7 @@ export default async function LandingPage() {
       </section>
 
       <section className="shell py-24">
-        <Carousel slides={stories} label="Conocé Laterne" interval={6500} />
+        <Carousel slides={stories} label={`Conocé ${tenant.name}`} interval={6500} />
       </section>
 
       <section className="bg-[radial-gradient(circle_at_20%_20%,rgba(236,72,153,.16),transparent_32%),linear-gradient(#09090b,#050505)] py-24">
@@ -224,7 +224,7 @@ export default async function LandingPage() {
       {hasMap && (
         <section className="bg-white px-4 py-16">
           <div className="shell overflow-hidden rounded-[2rem] shadow-2xl">
-            <BusinessMap latitude={lat} longitude={lng} address={business?.address ?? "Laterne"} />
+            <BusinessMap latitude={lat} longitude={lng} address={business?.address ?? tenant.name} />
           </div>
         </section>
       )}
@@ -262,7 +262,7 @@ export default async function LandingPage() {
         <div className="shell grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <h2 className="text-3xl font-black text-pink-500">
-              Laterne<span className="text-white">&.</span>
+              {tenant.name}<span className="text-white">&.</span>
             </h2>
             <p className="mt-3 text-zinc-500">Cerveza artesanal y cocina.</p>
           </div>
@@ -296,7 +296,7 @@ export default async function LandingPage() {
           </div>
         </div>
         <p className="shell mt-12 text-xs text-zinc-600">
-          © {new Date().getFullYear()} Laterne · Valen Casas & Gino Paoletti
+          © {new Date().getFullYear()} {tenant.name}
         </p>
       </footer>
     </main>

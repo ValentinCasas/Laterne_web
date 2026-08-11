@@ -227,7 +227,7 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     points: [
       "Las claves privadas nunca se muestran ni se guardan en el panel.",
       "Email, WhatsApp, Web Push, Mercado Pago y almacenamiento externo están en “Próximamente”.",
-      "El canal Panel ya funciona dentro de Laterne.",
+      "El canal Panel funciona dentro de MenuClick.",
     ],
     related: ["notificaciones", "facturacion"],
   },
@@ -261,7 +261,7 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
   },
   notificaciones: {
     title: "Notificaciones",
-    intro: "Avisos que Laterne te deja en el panel cuando pasa algo importante.",
+    intro: "Avisos que MenuClick te deja en el panel cuando pasa algo importante.",
     points: [
       "Cada aviso lleva a la sección donde tenés que actuar.",
       "Elegí qué eventos querés seguir desde la configuración.",

@@ -5,11 +5,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 /** @summary Gestiona el formulario de acceso y redirige al panel correcto con credenciales válidas. */
-export function LoginForm({ redirectTo = "/admin" }: { redirectTo?: string }) {
+export function LoginForm({ redirectTo = "/admin", initialTenantId }: { redirectTo?: string; initialTenantId?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [tenantOptions, setTenantOptions] = useState<Array<{ id: number; name: string; slug: string }>>([]);
-  const [selectedTenantId, setSelectedTenantId] = useState("");
+  const [selectedTenantId, setSelectedTenantId] = useState(initialTenantId ?? "");
   const [pending, setPending] = useState(false);
   /** @summary Envía las credenciales al servidor y muestra cualquier error de autenticación. */
   async function submit(event: React.FormEvent<HTMLFormElement>) {

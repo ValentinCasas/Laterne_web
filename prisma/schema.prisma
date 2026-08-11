@@ -133,6 +133,7 @@ model Product {
   promotions         PromotionProduct[]
   variants           ProductVariant[]
   extras             ProductExtra[]
+  optionGroups       ProductOptionGroup[]
   orderItems         OrderItem[]
   inventoryStocks    InventoryStock[]
 
@@ -222,6 +223,7 @@ model Tenant {
   notifications         Notification[]
   productVariants       ProductVariant[]
   productExtras         ProductExtra[]
+  productOptionGroups   ProductOptionGroup[]
   diningTables          DiningTable[]
   customerOrders        CustomerOrder[]
   orderIdempotencies    OrderIdempotency[]
@@ -300,6 +302,7 @@ model TenantMembership {
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   role      Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
   sessions  AuthSession[]
+  branchAccess BranchMembership[]
 
   @@unique([tenantId, userId])
   @@index([userId, status])
@@ -679,10 +682,12 @@ model ProductVariant {
   priceAdjustment Decimal  @default(0) @db.Decimal(12, 2)
   active          Boolean  @default(true)
   sortOrder       Int      @default(0)
+  groupId         Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  group           ProductOptionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, productId, active, sortOrder])
   @@map("productvariant")
@@ -696,13 +701,38 @@ model ProductExtra {
   price     Decimal  @default(0) @db.Decimal(12, 2)
   active    Boolean  @default(true)
   sortOrder Int      @default(0)
+  groupId   Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  group     ProductOptionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, productId, active, sortOrder])
   @@map("productextra")
+}
+
+/** @summary Grupo de selección que organiza variantes o agregados sin romper opciones históricas. */
+model ProductOptionGroup {
+  id            Int              @id @default(autoincrement())
+  tenantId      Int
+  productId     Int
+  kind          String           @db.VarChar(20)
+  name          String           @db.VarChar(120)
+  required      Boolean          @default(false)
+  minSelections Int              @default(0)
+  maxSelections Int              @default(1)
+  sortOrder     Int              @default(0)
+  active        Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variants      ProductVariant[]
+  extras        ProductExtra[]
+
+  @@index([tenantId, productId, kind, sortOrder])
+  @@map("productoptiongroup")
 }
 
 model DiningTable {
@@ -860,6 +890,8 @@ model BrandSettings {
   fontFamily      String   @default("Inter") @db.VarChar(100)
   buttonStyle     String   @default("rounded") @db.VarChar(30)
   cardStyle       String   @default("soft") @db.VarChar(30)
+  adminTheme      String   @default("menuclick-dark") @db.VarChar(30)
+  adminAccent     String   @default("#ec4899") @db.VarChar(20)
   heroTitle       String?  @db.VarChar(220)
   heroSubtitle    String?  @db.VarChar(500)
   tone            String?  @db.VarChar(120)
@@ -1103,10 +1135,25 @@ model Branch {
   orders          CustomerOrder[]
   inventoryStocks InventoryStock[]
   invoices        InvoiceRecord[]
+  membershipAccess BranchMembership[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])
   @@map("branch")
+}
+
+/** @summary Acceso explícito de una membresía a una o varias sucursales del mismo tenant. */
+model BranchMembership {
+  id           Int              @id @default(autoincrement())
+  membershipId Int
+  branchId     Int
+  createdAt    DateTime         @default(now())
+  membership   TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  branch       Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, branchId])
+  @@index([branchId])
+  @@map("branchmembership")
 }
 
 model InventoryStock {

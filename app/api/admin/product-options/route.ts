@@ -12,6 +12,7 @@ const optionInput = z.object({
   price: z.coerce.number().min(-1_000_000).max(1_000_000),
   active: z.boolean().default(true),
   sortOrder: z.coerce.number().int().min(-1000).max(1000).default(0),
+  groupId: z.coerce.number().int().positive().optional().nullable(),
 });
 
 /** @summary Crea una variante o agregado después de comprobar que el producto pertenece al negocio. */
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+  if (parsed.data.groupId) {
+    const group = await prisma.productOptionGroup.findFirst({ where: { id: parsed.data.groupId, tenantId: auth.tenant.id, productId: product.id, kind: parsed.data.kind } });
+    if (!group) return NextResponse.json({ error: "Grupo de opciones inválido" }, { status: 400 });
+  }
   const common = {
     tenantId: auth.tenant.id,
     productId: product.id,
@@ -34,8 +39,8 @@ export async function POST(request: Request) {
   };
   const item =
     parsed.data.kind === "variant"
-      ? await prisma.productVariant.create({ data: { ...common, priceAdjustment: parsed.data.price } })
-      : await prisma.productExtra.create({ data: { ...common, price: Math.max(0, parsed.data.price) } });
+     ? await prisma.productVariant.create({ data: { ...common, groupId: parsed.data.groupId ?? null, priceAdjustment: parsed.data.price } })
+       : await prisma.productExtra.create({ data: { ...common, groupId: parsed.data.groupId ?? null, price: Math.max(0, parsed.data.price) } });
   await recordAudit({
     context: auth,
     action: "create",

@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
 
-/** @summary Define la instalación de Laterne como aplicación web y sus accesos rápidos. */
+/** @summary Define la instalación de MenuClick como aplicación web y sus accesos rápidos. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Laterne Web",
-    short_name: "Laterne",
+    name: "MenuClick",
+    short_name: "MenuClick",
     description: "Carta, pedidos, reservas y administración gastronómica.",
     start_url: "/",
     display: "standalone",
@@ -30,7 +30,7 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/images/banners/brand.png", sizes: "any" }],
       },
       {
-        name: "Administración",
+        name: "Panel",
         short_name: "Admin",
         url: "/admin",
         icons: [{ src: "/images/banners/brand.png", sizes: "any" }],

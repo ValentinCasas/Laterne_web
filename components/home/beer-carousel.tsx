@@ -45,7 +45,7 @@ export function BeerCarousel({ images }: { images: string[] }) {
   }
 
   return (
-    <div role="region" aria-label="Cervezas Laterne" aria-roledescription="carrusel">
+    <div role="region" aria-label="Productos destacados" aria-roledescription="carrusel">
       <div
         ref={viewport}
         {...dragProps}
@@ -59,7 +59,7 @@ export function BeerCarousel({ images }: { images: string[] }) {
           >
             <Image
               src={image}
-              alt={`Cerveza artesanal Laterne ${index + 1}`}
+              alt={`Producto destacado ${index + 1}`}
               fill
               sizes="(max-width: 640px) 84vw, 33vw"
               className="pointer-events-none object-contain p-4"

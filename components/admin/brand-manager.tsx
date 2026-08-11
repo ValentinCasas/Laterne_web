@@ -15,6 +15,8 @@ export type BrandData = {
   fontFamily: string;
   buttonStyle: string;
   cardStyle: string;
+  adminTheme: string;
+  adminAccent: string;
   heroTitle: string | null;
   heroSubtitle: string | null;
   tone: string | null;
@@ -151,7 +153,7 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
         description="Una sola configuración controla colores, tipografía, recursos, textos y perfiles sociales."
         section="marca"
       />
-      <div className="grid gap-6 xl:grid-cols-2">
+       <div className="grid gap-6 xl:grid-cols-2">
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Recursos visuales</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -255,6 +257,15 @@ export function BrandManager({ initialBrand }: { initialBrand: BrandData }) {
               </select>
             </label>
           </div>
+        </section>
+        <section className="card p-5 sm:p-7">
+          <h2 className="text-2xl font-black">Tema del panel</h2>
+          <p className="mt-2 text-sm text-zinc-400">Cambia la interfaz administrativa sin afectar la carta pública.</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label><span className="label">Combinación</span><select className="input" name="adminTheme" defaultValue={brand.adminTheme}><option value="menuclick-dark">MenuClick Dark</option><option value="grafito">Grafito</option><option value="medianoche">Medianoche</option><option value="alto-contraste">Contraste alto</option></select></label>
+            <label><span className="label">Color de acento accesible</span><input className="input h-12 p-1" name="adminAccent" type="color" defaultValue={brand.adminAccent} /></label>
+          </div>
+          <p className="mt-3 text-xs text-zinc-500">Los fondos y textos mantienen contraste alto; el acento se limita a controles interactivos.</p>
         </section>
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Voz y portada</h2>

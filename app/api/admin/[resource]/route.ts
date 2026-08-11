@@ -261,6 +261,8 @@ async function createMember(input: Record<string, string>, tenantId: number) {
   const roleId = Number(input.roleId);
   const role = await prisma.role.findFirst({ where: { id: roleId, tenantId } });
   if (!role) throw new Error("Seleccioná un rol válido");
+  const branchIds = (input.branchIds ?? "").split(",").map(Number).filter(Number.isInteger);
+  const branches = await prisma.branch.findMany({ where: { tenantId, id: { in: branchIds } }, select: { id: true } });
 
   return prisma.$transaction(async (transaction) => {
     const user = await transaction.user.create({
@@ -272,7 +274,12 @@ async function createMember(input: Record<string, string>, tenantId: number) {
         imageUrl: input.imageUrl || "avatar_profile_default.png",
       },
     });
-    await transaction.tenantMembership.create({ data: { tenantId, userId: user.id, roleId } });
+    const membership = await transaction.tenantMembership.create({ data: { tenantId, userId: user.id, roleId } });
+    if (branches.length) {
+      await transaction.branchMembership.createMany({
+        data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
+      });
+    }
     return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
   });
 }
@@ -311,6 +318,14 @@ export async function POST(request: Request, context: { params: Promise<{ resour
       await prisma.branch.updateMany({
         where: { tenantId: auth.tenant.id, id: { not: (item as { id: number }).id } },
         data: { isPrimary: false },
+      });
+    }
+    if (resource === "sucursales") {
+      await prisma.branchMembership.createMany({
+        data: (await prisma.tenantMembership.findMany({ where: { tenantId: auth.tenant.id }, select: { id: true } })).map(
+          (membership) => ({ membershipId: membership.id, branchId: (item as { id: number }).id }),
+        ),
+        skipDuplicates: true,
       });
     }
     await recordAudit({

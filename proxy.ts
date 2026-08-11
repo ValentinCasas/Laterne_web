@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { resolveHostKind } from "@/lib/host-gate";
+import { isLocalDevelopmentHost } from "@/lib/domains";
 
 /** @summary Rutas exclusivas de la experiencia de plataforma (Panel MenuClick). */
 const PLATFORM_PREFIXES = ["/superadmin", "/planes", "/para-negocios", "/solicitar-demo", "/legal"];
@@ -47,6 +48,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (kind === "tenant") {
+    // Local development keeps the public commercial routes reachable while the
+    // configured DEV_TENANT_SLUG serves the tenant experience on localhost.
+    if (isLocalDevelopmentHost(host) && startsWithAny(pathname, ["/planes", "/para-negocios", "/solicitar-demo", "/legal"])) {
+      return NextResponse.next();
+    }
     if (startsWithAny(pathname, TENANT_BLOCKED_PREFIXES))
       return NextResponse.rewrite(new URL("/404", request.url));
     return NextResponse.next();

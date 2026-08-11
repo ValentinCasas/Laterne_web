@@ -34,10 +34,10 @@ const tenantUpdate = z.object({
 });
 
 /** @summary Cambia estado, plan, vencimiento y registro de pago de un cliente de la plataforma. */
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: Request, context: { params: Promise<{ tenantId: string }> }) {
   const superAdmin = await authorizeSuperAdmin();
   if (!superAdmin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  const id = Number((await context.params).id);
+  const id = Number((await context.params).tenantId);
   const parsed = tenantUpdate.safeParse(await request.json().catch(() => null));
   if (!Number.isInteger(id) || !parsed.success)
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -33,13 +32,15 @@ export function InventoryManager({
   products,
   initialStocks,
   movements,
+  initialBranchId,
 }: {
   branches: Branch[];
   products: Product[];
   initialStocks: Stock[];
   movements: Movement[];
+  initialBranchId: number;
 }) {
-  const [branchId, setBranchId] = useState(branches[0]?.id ?? 0);
+  const [branchId, setBranchId] = useState(initialBranchId || branches[0]?.id || 0);
   const [stocks, setStocks] = useState(initialStocks);
   const [query, setQuery] = useState("");
   const [onlyLow, setOnlyLow] = useState(false);
@@ -112,7 +113,7 @@ export function InventoryManager({
         description="Activá el control solo en los productos que realmente quieras descontar con cada pedido."
         section="inventario"
       />
-      <div className="card mt-6 grid gap-3 p-4 sm:grid-cols-[220px_1fr_auto]">
+      <div className="card mt-6 grid gap-3 p-4 lg:grid-cols-[240px_minmax(260px,1fr)_auto]">
         <select
           className="input"
           value={branchId}
@@ -138,74 +139,38 @@ export function InventoryManager({
           Solo bajo mínimo
         </label>
       </div>
-      <div className="mt-5 grid gap-4 xl:grid-cols-2">
-        {visible.map((product) => {
-          const stock = stocks.find((item) => item.branchId === branchId && item.productId === product.id);
-          const low = stock?.tracked && Number(stock.current) <= Number(stock.minimum);
-          return (
-            <form
-              key={`${branchId}-${product.id}`}
-              className={`card grid gap-4 p-4 sm:grid-cols-[72px_1fr] ${low ? "border-amber-500/40" : ""}`}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void save(product, event.currentTarget);
-              }}
-            >
-              <div className="relative h-18 overflow-hidden rounded-xl bg-white/5">
-                <Image
-                  src={`/images/images_product/${product.imageUrl}`}
-                  alt=""
-                  fill
-                  sizes="72px"
-                  className="object-contain p-2"
-                />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-5 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]">
+        <div className="hidden grid-cols-[minmax(220px,1.6fr)_120px_120px_130px_130px_120px_100px] gap-4 border-b border-[var(--admin-border)] px-5 py-3 text-xs font-black uppercase tracking-wider text-[var(--admin-muted)] lg:grid">
+          <span>Producto</span><span>Actual</span><span>Mínimo</span><span>Unidad</span><span>Control</span><span>Estado</span><span />
+        </div>
+        <div className="divide-y divide-white/10">
+          {visible.map((product) => {
+            const stock = stocks.find((item) => item.branchId === branchId && item.productId === product.id);
+            const low = Boolean(stock?.tracked && Number(stock.current) <= Number(stock.minimum));
+            const status = !stock?.tracked ? "Control desactivado" : Number(stock?.current ?? 0) <= 0 ? "Sin stock" : low ? "Bajo stock" : "Normal";
+            return (
+              <form
+                key={`${branchId}-${product.id}`}
+                className={`grid gap-3 px-5 py-4 lg:grid-cols-[minmax(220px,1.6fr)_120px_120px_130px_130px_120px_100px] lg:items-center ${low ? "bg-amber-500/[.06]" : ""}`}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void save(product, event.currentTarget);
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
                   <strong>{product.name}</strong>
-                  {low && (
-                    <span className="rounded-full bg-amber-500/15 px-2 py-1 text-xs font-black text-amber-300">
-                      Bajo mínimo
-                    </span>
-                  )}
+                  <span className={`rounded-full px-2 py-1 text-xs font-black lg:hidden ${status === "Normal" ? "bg-emerald-500/15 text-emerald-300" : status === "Bajo stock" ? "bg-amber-500/15 text-amber-300" : "bg-white/10 text-[var(--admin-muted)]"}`}>{status}</span>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <label className="text-xs text-zinc-500">
-                    Actual
-                    <input
-                      className="input mt-1 py-2"
-                      name="current"
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      defaultValue={Number(stock?.current ?? 0)}
-                    />
-                  </label>
-                  <label className="text-xs text-zinc-500">
-                    Mínimo
-                    <input
-                      className="input mt-1 py-2"
-                      name="minimum"
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      defaultValue={Number(stock?.minimum ?? 0)}
-                    />
-                  </label>
-                  <label className="text-xs text-zinc-500">
-                    Unidad
-                    <input className="input mt-1 py-2" name="unit" defaultValue={stock?.unit ?? "unidad"} />
-                  </label>
-                  <button className="btn self-end py-2">Guardar</button>
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-sm">
-                  <input name="tracked" type="checkbox" defaultChecked={stock?.tracked ?? false} /> Descontar
-                  automáticamente al pedir
-                </label>
-              </div>
-            </form>
-          );
-        })}
+                <label className="text-xs text-zinc-500"><span className="lg:hidden">Actual</span><input className="input mt-1 py-2" name="current" type="number" min="0" step="0.001" defaultValue={Number(stock?.current ?? 0)} /></label>
+                <label className="text-xs text-zinc-500"><span className="lg:hidden">Mínimo</span><input className="input mt-1 py-2" name="minimum" type="number" min="0" step="0.001" defaultValue={Number(stock?.minimum ?? 0)} /></label>
+                <label className="text-xs text-zinc-500"><span className="lg:hidden">Unidad</span><input className="input mt-1 py-2" name="unit" defaultValue={stock?.unit ?? "unidad"} /></label>
+                <label className="flex items-center gap-2 text-sm lg:justify-center"><input name="tracked" type="checkbox" defaultChecked={stock?.tracked ?? false} /><span>Automático</span></label>
+                <span className={`hidden rounded-full px-2 py-1 text-center text-xs font-black lg:block ${status === "Normal" ? "bg-emerald-500/15 text-emerald-300" : status === "Bajo stock" ? "bg-amber-500/15 text-amber-300" : "bg-white/10 text-[var(--admin-muted)]"}`}>{status}</span>
+                <button className="btn py-2 text-sm">Guardar</button>
+              </form>
+            );
+          })}
+        </div>
       </div>
       <section className="card mt-8 p-5">
         <h2 className="text-xl font-black">Últimos movimientos</h2>

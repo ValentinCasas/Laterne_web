@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorize, canAccessBranch } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const inventoryInput = z.object({
@@ -20,6 +20,9 @@ export async function POST(request: Request) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = inventoryInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá los datos de inventario" }, { status: 400 });
+  if (!canAccessBranch(auth, parsed.data.branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
+  }
 
   const [branch, product, previous] = await Promise.all([
     prisma.branch.findFirst({ where: { id: parsed.data.branchId, tenantId: auth.tenant.id } }),

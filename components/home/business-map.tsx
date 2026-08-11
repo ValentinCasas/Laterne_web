@@ -33,7 +33,7 @@ export function BusinessMap({
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
     new maplibregl.Marker({ color: "#ec4899" })
       .setLngLat([longitude, latitude])
-      .setPopup(new maplibregl.Popup({ offset: 28 }).setText(address || "Laterne"))
+      .setPopup(new maplibregl.Popup({ offset: 28 }).setText(address || "Ubicación del negocio"))
       .addTo(map);
 
     return () => map.remove();
@@ -43,7 +43,7 @@ export function BusinessMap({
     <div
       ref={container}
       className="h-[520px] w-full"
-      aria-label={`Mapa interactivo de ${address || "Laterne"}`}
+      aria-label={`Mapa interactivo de ${address || "Ubicación del negocio"}`}
     />
   );
 }

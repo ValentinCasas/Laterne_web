@@ -5,8 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
 import { getAdminResource } from "@/lib/admin-resources";
 import { requirePermission } from "@/lib/auth";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+const resourceTitles: Record<string, string> = { productos: "Productos", categorias: "Categorías", eventos: "Eventos", horarios: "Horarios", testimonios: "Testimonios", usuarios: "Usuarios", negocio: "Negocio", promociones: "Promociones", legales: "Páginas legales", ayuda: "Centro de ayuda", casos: "Casos de éxito", sucursales: "Sucursales", seo: "SEO", redirecciones: "Redirecciones" };
+export async function generateMetadata({ params }: { params: Promise<{ resource: string }> }): Promise<Metadata> { const context = await requirePermission("admin.access"); const resource = (await params).resource; return { title: `${context.tenant.name} | ${resourceTitles[resource] ?? "Administración"}` }; }
 
 type ResourceDefinition = {
   title: string;
@@ -58,6 +61,7 @@ function createDefinition(
   categoryOptions: ResourceOption[],
   productOptions: ResourceOption[],
   roleOptions: ResourceOption[],
+  branchOptions: ResourceOption[],
 ): ResourceDefinition | null {
   const definitions: Record<string, ResourceDefinition> = {
     productos: {
@@ -66,7 +70,7 @@ function createDefinition(
         "Organizá la carta, sus precios, disponibilidad, categoría e imagen principal. La experiencia 3D y AR se configura en la sección avanzada del formulario.",
       model: "product",
       fields: [
-        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Hamburguesa Laterne" },
+        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Hamburguesa clásica" },
         {
           key: "slug",
           label: "Dirección pública",
@@ -309,7 +313,7 @@ function createDefinition(
           control: "textarea",
           placeholder: "Explicá brevemente de qué se trata.",
         },
-        { key: "location", label: "Ubicación", required: true, placeholder: "Laterne · La Punta" },
+        { key: "location", label: "Ubicación", required: true, placeholder: "Salón principal" },
         { key: "date", label: "Fecha", type: "date" },
         { key: "time", label: "Hora", type: "time" },
         {
@@ -380,6 +384,7 @@ function createDefinition(
           options: roleOptions,
         },
         { key: "password", label: "Contraseña", type: "password", help: "Dejala vacía para conservarla" },
+        { key: "branchIds", label: "Sucursales autorizadas", control: "multichoice", options: branchOptions, help: "Seleccioná una o varias sucursales." },
         {
           key: "imageUrl",
           label: "Avatar",
@@ -409,7 +414,7 @@ function createDefinition(
       description: "Programá descuentos, combos, happy hours y cupones relacionados con la carta.",
       model: "promotion",
       fields: [
-        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Happy hour Laterne" },
+        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Happy hour del viernes" },
         {
           key: "slug",
           label: "Dirección pública",
@@ -608,7 +613,7 @@ function createDefinition(
       description: "Administrá ubicaciones, costos de entrega, contacto y origen operativo de los pedidos.",
       model: "branch",
       fields: [
-        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Laterne Centro" },
+        { key: "name", label: "Nombre", required: true, placeholder: "Ej. Sucursal Centro" },
         { key: "slug", label: "Identificador", placeholder: "laterne-centro" },
         { key: "address", label: "Dirección", required: true },
         { key: "city", label: "Ciudad" },
@@ -688,16 +693,18 @@ async function loadItems(definition: ResourceDefinition, tenantId: number) {
           orderBy: { lastSeenAt: "desc" },
           take: 1,
         },
+        branchAccess: { select: { branchId: true } },
       },
       orderBy: { user: { name: "asc" } },
     });
-    return memberships.map(({ user, role, sessions, id: membershipId, roleId }) => ({
+    return memberships.map(({ user, role, sessions, branchAccess, id: membershipId, roleId }) => ({
       ...user,
       membershipId,
       roleId: roleId.toString(),
       roleName: role.name,
       lastAccessAt: sessions[0]?.lastSeenAt ?? null,
       password: "",
+      branchIds: branchAccess.map((access) => access.branchId).join(","),
     }));
   }
 
@@ -731,11 +738,12 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   if (!resourceConfig) notFound();
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
-  const [categories, products, roles, tenant, mediaAssets, events, memberships, promotions, cases] =
+  const [categories, products, roles, branches, tenant, mediaAssets, events, memberships, promotions, cases] =
     await Promise.all([
       prisma.category.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
       prisma.product.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
       prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+      prisma.branch.findMany({ where: { id: { in: context.branches.map((branch) => branch.id) } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
       prisma.tenant.findUniqueOrThrow({
         where: { id: tenantId },
         select: { defaultCurrency: true, locale: true },
@@ -807,6 +815,7 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
     categoryOptions,
     products.map((product) => ({ value: product.id.toString(), label: product.name })),
     roles.map((role) => ({ value: role.id.toString(), label: role.name })),
+    branches.map((branch) => ({ value: branch.id.toString(), label: branch.name })),
   );
   if (!definition) notFound();
 

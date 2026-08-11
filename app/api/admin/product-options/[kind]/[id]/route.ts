@@ -10,6 +10,7 @@ const optionUpdate = z.object({
   price: z.coerce.number().min(-1_000_000).max(1_000_000),
   active: z.boolean(),
   sortOrder: z.coerce.number().int().min(-1000).max(1000),
+  groupId: z.coerce.number().int().positive().nullable().optional(),
 });
 
 /** @summary Recupera una opción de producto comprobando tipo, negocio e identificador. */
@@ -30,7 +31,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ kind:
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   const current = await currentOption(kind, id, auth.tenant.id);
   if (!current) return NextResponse.json({ error: "Opción no encontrada" }, { status: 404 });
-  const common = { name: parsed.data.name, active: parsed.data.active, sortOrder: parsed.data.sortOrder };
+  const group = parsed.data.groupId ? await prisma.productOptionGroup.findFirst({ where: { id: parsed.data.groupId, tenantId: auth.tenant.id, productId: current.productId, kind } }) : null;
+  if (parsed.data.groupId && !group) return NextResponse.json({ error: "Grupo de opciones inválido" }, { status: 400 });
+  const common = { name: parsed.data.name, active: parsed.data.active, sortOrder: parsed.data.sortOrder, groupId: parsed.data.groupId ?? null };
   const item =
     kind === "variant"
       ? await prisma.productVariant.update({

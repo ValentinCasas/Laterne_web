@@ -35,10 +35,7 @@ const navGroups = [
   },
 ] as const;
 
-const directLinks = [
-  ["/admin", "Administración"] as const,
-  ["/ayuda", "Ayuda"] as const,
-];
+const directLinks = [["/ayuda", "Ayuda"] as const];
 
 function getGroupId(pathname: string | null) {
   if (!pathname) return null;
@@ -52,7 +49,7 @@ function getGroupId(pathname: string | null) {
 
 /** @summary Renderiza la navegación principal adaptable a escritorio y dispositivos móviles. */
 export function SiteHeader({
-  brandName = "Laterne",
+  brandName = "MenuClick",
   logoUrl,
 }: {
   brandName?: string;
@@ -111,7 +108,7 @@ export function SiteHeader({
           className="flex items-center gap-2 text-2xl font-black tracking-tight text-pink-400 transition hover:text-white"
         >
           {logoUrl && (
-            <Image src={logoUrl} alt="Logo Laterne" width={36} height={36} className="h-9 w-auto object-contain" />
+            <Image src={logoUrl} alt={`Logo de ${brandName}`} width={36} height={36} className="h-9 w-auto object-contain" />
           )}
           <span>
             {brandName}

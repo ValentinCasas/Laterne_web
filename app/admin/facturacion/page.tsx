@@ -10,13 +10,13 @@ export default async function InvoicesPage() {
   const context = await requirePermission("order.manage");
   const [invoices, orders] = await Promise.all([
     prisma.invoiceRecord.findMany({
-      where: { tenantId: context.tenant.id },
+      where: { tenantId: context.tenant.id, branchId: { in: context.branches.map((branch) => branch.id) } },
       include: { order: true, branch: true },
       orderBy: { createdAt: "desc" },
       take: 300,
     }),
     prisma.customerOrder.findMany({
-      where: { tenantId: context.tenant.id, invoice: null },
+      where: { tenantId: context.tenant.id, invoice: null, branchId: { in: context.branches.map((branch) => branch.id) } },
       select: { id: true, reference: true, customerName: true, total: true, currency: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 100,

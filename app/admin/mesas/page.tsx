@@ -10,7 +10,7 @@ export default async function AdminTablesPage() {
   const context = await requirePermission("table.manage");
   const [tables, branches] = await Promise.all([
     prisma.diningTable.findMany({
-      where: { tenantId: context.tenant.id },
+      where: { tenantId: context.tenant.id, branchId: { in: context.branches.map((branch) => branch.id) } },
       include: {
         orders: {
           where: { status: { notIn: ["delivered", "cancelled"] } },
@@ -22,7 +22,7 @@ export default async function AdminTablesPage() {
       orderBy: [{ sector: "asc" }, { name: "asc" }],
     }),
     prisma.branch.findMany({
-      where: { tenantId: context.tenant.id, active: true },
+      where: { tenantId: context.tenant.id, active: true, id: { in: context.branches.map((branch) => branch.id) } },
       select: { id: true, name: true },
       orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
     }),

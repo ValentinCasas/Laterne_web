@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorize, canAccessBranch } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { restoreOrderStock } from "@/lib/order-stock";
 import { asOrderType, transitionError } from "@/lib/order-status";
@@ -28,6 +28,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     include: { items: true, table: true },
   });
   if (!current) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  if (current.branchId && !canAccessBranch(auth, current.branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a la sucursal de este pedido" }, { status: 403 });
+  }
 
   const orderType = asOrderType(current.orderType);
   const invalidTransition = transitionError(current.status as OrderStatus, parsed.data.status, orderType);

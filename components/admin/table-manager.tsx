@@ -260,7 +260,7 @@ export function TableManager({
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-widest text-pink-300">Laterne</p>
+                <p className="text-xs font-black uppercase tracking-widest text-pink-300">Código de mesa</p>
                 <h2 className="mt-1 text-2xl font-black">{table.name}</h2>
                 <p className="text-sm text-zinc-400">
                   {table.sector || "Sin sector"} · {table.capacity} personas

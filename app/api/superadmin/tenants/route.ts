@@ -81,20 +81,21 @@ export async function POST(request: Request) {
         imageUrl: "avatar_profile_default.png",
       },
     });
-    await transaction.tenantMembership.create({
+    const membership = await transaction.tenantMembership.create({
       data: { tenantId: created.id, userId: user.id, roleId: role.id },
     });
+    const branch = await transaction.branch.create({
+      data: {
+        tenantId: created.id,
+        name: `${created.name} · Principal`,
+        slug: "principal",
+        address: "Dirección a configurar",
+        isPrimary: true,
+      },
+    });
+    await transaction.branchMembership.create({ data: { membershipId: membership.id, branchId: branch.id } });
     await Promise.all([
       transaction.businessInfo.create({ data: { tenantId: created.id } }),
-      transaction.branch.create({
-        data: {
-          tenantId: created.id,
-          name: `${created.name} · Principal`,
-          slug: "principal",
-          address: "Dirección a configurar",
-          isPrimary: true,
-        },
-      }),
       transaction.brandSettings.create({ data: { tenantId: created.id } }),
       transaction.notificationSettings.create({ data: { tenantId: created.id } }),
       transaction.onboardingProgress.create({ data: { tenantId: created.id, completedSteps: [] } }),
@@ -121,5 +122,5 @@ export async function POST(request: Request) {
     newValues: toAuditValue(tenant),
     request,
   });
-  return NextResponse.json({ tenant }, { status: 201 });
+  return NextResponse.json({ tenant, tenantId: tenant.id }, { status: 201 });
 }

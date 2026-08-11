@@ -32,6 +32,7 @@ export type AdminOrder = {
   table: { name: string; code: string } | null;
   items: AdminOrderItem[];
 };
+type Branch = { id: number; name: string; active: boolean; isPrimary: boolean };
 
 const statusStyle: Record<string, string> = {
   received: "border-sky-500/30 bg-sky-500/5",
@@ -54,7 +55,7 @@ function orderTypeLabel(type: string) {
 }
 
 /** @summary Gestiona pedidos en columnas, permite filtrarlos y avanzar su estado sin recargar. */
-export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
+export function OrderBoard({ initialOrders, branches, selectedBranchId }: { initialOrders: AdminOrder[]; branches: Branch[]; selectedBranchId: number | null }) {
   const [orders, setOrders] = useState(initialOrders);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AdminOrder | null>(null);
@@ -99,25 +100,19 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         description="Cada pedido queda almacenado con precios verificados e historial de estados."
         section="pedidos"
         actions={
-          <label className="w-full sm:max-w-xs">
-            <span className="sr-only">Buscar pedidos</span>
-            <input
-              className="input"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar referencia, cliente o mesa"
-              type="search"
-            />
-          </label>
+          <div className="grid w-full gap-3 sm:grid-cols-[220px_minmax(240px,1fr)]">
+            <label><span className="sr-only">Sucursal</span><select className="input" value={selectedBranchId ?? "all"} onChange={(event) => { window.location.href = event.target.value === "all" ? "/admin/pedidos" : `/admin/pedidos?branchId=${event.target.value}`; }}><option value="all">Todas las sucursales</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label>
+            <label><span className="sr-only">Buscar pedidos</span><input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar referencia, cliente o mesa" type="search" /></label>
+          </div>
         }
       />
 
-      <div className="flex snap-x gap-4 overflow-x-auto pb-5">
+      <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">
         {orderStatuses.map((status) => {
           const statusOrders = visibleOrders.filter((order) => order.status === status);
           return (
             <section
-              className={`w-[min(86vw,310px)] shrink-0 snap-start rounded-3xl border p-3 ${statusStyle[status]}`}
+              className={`w-[min(86vw,360px)] shrink-0 snap-start rounded-3xl border p-4 ${statusStyle[status]}`}
               key={status}
             >
               <header className="mb-3 flex items-center justify-between px-2 py-1">
@@ -172,7 +167,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                 ))}
                 {!statusOrders.length && (
                   <p className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-zinc-600">
-                    Sin pedidos
+                     No hay pedidos en {orderStatusLabel(status).toLocaleLowerCase("es")}.
                   </p>
                 )}
               </div>

@@ -19,9 +19,10 @@ export type Session = {
 
 export type AuthorizationContext = {
   session: Session;
-  tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null };
+  tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null; adminTheme: string; adminAccent: string };
   membership: { id: number; role: { key: string; name: string } };
   permissions: string[];
+  branches: Array<{ id: number; name: string; active: boolean; isPrimary: boolean }>;
 };
 
 /** @summary Genera la clave binaria utilizada para firmar y validar las sesiones. */
@@ -135,7 +136,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           name: true,
           slug: true,
           timeZone: true,
-          brandSettings: { select: { customDomain: true } },
+           brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true } },
         },
       },
       role: {
@@ -144,6 +145,10 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           name: true,
           permissions: { select: { permission: { select: { key: true } } } },
         },
+      },
+      branchAccess: {
+        include: { branch: { select: { id: true, name: true, active: true, isPrimary: true } } },
+        orderBy: { branchId: "asc" },
       },
     },
     orderBy: { id: "asc" },
@@ -160,10 +165,18 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     tenant: {
       ...membership.tenant,
       customDomain: membership.tenant.brandSettings?.customDomain,
+      adminTheme: membership.tenant.brandSettings?.adminTheme ?? "menuclick-dark",
+      adminAccent: membership.tenant.brandSettings?.adminAccent ?? "#ec4899",
     },
     membership: { id: membership.id, role: { key: membership.role.key, name: membership.role.name } },
     permissions,
+    branches: membership.branchAccess.map(({ branch }) => branch),
   };
+}
+
+/** @summary Comprueba en servidor que la membresía pueda operar sobre la sucursal solicitada. */
+export function canAccessBranch(context: AuthorizationContext, branchId: number) {
+  return context.branches.some((branch) => branch.id === branchId && branch.active);
 }
 
 /** @summary Exige una sesión válida y, opcionalmente, permisos de administración. */
@@ -198,7 +211,7 @@ export async function authorizeSuperAdmin() {
       id: session.userId,
       OR: [{ isSuperAdmin: true }, { platformRole: { in: ["superadmin", "admin", "support", "sales"] } }],
     },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, isSuperAdmin: true, platformRole: true },
   });
   return user ? { session, user } : null;
 }

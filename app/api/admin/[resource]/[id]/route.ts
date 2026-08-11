@@ -243,10 +243,12 @@ async function updateMember(input: Record<string, string>, tenantId: number, use
   const roleId = Number(input.roleId);
   const role = await prisma.role.findFirst({ where: { id: roleId, tenantId } });
   if (!role) throw new Error("Seleccioná un rol válido");
+  const branchIds = (input.branchIds ?? "").split(",").map(Number).filter(Number.isInteger);
+  const branches = await prisma.branch.findMany({ where: { tenantId, id: { in: branchIds } }, select: { id: true } });
 
   return prisma.$transaction(async (transaction) => {
     await transaction.tenantMembership.update({ where: { id: membership.id }, data: { roleId } });
-    const user = await transaction.user.update({
+      const user = await transaction.user.update({
       where: { id: userId },
       data: {
         name: input.name.trim(),
@@ -257,8 +259,10 @@ async function updateMember(input: Record<string, string>, tenantId: number, use
           ? { password: await bcrypt.hash(z.string().min(8).parse(input.password), 12) }
           : {}),
       },
-    });
-    return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
+      });
+      await transaction.branchMembership.deleteMany({ where: { membershipId: membership.id } });
+      if (branches.length) await transaction.branchMembership.createMany({ data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })) });
+      return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
   });
 }
 
@@ -283,6 +287,10 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
       });
       if (!oldItem) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
       const item = await updateMember(input, auth.tenant.id, id);
+      await prisma.authSession.updateMany({
+        where: { userId: id, membershipId: oldItem.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
       const safeUser = { ...oldItem.user, password: undefined };
       await recordAudit({
         context: auth,

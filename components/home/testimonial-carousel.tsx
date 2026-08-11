@@ -70,7 +70,7 @@ export function TestimonialCarousel({ testimonials }: { testimonials: Testimonia
             <figure className="absolute -top-11 left-1/2 h-24 w-24 -translate-x-1/2 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 p-1">
               <Image
                 src={`/images/avatars_defect/${item.avatar}`}
-                alt="Cliente de Laterne"
+                alt="Cliente del negocio"
                 fill
                 sizes="96px"
                 className="pointer-events-none rounded-full border-4 border-zinc-950 object-cover p-1"

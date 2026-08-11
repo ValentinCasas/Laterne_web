@@ -30,6 +30,10 @@ export default async function Dashboard() {
     incompleteProducts,
     recentEvents,
     recentTestimonials,
+    users,
+    branches,
+    files,
+    subscription,
   ] = await Promise.all([
     prisma.product.count({ where: { tenantId } }),
     prisma.category.count({ where: { tenantId } }),
@@ -66,6 +70,10 @@ export default async function Dashboard() {
       take: 3,
     }),
     prisma.testimonial.findMany({ where: { tenantId }, orderBy: { id: "desc" }, take: 3 }),
+    prisma.tenantMembership.count({ where: { tenantId, status: "active" } }),
+    prisma.branch.count({ where: { tenantId, active: true } }),
+    prisma.mediaAsset.aggregate({ where: { tenantId }, _sum: { sizeBytes: true } }),
+    prisma.tenantSubscription.findUnique({ where: { tenantId }, select: { status: true, endsAt: true } }),
   ]);
 
   const stats = [
@@ -77,6 +85,12 @@ export default async function Dashboard() {
   const visibleStats = context.permissions.includes("lead.manage")
     ? [...stats, { label: "Oportunidades nuevas", value: newLeads, href: "/admin/oportunidades" } as const]
     : stats;
+  const overviewStats = [
+    ...visibleStats,
+    { label: "Usuarios activos", value: users, href: "/admin/usuarios" },
+    { label: "Sucursales activas", value: branches, href: "/admin/sucursales" },
+    { label: "Almacenamiento", value: `${(Number(files._sum.sizeBytes ?? 0) / 1_000_000).toFixed(1)} MB`, href: "/admin/archivos" },
+  ];
   const operationAlerts = [
     context.permissions.includes("order.manage") && {
       label: "Pedidos en curso",
@@ -120,10 +134,10 @@ export default async function Dashboard() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {visibleStats.map((stat, index) => (
+         {overviewStats.map((stat, index) => (
           <Link
             className={`group rounded-3xl border border-white/10 bg-gradient-to-br p-5 transition hover:-translate-y-1 hover:border-white/20 ${statStyles[index]}`}
-            href={stat.href}
+             href={stat.href as Route}
             key={stat.label}
           >
             <div className="flex items-start justify-between gap-3">
@@ -161,6 +175,12 @@ export default async function Dashboard() {
             ))}
           </div>
         </section>
+      )}
+      {subscription && subscription.status !== "ACTIVE" && (
+        <Link className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-amber-100" href="/admin/soporte">
+          <strong>Estado de suscripción: {subscription.status}</strong>
+          <span className="ml-2 text-sm text-amber-200">Revisá la información de tu cuenta.</span>
+        </Link>
       )}
 
       <div className="grid gap-6 xl:grid-cols-2">

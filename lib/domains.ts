@@ -78,6 +78,14 @@ export function publicTenantUrl(slug: string, customDomain?: string | null) {
   return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}`;
 }
 
+/** @summary Construye el acceso administrativo del negocio en el host reservado de la aplicación. */
+export function adminLoginUrl(tenantId?: number) {
+  const host = APP_HOST || "localhost";
+  const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
+  const query = tenantId ? `?tenantId=${encodeURIComponent(String(tenantId))}` : "";
+  return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}/login${query}`;
+}
+
 /** @summary Determina si el host corresponde al panel de control de la plataforma. */
 export function isPlatformHost(host: string) {
   const normalized = host.toLocaleLowerCase("es");

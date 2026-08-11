@@ -43,8 +43,8 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       metadataBase: siteUrl ? new URL(siteUrl) : undefined,
       title: {
-        default: platform ? "MenuClick" : "Laterne",
-        template: `%s · ${platform ? "MenuClick" : "Laterne"}`,
+        default: platform ? "MenuClick" : "MenuClick",
+        template: `%s · ${platform ? "MenuClick" : "MenuClick"}`,
       },
       description: platform
         ? "La plataforma de cartas digitales, pedidos y reservas."
@@ -82,7 +82,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** @summary Define la estructura global y solo añade la navegación pública cuando existe un negocio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { kind, tenant, brand } = await resolveRequestContext();
+  const { tenant, brand } = await resolveRequestContext();
   const style = {
     "--brand-primary": brand?.primaryColor ?? "#ec4899",
     "--brand-secondary": brand?.secondaryColor ?? "#f5c542",
@@ -93,7 +93,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     "--brand-card-radius":
       brand?.cardStyle === "flat" ? ".25rem" : brand?.cardStyle === "bordered" ? ".75rem" : "1rem",
   } as CSSProperties;
-  const name = tenant?.name ?? (kind === "platform" ? "MenuClick" : "Laterne");
+  const name = tenant?.name ?? "MenuClick";
 
   return (
     <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">

@@ -116,6 +116,7 @@ export default async function MenuPage() {
       phone={business?.phoneNumber?.toString() ?? ""}
       currency={tenant.defaultCurrency}
       locale={tenant.locale}
+      businessName={tenant.name}
     />
   );
 }

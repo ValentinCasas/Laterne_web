@@ -74,11 +74,13 @@ export function MenuClient({
   phone,
   currency,
   locale,
+  businessName,
 }: {
   categories: MenuCategory[];
   phone: string;
   currency: string;
   locale: string;
+  businessName: string;
 }) {
   const {
     ref: categoryScroll,
@@ -253,7 +255,7 @@ export function MenuClient({
         .filter((item) => item.quantity > 0),
     );
   }
-  const orderText = `Pedido Laterne:\n\n${cart.map((item) => `${item.quantity} x ${item.name}${item.variantName ? ` (${item.variantName})` : ""}${item.extrasSelected?.length ? ` + ${item.extrasSelected.map((extra) => extra.name).join(", ")}` : ""}${item.notes ? ` · ${item.notes}` : ""} - ${priceText(cartItemPrice(item) * item.quantity)}`).join("\n")}\n\nTotal: ${priceText(total)}`;
+  const orderText = `Pedido ${businessName}:\n\n${cart.map((item) => `${item.quantity} x ${item.name}${item.variantName ? ` (${item.variantName})` : ""}${item.extrasSelected?.length ? ` + ${item.extrasSelected.map((extra) => extra.name).join(", ")}` : ""}${item.notes ? ` · ${item.notes}` : ""} - ${priceText(cartItemPrice(item) * item.quantity)}`).join("\n")}\n\nTotal: ${priceText(total)}`;
   /** @summary Copia al portapapeles un resumen completo del pedido actual. */
   async function copyOrder() {
     if (!cart.length) return;
@@ -277,7 +279,7 @@ export function MenuClient({
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-3xl font-black text-pink-500 sm:text-6xl">
-                Laterne<span className="text-white">&.</span>
+                {businessName}<span className="text-white">&.</span>
               </p>
               <p className="mt-1 text-[10px] font-black uppercase tracking-[.28em] text-zinc-400 sm:mt-2 sm:text-xs">
                 Carta virtual
@@ -293,7 +295,7 @@ export function MenuClient({
           <div className="mt-7 max-w-3xl sm:mt-16">
             <p className="section-eyebrow hidden sm:block">Cervezas · Cocina · Momentos</p>
             <h1 className="text-4xl font-black tracking-[-.06em] sm:mt-3 sm:text-8xl">
-              Carta <span className="text-pink-500">Laterne</span>
+              Carta <span className="text-pink-500">{businessName}</span>
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-400 sm:mt-5 sm:text-lg">
               Recorré las categorías, elegí tus favoritos y armá tu pedido.
@@ -429,7 +431,7 @@ export function MenuClient({
               style={stickyOffset > 0 ? { top: `${stickyOffset}px` } : undefined}
             >
               <div className="min-w-0">
-                <p className="section-eyebrow hidden sm:block">Laterne</p>
+                <p className="section-eyebrow hidden sm:block">{businessName}</p>
                 <h2 className="truncate text-xl font-black sm:mt-1 sm:text-3xl">{category.name}</h2>
                 {category.description && (
                   <p className="mt-1 hidden line-clamp-1 text-sm text-zinc-500 sm:block">
@@ -585,7 +587,7 @@ export function MenuClient({
           >
             <header className="flex items-center justify-between border-b p-6">
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-pink-600">Laterne</p>
+                <p className="text-xs font-black uppercase tracking-widest text-pink-600">{businessName}</p>
                 <h2 id="cart-title" className="text-3xl font-black">
                   Tu pedido
                 </h2>
