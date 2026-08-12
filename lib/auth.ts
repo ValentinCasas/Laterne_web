@@ -52,7 +52,7 @@ export async function createSession(
     data: {
       userId: session.userId,
       membershipId: session.membershipId ?? null,
-      branchId: session.branchId ?? null,
+      branchId: session.branchId || null,
       context: session.context ?? (session.membershipId ? "tenant" : "platform"),
       expiresAt,
     },

@@ -256,8 +256,25 @@ export function AdminShell({
     });
 
     if (!result.isConfirmed) return;
-    await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
-    window.location.replace("/login");
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("logout-failed");
+      window.location.replace("/login");
+    } catch {
+      await Swal.fire({
+        title: "No se pudo cerrar la sesión",
+        text: "Revisá tu conexión e intentá nuevamente.",
+        icon: "error",
+        confirmButtonText: "Entendido",
+        confirmButtonColor: "#ec4899",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    }
   }
 
   return (
