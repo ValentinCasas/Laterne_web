@@ -75,12 +75,14 @@ export function MenuClient({
   currency,
   locale,
   businessName,
+  branchSlug,
 }: {
   categories: MenuCategory[];
   phone: string;
   currency: string;
   locale: string;
   businessName: string;
+  branchSlug?: string;
 }) {
   const {
     ref: categoryScroll,
@@ -670,7 +672,7 @@ export function MenuClient({
               <div className="grid gap-2 sm:grid-cols-2">
                 <Link
                   className={`rounded-xl bg-pink-500 py-3 text-center font-bold text-white sm:col-span-2 ${!cart.length ? "pointer-events-none opacity-40" : ""}`}
-                  href="/pedido"
+                  href={branchSlug ? `/pedido?branch=${encodeURIComponent(branchSlug)}` : "/pedido"}
                   onClick={() => {
                     trackEvent("order.started", { metadata: { itemCount: quantity } });
                     setCartOpen(false);

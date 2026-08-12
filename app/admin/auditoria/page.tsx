@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { requirePermission } from "@/lib/auth";
+import { activeBranchWhere } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
 
 const AUDIT_PAGE_SIZE = 50;
@@ -19,15 +20,16 @@ export default async function AuditPage({
   const context = await requirePermission("audit.read");
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
+  const auditFilter = activeBranchWhere(context.tenant.id, context.activeBranchId);
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
-      where: { tenantId: context.tenant.id },
+      where: auditFilter,
       include: { user: { select: { name: true, email: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * AUDIT_PAGE_SIZE,
       take: AUDIT_PAGE_SIZE + 1,
     }),
-    prisma.auditLog.count({ where: { tenantId: context.tenant.id } }),
+    prisma.auditLog.count({ where: auditFilter }),
   ]);
   const hasMore = logs.length > AUDIT_PAGE_SIZE;
   const visibleLogs = logs.slice(0, AUDIT_PAGE_SIZE);

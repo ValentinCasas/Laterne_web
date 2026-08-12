@@ -11,6 +11,9 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const id = Number((await context.params).id);
   const block = await prisma.reservationBlock.findFirst({ where: { id, tenantId: auth.tenant.id } });
   if (!block) return NextResponse.json({ error: "Bloqueo no encontrado" }, { status: 404 });
+  if (block.branchId && !auth.branches.some((branch) => branch.id === block.branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a la sucursal de este bloqueo" }, { status: 403 });
+  }
   await prisma.reservationBlock.delete({ where: { id } });
   await recordAudit({
     context: auth,

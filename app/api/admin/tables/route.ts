@@ -37,6 +37,9 @@ export async function POST(request: Request) {
     where: { id: parsed.data.branchId, tenantId: auth.tenant.id },
   });
   if (!branch) return NextResponse.json({ error: "Seleccioná una sucursal válida" }, { status: 400 });
+  if (!auth.branches.some((item) => item.id === branch.id)) {
+    return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
+  }
   const created = await prisma.diningTable.create({
     data: {
       tenantId: auth.tenant.id,

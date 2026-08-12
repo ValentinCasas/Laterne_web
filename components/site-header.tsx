@@ -24,15 +24,6 @@ const navGroups = [
       ["/fidelidad", "Puntos"],
     ] as const,
   },
-  {
-    id: "negocios",
-    label: "Negocios",
-    items: [
-      ["/para-negocios", "Para negocios"],
-      ["/clientes", "Clientes"],
-      ["/planes", "Planes"],
-    ] as const,
-  },
 ] as const;
 
 const directLinks = [["/ayuda", "Ayuda"] as const];

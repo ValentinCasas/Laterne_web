@@ -18,11 +18,13 @@ export function ReservationForm({
   initialSectors,
   initialPolicy,
   initialMaximumPartySize,
+  branchSlug,
 }: {
   minimumDate: string;
   initialSectors: string[];
   initialPolicy: string;
   initialMaximumPartySize: number;
+  branchSlug?: string;
 }) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -41,7 +43,7 @@ export function ReservationForm({
     if (!date) return;
     let active = true;
 
-    fetch(`/api/reservations?date=${encodeURIComponent(date)}`)
+    fetch(`/api/reservations?date=${encodeURIComponent(date)}${branchSlug ? `&branch=${encodeURIComponent(branchSlug)}` : ""}`)
       .then(async (response) => {
         const body = (await response.json()) as Availability;
         if (!response.ok) throw new Error(body.error ?? "No se pudo consultar disponibilidad");
@@ -58,7 +60,7 @@ export function ReservationForm({
     return () => {
       active = false;
     };
-  }, [date]);
+  }, [branchSlug, date]);
 
   /** @summary Actualiza la fecha elegida y descarta un horario perteneciente a la consulta anterior. */
   function changeDate(value: string) {
@@ -88,6 +90,7 @@ export function ReservationForm({
       notes: form.get("notes") || undefined,
       acceptedPolicy: form.get("acceptedPolicy") === "on",
       website: form.get("website"),
+      branchSlug,
     };
 
     try {

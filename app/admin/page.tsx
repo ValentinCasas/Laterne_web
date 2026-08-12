@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
+import { activeBranchWhere, branchProductWhere } from "@/lib/branch";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ const statStyles = [
 export default async function Dashboard() {
   const context = await requirePermission("admin.access");
   const tenantId = context.tenant.id;
+  const branchFilter = activeBranchWhere(tenantId, context.activeBranchId);
+  const productFilter = branchProductWhere(tenantId, context.activeBranchId);
   const [
     products,
     categories,
@@ -35,41 +38,46 @@ export default async function Dashboard() {
     files,
     subscription,
   ] = await Promise.all([
-    prisma.product.count({ where: { tenantId } }),
-    prisma.category.count({ where: { tenantId } }),
-    prisma.event.count({ where: { tenantId } }),
-    prisma.testimonial.count({ where: { tenantId, moderationStatus: "pending" } }),
+    prisma.product.count({ where: productFilter }),
+    prisma.category.count({ where: branchFilter }),
+    prisma.event.count({ where: branchFilter }),
+    prisma.testimonial.count({ where: { ...branchFilter, moderationStatus: "pending" } }),
     context.permissions.includes("lead.manage")
       ? prisma.salesLead.count({ where: { status: "new" } })
       : Promise.resolve(0),
     context.permissions.includes("order.manage")
       ? prisma.customerOrder.count({
           where: {
-            tenantId,
+            ...branchFilter,
             status: { in: ["received", "confirmed", "preparing", "ready"] },
           },
         })
       : Promise.resolve(0),
     context.permissions.includes("reservation.manage")
-      ? prisma.reservation.count({ where: { tenantId, status: "pending" } })
+      ? prisma.reservation.count({ where: { ...branchFilter, status: "pending" } })
       : Promise.resolve(0),
     context.permissions.includes("product.manage")
       ? prisma.inventoryStock.count({
-          where: { tenantId, tracked: true, current: { lte: prisma.inventoryStock.fields.minimum } },
+          where: {
+            tenantId,
+            ...(context.activeBranchId && context.activeBranchId > 0 ? { branchId: context.activeBranchId } : {}),
+            tracked: true,
+            current: { lte: prisma.inventoryStock.fields.minimum },
+          },
         })
       : Promise.resolve(0),
     prisma.product.count({
       where: {
-        tenantId,
+        ...productFilter,
         OR: [{ price: null }, { imageUrl: "product_default.png" }, { categories: { none: {} } }],
       },
     }),
     prisma.event.findMany({
-      where: { tenantId },
+      where: branchFilter,
       orderBy: [{ date: "desc" }, { id: "desc" }],
       take: 3,
     }),
-    prisma.testimonial.findMany({ where: { tenantId }, orderBy: { id: "desc" }, take: 3 }),
+    prisma.testimonial.findMany({ where: branchFilter, orderBy: { id: "desc" }, take: 3 }),
     prisma.tenantMembership.count({ where: { tenantId, status: "active" } }),
     prisma.branch.count({ where: { tenantId, active: true } }),
     prisma.mediaAsset.aggregate({ where: { tenantId }, _sum: { sizeBytes: true } }),

@@ -15,6 +15,7 @@ const credentials = z.object({
     .transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(200),
   tenantId: z.coerce.number().int().positive().optional(),
+  branchId: z.coerce.number().int().nonnegative().optional(),
 });
 const invalidPasswordHash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.";
 const maximumFailedAttempts = 8;
@@ -82,7 +83,11 @@ export async function POST(request: Request) {
     include: {
       memberships: {
         where: { status: "active", tenant: { status: "active" } },
-        include: { role: true, tenant: true },
+        include: {
+          role: true,
+          tenant: true,
+          branchAccess: { include: { branch: true }, orderBy: { branchId: "asc" } },
+        },
         orderBy: { id: "asc" },
       },
     },
@@ -126,6 +131,42 @@ export async function POST(request: Request) {
   }
   if ((platformContext && !isPlatformStaff) || (!platformContext && !membership))
     return NextResponse.json({ error: "Tu usuario no tiene un negocio activo" }, { status: 403 });
+
+  let branchId: number | undefined;
+  let branchSlug: string | undefined;
+  if (!platformContext && membership) {
+    const access = membership.branchAccess.filter((item) => item.branch?.active);
+    const picked = access.find((item) => item.branchId === parsed.data.branchId);
+    if (parsed.data.branchId !== undefined && parsed.data.branchId !== 0 && !picked) {
+      return NextResponse.json({ error: "La sucursal elegida no está disponible" }, { status: 403 });
+    }
+    const selected = picked ?? (access.length === 1 ? access[0] : null);
+    if (parsed.data.branchId === 0 && membership.allBranches) {
+      branchId = 0;
+    } else if (parsed.data.branchId === 0 && !membership.allBranches) {
+      return NextResponse.json({ error: "No tenés acceso consolidado a varias sucursales" }, { status: 403 });
+    } else if (selected) {
+      branchId = selected.branchId;
+      branchSlug = selected.branch?.slug ?? undefined;
+    }
+    if (access.length > 1 && branchId === undefined) {
+      return NextResponse.json(
+        {
+          error: "Seleccioná la sucursal",
+          requiresBranchSelection: true,
+          consolidatedAvailable: membership.allBranches === true,
+          branches: access.map((item) => ({
+            id: item.branchId,
+            name: item.branch.name,
+            slug: item.branch.slug,
+            isPrimary: item.branch.isPrimary,
+          })),
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const response = NextResponse.json({ ok: true });
   response.cookies.set(
     "laterne_session",
@@ -135,7 +176,13 @@ export async function POST(request: Request) {
       ...(platformContext
         ? {}
         : membership
-          ? { tenantId: membership.tenantId, membershipId: membership.id, roleKey: membership.role.key }
+          ? {
+              tenantId: membership.tenantId,
+              membershipId: membership.id,
+              roleKey: membership.role.key,
+              branchId,
+              branchSlug,
+            }
           : {}),
       context: platformContext ? "platform" : "tenant",
     }),

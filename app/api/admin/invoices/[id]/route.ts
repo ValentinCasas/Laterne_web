@@ -19,7 +19,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!Number.isInteger(id) || !parsed.success) {
     return NextResponse.json({ error: "Comprobante inválido" }, { status: 400 });
   }
-  const previous = await prisma.invoiceRecord.findFirst({ where: { id, tenantId: auth.tenant.id } });
+  const previous = await prisma.invoiceRecord.findFirst({ where: { id, tenantId: auth.tenant.id, ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchId: auth.activeBranchId } : {}) } });
   if (!previous) return NextResponse.json({ error: "Comprobante no encontrado" }, { status: 404 });
   const invoice = await prisma.invoiceRecord.update({
     where: { id },

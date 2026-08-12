@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
 import { getAdminResource } from "@/lib/admin-resources";
 import { requirePermission } from "@/lib/auth";
+import { resourceScopedWhere } from "@/lib/branch";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -385,6 +386,7 @@ function createDefinition(
         },
         { key: "password", label: "Contraseña", type: "password", help: "Dejala vacía para conservarla" },
         { key: "branchIds", label: "Sucursales autorizadas", control: "multichoice", options: branchOptions, help: "Seleccioná una o varias sucursales." },
+        { key: "allBranches", label: "Acceso a todas las sucursales", control: "checkbox" },
         {
           key: "imageUrl",
           label: "Avatar",
@@ -626,6 +628,10 @@ function createDefinition(
         { key: "minimumOrder", label: "Pedido mínimo", type: "number", min: 0, step: 0.01 },
         { key: "orderPrefix", label: "Prefijo de pedido", placeholder: "PED" },
         { key: "isPrimary", label: "Sucursal principal", control: "checkbox" },
+        { key: "inheritLanding", label: "Usar landing principal", control: "checkbox", defaultChecked: true },
+        { key: "inheritBrand", label: "Usar identidad del tenant", control: "checkbox", defaultChecked: true },
+        { key: "landingHeroTitle", label: "Título de landing propia", placeholder: "Opcional si desactivás la herencia", group: "Landing propia" },
+        { key: "landingHeroSubtitle", label: "Texto de landing propia", control: "textarea", group: "Landing propia" },
         {
           key: "active",
           label: "Sucursal activa",
@@ -670,10 +676,11 @@ function createDefinition(
 }
 
 /** @summary Obtiene los registros y adapta las relaciones necesarias para su edición. */
-async function loadItems(definition: ResourceDefinition, tenantId: number) {
+async function loadItems(definition: ResourceDefinition, tenantId: number, activeBranchId?: number) {
+  const branchFilter = resourceScopedWhere(definition.model, tenantId, activeBranchId);
   if (definition.model === "product") {
     const products = await prisma.product.findMany({
-      where: { tenantId },
+      where: branchFilter,
       include: { categories: { select: { categoryId: true }, take: 1 } },
       orderBy: { id: "asc" },
     });
@@ -698,7 +705,7 @@ async function loadItems(definition: ResourceDefinition, tenantId: number) {
       },
       orderBy: { user: { name: "asc" } },
     });
-    return memberships.map(({ user, role, sessions, branchAccess, id: membershipId, roleId }) => ({
+    return memberships.map(({ user, role, sessions, branchAccess, allBranches, id: membershipId, roleId }) => ({
       ...user,
       membershipId,
       roleId: roleId.toString(),
@@ -706,12 +713,13 @@ async function loadItems(definition: ResourceDefinition, tenantId: number) {
       lastAccessAt: sessions[0]?.lastSeenAt ?? null,
       password: "",
       branchIds: branchAccess.map((access) => access.branchId).join(","),
+      allBranches,
     }));
   }
 
   if (definition.model === "promotion") {
     const promotions = await prisma.promotion.findMany({
-      where: { tenantId },
+      where: branchFilter,
       include: {
         products: { select: { productId: true } },
         categories: { select: { categoryId: true } },
@@ -729,7 +737,7 @@ async function loadItems(definition: ResourceDefinition, tenantId: number) {
   const delegate = prisma[definition.model as keyof typeof prisma] as unknown as {
     findMany(args: object): Promise<unknown[]>;
   };
-  return delegate.findMany({ where: { tenantId }, orderBy: { id: "asc" } });
+  return delegate.findMany({ where: branchFilter, orderBy: { id: "asc" } });
 }
 
 /** @summary Carga la configuración, imágenes y registros del recurso administrativo solicitado. */
@@ -739,10 +747,11 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   if (!resourceConfig) notFound();
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
+  const scopedFilter = resourceScopedWhere(resourceConfig.model, tenantId, context.activeBranchId);
   const [categories, products, roles, branches, tenant, mediaAssets, events, memberships, promotions, cases] =
     await Promise.all([
-      prisma.category.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-      prisma.product.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+      prisma.category.findMany({ where: resourceScopedWhere("category", tenantId, context.activeBranchId), orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where: scopedFilter, orderBy: { name: "asc" } }),
       prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
       prisma.branch.findMany({ where: { id: { in: context.branches.map((branch) => branch.id) } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
       prisma.tenant.findUniqueOrThrow({
@@ -820,7 +829,7 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   );
   if (!definition) notFound();
 
-  const items = await loadItems(definition, tenantId);
+  const items = await loadItems(definition, tenantId, context.activeBranchId);
   if (resource === "testimonios") {
     return (
       <TestimonialBoard

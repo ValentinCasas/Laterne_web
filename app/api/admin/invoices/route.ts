@@ -13,7 +13,11 @@ export async function POST(request: Request) {
   const parsed = invoiceInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Pedido inválido" }, { status: 400 });
   const order = await prisma.customerOrder.findFirst({
-    where: { id: parsed.data.orderId, tenantId: auth.tenant.id },
+    where: {
+      id: parsed.data.orderId,
+      tenantId: auth.tenant.id,
+      ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchId: auth.activeBranchId } : {}),
+    },
     include: { invoice: true },
   });
   if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });

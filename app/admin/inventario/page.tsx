@@ -11,9 +11,19 @@ export async function generateMetadata(): Promise<Metadata> { const context = aw
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ branchId?: string }> }) {
   const context = await requirePermission("product.manage");
   const requestedBranchId = Number((await searchParams).branchId);
+  const fallbackBranchId =
+    context.activeBranchId && context.activeBranchId > 0
+      ? context.activeBranchId
+      : context.branches.find((branch) => branch.active)?.id ?? 0;
   const selectedBranchId = context.branches.some((branch) => branch.id === requestedBranchId)
     ? requestedBranchId
-    : context.branches[0]?.id ?? 0;
+    : fallbackBranchId;
+  const stockWhere =
+    selectedBranchId > 0 ? { tenantId: context.tenant.id, branchId: selectedBranchId } : { tenantId: context.tenant.id };
+  const movementWhere =
+    selectedBranchId > 0
+      ? { tenantId: context.tenant.id, stock: { branchId: selectedBranchId } }
+      : { tenantId: context.tenant.id };
   const [branches, products, stocks, movements] = await Promise.all([
     prisma.branch.findMany({
       where: { id: { in: context.branches.map((branch) => branch.id) } },
@@ -24,9 +34,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       select: { id: true, name: true, imageUrl: true, availability: true },
       orderBy: { name: "asc" },
     }),
-    prisma.inventoryStock.findMany({ where: { tenantId: context.tenant.id, branchId: selectedBranchId } }),
+    prisma.inventoryStock.findMany({ where: stockWhere }),
     prisma.stockMovement.findMany({
-       where: { tenantId: context.tenant.id, stock: { branchId: selectedBranchId } },
+       where: movementWhere,
       include: {
         stock: { include: { product: { select: { name: true } }, branch: { select: { name: true } } } },
       },

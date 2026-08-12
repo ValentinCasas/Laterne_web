@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const parsed = optionInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá los datos de la opción" }, { status: 400 });
   const product = await prisma.product.findFirst({
-    where: { id: parsed.data.productId, tenantId: auth.tenant.id },
+    where: { id: parsed.data.productId, tenantId: auth.tenant.id, ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchAssignments: { some: { branchId: auth.activeBranchId, active: true } } } : {}) },
     select: { id: true },
   });
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });

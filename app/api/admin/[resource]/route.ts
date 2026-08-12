@@ -4,11 +4,12 @@ import { z } from "zod";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
+import { assertBranchCapacity, ensureBranchProduct, ensureBranchStock, ensureDraftLicense, resolveEffectiveBranchId } from "@/lib/branch";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { localModelUrl, modelOrientation, optionalMeasurement } from "@/lib/product-model";
+import { productAdminData } from "@/lib/product-admin";
 import { promotionData } from "@/lib/promotion-admin";
-import { slugify, uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
+import { slugify, uniqueCategorySlug } from "@/lib/slug";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
@@ -25,57 +26,10 @@ function booleanValue(value: string) {
 }
 
 /** @summary Normaliza y valida los campos de un recurso antes de guardarlo por primera vez. */
-async function normalize(resource: string, input: Record<string, string>, tenantId: number) {
+async function normalize(resource: string, input: Record<string, string>, tenantId: number, branchId?: number) {
   if (resource === "productos") {
-    const categoryId = Number(input.categoryId);
-    const category = await prisma.category.findFirst({ where: { id: categoryId, tenantId } });
-    if (!category) throw new Error("Seleccioná una categoría válida");
-    const fields = selectFields(input, ["name", "description", "availability", "imageUrl", "status"]);
-    if (!fields.name.trim() || !fields.description.trim())
-      throw new Error("Completá el nombre y la descripción");
-    const model3dUrl = localModelUrl(input.model3dUrl ?? "", tenantId, ["glb", "gltf"]);
-    const usdzUrl = localModelUrl(input.usdzUrl ?? "", tenantId, ["usdz"]);
-    return {
-      ...fields,
-      tenantId,
-      status: fields.status || "published",
-      publishAt: input.publishAt ? new Date(input.publishAt) : null,
-      slug: await uniqueProductSlug(tenantId, input.slug || fields.name),
-      price: input.price ? Number(input.price) : null,
-      promotionalPrice: input.promotionalPrice ? Number(input.promotionalPrice) : null,
-      previousPrice: input.previousPrice ? Number(input.previousPrice) : null,
-      preparationMinutes: input.preparationMinutes ? Number(input.preparationMinutes) : null,
-      spiceLevel: Math.min(3, Math.max(0, Number(input.spiceLevel || 0))),
-      featured: booleanValue(input.featured),
-      isNew: booleanValue(input.isNew),
-      recommended: booleanValue(input.recommended),
-      vegetarian: booleanValue(input.vegetarian),
-      vegan: booleanValue(input.vegan),
-      glutenFree: booleanValue(input.glutenFree),
-      alcoholFree: booleanValue(input.alcoholFree),
-      model3dUrl,
-      usdzUrl,
-      arEnabled: Boolean(model3dUrl) && booleanValue(input.arEnabled),
-      arScale: optionalMeasurement(input.arScale || "1", 0.01, 20),
-      modelWidthCm: optionalMeasurement(input.modelWidthCm ?? ""),
-      modelHeightCm: optionalMeasurement(input.modelHeightCm ?? ""),
-      modelDepthCm: optionalMeasurement(input.modelDepthCm ?? ""),
-      modelOrientation: modelOrientation(input.modelOrientation ?? ""),
-      arPlacement: input.arPlacement === "wall" ? "wall" : "floor",
-      arAllowScale: booleanValue(input.arAllowScale),
-      availableDays: input.availableDays
-        ? input.availableDays
-            .split(",")
-            .map(Number)
-            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
-        : null,
-      availableStartTime: input.availableStartTime
-        ? new Date(`1970-01-01T${input.availableStartTime}:00Z`)
-        : null,
-      availableEndTime: input.availableEndTime ? new Date(`1970-01-01T${input.availableEndTime}:00Z`) : null,
-      modelUpdatedAt: model3dUrl ? new Date() : null,
-      categories: { create: { tenantId, categoryId } },
-    };
+    const { data } = await productAdminData(input, tenantId, branchId);
+    return data;
   }
 
   if (resource === "categorias") {
@@ -85,6 +39,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
     return {
       ...fields,
       tenantId,
+      branchId: branchId ?? null,
       status: fields.status || "published",
       publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueCategorySlug(tenantId, input.slug || fields.name),
@@ -96,6 +51,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
     return {
       ...selectFields(input, ["name", "description", "location", "imageUrl", "status"]),
       tenantId,
+      branchId: branchId ?? null,
       status: input.status || "published",
       publishAt: input.publishAt ? new Date(input.publishAt) : null,
       date: input.date ? new Date(`${input.date}T00:00:00`) : null,
@@ -104,7 +60,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
   }
 
   if (resource === "horarios") {
-    const data: Record<string, unknown> = { tenantId, dayOfWeek: input.dayOfWeek };
+    const data: Record<string, unknown> = { tenantId, branchId: branchId ?? null, dayOfWeek: input.dayOfWeek };
     for (const key of ["morningStartTime", "morningEndTime", "eveningStartTime", "eveningEndTime"]) {
       data[key] = input[key] ? new Date(`1970-01-01T${input[key]}:00Z`) : null;
     }
@@ -115,6 +71,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
     const status = input.moderationStatus || "pending";
     return {
       tenantId,
+      branchId: branchId ?? null,
       description: input.description,
       moderationStatus: status,
       state: status === "approved",
@@ -131,7 +88,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
   }
 
   if (resource === "promociones") {
-    return promotionData(input, tenantId);
+    return promotionData(input, tenantId, undefined, branchId);
   }
 
   if (resource === "legales") {
@@ -220,6 +177,9 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       orderPrefix: input.orderPrefix?.trim().toUpperCase().slice(0, 12) || "PED",
       isPrimary: firstBranch || booleanValue(input.isPrimary),
       active: booleanValue(input.active),
+      inheritLanding: input.inheritLanding === "" ? true : booleanValue(input.inheritLanding),
+      inheritBrand: input.inheritBrand === "" ? true : booleanValue(input.inheritBrand),
+      landingContent: { heroTitle: input.landingHeroTitle?.trim() || "", heroSubtitle: input.landingHeroSubtitle?.trim() || "" },
     };
   }
 
@@ -265,6 +225,7 @@ async function createMember(input: Record<string, string>, tenantId: number) {
   if (!role) throw new Error("Seleccioná un rol válido");
   const branchIds = (input.branchIds ?? "").split(",").map(Number).filter(Number.isInteger);
   const branches = await prisma.branch.findMany({ where: { tenantId, id: { in: branchIds } }, select: { id: true } });
+  const allBranches = input.allBranches === "true";
 
   return prisma.$transaction(async (transaction) => {
     const user = await transaction.user.create({
@@ -276,7 +237,7 @@ async function createMember(input: Record<string, string>, tenantId: number) {
         imageUrl: input.imageUrl || "avatar_profile_default.png",
       },
     });
-    const membership = await transaction.tenantMembership.create({ data: { tenantId, userId: user.id, roleId } });
+    const membership = await transaction.tenantMembership.create({ data: { tenantId, userId: user.id, roleId, allBranches } });
     if (branches.length) {
       await transaction.branchMembership.createMany({
         data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
@@ -309,13 +270,23 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     }
     if (resource === "sucursales") {
       await ensureTenantCapacity(auth.tenant.id, "branches");
+      const branchCapacity = await assertBranchCapacity(auth.tenant.id);
+      if (!branchCapacity.ok) throw new Error(branchCapacity.reason);
     }
-    const item =
-      resource === "usuarios"
-        ? await createMember(input, auth.tenant.id)
-        : await (prisma[resourceConfig.model] as unknown as Delegate).create({
-            data: await normalize(resource, input, auth.tenant.id),
-          });
+    let item: unknown;
+    const createBranchId = await resolveEffectiveBranchId(auth.tenant.id, auth.activeBranchId);
+    if (resource === "usuarios") {
+      item = await createMember(input, auth.tenant.id);
+    } else if (resource === "productos") {
+      const product = await productAdminData(input, auth.tenant.id, auth.activeBranchId);
+      item = await prisma.product.create({ data: product.data });
+      await ensureBranchProduct(auth.tenant.id, product.targetBranchId, (item as { id: number }).id);
+      await ensureBranchStock(auth.tenant.id, product.targetBranchId, (item as { id: number }).id);
+    } else {
+      item = await (prisma[resourceConfig.model] as unknown as Delegate).create({
+        data: await normalize(resource, input, auth.tenant.id, createBranchId ?? undefined),
+      });
+    }
     if (resource === "sucursales" && (item as { isPrimary?: boolean }).isPrimary) {
       await prisma.branch.updateMany({
         where: { tenantId: auth.tenant.id, id: { not: (item as { id: number }).id } },
@@ -323,12 +294,14 @@ export async function POST(request: Request, context: { params: Promise<{ resour
       });
     }
     if (resource === "sucursales") {
+      const createdBranchId = (item as { id: number }).id;
       await prisma.branchMembership.createMany({
         data: (await prisma.tenantMembership.findMany({ where: { tenantId: auth.tenant.id }, select: { id: true } })).map(
-          (membership) => ({ membershipId: membership.id, branchId: (item as { id: number }).id }),
+          (membership) => ({ membershipId: membership.id, branchId: createdBranchId }),
         ),
         skipDuplicates: true,
       });
+      await ensureDraftLicense(auth.tenant.id, createdBranchId);
     }
     await recordAudit({
       context: auth,

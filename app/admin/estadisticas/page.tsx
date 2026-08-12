@@ -13,9 +13,11 @@ export default async function AdminAnalyticsPage({ searchParams }: AnalyticsPage
   since.setUTCDate(since.getUTCDate() - days);
   const previousSince = new Date(since);
   previousSince.setUTCDate(previousSince.getUTCDate() - days);
+  const activeId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
+  const branchScope = activeId ? { branchId: activeId } : { branchId: { in: context.branches.map((branch) => branch.id) } };
   const [events, orders, reservationCount, tenant] = await Promise.all([
     prisma.analyticsEvent.findMany({
-      where: { tenantId: context.tenant.id, occurredAt: { gte: since } },
+      where: { tenantId: context.tenant.id, ...(activeId ? { branchId: activeId } : {}), occurredAt: { gte: since } },
       select: {
         eventType: true,
         entityType: true,
@@ -26,11 +28,11 @@ export default async function AdminAnalyticsPage({ searchParams }: AnalyticsPage
       take: 100_000,
     }),
     prisma.customerOrder.findMany({
-      where: { tenantId: context.tenant.id, branchId: { in: context.branches.map((branch) => branch.id) }, createdAt: { gte: previousSince } },
+      where: { tenantId: context.tenant.id, ...branchScope, createdAt: { gte: previousSince } },
       select: { createdAt: true, status: true, total: true },
     }),
     prisma.reservation.count({
-      where: { tenantId: context.tenant.id, createdAt: { gte: since } },
+      where: { tenantId: context.tenant.id, ...branchScope, createdAt: { gte: since } },
     }),
     prisma.tenant.findUniqueOrThrow({
       where: { id: context.tenant.id },
@@ -67,7 +69,11 @@ export default async function AdminAnalyticsPage({ searchParams }: AnalyticsPage
   }
   const productIds = [...productActivity.keys()];
   const names = await prisma.product.findMany({
-    where: { tenantId: context.tenant.id, id: { in: productIds } },
+    where: {
+      tenantId: context.tenant.id,
+      ...(activeId ? { branchAssignments: { some: { branchId: activeId } } } : {}),
+      id: { in: productIds },
+    },
     select: { id: true, name: true },
   });
   const products = names
@@ -79,7 +85,7 @@ export default async function AdminAnalyticsPage({ searchParams }: AnalyticsPage
     .sort((left, right) => right.views + right.additions - left.views - left.additions)
     .slice(0, 12);
   const categoryNames = await prisma.category.findMany({
-    where: { tenantId: context.tenant.id, id: { in: [...categoryActivity.keys()] } },
+    where: { tenantId: context.tenant.id, ...(activeId ? { branchId: activeId } : {}), id: { in: [...categoryActivity.keys()] } },
     select: { id: true, name: true },
   });
   const currentOrders = orders.filter((order) => order.createdAt >= since);

@@ -7,12 +7,13 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> { const context = await requirePermission("order.manage"); return { title: `${context.tenant.name} | Pedidos` }; }
 
-/** @summary Carga los pedidos recientes del negocio para su gestión operativa por estados. */
+/** @summary Carga los pedidos del negocio según la sucursal activa del panel. */
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ branchId?: string }> }) {
   const context = await requirePermission("order.manage");
   const requestedBranchId = Number((await searchParams).branchId);
   const branchIds = context.branches.map((branch) => branch.id);
-  const selectedBranchId = branchIds.includes(requestedBranchId) ? requestedBranchId : null;
+  const activeId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
+  const selectedBranchId = branchIds.includes(requestedBranchId) ? requestedBranchId : (activeId ?? null);
   const orders = await prisma.customerOrder.findMany({
      where: { tenantId: context.tenant.id, ...(selectedBranchId ? { branchId: selectedBranchId } : { branchId: { in: branchIds } }) },
     include: { table: { select: { name: true, code: true } }, items: true },

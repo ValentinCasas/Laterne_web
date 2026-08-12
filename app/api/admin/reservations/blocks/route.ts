@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
+import { resolveEffectiveBranchId } from "@/lib/branch";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { defaultReservationTimeZone, zoneOffset } from "@/lib/reservations";
@@ -32,9 +33,11 @@ export async function POST(request: Request) {
   const endDate = new Date(`${parsed.data.endDate}T00:00:00${offset}`);
   if (startDate > endDate)
     return NextResponse.json({ error: "El rango de fechas está invertido" }, { status: 400 });
+  const blockBranchId = await resolveEffectiveBranchId(auth.tenant.id, auth.activeBranchId);
   const block = await prisma.reservationBlock.create({
     data: {
       tenantId: auth.tenant.id,
+      branchId: blockBranchId ?? null,
       startDate,
       endDate,
       startTime: parsed.data.startTime ? new Date(`1970-01-01T${parsed.data.startTime}:00Z`) : null,

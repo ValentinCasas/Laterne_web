@@ -83,18 +83,26 @@ export default async function LandingPage() {
   }
   const tenant = await getDefaultTenant();
   const now = new Date();
+  const primaryBranch = await prisma.branch.findFirst({
+    where: { tenantId: tenant.id, active: true },
+    orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  const branchId = primaryBranch?.id;
+  const branchWhere = branchId ? { branchId } : {};
   const [business, events, hours, testimonials, avatarFiles, eventImageFiles] = await Promise.all([
     prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
     prisma.event.findMany({
       where: {
         tenantId: tenant.id,
+        ...branchWhere,
         OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
       },
       orderBy: [{ date: "desc" }, { id: "desc" }],
     }),
-    prisma.openingHour.findMany({ where: { tenantId: tenant.id }, orderBy: { id: "asc" } }),
+    prisma.openingHour.findMany({ where: { tenantId: tenant.id, ...branchWhere }, orderBy: { id: "asc" } }),
     prisma.testimonial.findMany({
-      where: { tenantId: tenant.id, state: true, moderationStatus: "approved" },
+      where: { tenantId: tenant.id, ...branchWhere, state: true, moderationStatus: "approved" },
       orderBy: { date: "desc" },
       take: 12,
     }),

@@ -59,6 +59,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       await transaction.notification.create({
         data: {
           tenantId: auth.tenant.id,
+          branchId: current.branchId,
           type: "order.status",
           title: `${current.reference} · ${orderStatusLabel(parsed.data.status)}`,
           message: `El pedido de ${current.customerName} cambió de estado.`,

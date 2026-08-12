@@ -22,6 +22,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
   const current = await prisma.reservation.findFirst({ where: { id, tenantId: auth.tenant.id } });
   if (!current) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+  if (current.branchId && !auth.branches.some((branch) => branch.id === current.branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a la sucursal de esta reserva" }, { status: 403 });
+  }
 
   const updated = await prisma.$transaction(async (transaction) => {
     const reservation = await transaction.reservation.update({
@@ -40,6 +43,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     await transaction.notification.create({
       data: {
         tenantId: auth.tenant.id,
+        branchId: current.branchId,
         type: "reservation.status",
         title: `Reserva ${current.reference} · ${parsed.data.status}`,
         message: `Se actualizó la reserva de ${current.customerName}.`,

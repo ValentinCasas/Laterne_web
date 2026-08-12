@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
+import { ensureBranchCategory, ensureBranchProduct, ensureBranchStock, resolveEffectiveBranchId } from "@/lib/branch";
 import { parseCsv } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
@@ -50,20 +51,16 @@ export async function POST(request: Request) {
   if (errors.length || !parsed.data.apply) {
     return NextResponse.json({ ok: !errors.length, preview: true, validRows: valid.length, errors });
   }
+  const targetBranchId = await resolveEffectiveBranchId(auth.tenant.id, auth.activeBranchId);
+  if (!targetBranchId) {
+    return NextResponse.json({ error: "Creá primero una sucursal activa" }, { status: 409 });
+  }
   for (const row of valid) {
-    const categorySlug = slugify(row.categoria) || "general";
-    const category = await prisma.category.upsert({
-      where: { tenantId_slug: { tenantId: auth.tenant.id, slug: categorySlug } },
-      create: {
-        tenantId: auth.tenant.id,
-        name: row.categoria,
-        slug: categorySlug,
-        description: row.categoria,
-        imageUrl: "bottle-1-svgrepo-com.png",
-        status: "published",
-      },
-      update: {},
-    });
+    const category = await ensureBranchCategory(
+      auth.tenant.id,
+      targetBranchId,
+      row.categoria || "General",
+    );
     const productSlug = slugify(row.slug || row.nombre) || `producto-${Date.now()}`;
     const data = {
       name: row.nombre,
@@ -81,6 +78,8 @@ export async function POST(request: Request) {
       create: { tenantId: auth.tenant.id, slug: productSlug, ...data },
       update: data,
     });
+    await ensureBranchProduct(auth.tenant.id, targetBranchId, product.id);
+    await ensureBranchStock(auth.tenant.id, targetBranchId, product.id);
     await prisma.productCategory.upsert({
       where: { productId_categoryId: { productId: product.id, categoryId: category.id } },
       create: { tenantId: auth.tenant.id, productId: product.id, categoryId: category.id },
@@ -91,7 +90,7 @@ export async function POST(request: Request) {
     context: auth,
     action: "import",
     entityType: "products",
-    newValues: { rows: valid.length },
+    newValues: { rows: valid.length, branchId: targetBranchId },
     request,
   });
   return NextResponse.json({ ok: true, imported: valid.length, errors: [] });

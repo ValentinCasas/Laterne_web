@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export default async function MediaPage() {
   const context = await requirePermission("media.manage");
   const assets = await prisma.mediaAsset.findMany({
-    where: { tenantId: context.tenant.id },
+    where: { tenantId: context.tenant.id, ...(context.activeBranchId && context.activeBranchId > 0 ? { OR: [{ branchId: context.activeBranchId }, { branchId: null }] } : {}) },
     include: { user: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
     take: 2000,

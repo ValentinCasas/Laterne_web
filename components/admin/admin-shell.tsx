@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
 import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
 
@@ -164,6 +165,8 @@ export function AdminShell({
   adminTheme = "menuclick-dark",
   adminAccent = "#ec4899",
   palette = defaultPalette,
+  branches = [],
+  activeBranchId,
 }: {
   children: React.ReactNode;
   permissions: string[];
@@ -173,11 +176,15 @@ export function AdminShell({
   adminTheme?: string;
   adminAccent?: string;
   palette?: PaletteColors;
+  branches?: Array<{ id: number; name: string; slug: string; isPrimary: boolean }>;
+  activeBranchId?: number;
 }) {
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const activeBranch = branches.find((branch) => branch.id === activeBranchId);
+  const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
   const [openGroup, setOpenGroup] = useState<string>(
     () =>
       navigationGroups.find((group) => group.links.some((link) => isActivePath(pathname, link.href)))?.id ??
@@ -243,27 +250,34 @@ export function AdminShell({
         <aside className="sticky top-20 z-40 h-fit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl">
           <div className="hidden border-b border-white/10 p-6 lg:block">
             <p className="text-xs font-black uppercase tracking-[.28em] text-[var(--admin-primary)]">{tenantName} Studio</p>
-            <h2 className="mt-2 text-2xl font-black">Administración</h2>
+<h2 className="mt-2 text-2xl font-black">Administración</h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-500">
               Gestioná el contenido que ven tus clientes.
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <a
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
-                href={publicSiteUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Ver sitio ↗
-              </a>
-              <a
-                className="rounded-xl border border-pink-500/20 bg-pink-500/10 px-3 py-2 text-center text-xs font-black text-pink-200 hover:bg-pink-500 hover:text-white"
-                href={`${publicSiteUrl}/carta`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Ver carta ↗
-              </a>
+            <div className="mt-5 space-y-3">
+              <BranchSwitcher
+                branches={branches}
+                activeBranchId={activeBranchId}
+                activeBranchName={activeBranch?.name}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
+                  href={publicSite}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver sitio
+                </a>
+                <a
+                  className="rounded-xl border border-pink-500/20 bg-pink-500/10 px-3 py-2 text-center text-xs font-black text-pink-200 hover:bg-pink-500 hover:text-white"
+                  href={`${publicSite}/carta`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver carta
+                </a>
+              </div>
             </div>
           </div>
 
@@ -291,22 +305,22 @@ export function AdminShell({
             </span>
           </button>
 
-          <div className="grid grid-cols-2 gap-2 px-3 pb-3 lg:hidden">
+<div className="grid grid-cols-2 gap-2 px-3 pb-3 lg:hidden">
             <a
               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
-              href={publicSiteUrl}
+              href={publicSite}
               target="_blank"
               rel="noreferrer"
             >
-              Ver sitio ↗
+              Ver sitio
             </a>
             <a
               className="rounded-xl border border-pink-500/20 bg-pink-500/10 px-3 py-2 text-center text-xs font-black text-pink-200 hover:bg-pink-500 hover:text-white"
-              href={`${publicSiteUrl}/carta`}
+              href={`${publicSite}/carta`}
               target="_blank"
               rel="noreferrer"
             >
-              Ver carta ↗
+              Ver carta
             </a>
           </div>
 

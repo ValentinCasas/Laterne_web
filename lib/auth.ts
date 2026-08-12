@@ -7,6 +7,7 @@ import { isLocalDevelopmentHost } from "@/lib/domains";
 import { resolveHostKind } from "@/lib/host-gate";
 import { publicTenantWhere } from "@/lib/subscription-access";
 import { paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
+import { effectiveBranchStatus, type BranchEffectiveStatus } from "@/lib/branch";
 
 export type Session = {
   userId: number;
@@ -16,6 +17,8 @@ export type Session = {
   roleKey?: string;
   sessionId?: number;
   context?: "platform" | "tenant";
+  branchId?: number;
+  branchSlug?: string;
 };
 
 export type AuthorizationContext = {
@@ -23,7 +26,9 @@ export type AuthorizationContext = {
   tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null; adminTheme: string; adminAccent: string; palette: PaletteColors | null };
   membership: { id: number; role: { key: string; name: string } };
   permissions: string[];
-  branches: Array<{ id: number; name: string; active: boolean; isPrimary: boolean }>;
+  branches: Array<{ id: number; name: string; slug: string; active: boolean; isPrimary: boolean; licenseStatus: string | null; status: BranchEffectiveStatus }>;
+  allBranches: boolean;
+  activeBranchId?: number;
 };
 
 /** @summary Genera la clave binaria utilizada para firmar y validar las sesiones. */
@@ -47,6 +52,7 @@ export async function createSession(
     data: {
       userId: session.userId,
       membershipId: session.membershipId ?? null,
+      branchId: session.branchId ?? null,
       context: session.context ?? (session.membershipId ? "tenant" : "platform"),
       expiresAt,
     },
@@ -72,6 +78,8 @@ export async function getSession(): Promise<Session | null> {
       membershipId: payload.membershipId === undefined ? undefined : Number(payload.membershipId),
       roleKey: typeof payload.roleKey === "string" ? payload.roleKey : undefined,
       sessionId: payload.sessionId === undefined ? undefined : Number(payload.sessionId),
+      branchId: payload.branchId === undefined ? undefined : Number(payload.branchId),
+      branchSlug: typeof payload.branchSlug === "string" ? payload.branchSlug : undefined,
       context:
         payload.context === "platform" ? "platform" : payload.context === "tenant" ? "tenant" : undefined,
     };
@@ -84,7 +92,7 @@ export async function getSession(): Promise<Session | null> {
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
-        select: { id: true, lastSeenAt: true, membershipId: true, context: true },
+        select: { id: true, lastSeenAt: true, membershipId: true, context: true, branchId: true },
       });
       if (!activeSession) return null;
       if (
@@ -93,6 +101,9 @@ export async function getSession(): Promise<Session | null> {
       )
         return null;
       if (!session.context) session.context = activeSession.context === "platform" ? "platform" : "tenant";
+      if (activeSession.branchId !== null && session.branchId !== activeSession.branchId) {
+        session.branchId = activeSession.branchId;
+      }
       if (activeSession.lastSeenAt.getTime() < Date.now() - 5 * 60 * 1000) {
         await prisma.authSession.update({
           where: { id: activeSession.id },
@@ -136,6 +147,8 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           id: true,
           name: true,
           slug: true,
+           status: true,
+           subscription: { select: { status: true, currentPeriodEnd: true, trialEndsAt: true, gracePeriodEndsAt: true } },
           timeZone: true,
            brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true, primaryColor: true, secondaryColor: true, backgroundColor: true } },
            activePalette: { select: { primary: true, secondary: true, accent: true, background: true, surface: true, surfaceElevated: true, text: true, textMuted: true, border: true, success: true, warning: true, danger: true, baseMode: true } },
@@ -149,7 +162,18 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
         },
       },
       branchAccess: {
-        include: { branch: { select: { id: true, name: true, active: true, isPrimary: true } } },
+        include: {
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              active: true,
+              isPrimary: true,
+               licenses: { select: { status: true, currentPeriodEnd: true, graceUntil: true }, orderBy: { id: "asc" }, take: 1 },
+            },
+          },
+        },
         orderBy: { branchId: "asc" },
       },
     },
@@ -161,6 +185,40 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     .map((item) => item.permission.key)
     .filter((permissionKey) => !["plan.manage", "lead.manage"].includes(permissionKey));
   if (permission && !permissions.includes(permission)) return null;
+
+  const branches = membership.branchAccess.map(({ branch }) => {
+    const licenseStatus = branch.licenses[0]?.status ?? null;
+    return {
+      id: branch.id,
+      name: branch.name,
+      slug: branch.slug,
+      active: branch.active,
+      isPrimary: branch.isPrimary,
+      licenseStatus,
+       status: effectiveBranchStatus({
+        tenantStatus: membership.tenant.status,
+        tenantSubscription: membership.tenant.subscription,
+        branchActive: branch.active,
+        license: branch.licenses[0] ?? null,
+      }),
+    };
+  });
+
+  const allBranches =
+    membership.allBranches === true;
+
+  const requestedBranch = session.branchId;
+  const wantsConsolidated = requestedBranch === 0 && allBranches;
+  const canUseActive =
+    requestedBranch !== undefined &&
+    requestedBranch !== null &&
+    requestedBranch > 0 &&
+    branches.some((branch) => branch.id === requestedBranch && branch.active && branch.status === "active");
+  const activeBranchId = wantsConsolidated
+    ? 0
+    : canUseActive
+      ? requestedBranch
+      : branches.find((branch) => branch.active)?.id;
 
   return {
     session,
@@ -177,13 +235,27 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     },
     membership: { id: membership.id, role: { key: membership.role.key, name: membership.role.name } },
     permissions,
-    branches: membership.branchAccess.map(({ branch }) => branch),
+    branches,
+    allBranches,
+    activeBranchId,
   };
+}
+
+/** @summary Exige una membresía activa que pueda operar sobre la sucursal indicada. */
+export async function requireBranch(
+  permission: string | undefined,
+  branchId?: number | null,
+): Promise<AuthorizationContext & { branch: AuthorizationContext["branches"][number] }> {
+  if (branchId === undefined || branchId === null) redirect("/admin");
+  const context = permission ? await requirePermission(permission) : await requirePermission("admin.access");
+  const branch = context.branches.find((item) => item.id === branchId && item.active && item.status === "active");
+  if (!branch) redirect("/admin");
+  return { ...context, branch };
 }
 
 /** @summary Comprueba en servidor que la membresía pueda operar sobre la sucursal solicitada. */
 export function canAccessBranch(context: AuthorizationContext, branchId: number) {
-  return context.branches.some((branch) => branch.id === branchId && branch.active);
+  return context.branches.some((branch) => branch.id === branchId && branch.active && branch.status === "active");
 }
 
 /** @summary Exige una sesión válida y, opcionalmente, permisos de administración. */

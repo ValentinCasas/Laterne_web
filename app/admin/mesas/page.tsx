@@ -8,9 +8,11 @@ export const dynamic = "force-dynamic";
 /** @summary Carga las mesas del negocio para gestionar sus datos y códigos QR. */
 export default async function AdminTablesPage() {
   const context = await requirePermission("table.manage");
+  const activeId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
+  const branchScope = activeId ? { branchId: activeId } : { branchId: { in: context.branches.map((branch) => branch.id) } };
   const [tables, branches] = await Promise.all([
     prisma.diningTable.findMany({
-      where: { tenantId: context.tenant.id, branchId: { in: context.branches.map((branch) => branch.id) } },
+      where: { tenantId: context.tenant.id, ...branchScope },
       include: {
         orders: {
           where: { status: { notIn: ["delivered", "cancelled"] } },

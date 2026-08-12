@@ -27,6 +27,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     where: { id: parsed.data.branchId, tenantId: auth.tenant.id },
   });
   if (!branch) return NextResponse.json({ error: "Seleccioná una sucursal válida" }, { status: 400 });
+  if (!auth.branches.some((item) => item.id === branch.id && item.active && item.status === "active")) return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
+  if (current.branchId !== parsed.data.branchId && !(auth.allBranches && current.branchId)) return NextResponse.json({ error: "No podés mover una mesa de otra sucursal" }, { status: 403 });
   const updated = await prisma.diningTable.update({
     where: { id },
     data: { ...parsed.data, sector: parsed.data.sector || null },
@@ -49,7 +51,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const id = Number((await context.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ error: "Identificador inválido" }, { status: 400 });
-  const current = await prisma.diningTable.findFirst({ where: { id, tenantId: auth.tenant.id } });
+  const current = await prisma.diningTable.findFirst({ where: { id, tenantId: auth.tenant.id, ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchId: auth.activeBranchId } : {}) } });
   if (!current) return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
   await prisma.diningTable.delete({ where: { id } });
   await recordAudit({

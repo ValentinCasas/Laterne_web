@@ -7,7 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/** @summary Estados comerciales que atraviesa la suscripción de un cliente de MenuClick. */
+/**
+ * @summary Estados comerciales que atraviesa la suscripción de un cliente de MenuClick.
+ */
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
@@ -35,6 +37,7 @@ model BusinessInfo {
 model Category {
   id          Int                 @id @default(autoincrement())
   tenantId    Int
+  branchId    Int?
   name        String              @db.VarChar(255)
   slug        String              @db.VarChar(180)
   description String              @db.VarChar(255)
@@ -45,17 +48,19 @@ model Category {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   products    ProductCategory[]
   promotions  PromotionCategory[]
 
   @@unique([tenantId, slug])
-  @@index([tenantId, status, sortOrder])
+  @@index([tenantId, branchId, status, sortOrder])
   @@map("category")
 }
 
 model Event {
   id          Int       @id @default(autoincrement())
   tenantId    Int
+  branchId    Int?
   name        String    @db.VarChar(255)
   date        DateTime? @db.DateTime(0)
   time        DateTime? @db.Time(0)
@@ -67,75 +72,79 @@ model Event {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId, status, date])
+  @@index([tenantId, branchId, status, date])
   @@map("event")
 }
 
 model OpeningHour {
   id               Int       @id @default(autoincrement())
   tenantId         Int
+  branchId         Int?
   dayOfWeek        String    @db.VarChar(255)
   morningStartTime DateTime? @db.Time(0)
   morningEndTime   DateTime? @db.Time(0)
   eveningStartTime DateTime? @db.Time(0)
   eveningEndTime   DateTime? @db.Time(0)
   tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId])
+  @@index([tenantId, branchId])
   @@map("openinghour")
 }
 
 model Product {
-  id                 Int                @id @default(autoincrement())
+  id                 Int                  @id @default(autoincrement())
   tenantId           Int
-  name               String             @db.VarChar(255)
-  slug               String             @db.VarChar(180)
-  description        String             @db.VarChar(700)
-  availability       String?            @map("availavility") @db.VarChar(255)
-  price              Decimal?           @db.Decimal(10, 0)
-  imageUrl           String             @db.VarChar(255)
-  status             String             @default("published") @db.VarChar(20)
+  name               String               @db.VarChar(255)
+  slug               String               @db.VarChar(180)
+  description        String               @db.VarChar(700)
+  availability       String?              @map("availavility") @db.VarChar(255)
+  price              Decimal?             @db.Decimal(10, 0)
+  imageUrl           String               @db.VarChar(255)
+  status             String               @default("published") @db.VarChar(20)
   publishAt          DateTime?
-  featured           Boolean            @default(false)
-  isNew              Boolean            @default(false)
-  recommended        Boolean            @default(false)
-  vegetarian         Boolean            @default(false)
-  vegan              Boolean            @default(false)
-  glutenFree         Boolean            @default(false)
-  alcoholFree        Boolean            @default(false)
-  spiceLevel         Int                @default(0)
+  featured           Boolean              @default(false)
+  isNew              Boolean              @default(false)
+  recommended        Boolean              @default(false)
+  vegetarian         Boolean              @default(false)
+  vegan              Boolean              @default(false)
+  glutenFree         Boolean              @default(false)
+  alcoholFree        Boolean              @default(false)
+  spiceLevel         Int                  @default(0)
   preparationMinutes Int?
-  promotionalPrice   Decimal?           @db.Decimal(10, 0)
-  previousPrice      Decimal?           @db.Decimal(10, 0)
-  model3dUrl         String?            @db.VarChar(500)
-  usdzUrl            String?            @db.VarChar(500)
-  modelPosterUrl     String?            @db.VarChar(500)
-  arEnabled          Boolean            @default(false)
-  arScale            Decimal            @default(1.000) @db.Decimal(8, 3)
-  modelWidthCm       Decimal?           @db.Decimal(8, 2)
-  modelHeightCm      Decimal?           @db.Decimal(8, 2)
-  modelDepthCm       Decimal?           @db.Decimal(8, 2)
-  modelOrientation   String             @default("0deg 0deg 0deg") @db.VarChar(80)
-  arPlacement        String             @default("floor") @db.VarChar(20)
-  arAllowScale       Boolean            @default(true)
+  promotionalPrice   Decimal?             @db.Decimal(10, 0)
+  previousPrice      Decimal?             @db.Decimal(10, 0)
+  model3dUrl         String?              @db.VarChar(500)
+  usdzUrl            String?              @db.VarChar(500)
+  modelPosterUrl     String?              @db.VarChar(500)
+  arEnabled          Boolean              @default(false)
+  arScale            Decimal              @default(1.000) @db.Decimal(8, 3)
+  modelWidthCm       Decimal?             @db.Decimal(8, 2)
+  modelHeightCm      Decimal?             @db.Decimal(8, 2)
+  modelDepthCm       Decimal?             @db.Decimal(8, 2)
+  modelOrientation   String               @default("0deg 0deg 0deg") @db.VarChar(80)
+  arPlacement        String               @default("floor") @db.VarChar(20)
+  arAllowScale       Boolean              @default(true)
   availableDays      Json?
-  availableStartTime DateTime?          @db.Time(0)
-  availableEndTime   DateTime?          @db.Time(0)
+  availableStartTime DateTime?            @db.Time(0)
+  availableEndTime   DateTime?            @db.Time(0)
   modelUpdatedAt     DateTime?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   categories         ProductCategory[]
   allergens          ProductAllergen[]
-  relatedFrom        ProductRelation[]  @relation("ProductRelationFrom")
-  relatedTo          ProductRelation[]  @relation("ProductRelationTo")
+  relatedFrom        ProductRelation[]    @relation("ProductRelationFrom")
+  relatedTo          ProductRelation[]    @relation("ProductRelationTo")
   promotions         PromotionProduct[]
   variants           ProductVariant[]
   extras             ProductExtra[]
   optionGroups       ProductOptionGroup[]
   orderItems         OrderItem[]
   inventoryStocks    InventoryStock[]
+  branchAssignments  BranchProduct[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -161,33 +170,35 @@ model ProductCategory {
 model Testimonial {
   id               Int      @id @default(autoincrement())
   tenantId         Int
+  branchId         Int?
   description      String   @db.VarChar(255)
   state            Boolean
   moderationStatus String   @default("pending") @db.VarChar(20)
   date             DateTime @db.Date
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId, moderationStatus])
+  @@index([tenantId, branchId, moderationStatus])
   @@map("testimonial")
 }
 
 model User {
-  id            Int                @id @default(autoincrement())
-  name          String             @db.VarChar(255)
-  email         String             @db.VarChar(255)
-  password      String             @db.VarChar(255)
-  role          Int
-  imageUrl      String             @db.VarChar(255)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  memberships   TenantMembership[]
-  sessions      AuthSession[]
-  auditLogs     AuditLog[]
-  assignedLeads SalesLead[]        @relation("AssignedSalesLeads")
-  isSuperAdmin  Boolean            @default(false)
-  platformRole  String?            @db.VarChar(40)
-  mediaAssets   MediaAsset[]
-  platformPayments PlatformPayment[] @relation("PlatformPaymentCreatedBy")
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(255)
+  email            String             @db.VarChar(255)
+  password         String             @db.VarChar(255)
+  role             Int
+  imageUrl         String             @db.VarChar(255)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  memberships      TenantMembership[]
+  sessions         AuthSession[]
+  auditLogs        AuditLog[]
+  assignedLeads    SalesLead[]        @relation("AssignedSalesLeads")
+  isSuperAdmin     Boolean            @default(false)
+  platformRole     String?            @db.VarChar(40)
+  mediaAssets      MediaAsset[]
+  platformPayments PlatformPayment[]  @relation("PlatformPaymentCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -248,53 +259,60 @@ model Tenant {
   errorLogs             ErrorLog[]
   passwordResetRequests PasswordResetRequest[]
   platformPayments      PlatformPayment[]
+  branchLicenses        BranchLicense[]
+  branchProducts        BranchProduct[]
+  loyaltyBranchLinks    LoyaltyBranchLink[]
   activePaletteId       Int?
-  activePalette         ThemePalette?        @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
-  themePalettes         ThemePalette[]       @relation("TenantThemePalettes")
+  activePalette         ThemePalette?          @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
+  themePalettes         ThemePalette[]         @relation("TenantThemePalettes")
 
   @@map("tenant")
 }
 
-/** @summary Configuración global de MenuClick, independiente de cualquier tenant. */
+/**
+ * @summary Configuración global de MenuClick, independiente de cualquier tenant.
+ */
 model PlatformSettings {
-  id               Int              @id @default(1)
-  name             String           @default("MenuClick") @db.VarChar(120)
-  logoUrl          String?          @db.VarChar(500)
-  isotypeUrl       String?          @db.VarChar(500)
-  faviconUrl       String?          @db.VarChar(500)
-  activePaletteId  Int?
-  activePalette    PlatformPalette? @relation("PlatformActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
-  palettes         PlatformPalette[] @relation("PlatformPalettes")
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id              Int               @id @default(1)
+  name            String            @default("MenuClick") @db.VarChar(120)
+  logoUrl         String?           @db.VarChar(500)
+  isotypeUrl      String?           @db.VarChar(500)
+  faviconUrl      String?           @db.VarChar(500)
+  activePaletteId Int?
+  activePalette   PlatformPalette?  @relation("PlatformActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
+  palettes        PlatformPalette[] @relation("PlatformPalettes")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@map("platformsettings")
 }
 
-/** @summary Paleta global de MenuClick para marketing, login y Platform. */
+/**
+ * @summary Paleta global de MenuClick para marketing, login y Platform.
+ */
 model PlatformPalette {
-  id             Int              @id @default(autoincrement())
-  settingsId     Int              @default(1)
-  name           String           @db.VarChar(120)
-  isSystem       Boolean          @default(false)
-  presetKey      String?          @db.VarChar(50)
-  baseMode       String           @default("dark") @db.VarChar(10)
-  primary        String           @db.VarChar(7)
-  secondary      String           @db.VarChar(7)
-  accent         String           @db.VarChar(7)
-  background     String           @db.VarChar(7)
-  surface        String           @db.VarChar(7)
-  surfaceElevated String          @db.VarChar(7)
-  text           String           @db.VarChar(7)
-  textMuted      String           @db.VarChar(7)
-  border         String           @db.VarChar(7)
-  success        String           @db.VarChar(7)
-  warning        String           @db.VarChar(7)
-  danger         String           @db.VarChar(7)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  settings       PlatformSettings @relation("PlatformPalettes", fields: [settingsId], references: [id], onDelete: Cascade)
-  activeFor      PlatformSettings[] @relation("PlatformActivePalette")
+  id              Int                @id @default(autoincrement())
+  settingsId      Int                @default(1)
+  name            String             @db.VarChar(120)
+  isSystem        Boolean            @default(false)
+  presetKey       String?            @db.VarChar(50)
+  baseMode        String             @default("dark") @db.VarChar(10)
+  primary         String             @db.VarChar(7)
+  secondary       String             @db.VarChar(7)
+  accent          String             @db.VarChar(7)
+  background      String             @db.VarChar(7)
+  surface         String             @db.VarChar(7)
+  surfaceElevated String             @db.VarChar(7)
+  text            String             @db.VarChar(7)
+  textMuted       String             @db.VarChar(7)
+  border          String             @db.VarChar(7)
+  success         String             @db.VarChar(7)
+  warning         String             @db.VarChar(7)
+  danger          String             @db.VarChar(7)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  settings        PlatformSettings   @relation("PlatformPalettes", fields: [settingsId], references: [id], onDelete: Cascade)
+  activeFor       PlatformSettings[] @relation("PlatformActivePalette")
 
   @@unique([settingsId, presetKey])
   @@index([settingsId, isSystem, name])
@@ -340,17 +358,18 @@ model RolePermission {
 }
 
 model TenantMembership {
-  id        Int           @id @default(autoincrement())
-  tenantId  Int
-  userId    Int
-  roleId    Int
-  status    String        @default("active") @db.VarChar(20)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  sessions  AuthSession[]
+  id           Int                @id @default(autoincrement())
+  tenantId     Int
+  userId       Int
+  roleId       Int
+  status       String             @default("active") @db.VarChar(20)
+  allBranches  Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role               @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions     AuthSession[]
   branchAccess BranchMembership[]
 
   @@unique([tenantId, userId])
@@ -359,19 +378,22 @@ model TenantMembership {
 }
 
 model AuthSession {
-  id           Int              @id @default(autoincrement())
+  id           Int               @id @default(autoincrement())
   userId       Int
   membershipId Int?
-  context      String           @default("tenant") @db.VarChar(20)
+  branchId     Int?
+  context      String            @default("tenant") @db.VarChar(20)
   expiresAt    DateTime
   revokedAt    DateTime?
-  createdAt    DateTime         @default(now())
-  lastSeenAt   DateTime         @default(now())
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+  lastSeenAt   DateTime          @default(now())
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   membership   TenantMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  branch       Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([userId, expiresAt])
   @@index([membershipId, context])
+  @@index([branchId])
   @@map("authsession")
 }
 
@@ -391,6 +413,7 @@ model AuditLog {
   id         BigInt   @id @default(autoincrement())
   tenantId   Int?
   userId     Int?
+  branchId   Int?
   action     String   @db.VarChar(80)
   entityType String   @db.VarChar(80)
   entityId   String?  @db.VarChar(80)
@@ -401,32 +424,34 @@ model AuditLog {
   createdAt  DateTime @default(now())
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  branch     Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId, createdAt])
+  @@index([tenantId, branchId, createdAt])
   @@index([entityType, entityId])
   @@map("auditlog")
 }
 
 model Plan {
-  id            Int                  @id @default(autoincrement())
-  slug          String               @unique @db.VarChar(100)
-  name          String               @db.VarChar(140)
-  summary       String               @db.VarChar(500)
-  audience      String?              @db.VarChar(255)
-  type          String               @default("implementation") @db.VarChar(30)
-  billingMode   String               @default("one_time") @db.VarChar(30)
-  badge         String?              @db.VarChar(80)
-  highlighted   Boolean              @default(false)
-  active        Boolean              @default(true)
-  displayOrder  Int                  @default(0)
-  trialDays     Int                  @default(7)
-  capacity      Json?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  prices        PlanPrice[]
-  features      PlanFeature[]
-  subscriptions TenantSubscription[]
-  leads         SalesLead[]
+  id             Int                  @id @default(autoincrement())
+  slug           String               @unique @db.VarChar(100)
+  name           String               @db.VarChar(140)
+  summary        String               @db.VarChar(500)
+  audience       String?              @db.VarChar(255)
+  type           String               @default("implementation") @db.VarChar(30)
+  billingMode    String               @default("one_time") @db.VarChar(30)
+  badge          String?              @db.VarChar(80)
+  highlighted    Boolean              @default(false)
+  active         Boolean              @default(true)
+  displayOrder   Int                  @default(0)
+  trialDays      Int                  @default(7)
+  capacity       Json?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  prices         PlanPrice[]
+  features       PlanFeature[]
+  subscriptions  TenantSubscription[]
+  leads          SalesLead[]
+  branchLicenses BranchLicense[]
 
   @@index([active, type, displayOrder])
   @@map("plan")
@@ -571,6 +596,7 @@ model CommercialFaq {
 model Promotion {
   id              Int                 @id @default(autoincrement())
   tenantId        Int
+  branchId        Int?
   slug            String              @db.VarChar(180)
   name            String              @db.VarChar(180)
   description     String              @db.VarChar(700)
@@ -593,12 +619,13 @@ model Promotion {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   products        PromotionProduct[]
   categories      PromotionCategory[]
   orders          CustomerOrder[]
 
   @@unique([tenantId, slug])
-  @@index([tenantId, status, startAt, endAt])
+  @@index([tenantId, branchId, status, startAt, endAt])
   @@map("promotion")
 }
 
@@ -658,8 +685,10 @@ model ReservationBlock {
   startTime DateTime? @db.Time(0)
   endTime   DateTime? @db.Time(0)
   reason    String    @db.VarChar(255)
+  branchId  Int?
   createdAt DateTime  @default(now())
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, startDate, endDate])
   @@map("reservationblock")
@@ -668,6 +697,7 @@ model ReservationBlock {
 model Reservation {
   id                Int                        @id @default(autoincrement())
   tenantId          Int
+  branchId          Int?
   reference         String                     @unique @db.VarChar(24)
   status            String                     @default("pending") @db.VarChar(24)
   reservationDate   DateTime                   @db.Date
@@ -686,9 +716,10 @@ model Reservation {
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   tenant            Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch            Branch?                    @relation(fields: [branchId], references: [id], onDelete: SetNull)
   history           ReservationStatusHistory[]
 
-  @@index([tenantId, reservationDate, reservationTime])
+  @@index([tenantId, branchId, reservationDate, reservationTime])
   @@index([tenantId, status, createdAt])
   @@index([ipHash, createdAt])
   @@map("reservation")
@@ -711,6 +742,7 @@ model ReservationStatusHistory {
 model Notification {
   id        BigInt    @id @default(autoincrement())
   tenantId  Int
+  branchId  Int?
   type      String    @db.VarChar(60)
   title     String    @db.VarChar(180)
   message   String    @db.VarChar(700)
@@ -718,24 +750,25 @@ model Notification {
   readAt    DateTime?
   createdAt DateTime  @default(now())
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId, readAt, createdAt])
+  @@index([tenantId, branchId, readAt, createdAt])
   @@map("notification")
 }
 
 model ProductVariant {
-  id              Int      @id @default(autoincrement())
+  id              Int                 @id @default(autoincrement())
   tenantId        Int
   productId       Int
-  name            String   @db.VarChar(120)
-  priceAdjustment Decimal  @default(0) @db.Decimal(12, 2)
-  active          Boolean  @default(true)
-  sortOrder       Int      @default(0)
+  name            String              @db.VarChar(120)
+  priceAdjustment Decimal             @default(0) @db.Decimal(12, 2)
+  active          Boolean             @default(true)
+  sortOrder       Int                 @default(0)
   groupId         Int?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product         Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   group           ProductOptionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, productId, active, sortOrder])
@@ -743,25 +776,27 @@ model ProductVariant {
 }
 
 model ProductExtra {
-  id        Int      @id @default(autoincrement())
+  id        Int                 @id @default(autoincrement())
   tenantId  Int
   productId Int
-  name      String   @db.VarChar(120)
-  price     Decimal  @default(0) @db.Decimal(12, 2)
-  active    Boolean  @default(true)
-  sortOrder Int      @default(0)
+  name      String              @db.VarChar(120)
+  price     Decimal             @default(0) @db.Decimal(12, 2)
+  active    Boolean             @default(true)
+  sortOrder Int                 @default(0)
   groupId   Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   group     ProductOptionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, productId, active, sortOrder])
   @@map("productextra")
 }
 
-/** @summary Grupo de selección que organiza variantes o agregados sin romper opciones históricas. */
+/**
+ * @summary Grupo de selección que organiza variantes o agregados sin romper opciones históricas.
+ */
 model ProductOptionGroup {
   id            Int              @id @default(autoincrement())
   tenantId      Int
@@ -857,16 +892,16 @@ model CustomerOrder {
 }
 
 model OrderIdempotency {
-  id        Int            @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   tenantId  Int
   orderId   Int
-  key       String         @db.VarChar(120)
-  reference String         @db.VarChar(24)
-  token     String         @db.VarChar(120)
-  total     Decimal        @default(0) @db.Decimal(12, 2)
-  createdAt DateTime       @default(now())
-  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order     CustomerOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  key       String        @db.VarChar(120)
+  reference String        @db.VarChar(24)
+  token     String        @db.VarChar(120)
+  total     Decimal       @default(0) @db.Decimal(12, 2)
+  createdAt DateTime      @default(now())
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, key])
   @@index([createdAt])
@@ -911,6 +946,7 @@ model OrderStatusHistory {
 model AnalyticsEvent {
   id          BigInt   @id @default(autoincrement())
   tenantId    Int
+  branchId    Int?
   eventType   String   @db.VarChar(80)
   sessionHash String?  @db.VarChar(64)
   ipHash      String?  @db.VarChar(64)
@@ -920,9 +956,10 @@ model AnalyticsEvent {
   metadata    Json?
   occurredAt  DateTime @default(now())
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, eventType, occurredAt])
-  @@index([tenantId, occurredAt])
+  @@index([tenantId, branchId, occurredAt])
   @@index([sessionHash, occurredAt])
   @@map("analyticsevent")
 }
@@ -957,30 +994,32 @@ model BrandSettings {
   @@map("brandsettings")
 }
 
-/** @summary Paleta visual global de un tenant para público, carta y administración. */
+/**
+ * @summary Paleta visual global de un tenant para público, carta y administración.
+ */
 model ThemePalette {
-  id             Int       @id @default(autoincrement())
-  tenantId       Int
-  name           String    @db.VarChar(120)
-  isSystem       Boolean   @default(false)
-  presetKey      String?   @db.VarChar(50)
-  baseMode       String    @default("dark") @db.VarChar(10)
-  primary        String    @db.VarChar(7)
-  secondary      String    @db.VarChar(7)
-  accent         String    @db.VarChar(7)
-  background     String    @db.VarChar(7)
-  surface        String    @db.VarChar(7)
+  id              Int      @id @default(autoincrement())
+  tenantId        Int
+  name            String   @db.VarChar(120)
+  isSystem        Boolean  @default(false)
+  presetKey       String?  @db.VarChar(50)
+  baseMode        String   @default("dark") @db.VarChar(10)
+  primary         String   @db.VarChar(7)
+  secondary       String   @db.VarChar(7)
+  accent          String   @db.VarChar(7)
+  background      String   @db.VarChar(7)
+  surface         String   @db.VarChar(7)
   surfaceElevated String   @db.VarChar(7)
-  text           String    @db.VarChar(7)
-  textMuted      String    @db.VarChar(7)
-  border         String    @db.VarChar(7)
-  success        String    @db.VarChar(7)
-  warning        String    @db.VarChar(7)
-  danger         String    @db.VarChar(7)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  tenant         Tenant    @relation("TenantThemePalettes", fields: [tenantId], references: [id], onDelete: Cascade)
-  activeFor      Tenant[]  @relation("TenantActivePalette")
+  text            String   @db.VarChar(7)
+  textMuted       String   @db.VarChar(7)
+  border          String   @db.VarChar(7)
+  success         String   @db.VarChar(7)
+  warning         String   @db.VarChar(7)
+  danger          String   @db.VarChar(7)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation("TenantThemePalettes", fields: [tenantId], references: [id], onDelete: Cascade)
+  activeFor       Tenant[] @relation("TenantActivePalette")
 
   @@unique([tenantId, presetKey])
   @@index([tenantId, isSystem, name])
@@ -988,29 +1027,29 @@ model ThemePalette {
 }
 
 model TenantSubscription {
-  id                Int                @id @default(autoincrement())
-  tenantId          Int                @unique
-  planId            Int?
-  status            SubscriptionStatus @default(ACTIVE)
-  startsAt          DateTime           @default(now())
-  endsAt            DateTime?
-  trialEndsAt       DateTime?
+  id                 Int                @id @default(autoincrement())
+  tenantId           Int                @unique
+  planId             Int?
+  status             SubscriptionStatus @default(ACTIVE)
+  startsAt           DateTime           @default(now())
+  endsAt             DateTime?
+  trialEndsAt        DateTime?
   currentPeriodStart DateTime?
-  currentPeriodEnd  DateTime?
-  gracePeriodEndsAt DateTime?
-  suspendedAt       DateTime?
-  cancelledAt       DateTime?
-  planChangedAt     DateTime?
-  renewalAmount     Decimal?           @db.Decimal(14, 2)
-  limits            Json?
-  overrides         Json?
-  enabled           Json?
-  notes             String?            @db.Text
-  lastPaymentAt     DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan              Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
+  currentPeriodEnd   DateTime?
+  gracePeriodEndsAt  DateTime?
+  suspendedAt        DateTime?
+  cancelledAt        DateTime?
+  planChangedAt      DateTime?
+  renewalAmount      Decimal?           @db.Decimal(14, 2)
+  limits             Json?
+  overrides          Json?
+  enabled            Json?
+  notes              String?            @db.Text
+  lastPaymentAt      DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan               Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   @@index([status, currentPeriodEnd])
   @@index([status, endsAt])
@@ -1105,6 +1144,7 @@ model SupportTicket {
 model MediaAsset {
   id           Int      @id @default(autoincrement())
   tenantId     Int
+  branchId     Int?
   userId       Int?
   folder       String   @db.VarChar(100)
   filename     String   @db.VarChar(255)
@@ -1118,10 +1158,11 @@ model MediaAsset {
   height       Int?
   createdAt    DateTime @default(now())
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, checksum, folder])
-  @@index([tenantId, folder, createdAt])
+  @@index([tenantId, branchId, folder, createdAt])
   @@map("mediaasset")
 }
 
@@ -1142,6 +1183,7 @@ model LoyaltyCustomer {
   tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders          CustomerOrder[]
   transactions    LoyaltyTransaction[]
+  branchLinks     LoyaltyBranchLink[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -1163,28 +1205,28 @@ model LoyaltyTransaction {
 }
 
 model SuccessCase {
-  id             Int      @id @default(autoincrement())
-  tenantId       Int
-  slug           String   @db.VarChar(160)
-  businessName   String   @db.VarChar(180)
-  logoUrl        String?  @db.VarChar(255)
-  coverUrl       String?  @db.VarChar(255)
-  businessType   String   @db.VarChar(100)
-  location       String   @db.VarChar(180)
-  initialProblem String   @db.Text
-  solution       String   @db.Text
-  features       String   @db.Text
-  results        String   @db.Text
-  gallery        Json?
-  testimonial    String?  @db.Text
-  websiteUrl     String?  @db.VarChar(500)
-  planName       String?  @db.VarChar(120)
-  status         String   @default("published") @db.VarChar(20)
-  isPublicCaseStudy Boolean @default(false)
-  sortOrder      Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                Int      @id @default(autoincrement())
+  tenantId          Int
+  slug              String   @db.VarChar(160)
+  businessName      String   @db.VarChar(180)
+  logoUrl           String?  @db.VarChar(255)
+  coverUrl          String?  @db.VarChar(255)
+  businessType      String   @db.VarChar(100)
+  location          String   @db.VarChar(180)
+  initialProblem    String   @db.Text
+  solution          String   @db.Text
+  features          String   @db.Text
+  results           String   @db.Text
+  gallery           Json?
+  testimonial       String?  @db.Text
+  websiteUrl        String?  @db.VarChar(500)
+  planName          String?  @db.VarChar(120)
+  status            String   @default("published") @db.VarChar(20)
+  isPublicCaseStudy Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, sortOrder])
@@ -1192,37 +1234,125 @@ model SuccessCase {
 }
 
 model Branch {
-  id              Int              @id @default(autoincrement())
-  tenantId        Int
-  name            String           @db.VarChar(160)
-  slug            String           @db.VarChar(120)
-  address         String           @db.VarChar(300)
-  city            String?          @db.VarChar(120)
-  province        String?          @db.VarChar(120)
-  phone           String?          @db.VarChar(60)
-  whatsapp        String?          @db.VarChar(60)
-  latitude        Decimal?         @db.Decimal(10, 7)
-  longitude       Decimal?         @db.Decimal(10, 7)
-  deliveryFee     Decimal          @default(0) @db.Decimal(12, 2)
-  minimumOrder    Decimal          @default(0) @db.Decimal(12, 2)
-  orderPrefix     String           @default("PED") @db.VarChar(12)
-  isPrimary       Boolean          @default(false)
-  active          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  tables          DiningTable[]
-  orders          CustomerOrder[]
-  inventoryStocks InventoryStock[]
-  invoices        InvoiceRecord[]
-  membershipAccess BranchMembership[]
+  id                 Int                 @id @default(autoincrement())
+  tenantId           Int
+  name               String              @db.VarChar(160)
+  slug               String              @db.VarChar(120)
+  address            String              @db.VarChar(300)
+  city               String?             @db.VarChar(120)
+  province           String?             @db.VarChar(120)
+  phone              String?             @db.VarChar(60)
+  whatsapp           String?             @db.VarChar(60)
+  latitude           Decimal?            @db.Decimal(10, 7)
+  longitude          Decimal?            @db.Decimal(10, 7)
+  deliveryFee        Decimal             @default(0) @db.Decimal(12, 2)
+  minimumOrder       Decimal             @default(0) @db.Decimal(12, 2)
+  orderPrefix        String              @default("PED") @db.VarChar(12)
+  isPrimary          Boolean             @default(false)
+  active             Boolean             @default(true)
+  inheritLanding     Boolean             @default(true)
+  inheritBrand       Boolean             @default(true)
+  landingContent     Json?
+  brandContent       Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tables             DiningTable[]
+  orders             CustomerOrder[]
+  inventoryStocks    InventoryStock[]
+  invoices           InvoiceRecord[]
+  membershipAccess   BranchMembership[]
+  reservations       Reservation[]
+  reservationBlocks  ReservationBlock[]
+  licenses           BranchLicense[]
+  productAssignments BranchProduct[]
+  categories         Category[]
+  events             Event[]
+  openingHours       OpeningHour[]
+  promotions         Promotion[]
+  testimonials       Testimonial[]
+  notifications      Notification[]
+  mediaAssets        MediaAsset[]
+  analyticsEvents    AnalyticsEvent[]
+  auditLogs          AuditLog[]
+  sessions           AuthSession[]
+  loyaltyLinks       LoyaltyBranchLink[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])
   @@map("branch")
 }
 
-/** @summary Acceso explícito de una membresía a una o varias sucursales del mismo tenant. */
+/**
+ * @summary Disponibilidad y precio opcional de un producto en una sucursal.
+ */
+model BranchProduct {
+  id                   Int      @id @default(autoincrement())
+  tenantId             Int
+  branchId             Int
+  productId            Int
+  active               Boolean  @default(true)
+  priceOverride        Decimal? @db.Decimal(12, 2)
+  availabilityOverride String?  @db.VarChar(30)
+  sortOrder            Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch               Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product              Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, productId])
+  @@index([tenantId, branchId, active, sortOrder])
+  @@map("branchproduct")
+}
+
+/**
+ * @summary Entitlement operativo de una sucursal dentro de la suscripción del tenant.
+ */
+model BranchLicense {
+  id               Int       @id @default(autoincrement())
+  tenantId         Int
+  branchId         Int
+  planId           Int?
+  status           String    @default("DRAFT") @db.VarChar(24)
+  startsAt         DateTime  @default(now())
+  currentPeriodEnd DateTime?
+  graceUntil       DateTime?
+  priceOverride    Decimal?  @db.Decimal(14, 2)
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  plan             Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, branchId])
+  @@index([tenantId, status, currentPeriodEnd])
+  @@map("branchlicense")
+}
+
+/**
+ * @summary Vínculo de un cliente del tenant con una sucursal donde interactuó, sin duplicar identidad.
+ */
+model LoyaltyBranchLink {
+  id             Int             @id @default(autoincrement())
+  tenantId       Int
+  branchId       Int
+  customerId     Int
+  lastActivityAt DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer       LoyaltyCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, customerId])
+  @@index([tenantId, customerId])
+  @@map("loyaltybranchlink")
+}
+
+/**
+ * @summary Acceso explícito de una membresía a una o varias sucursales del mismo tenant.
+ */
 model BranchMembership {
   id           Int              @id @default(autoincrement())
   membershipId Int

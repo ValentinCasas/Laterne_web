@@ -53,7 +53,7 @@ function optionalTime(value: string) {
 }
 
 /** @summary Valida relaciones, vigencia y contenido de una promoción antes de persistirla. */
-export async function promotionData(input: Record<string, string>, tenantId: number, excludeId?: number) {
+export async function promotionData(input: Record<string, string>, tenantId: number, excludeId?: number, branchId?: number) {
   const name = input.name.trim();
   const description = input.description.trim();
   if (!name || !description) throw new Error("Completá el nombre y la descripción");
@@ -61,9 +61,16 @@ export async function promotionData(input: Record<string, string>, tenantId: num
   const status = publicationStatuses.has(input.status) ? input.status : "draft";
   const productIds = relationIds(input.productIds ?? "");
   const categoryIds = relationIds(input.categoryIds ?? "");
+  const categoryWhere = branchId ? { branchId } : {};
   const [validProducts, validCategories] = await Promise.all([
-    prisma.product.count({ where: { tenantId, id: { in: productIds } } }),
-    prisma.category.count({ where: { tenantId, id: { in: categoryIds } } }),
+    prisma.product.count({
+      where: {
+        tenantId,
+        id: { in: productIds },
+        ...(branchId ? { branchAssignments: { some: { branchId } } } : {}),
+      },
+    }),
+    prisma.category.count({ where: { tenantId, id: { in: categoryIds }, ...categoryWhere } }),
   ]);
   if (validProducts !== productIds.length || validCategories !== categoryIds.length) {
     throw new Error("Una de las relaciones seleccionadas no pertenece a este negocio");
@@ -104,6 +111,7 @@ export async function promotionData(input: Record<string, string>, tenantId: num
 
   return {
     tenantId,
+    branchId: branchId ?? null,
     name,
     slug: await uniquePromotionSlug(tenantId, input.slug || name, excludeId),
     description,

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export default async function CustomersPage() {
   const context = await requirePermission("customer.manage");
   const customers = await prisma.loyaltyCustomer.findMany({
-    where: { tenantId: context.tenant.id, deletedAt: null },
+    where: { tenantId: context.tenant.id, deletedAt: null, ...(context.activeBranchId && context.activeBranchId > 0 ? { branchLinks: { some: { branchId: context.activeBranchId } } } : {}) },
     include: { _count: { select: { orders: true, transactions: true } } },
     orderBy: { points: "desc" },
     take: 2000,

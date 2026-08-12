@@ -92,23 +92,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Alcanzaste el límite temporal de pedidos" }, { status: 429 });
   }
 
-  const productIds = [...new Set(parsed.data.items.map((item) => item.productId))];
-  const products = await prisma.product.findMany({
-    where: {
-      tenantId: tenant.id,
-      id: { in: productIds },
-      OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
-    },
-    include: {
-      variants: { where: { active: true } },
-      extras: { where: { active: true } },
-    },
-  });
-  const productMap = new Map(products.map((product) => [product.id, product]));
-  if (products.length !== productIds.length) {
-    return NextResponse.json({ error: "Uno de los productos ya no está disponible" }, { status: 409 });
-  }
-
   const table = parsed.data.tableCode
     ? await prisma.diningTable.findFirst({
         where: { tenantId: tenant.id, code: parsed.data.tableCode, active: true },
@@ -123,6 +106,9 @@ export async function POST(request: Request) {
   if (parsed.data.branchId && !selectedBranch) {
     return NextResponse.json({ error: "La sucursal seleccionada ya no está disponible" }, { status: 409 });
   }
+  if (table?.branch && selectedBranch && table.branch.id !== selectedBranch.id) {
+    return NextResponse.json({ error: "La mesa no pertenece a la sucursal seleccionada" }, { status: 409 });
+  }
   const branch =
     table?.branch ??
     selectedBranch ??
@@ -132,11 +118,32 @@ export async function POST(request: Request) {
     }));
   if (!branch)
     return NextResponse.json({ error: "No hay una sucursal activa para recibir pedidos" }, { status: 409 });
+  if (!(await prisma.branchLicense.findFirst({ where: { tenantId: tenant.id, branchId: branch.id, status: { in: ["ACTIVE", "TRIAL", "PAYMENT_PENDING", "GRACE_PERIOD"] } } }))) {
+    return NextResponse.json({ error: "La sucursal no está operativa" }, { status: 409 });
+  }
   if (parsed.data.orderType === "dine_in" && parsed.data.tableCode && !table) {
     return NextResponse.json({ error: "La mesa indicada no existe o no está disponible" }, { status: 409 });
   }
   if (parsed.data.orderType === "delivery" && !parsed.data.address) {
     return NextResponse.json({ error: "Ingresá la dirección de entrega" }, { status: 400 });
+  }
+
+  const productIds = [...new Set(parsed.data.items.map((item) => item.productId))];
+  const products = await prisma.product.findMany({
+    where: {
+      tenantId: tenant.id,
+      id: { in: productIds },
+      OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
+      branchAssignments: { some: { branchId: branch.id, active: true } },
+    },
+    include: {
+      variants: { where: { active: true } },
+      extras: { where: { active: true } },
+    },
+  });
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  if (products.length !== productIds.length) {
+    return NextResponse.json({ error: "Uno de los productos ya no está disponible" }, { status: 409 });
   }
 
   let calculatedItems;
@@ -196,7 +203,7 @@ export async function POST(request: Request) {
   const subtotal = calculatedItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const [promotions, productCategories] = await Promise.all([
     prisma.promotion.findMany({
-      where: { tenantId: tenant.id, status: { in: ["published", "scheduled"] } },
+      where: { tenantId: tenant.id, branchId: branch.id, status: { in: ["published", "scheduled"] } },
       include: {
         products: { select: { productId: true } },
         categories: { select: { categoryId: true } },
@@ -366,6 +373,7 @@ export async function POST(request: Request) {
           await transaction.notification.create({
             data: {
               tenantId: tenant.id,
+              branchId: branch.id,
               type: "stock.low",
               title: `Stock bajo · ${productMap.get(stock.productId)?.name ?? "Producto"}`,
               message: `${branch.name}: quedaron ${Number(updated.current)} ${updated.unit}.`,
@@ -377,6 +385,7 @@ export async function POST(request: Request) {
       await transaction.notification.create({
         data: {
           tenantId: tenant.id,
+          branchId: branch.id,
           type: "order.new",
           title: `Nuevo pedido · ${reference}`,
           message: `${parsed.data.customerName} realizó un pedido por ${tenant.defaultCurrency} ${total.toFixed(2)}.`,
@@ -386,6 +395,7 @@ export async function POST(request: Request) {
       await transaction.analyticsEvent.create({
         data: {
           tenantId: tenant.id,
+          branchId: branch.id,
           eventType: "order.completed",
           ipHash,
           path: "/pedido",

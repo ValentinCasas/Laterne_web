@@ -22,6 +22,7 @@ type StoredCartItem = {
 
 type BranchOption = {
   id: number;
+  slug?: string;
   name: string;
   address: string;
   deliveryFee: number;
@@ -56,10 +57,12 @@ export function CheckoutForm({
   branches,
   currency,
   locale,
+  fixedBranchSlug,
 }: {
   branches: BranchOption[];
   currency: string;
   locale: string;
+  fixedBranchSlug?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -83,13 +86,16 @@ export function CheckoutForm({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const table = searchParams.get("mesa") || readBrowserText("laterne_mesa") || "";
+      const requestedBranch = fixedBranchSlug || searchParams.get("branch") || "";
+      const fixedBranch = branches.find((branch) => branch.slug === requestedBranch);
+      if (fixedBranch) setBranchId(fixedBranch.id);
       setTableCode(table);
       if (table) setOrderType("dine_in");
       setItems(storedCart());
       setReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [searchParams]);
+  }, [branches, fixedBranchSlug, searchParams]);
 
   const subtotal = useMemo(
     () =>

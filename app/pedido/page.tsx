@@ -10,11 +10,12 @@ export async function generateMetadata() {
 }
 
 /** @summary Presenta el checkout público para guardar un pedido y verificar sus datos finales. */
-export default async function OrderPage() {
+export default async function OrderPage({ searchParams }: { searchParams: Promise<{ branch?: string }> }) {
   const tenant = await getDefaultTenant();
+  const requestedBranch = (await searchParams).branch;
   const branches = await prisma.branch.findMany({
     where: { tenantId: tenant.id, active: true },
-    select: { id: true, name: true, address: true, deliveryFee: true, minimumOrder: true },
+    select: { id: true, name: true, slug: true, address: true, deliveryFee: true, minimumOrder: true },
     orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
   });
   return (
@@ -34,6 +35,7 @@ export default async function OrderPage() {
         }))}
         currency={tenant.defaultCurrency}
         locale={tenant.locale}
+        fixedBranchSlug={requestedBranch}
       />
     </main>
   );

@@ -16,15 +16,6 @@ export function SiteFooter({ businessName }: { businessName: string }) {
           <Link className="hover:text-pink-300" href="/ayuda">
             Ayuda
           </Link>
-          <Link className="hover:text-pink-300" href="/para-negocios">
-            Para negocios
-          </Link>
-          <Link className="hover:text-pink-300" href="/planes">
-            Planes
-          </Link>
-          <Link className="hover:text-pink-300" href="/solicitar-demo">
-            Solicitar demo
-          </Link>
         </nav>
       </div>
     </footer>

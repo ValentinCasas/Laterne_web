@@ -4,11 +4,12 @@ import { z } from "zod";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
+import { resourceScopedWhere } from "@/lib/branch";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { localModelUrl, modelOrientation, optionalMeasurement } from "@/lib/product-model";
+import { productAdminData } from "@/lib/product-admin";
 import { promotionData } from "@/lib/promotion-admin";
-import { slugify, uniqueCategorySlug, uniqueProductSlug } from "@/lib/slug";
+import { slugify, uniqueCategorySlug } from "@/lib/slug";
 
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
 type Delegate = {
@@ -16,6 +17,11 @@ type Delegate = {
   update(args: { where: { id: number }; data: Record<string, unknown> }): Promise<unknown>;
   delete(args: { where: { id: number } }): Promise<unknown>;
 };
+
+/** @summary Filtro de pertenencia tenant + branch activa según la clasificación de cada recurso. */
+function itemBranchWhere(auth: NonNullable<Awaited<ReturnType<typeof authorize>>>, model: string): Record<string, unknown> {
+  return resourceScopedWhere(model, auth?.tenant.id, auth?.activeBranchId);
+}
 
 /** @summary Convierte una entrada de formulario en un valor booleano explícito. */
 function booleanValue(value: string) {
@@ -28,54 +34,10 @@ function selectFields(input: Record<string, string>, fields: string[]) {
 }
 
 /** @summary Convierte los campos editados a los tipos esperados por cada modelo de Prisma. */
-async function values(resource: string, input: Record<string, string>, tenantId: number, id: number) {
+async function values(resource: string, input: Record<string, string>, tenantId: number, id: number, branchId?: number) {
   if (resource === "productos") {
-    const categoryId = Number(input.categoryId);
-    const category = await prisma.category.findFirst({ where: { id: categoryId, tenantId } });
-    if (!category) throw new Error("Seleccioná una categoría válida");
-    const fields = selectFields(input, ["name", "description", "availability", "imageUrl", "status"]);
-    const model3dUrl = localModelUrl(input.model3dUrl ?? "", tenantId, ["glb", "gltf"]);
-    const usdzUrl = localModelUrl(input.usdzUrl ?? "", tenantId, ["usdz"]);
-    return {
-      ...fields,
-      status: fields.status || "published",
-      publishAt: input.publishAt ? new Date(input.publishAt) : null,
-      slug: await uniqueProductSlug(tenantId, input.slug || fields.name, id),
-      price: input.price ? Number(input.price) : null,
-      promotionalPrice: input.promotionalPrice ? Number(input.promotionalPrice) : null,
-      previousPrice: input.previousPrice ? Number(input.previousPrice) : null,
-      preparationMinutes: input.preparationMinutes ? Number(input.preparationMinutes) : null,
-      spiceLevel: Math.min(3, Math.max(0, Number(input.spiceLevel || 0))),
-      featured: booleanValue(input.featured),
-      isNew: booleanValue(input.isNew),
-      recommended: booleanValue(input.recommended),
-      vegetarian: booleanValue(input.vegetarian),
-      vegan: booleanValue(input.vegan),
-      glutenFree: booleanValue(input.glutenFree),
-      alcoholFree: booleanValue(input.alcoholFree),
-      model3dUrl,
-      usdzUrl,
-      arEnabled: Boolean(model3dUrl) && booleanValue(input.arEnabled),
-      arScale: optionalMeasurement(input.arScale || "1", 0.01, 20),
-      modelWidthCm: optionalMeasurement(input.modelWidthCm ?? ""),
-      modelHeightCm: optionalMeasurement(input.modelHeightCm ?? ""),
-      modelDepthCm: optionalMeasurement(input.modelDepthCm ?? ""),
-      modelOrientation: modelOrientation(input.modelOrientation ?? ""),
-      arPlacement: input.arPlacement === "wall" ? "wall" : "floor",
-      arAllowScale: booleanValue(input.arAllowScale),
-      availableDays: input.availableDays
-        ? input.availableDays
-            .split(",")
-            .map(Number)
-            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
-        : null,
-      availableStartTime: input.availableStartTime
-        ? new Date(`1970-01-01T${input.availableStartTime}:00Z`)
-        : null,
-      availableEndTime: input.availableEndTime ? new Date(`1970-01-01T${input.availableEndTime}:00Z`) : null,
-      modelUpdatedAt: model3dUrl ? new Date() : null,
-      categories: { deleteMany: {}, create: { tenantId, categoryId } },
-    };
+    const { data } = await productAdminData(input, tenantId, branchId, { excludeId: id });
+    return { ...data, categories: { deleteMany: {}, ...data.categories } };
   }
 
   if (resource === "categorias") {
@@ -124,7 +86,7 @@ async function values(resource: string, input: Record<string, string>, tenantId:
   }
 
   if (resource === "promociones") {
-    const data = await promotionData(input, tenantId, id);
+    const data = await promotionData(input, tenantId, id, branchId);
     return {
       ...data,
       products: { deleteMany: {}, ...data.products },
@@ -198,6 +160,9 @@ async function values(resource: string, input: Record<string, string>, tenantId:
       orderPrefix: input.orderPrefix?.trim().toUpperCase().slice(0, 12) || "PED",
       isPrimary: booleanValue(input.isPrimary),
       active: booleanValue(input.active),
+      inheritLanding: input.inheritLanding === "" ? true : booleanValue(input.inheritLanding),
+      inheritBrand: input.inheritBrand === "" ? true : booleanValue(input.inheritBrand),
+      landingContent: { heroTitle: input.landingHeroTitle?.trim() || "", heroSubtitle: input.landingHeroSubtitle?.trim() || "" },
     };
   }
 
@@ -247,9 +212,10 @@ async function updateMember(input: Record<string, string>, tenantId: number, use
   if (!role) throw new Error("Seleccioná un rol válido");
   const branchIds = (input.branchIds ?? "").split(",").map(Number).filter(Number.isInteger);
   const branches = await prisma.branch.findMany({ where: { tenantId, id: { in: branchIds } }, select: { id: true } });
+  const allBranches = input.allBranches === "true";
 
   return prisma.$transaction(async (transaction) => {
-    await transaction.tenantMembership.update({ where: { id: membership.id }, data: { roleId } });
+    await transaction.tenantMembership.update({ where: { id: membership.id }, data: { roleId, allBranches } });
       const user = await transaction.user.update({
       where: { id: userId },
       data: {
@@ -307,7 +273,7 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
     }
 
     const delegate = prisma[config.model] as unknown as Delegate;
-    const oldItem = await delegate.findFirst({ where: { id, tenantId: auth.tenant.id } });
+    const oldItem = await delegate.findFirst({ where: { ...itemBranchWhere(auth, config.model), id } });
     if (!oldItem) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
     if (resource === "sucursales" && booleanValue(input.isPrimary)) {
       await prisma.branch.updateMany({
@@ -317,8 +283,18 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
     }
     const item = await delegate.update({
       where: { id },
-      data: await values(resource, input, auth.tenant.id, id),
+      data: await values(resource, input, auth.tenant.id, id, auth.activeBranchId),
     });
+    if (resource === "productos") {
+      const targetBranchId = auth.activeBranchId && auth.activeBranchId > 0 ? auth.activeBranchId : null;
+      if (targetBranchId) {
+        await prisma.branchProduct.upsert({
+          where: { branchId_productId: { branchId: targetBranchId, productId: id } },
+          create: { tenantId: auth.tenant.id, branchId: targetBranchId, productId: id, active: true },
+          update: { tenantId: auth.tenant.id },
+        });
+      }
+    }
     await recordAudit({
       context: auth,
       action: "update",
@@ -376,7 +352,7 @@ export async function DELETE(
     }
 
     const delegate = prisma[config.model] as unknown as Delegate;
-    const oldItem = await delegate.findFirst({ where: { id, tenantId: auth.tenant.id } });
+    const oldItem = await delegate.findFirst({ where: { ...itemBranchWhere(auth, config.model), id } });
     if (!oldItem) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
     if (resource === "sucursales" && (oldItem as { isPrimary?: boolean }).isPrimary) {
       return NextResponse.json(
@@ -386,10 +362,22 @@ export async function DELETE(
     }
 
     if (resource === "productos") {
-      await prisma.$transaction([
-        prisma.productCategory.deleteMany({ where: { productId: id, tenantId: auth.tenant.id } }),
-        prisma.product.delete({ where: { id } }),
-      ]);
+      if (auth.activeBranchId && auth.activeBranchId > 0) {
+        await prisma.$transaction([
+          prisma.productCategory.deleteMany({
+            where: { productId: id, tenantId: auth.tenant.id, category: { branchId: auth.activeBranchId } },
+          }),
+          prisma.branchProduct.deleteMany({ where: { productId: id, branchId: auth.activeBranchId, tenantId: auth.tenant.id } }),
+          prisma.inventoryStock.deleteMany({ where: { productId: id, branchId: auth.activeBranchId, tenantId: auth.tenant.id } }),
+        ]);
+      } else {
+        await prisma.$transaction([
+          prisma.productCategory.deleteMany({ where: { productId: id, tenantId: auth.tenant.id } }),
+          prisma.branchProduct.deleteMany({ where: { productId: id, tenantId: auth.tenant.id } }),
+          prisma.inventoryStock.deleteMany({ where: { productId: id, tenantId: auth.tenant.id } }),
+          prisma.product.delete({ where: { id } }),
+        ]);
+      }
     } else if (resource === "categorias") {
       await prisma.$transaction([
         prisma.productCategory.deleteMany({ where: { categoryId: id, tenantId: auth.tenant.id } }),

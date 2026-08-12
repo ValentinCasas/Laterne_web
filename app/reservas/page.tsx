@@ -12,8 +12,9 @@ export function generateMetadata() {
 }
 
 /** @summary Presenta la disponibilidad del negocio y el formulario público de reservas. */
-export default async function ReservationsPage() {
+export default async function ReservationsPage({ searchParams }: { searchParams: Promise<{ branch?: string }> }) {
   const tenant = await getDefaultTenant();
+  const branchSlug = (await searchParams).branch;
   const settings = await prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } });
   const sectors = Array.isArray(settings?.sectors)
     ? settings.sectors.filter((sector): sector is string => typeof sector === "string")
@@ -54,6 +55,7 @@ export default async function ReservationsPage() {
             initialSectors={sectors}
             initialPolicy={settings?.policy ?? "La reserva queda sujeta a confirmación del negocio."}
             initialMaximumPartySize={settings?.maximumPartySize ?? 20}
+            branchSlug={branchSlug}
           />
         )}
       </section>

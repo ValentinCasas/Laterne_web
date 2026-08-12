@@ -21,10 +21,18 @@ export function generateMetadata() {
 export default async function MenuPage() {
   const tenant = await getDefaultTenant();
   const now = new Date();
+  const primaryBranch = await prisma.branch.findFirst({
+    where: { tenantId: tenant.id, active: true },
+    orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
+       select: { id: true, slug: true },
+  });
+  const branchId = primaryBranch?.id;
+  const branchWhere = branchId ? { branchId } : {};
   const [records, business, productImageFiles, categoryImageFiles] = await Promise.all([
     prisma.category.findMany({
       where: {
         tenantId: tenant.id,
+        ...branchWhere,
         OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -33,6 +41,7 @@ export default async function MenuPage() {
           where: {
             product: {
               OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
+              ...(branchId ? { branchAssignments: { some: { branchId, active: true } } } : {}),
             },
           },
           include: {
@@ -117,6 +126,7 @@ export default async function MenuPage() {
       currency={tenant.defaultCurrency}
       locale={tenant.locale}
       businessName={tenant.name}
+      branchSlug={primaryBranch?.slug}
     />
   );
 }

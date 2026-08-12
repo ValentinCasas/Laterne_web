@@ -12,13 +12,17 @@ const notificationUpdate = z
 export async function GET() {
   const auth = await authorize("notification.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const scope =
+    auth.activeBranchId && auth.activeBranchId > 0
+      ? { OR: [{ branchId: auth.activeBranchId }, { branchId: null }] }
+      : {};
   const [notifications, unread] = await Promise.all([
     prisma.notification.findMany({
-      where: { tenantId: auth.tenant.id },
+      where: { tenantId: auth.tenant.id, ...scope },
       orderBy: { createdAt: "desc" },
       take: 80,
     }),
-    prisma.notification.count({ where: { tenantId: auth.tenant.id, readAt: null } }),
+    prisma.notification.count({ where: { tenantId: auth.tenant.id, ...scope, readAt: null } }),
   ]);
   return NextResponse.json({ notifications: serialize(notifications), unread });
 }
@@ -29,9 +33,14 @@ export async function PATCH(request: Request) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = notificationUpdate.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
+  const scope =
+    auth.activeBranchId && auth.activeBranchId > 0
+      ? { OR: [{ branchId: auth.activeBranchId }, { branchId: null }] }
+      : {};
   await prisma.notification.updateMany({
     where: {
       tenantId: auth.tenant.id,
+      ...scope,
       ...(parsed.data.all ? { readAt: null } : { id: parsed.data.id }),
     },
     data: { readAt: new Date() },

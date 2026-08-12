@@ -22,6 +22,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       adminTheme={context.tenant.adminTheme}
       adminAccent={context.tenant.adminAccent}
       palette={context.tenant.palette ?? undefined}
+      branches={context.branches}
+      activeBranchId={context.activeBranchId}
     >
       {children}
     </AdminShell>

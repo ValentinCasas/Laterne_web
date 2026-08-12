@@ -11,6 +11,7 @@ import {
   zoneOffset,
 } from "@/lib/reservations";
 import { getDefaultTenant } from "@/lib/tenant";
+import { isBranchOperational } from "@/lib/branch";
 
 const reservationInput = z.object({
   customerName: z.string().trim().min(2).max(160),
@@ -29,6 +30,7 @@ const reservationInput = z.object({
   notes: z.string().trim().max(1500).optional(),
   acceptedPolicy: z.literal(true),
   website: z.string().max(0).optional(),
+  branchSlug: z.string().trim().max(120).optional(),
 });
 
 /** @summary Recupera la dirección de red declarada por el proxy para aplicar controles de abuso. */
@@ -79,18 +81,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Indicá una fecha válida" }, { status: 400 });
   }
   const tenant = await getDefaultTenant();
+  const requestedBranchSlug = new URL(request.url).searchParams.get("branch") ?? "";
   const timeZone = tenant.timeZone ?? defaultReservationTimeZone;
   const offset = zoneOffset(timeZone);
   const selectedDate = new Date(`${date}T00:00:00${offset}`);
+  const primaryBranch = await prisma.branch.findFirst({
+    where: { tenantId: tenant.id, active: true, ...(requestedBranchSlug ? { slug: requestedBranchSlug } : {}) },
+    orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  if (!primaryBranch || !(await isBranchOperational(tenant.id, primaryBranch.id))) return NextResponse.json({ slots: [], sectors: [], policy: null, disabled: true });
+  const branchWhere = primaryBranch ? { branchId: primaryBranch.id } : {};
   const [settings, hours, blocks, reservations] = await Promise.all([
     prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } }),
-    prisma.openingHour.findMany({ where: { tenantId: tenant.id } }),
+    prisma.openingHour.findMany({ where: { tenantId: tenant.id, ...branchWhere } }),
     prisma.reservationBlock.findMany({
-      where: { tenantId: tenant.id, startDate: { lte: selectedDate }, endDate: { gte: selectedDate } },
+      where: { tenantId: tenant.id, ...branchWhere, startDate: { lte: selectedDate }, endDate: { gte: selectedDate } },
     }),
     prisma.reservation.findMany({
       where: {
         tenantId: tenant.id,
+        branchId: primaryBranch?.id,
         reservationDate: selectedDate,
         status: { in: ["pending", "confirmed"] },
       },
@@ -150,6 +161,17 @@ export async function POST(request: Request) {
   }
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
   const tenant = await getDefaultTenant();
+  const branch =
+    parsed.data.branchSlug
+      ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: parsed.data.branchSlug, active: true } })
+      :
+    (await prisma.branch.findFirst({
+      where: { tenantId: tenant.id, active: true },
+      orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
+      select: { id: true },
+    })) ?? null;
+  if (parsed.data.branchSlug && !branch) return NextResponse.json({ error: "La sucursal no está disponible" }, { status: 409 });
+  if (branch && !(await isBranchOperational(tenant.id, branch.id))) return NextResponse.json({ error: "La sucursal no está operativa" }, { status: 409 });
   const settings = await prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } });
   if (!settings?.enabled) {
     return NextResponse.json(
@@ -188,7 +210,13 @@ export async function POST(request: Request) {
   }
   const [blocks] = await Promise.all([
     prisma.reservationBlock.findMany({
-      where: { tenantId: tenant.id, startDate: { lte: selectedDate }, endDate: { gte: selectedDate } },
+      where: {
+           tenantId: tenant.id,
+           branchId: branch?.id ?? null,
+        ...(branch ? { branchId: branch.id } : {}),
+        startDate: { lte: selectedDate },
+        endDate: { gte: selectedDate },
+      },
     }),
   ]);
   if (blockedTime(parsed.data.time, blocks)) {
@@ -217,6 +245,7 @@ export async function POST(request: Request) {
       const reservation = await transaction.reservation.create({
         data: {
           tenantId: tenant.id,
+          branchId: branch?.id ?? null,
           reference,
           status,
           reservationDate: selectedDate,
@@ -240,6 +269,7 @@ export async function POST(request: Request) {
       await transaction.notification.create({
         data: {
           tenantId: tenant.id,
+          branchId: branch?.id ?? null,
           type: "reservation.new",
           title: `Nueva reserva · ${parsed.data.customerName}`,
           message: `${parsed.data.partySize} personas el ${parsed.data.date} a las ${parsed.data.time}.`,
