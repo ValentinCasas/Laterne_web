@@ -340,10 +340,12 @@ button {
 .mc-brand-lockup b { color: var(--mc-primary); }
 .mc-logo-mark { display: grid; height: 2.25rem; width: 2.25rem; place-items: center; overflow: hidden; border-radius: .65rem; background: var(--mc-primary); color: var(--mc-background); font-weight: 950; }
 .mc-logo-mark img { height: 100%; width: 100%; object-fit: contain; padding: .25rem; }
-.mc-desktop-menu { display: flex; align-items: center; gap: .2rem; }
-.mc-desktop-menu > a, .mc-desktop-menu summary { display: inline-flex; cursor: pointer; list-style: none; align-items: center; gap: .35rem; border-radius: .6rem; padding: .55rem .75rem; color: var(--mc-text-muted); font-size: .82rem; font-weight: 800; }
+.mc-desktop-menu { display: flex; align-items: center; gap: .35rem; }
+.mc-desktop-menu > a, .mc-desktop-menu summary { display: inline-flex; cursor: pointer; list-style: none; align-items: center; gap: .55rem; border-radius: .65rem; padding: .6rem .85rem; color: var(--mc-text-muted); font-size: .82rem; font-weight: 800; }
 .mc-desktop-menu summary::-webkit-details-marker { display: none; }
 .mc-desktop-menu > a:hover, .mc-desktop-menu summary:hover, .mc-desktop-menu .is-current summary, .mc-desktop-menu > a.is-current { background: var(--mc-primary-soft); color: var(--mc-text); }
+.mc-nav-chevron { display: inline-block; height: .42rem; width: .42rem; border-bottom: 1.5px solid currentColor; border-right: 1.5px solid currentColor; transform: translateY(-.12rem) rotate(45deg); transition: transform .2s; }
+.mc-menu-group[open] .mc-nav-chevron { transform: translateY(.1rem) rotate(225deg); }
 .mc-desktop-menu details { position: relative; }
 .mc-dropdown { position: absolute; left: 0; top: calc(100% + .65rem); display: grid; min-width: 18rem; gap: .2rem; border: 1px solid var(--mc-border); border-radius: .85rem; background: var(--mc-surface); padding: .45rem; box-shadow: 0 18px 40px rgb(0 0 0 / .3); }
 .mc-dropdown a { display: grid; gap: .2rem; border-radius: .6rem; padding: .7rem; color: var(--mc-text); }
