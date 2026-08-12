@@ -1,9 +1,9 @@
 import bcrypt from "bcryptjs";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSession } from "@/lib/auth";
-import { classifyHost } from "@/lib/domains";
+import { classifyHost, tenantAdminUrl } from "@/lib/domains";
 import { prisma } from "@/lib/prisma";
 
 const credentials = z.object({
@@ -109,16 +109,18 @@ export async function POST(request: Request) {
     .split(",")[0]
     .trim()
     .split(":")[0];
-  const platformContext = classifyHost(host).kind === "platform";
+  const hostContext = classifyHost(host);
+  const platformContext = hostContext.kind === "platform";
   let membership = platformContext ? undefined : user.memberships[0];
-  if (!platformContext && (parsed.data.tenantId || parsed.data.tenantSlug)) {
+  const requestedTenantSlug = hostContext.kind === "app" && hostContext.slug ? hostContext.slug : parsed.data.tenantSlug;
+  if (!platformContext && (parsed.data.tenantId || requestedTenantSlug)) {
     membership = parsed.data.tenantId
-      ? user.memberships.find((item) => item.tenantId === parsed.data.tenantId)
-      : user.memberships.find((item) => item.tenant.slug === parsed.data.tenantSlug);
+      ? user.memberships.find((item) => item.tenantId === parsed.data.tenantId && (!requestedTenantSlug || item.tenant.slug === requestedTenantSlug))
+      : user.memberships.find((item) => item.tenant.slug === requestedTenantSlug);
     if (!membership)
       return NextResponse.json({ error: "El negocio seleccionado no está disponible" }, { status: 403 });
   }
-  if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId && !parsed.data.tenantSlug) {
+  if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId && !requestedTenantSlug) {
     return NextResponse.json(
       {
         error: "Seleccioná el negocio al que querés ingresar",
@@ -170,7 +172,14 @@ export async function POST(request: Request) {
     }
   }
 
-  const response = NextResponse.json({ ok: true });
+  if (!platformContext && hostContext.kind === "app" && !hostContext.slug && membership) {
+    const rawHandoff = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(rawHandoff).digest("hex");
+    await prisma.authHandoff.create({ data: { tokenHash, userId: user.id, membershipId: membership.id, branchId: branchId ?? null, expiresAt: new Date(Date.now() + 5 * 60 * 1000) } });
+    return NextResponse.json({ ok: true, handoffUrl: tenantAdminUrl(membership.tenant.slug, `/login?handoff=${encodeURIComponent(rawHandoff)}`) });
+  }
+
+  const response = NextResponse.json({ ok: true, adminUrl: membership ? tenantAdminUrl(membership.tenant.slug, "/admin") : undefined });
   response.cookies.set(
     "laterne_session",
     await createSession({

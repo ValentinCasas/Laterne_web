@@ -90,6 +90,13 @@ export function adminLoginUrl(tenantId?: number, tenantSlug?: string) {
   return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}/login${query}`;
 }
 
+/** @summary URL canónica del host administrativo aislado de un tenant. */
+export function tenantAdminUrl(tenantSlug: string, path = "/login") {
+  const host = `${tenantSlug.toLocaleLowerCase("es")}.${APP_HOST || "localhost"}`;
+  const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
+  return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 /** @summary Determina si el host corresponde al panel de control de la plataforma. */
 export function isPlatformHost(host: string) {
   const normalized = host.toLocaleLowerCase("es");
@@ -103,7 +110,8 @@ export function isPlatformHost(host: string) {
 
 /** @summary Determina si el host corresponde al panel administrativo de los negocios. */
 export function isAppHost(host: string) {
-  return Boolean(APP_HOST && host.toLocaleLowerCase("es") === APP_HOST);
+  const normalized = host.toLocaleLowerCase("es");
+  return Boolean(APP_HOST && (normalized === APP_HOST || normalized.endsWith(`.${APP_HOST}`)));
 }
 
 /** @summary Determina si el host pertenece al sitio público de algún negocio del producto. */
@@ -169,7 +177,10 @@ export function classifyHost(host: string): { kind: HostKind; slug?: string } {
   const normalized = normalizeHost(host);
   if (!normalized) return { kind: "unknown" };
   if (isPlatformHost(normalized)) return { kind: "platform" };
-  if (isAppHost(normalized)) return { kind: "app" };
+  if (isAppHost(normalized)) {
+    const prefix = normalized.endsWith(`.${APP_HOST}`) ? normalized.slice(0, -(APP_HOST.length + 1)) : "";
+    return { kind: "app", ...(prefix && !prefix.includes(".") ? { slug: prefix } : {}) };
+  }
   if (process.env.NODE_ENV === "development" && isLocalDevelopmentHost(normalized) && DEV_TENANT_SLUG) {
     return { kind: "tenant", slug: DEV_TENANT_SLUG };
   }

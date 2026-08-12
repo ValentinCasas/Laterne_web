@@ -139,7 +139,10 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       id: session.membershipId,
       userId: session.userId,
       status: "active",
-      tenant: publicTenantWhere(),
+      tenant: {
+        ...publicTenantWhere(),
+        ...(hostContext.kind === "app" && hostContext.slug ? { slug: hostContext.slug } : {}),
+      },
     },
     include: {
       tenant: {

@@ -199,6 +199,7 @@ model User {
   platformRole     String?            @db.VarChar(40)
   mediaAssets      MediaAsset[]
   platformPayments PlatformPayment[]  @relation("PlatformPaymentCreatedBy")
+  authHandoffs     AuthHandoff[]
 
   @@unique([email])
   @@map("user")
@@ -371,6 +372,7 @@ model TenantMembership {
   role         Role               @relation(fields: [roleId], references: [id], onDelete: Restrict)
   sessions     AuthSession[]
   branchAccess BranchMembership[]
+  authHandoffs AuthHandoff[]
 
   @@unique([tenantId, userId])
   @@index([userId, status])
@@ -395,6 +397,23 @@ model AuthSession {
   @@index([membershipId, context])
   @@index([branchId])
   @@map("authsession")
+}
+
+/** @summary Transferencia de autenticación de un login general al host administrativo del tenant. */
+model AuthHandoff {
+  id           Int              @id @default(autoincrement())
+  tokenHash    String           @unique @db.VarChar(64)
+  userId       Int
+  membershipId Int
+  branchId     Int?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership   TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt, usedAt])
+  @@map("authhandoff")
 }
 
 model LoginAttempt {

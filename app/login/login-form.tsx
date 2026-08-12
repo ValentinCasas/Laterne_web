@@ -60,6 +60,15 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
       setError(data.error ?? "No se pudo ingresar");
       return;
     }
+    const success = (await response.clone().json().catch(() => ({}))) as { handoffUrl?: string; adminUrl?: string };
+    if (success.handoffUrl) {
+      window.location.assign(success.handoffUrl);
+      return;
+    }
+    if (success.adminUrl) {
+      window.location.assign(success.adminUrl);
+      return;
+    }
     router.push(redirectTo as Route);
     router.refresh();
   }
