@@ -24,9 +24,10 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
   /** @summary Envía la solicitud o la nueva contraseña según el paso de recuperación activo. */
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setLoading(true);
     setError("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await scopedFetch("/api/auth/password-reset", {
       method: reset ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -45,7 +46,7 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
     setMessage(
       reset ? "Contraseña actualizada. Ya podés iniciar sesión." : (body.message ?? "Revisá tu correo."),
     );
-    event.currentTarget.reset();
+    formElement.reset();
   }
 
   return (

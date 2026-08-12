@@ -25,22 +25,24 @@ export function ProductOptionsManager({ products, initialVariants, initialExtras
 
   async function createGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const data = new FormData(formElement);
     const response = await scopedFetch("/api/admin/product-option-groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, kind, name: data.get("name"), required: data.get("required") === "on", minSelections: Number(data.get("minSelections")), maxSelections: Number(data.get("maxSelections")), sortOrder: Number(data.get("sortOrder")) }) });
     const result = (await response.json().catch(() => ({}))) as { group?: OptionGroup; error?: string };
     if (!response.ok || !result.group) return Swal.fire({ title: "No se pudo crear el grupo", text: result.error, icon: "error", background: "#18181b", color: "#fafafa" });
     setGroups((current) => [...current, result.group!]);
-    event.currentTarget.reset();
+    formElement.reset();
   }
 
   async function createOption(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const data = new FormData(formElement);
     const response = await scopedFetch("/api/admin/product-options", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, productId, groupId: Number(data.get("groupId")) || null, name: data.get("name"), price: Number(data.get("price") || 0), sortOrder: Number(data.get("sortOrder") || options.length), active: true }) });
     const result = (await response.json().catch(() => ({}))) as { item?: ProductOption; error?: string };
     if (!response.ok || !result.item) return Swal.fire({ title: "No se pudo crear", text: result.error, icon: "error", background: "#18181b", color: "#fafafa" });
     if (kind === "variant") setVariants((current) => [...current, result.item!]); else setExtras((current) => [...current, result.item!]);
-    event.currentTarget.reset();
+    formElement.reset();
   }
 
   async function editOption(option: ProductOption) {

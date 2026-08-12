@@ -34,8 +34,9 @@ export function HelpCenter({ articles, whatsapp }: { articles: HelpArticleData[]
   /** @summary Envía una consulta de soporte y comunica su referencia al visitante. */
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setMessage("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await scopedFetch("/api/support", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -47,7 +48,7 @@ export function HelpCenter({ articles, whatsapp }: { articles: HelpArticleData[]
       return;
     }
     setMessage(`Consulta recibida. Tu referencia es ${result.reference}.`);
-    event.currentTarget.reset();
+    formElement.reset();
   }
 
   return (

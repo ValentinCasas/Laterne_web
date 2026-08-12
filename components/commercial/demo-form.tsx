@@ -38,9 +38,10 @@ export function DemoForm({ plans, initialPlanId }: { plans: PlanOption[]; initia
   /** @summary Valida el formulario en el navegador y envía la oportunidad al servidor. */
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setSending(true);
     setResult(null);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const payload = {
       fullName: form.get("fullName"),
       businessName: form.get("businessName"),
@@ -68,7 +69,7 @@ export function DemoForm({ plans, initialPlanId }: { plans: PlanOption[]; initia
       });
       const body = (await response.json()) as DemoResponse;
       setResult(response.ok ? body : { error: body.error ?? "No pudimos enviar la solicitud." });
-      if (response.ok) event.currentTarget.reset();
+      if (response.ok) formElement.reset();
     } catch {
       setResult({ error: "No pudimos conectarnos. Revisá tu conexión e intentá nuevamente." });
     } finally {

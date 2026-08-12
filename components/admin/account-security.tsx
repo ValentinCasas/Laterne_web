@@ -28,7 +28,8 @@ export function AccountSecurity() {
   /** @summary Valida y solicita el cambio de contraseña del usuario actual. */
   async function changePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     if (form.get("newPassword") !== form.get("confirmation")) {
       await Swal.fire({
         title: "Las contraseñas no coinciden",
@@ -54,7 +55,7 @@ export function AccountSecurity() {
       background: "#18181b",
       color: "#fafafa",
     });
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) formElement.reset();
   }
 
   /** @summary Cierra una sesión remota y la retira de la lista visible. */

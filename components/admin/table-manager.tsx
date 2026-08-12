@@ -75,7 +75,8 @@ export function TableManager({
   /** @summary Crea una mesa o guarda la edición existente mediante la API administrativa. */
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const payload = {
       name: String(form.get("name") ?? ""),
       sector: String(form.get("sector") ?? ""),
@@ -105,7 +106,7 @@ export function TableManager({
         : [result.table!, ...current],
     );
     setEditing(null);
-    event.currentTarget.reset();
+    formElement.reset();
   }
 
   /** @summary Confirma la eliminación de una mesa y conserva sus pedidos como historial sin mesa activa. */

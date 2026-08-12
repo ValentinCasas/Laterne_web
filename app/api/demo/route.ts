@@ -47,13 +47,19 @@ export async function POST(request: Request) {
   }
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
 
-  const ipHash = hashAddress(requestAddress(request));
+  const address = requestAddress(request);
+  const ipHash = hashAddress(address);
   const since = new Date(Date.now() - 60 * 60 * 1000);
+  const isDevelopment = process.env.NODE_ENV === "development";
   const [recentAddress, recentEmail] = await Promise.all([
-    prisma.salesLead.count({ where: { ipHash, createdAt: { gte: since } } }),
-    prisma.salesLead.count({
-      where: { email: parsed.data.email.toLocaleLowerCase("es"), createdAt: { gte: since } },
-    }),
+    isDevelopment || address === "unknown"
+      ? 0
+      : prisma.salesLead.count({ where: { ipHash, createdAt: { gte: since } } }),
+    isDevelopment
+      ? 0
+      : prisma.salesLead.count({
+          where: { email: parsed.data.email.toLocaleLowerCase("es"), createdAt: { gte: since } },
+        }),
   ]);
   if (recentAddress >= 5 || recentEmail >= 3) {
     return NextResponse.json(

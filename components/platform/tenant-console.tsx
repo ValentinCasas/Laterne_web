@@ -84,8 +84,9 @@ export function TenantConsole({
   /** @summary Crea un negocio y su usuario propietario desde el panel global. */
   async function createTenant(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setCreating(true);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await fetch("/api/platform/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,7 +104,7 @@ export function TenantConsole({
       });
       return;
     }
-    event.currentTarget.reset();
+    formElement.reset();
     router.refresh();
   }
 

@@ -267,7 +267,8 @@ export function ReservationBoard({
   /** @summary Registra un cierre total o por horario para fechas especiales. */
   async function createBlock(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const payload = Object.fromEntries(form.entries());
     const response = await scopedFetch("/api/admin/reservations/blocks", {
       method: "POST",
@@ -280,7 +281,7 @@ export function ReservationBoard({
       return;
     }
     setBlocks((current) => [body.block!, ...current]);
-    event.currentTarget.reset();
+    formElement.reset();
   }
 
   /** @summary Quita un bloqueo de disponibilidad después de una confirmación visual. */
