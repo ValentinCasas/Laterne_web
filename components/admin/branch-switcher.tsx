@@ -7,6 +7,7 @@ import { useState } from "react";
 type BranchOption = {
   id: number;
   name: string;
+  slug: string;
   isPrimary: boolean;
 };
 
@@ -45,10 +46,9 @@ export function BranchSwitcher({
         return;
       }
        setOpen(false);
-       const url = new URL(window.location.href);
-       if (branchId === 0) url.searchParams.set("branchId", "all");
-       else url.searchParams.set("branchId", String(branchId));
-       router.push(`${url.pathname}${url.search}` as Route);
+       const slug = branches.find((branch) => branch.id === branchId)?.slug;
+       const destination = branchId === 0 ? "/admin" : `/admin/s/${slug}`;
+       router.replace(destination as Route);
        router.refresh();
     } catch {
       setError("No se pudo cambiar de sucursal");

@@ -150,6 +150,18 @@ function isActivePath(pathname: string, href: string) {
   return href === "/admin" ? pathname === href : pathname.startsWith(href);
 }
 
+/** @summary Quita el segmento de sucursal de la URL para comparar contra rutas administrativas planas. */
+function normalizedAdminPath(pathname: string) {
+  return pathname.replace(/^\/admin\/s\/[^/]+/, "/admin");
+}
+
+/** @summary Convierte una ruta administrativa a su variante canónica con la sucursal en la URL. */
+function branchAdminHref(branchSlug: string | undefined, href: string) {
+  if (!branchSlug) return href;
+  if (href === "/admin") return `/admin/s/${branchSlug}`;
+  return `/admin/s/${branchSlug}${href.replace(/^\/admin/, "")}`;
+}
+
 /** @summary Localiza el grupo que contiene una ruta para abrirlo al navegar desde búsquedas o accesos directos. */
 function groupIdForHref(href: string) {
   return navigationGroups.find((group) => group.links.some((link) => link.href === href))?.id ?? "inicio";
@@ -180,14 +192,18 @@ export function AdminShell({
   activeBranchId?: number;
 }) {
   const pathname = usePathname();
+  const clearPath = normalizedAdminPath(pathname);
+  const isCurrent = (href: string) => isActivePath(clearPath, href);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
+  const branchSlug = activeBranch?.slug;
+  const adminHref = (href: string) => branchAdminHref(branchSlug, href);
   const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
   const [openGroup, setOpenGroup] = useState<string>(
     () =>
-      navigationGroups.find((group) => group.links.some((link) => isActivePath(pathname, link.href)))?.id ??
+      navigationGroups.find((group) => group.links.some((link) => isCurrent(link.href)))?.id ??
       "inicio",
   );
   const accessibleLinks = useMemo(
@@ -204,7 +220,7 @@ export function AdminShell({
         .filter((group) => group.links.length > 0),
     [permissions],
   );
-  const currentLink = accessibleLinks.find((link) => isActivePath(pathname, link.href));
+  const currentLink = accessibleLinks.find((link) => isCurrent(link.href));
   const commandLinks = accessibleLinks.filter((link) =>
     link.label.toLocaleLowerCase("es").includes(commandQuery.trim().toLocaleLowerCase("es")),
   );
@@ -334,7 +350,7 @@ export function AdminShell({
             >
               {accessibleGroups.map((group) => {
                 const expanded = openGroup === group.id;
-                const containsActive = group.links.some((link) => isActivePath(pathname, link.href));
+                const containsActive = group.links.some((link) => isCurrent(link.href));
                 return (
                   <section
                     className={`overflow-hidden rounded-2xl border transition ${
@@ -381,7 +397,7 @@ export function AdminShell({
                         id={`admin-group-${group.id}`}
                       >
                         {group.links.map(({ href, label, icon }) => {
-                          const active = isActivePath(pathname, href);
+                          const active = isCurrent(href);
                           return (
                             <Link
                               className={`group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-bold transition ${
@@ -389,7 +405,7 @@ export function AdminShell({
                                   ? "bg-pink-500 text-white shadow-lg shadow-pink-950/30"
                                   : "text-zinc-400 hover:bg-white/5 hover:text-white"
                               }`}
-                              href={href as Route}
+                              href={adminHref(href) as Route}
                               key={href}
                               onClick={() => setMobileMenuOpen(false)}
                             >
@@ -485,7 +501,7 @@ export function AdminShell({
               {commandLinks.map((link) => (
                 <Link
                   className="flex items-center gap-3 rounded-2xl p-3 hover:bg-white/5"
-                  href={link.href as Route}
+                  href={adminHref(link.href) as Route}
                   key={link.href}
                   onClick={() => {
                     setCommandOpen(false);

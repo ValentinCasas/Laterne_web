@@ -42,9 +42,21 @@ export async function proxy(request: NextRequest) {
   }
 
   if (kind === "app") {
-    if (pathname === "/") return NextResponse.rewrite(new URL("/admin", request.url));
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-menuclick-original-path", pathname + request.nextUrl.search);
+    if (pathname === "/") {
+      return NextResponse.rewrite(new URL("/admin", request.url), { request: { headers: requestHeaders } });
+    }
+    const branchRoute = pathname.match(/^\/admin\/s\/([^/]+)(?:\/(.*))?$/);
+    if (branchRoute) {
+      const branchSlug = branchRoute[1];
+      const remainder = branchRoute[2] ? `/${branchRoute[2]}` : "";
+      const target = new URL(`/admin${remainder}`, request.url);
+      requestHeaders.set("x-menuclick-branch-slug", branchSlug);
+      return NextResponse.rewrite(target, { request: { headers: requestHeaders } });
+    }
     if (!isAppRoute(pathname)) return NextResponse.rewrite(new URL("/404", request.url));
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   if (kind === "tenant") {

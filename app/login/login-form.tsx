@@ -65,6 +65,10 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
       window.location.assign(success.handoffUrl);
       return;
     }
+    if (redirectTo.startsWith("/admin/") ) {
+      window.location.assign(redirectTo);
+      return;
+    }
     if (success.adminUrl) {
       window.location.assign(success.adminUrl);
       return;
@@ -124,13 +128,13 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
   }
 
   return (
-    <form onSubmit={submit} className="mt-8 space-y-4">
+    <form method="post" onSubmit={submit} className="mt-8 space-y-4">
       <label className="block text-sm">
         Email
         <input
           className="input mt-2"
-          name="email"
           type="email"
+          autoComplete="email"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
@@ -140,8 +144,8 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
         Contraseña
         <input
           className="input mt-2"
-          name="password"
           type="password"
+          autoComplete="current-password"
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}

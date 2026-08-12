@@ -32,9 +32,11 @@ export function developmentAllowedOrigins() {
   return [
     "localhost",
     "127.0.0.1",
-    `*.${DEVELOPMENT_ROOT_DOMAIN}`,
+    DEVELOPMENT_ROOT_DOMAIN,
+    `**.${DEVELOPMENT_ROOT_DOMAIN}`,
     DEV_PLATFORM_HOST,
     DEV_APP_HOST,
+    `**.${APP_SUBDOMAIN}.${DEVELOPMENT_ROOT_DOMAIN}`,
     DEV_TENANT_SLUG ? `${DEV_TENANT_SLUG}.${DEVELOPMENT_ROOT_DOMAIN}` : "",
   ].filter(Boolean);
 }

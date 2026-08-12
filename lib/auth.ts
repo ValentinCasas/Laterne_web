@@ -210,7 +210,11 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
   const allBranches =
     membership.allBranches === true;
 
-  const requestedBranch = session.branchId;
+  const branchHeader = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es");
+  if (branchHeader && !branches.some((branch) => branch.slug === branchHeader && branch.active && branch.status === "active")) return null;
+  const requestedBranch = branchHeader
+    ? branches.find((branch) => branch.slug === branchHeader)?.id
+    : session.branchId;
   const wantsConsolidated = requestedBranch === 0 && allBranches;
   const canUseActive =
     requestedBranch !== undefined &&
@@ -272,7 +276,31 @@ export async function requireSession(admin = false) {
 /** @summary Exige una membresía activa que posea el permiso solicitado. */
 export async function requirePermission(permission: string) {
   const context = await authorize(permission);
-  if (!context) redirect("/login");
+  if (!context) {
+    const requestHeaders = await headers();
+    const returnTo = requestHeaders.get("x-menuclick-original-path");
+    redirect(returnTo?.startsWith("/admin/") ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login");
+  }
+
+  const requestHeaders = await headers();
+  const isBranchRequest = Boolean(requestHeaders.get("x-menuclick-branch-slug"));
+  // La URL es la fuente real del contexto de sucursal: las rutas planas /admin/...
+  // se reescriben a su variante canónica /admin/s/{branchSlug}/... salvo que se
+  // esté operando en vista consolidada (0) o el path ya incluya la sucursal.
+  if (!isBranchRequest && context.activeBranchId && context.activeBranchId > 0) {
+    const activeBranch = context.branches.find((branch) => branch.id === context.activeBranchId);
+    if (activeBranch?.slug) {
+      const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
+      const remainder =
+        originalPath === "/admin" || originalPath === "/" || originalPath === ""
+          ? ""
+          : originalPath.startsWith("/admin")
+            ? originalPath.slice("/admin".length)
+            : "";
+      redirect(`/admin/s/${activeBranch.slug}${remainder}`);
+    }
+  }
+
   return context;
 }
 

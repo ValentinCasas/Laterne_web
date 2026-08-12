@@ -16,8 +16,15 @@ export async function POST(request: Request) {
   if (!handoff) return NextResponse.json({ error: "La transferencia expiró o no corresponde a este tenant" }, { status: 401 });
   const consumed = await prisma.authHandoff.updateMany({ where: { id: handoff.id, usedAt: null }, data: { usedAt: new Date() } });
   if (consumed.count !== 1) return NextResponse.json({ error: "La transferencia ya fue utilizada" }, { status: 409 });
-  const token = await createSession({ userId: handoff.userId, role: handoff.user.role, tenantId: handoff.membership.tenantId, membershipId: handoff.membership.id, roleKey: handoff.membership.role.key, branchId: handoff.branchId ?? undefined, branchSlug: undefined, context: "tenant" });
-  const response = NextResponse.json({ ok: true, redirect: "/admin" });
+  let branchSlug: string | undefined;
+  if (handoff.branchId && handoff.branchId > 0) {
+    branchSlug = (
+      await prisma.branch.findUnique({ where: { id: handoff.branchId }, select: { slug: true } })
+    )?.slug ?? undefined;
+  }
+  const token = await createSession({ userId: handoff.userId, role: handoff.user.role, tenantId: handoff.membership.tenantId, membershipId: handoff.membership.id, roleKey: handoff.membership.role.key, branchId: handoff.branchId ?? undefined, branchSlug, context: "tenant" });
+  const redirectPath = branchSlug ? `/admin/s/${encodeURIComponent(branchSlug)}` : "/admin";
+  const response = NextResponse.json({ ok: true, redirect: redirectPath });
   response.cookies.set("laterne_session", token, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 8, path: "/" });
   return response;
 }

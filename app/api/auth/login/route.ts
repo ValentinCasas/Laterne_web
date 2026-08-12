@@ -179,7 +179,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, handoffUrl: tenantAdminUrl(membership.tenant.slug, `/login?handoff=${encodeURIComponent(rawHandoff)}`) });
   }
 
-  const response = NextResponse.json({ ok: true, adminUrl: membership ? tenantAdminUrl(membership.tenant.slug, "/admin") : undefined });
+  const adminPath = branchSlug ? `/admin/s/${encodeURIComponent(branchSlug)}` : "/admin";
+  const response = NextResponse.json({ ok: true, adminUrl: membership ? tenantAdminUrl(membership.tenant.slug, adminPath) : undefined });
   response.cookies.set(
     "laterne_session",
     await createSession({
