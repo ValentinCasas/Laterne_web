@@ -747,11 +747,11 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   if (!resourceConfig) notFound();
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
-  const scopedFilter = resourceScopedWhere(resourceConfig.model, tenantId, context.activeBranchId);
+  const productFilter = resourceScopedWhere("product", tenantId, context.activeBranchId);
   const [categories, products, roles, branches, tenant, mediaAssets, events, memberships, promotions, cases] =
     await Promise.all([
       prisma.category.findMany({ where: resourceScopedWhere("category", tenantId, context.activeBranchId), orderBy: { name: "asc" } }),
-      prisma.product.findMany({ where: scopedFilter, orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where: productFilter, orderBy: { name: "asc" } }),
       prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
       prisma.branch.findMany({ where: { id: { in: context.branches.map((branch) => branch.id) } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
       prisma.tenant.findUniqueOrThrow({
