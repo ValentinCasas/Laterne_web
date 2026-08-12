@@ -79,10 +79,14 @@ export function publicTenantUrl(slug: string, customDomain?: string | null) {
 }
 
 /** @summary Construye el acceso administrativo del negocio en el host reservado de la aplicación. */
-export function adminLoginUrl(tenantId?: number) {
+export function adminLoginUrl(tenantId?: number, tenantSlug?: string) {
   const host = APP_HOST || "localhost";
   const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
-  const query = tenantId ? `?tenantId=${encodeURIComponent(String(tenantId))}` : "";
+  const query = tenantId
+    ? `?tenantId=${encodeURIComponent(String(tenantId))}`
+    : tenantSlug
+      ? `?tenantSlug=${encodeURIComponent(tenantSlug)}`
+      : "";
   return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}/login${query}`;
 }
 

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 type BranchOption = { id: number; name: string; slug: string; isPrimary: boolean };
 
 /** @summary Gestiona el formulario de acceso y redirige al panel correcto con credenciales válidas. */
-export function LoginForm({ redirectTo = "/admin", initialTenantId }: { redirectTo?: string; initialTenantId?: string }) {
+export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenantSlug }: { redirectTo?: string; initialTenantId?: string; initialTenantSlug?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [tenantOptions, setTenantOptions] = useState<Array<{ id: number; name: string; slug: string }>>([]);
@@ -25,7 +25,7 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId }: { redirect
     const body = {
       email,
       password,
-      ...(selectedTenantId ? { tenantId: Number(selectedTenantId) } : {}),
+      ...(selectedTenantId ? { tenantId: Number(selectedTenantId) } : initialTenantSlug ? { tenantSlug: initialTenantSlug } : {}),
       ...(selectedBranchId ? { branchId: Number(selectedBranchId) } : {}),
       ...extra,
     };

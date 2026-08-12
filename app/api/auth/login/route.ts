@@ -15,6 +15,7 @@ const credentials = z.object({
     .transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(200),
   tenantId: z.coerce.number().int().positive().optional(),
+  tenantSlug: z.string().trim().min(1).max(120).optional(),
   branchId: z.coerce.number().int().nonnegative().optional(),
 });
 const invalidPasswordHash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.";
@@ -110,12 +111,14 @@ export async function POST(request: Request) {
     .split(":")[0];
   const platformContext = classifyHost(host).kind === "platform";
   let membership = platformContext ? undefined : user.memberships[0];
-  if (!platformContext && parsed.data.tenantId) {
-    membership = user.memberships.find((item) => item.tenantId === parsed.data.tenantId);
+  if (!platformContext && (parsed.data.tenantId || parsed.data.tenantSlug)) {
+    membership = parsed.data.tenantId
+      ? user.memberships.find((item) => item.tenantId === parsed.data.tenantId)
+      : user.memberships.find((item) => item.tenant.slug === parsed.data.tenantSlug);
     if (!membership)
       return NextResponse.json({ error: "El negocio seleccionado no está disponible" }, { status: 403 });
   }
-  if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId) {
+  if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId && !parsed.data.tenantSlug) {
     return NextResponse.json(
       {
         error: "Seleccioná el negocio al que querés ingresar",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { resolveHostKind } from "@/lib/host-gate";
-import { isLocalDevelopmentHost } from "@/lib/domains";
+import { adminLoginUrl, isLocalDevelopmentHost } from "@/lib/domains";
 
 /** @summary Rutas exclusivas de la experiencia de plataforma (Panel MenuClick). */
 const PLATFORM_PREFIXES = ["/superadmin", "/planes", "/para-negocios", "/solicitar-demo", "/legal", "/cliente", "/clientes", "/funcionalidades", "/multi-sucursal"];
@@ -32,7 +32,8 @@ function isAppRoute(pathname: string) {
 export async function proxy(request: NextRequest) {
   const rawHost = request.headers.get("x-forwarded-host") ?? request.nextUrl.hostname;
   const host = rawHost.split(",")[0]?.trim()?.split(":")[0]?.toLocaleLowerCase("es") ?? "";
-  const { kind } = await resolveHostKind(host);
+  const hostContext = await resolveHostKind(host);
+  const { kind } = hostContext;
   const pathname = request.nextUrl.pathname;
 
   if (kind === "platform") {
@@ -47,6 +48,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (kind === "tenant") {
+    if (startsWithAny(pathname, ["/admin"]) && hostContext.slug) {
+      return NextResponse.redirect(adminLoginUrl(undefined, hostContext.slug));
+    }
     // Local development keeps the public commercial routes reachable while the
     // configured DEV_TENANT_SLUG serves the tenant experience on localhost.
     if (isLocalDevelopmentHost(host) && startsWithAny(pathname, ["/planes", "/para-negocios", "/solicitar-demo", "/legal", "/clientes", "/funcionalidades", "/multi-sucursal"])) {
