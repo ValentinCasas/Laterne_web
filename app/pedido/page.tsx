@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { CheckoutForm } from "@/components/orders/checkout-form";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
@@ -10,9 +11,10 @@ export async function generateMetadata() {
 }
 
 /** @summary Presenta el checkout público para guardar un pedido y verificar sus datos finales. */
-export default async function OrderPage({ searchParams }: { searchParams: Promise<{ branch?: string }> }) {
+export default async function OrderPage() {
   const tenant = await getDefaultTenant();
-  const requestedBranch = (await searchParams).branch;
+  const requestHeaders = await headers();
+  const requestedBranch = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const branches = await prisma.branch.findMany({
     where: { tenantId: tenant.id, active: true },
     select: { id: true, name: true, slug: true, address: true, deliveryFee: true, minimumOrder: true },
@@ -35,6 +37,7 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
         }))}
         currency={tenant.defaultCurrency}
         locale={tenant.locale}
+        tenantSlug={tenant.slug}
         fixedBranchSlug={requestedBranch}
       />
     </main>

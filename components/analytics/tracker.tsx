@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { createBrowserId, readBrowserText, writeBrowserText } from "@/lib/browser-compat";
+import { apiPath, scopedFetch } from "@/lib/client-routing";
+import { parseCanonicalPath } from "@/lib/routes";
 
 type TrackOptions = {
   entityType?: "product" | "category" | "promotion" | "reservation" | "order" | "page";
@@ -39,10 +41,10 @@ export function trackEvent(eventType: string, options: TrackOptions = {}) {
       },
     });
     if (navigator.sendBeacon) {
-      navigator.sendBeacon("/api/analytics", new Blob([payload], { type: "application/json" }));
+      navigator.sendBeacon(apiPath("/api/analytics"), new Blob([payload], { type: "application/json" }));
       return;
     }
-    void fetch("/api/analytics", {
+    void scopedFetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: payload,
@@ -114,13 +116,21 @@ export function AnalyticsTracker({
 }) {
   const pathname = usePathname();
   useEffect(() => {
-    if (pathname.startsWith("/admin") || pathname.startsWith("/api")) return;
-    trackEvent(pathname === "/carta" ? "menu.open" : "page.view", { entityType: "page" });
+    const route = parseCanonicalPath(pathname);
+    if (
+      route.surface === "tenant-admin" ||
+      route.surface === "platform-admin" ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/superadmin") ||
+      pathname.startsWith("/api")
+    ) return;
+    const eventType = /\/carta$/.test(pathname) ? "menu.open" : "page.view";
+    trackEvent(eventType, { entityType: "page" });
     loadExternalAnalytics(analyticsId, metaPixelId);
     /** @summary Activa las mediciones permitidas cuando el visitante otorga su consentimiento. */
     const accepted = () => {
       loadExternalAnalytics(analyticsId, metaPixelId);
-      trackEvent(pathname === "/carta" ? "menu.open" : "page.view", { entityType: "page" });
+      trackEvent(eventType, { entityType: "page" });
     };
     window.addEventListener("laterne-consent", accepted, { once: true });
     return () => window.removeEventListener("laterne-consent", accepted);

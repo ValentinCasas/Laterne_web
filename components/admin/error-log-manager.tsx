@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type ErrorEntry = {
   id: string;
@@ -32,7 +33,7 @@ export function ErrorLogManager({ initialErrors }: { initialErrors: ErrorEntry[]
 
   /** @summary Confirma en el servidor que un incidente ya fue revisado. */
   async function resolve(id: string) {
-    const response = await fetch(`/api/admin/errors/${id}`, { method: "PATCH" });
+    const response = await scopedFetch(`/api/admin/errors/${id}`, { method: "PATCH" });
     const body = (await response.json().catch(() => ({}))) as { error?: ErrorEntry };
     if (response.ok && body.error)
       setErrors((current) => current.map((item) => (item.id === id ? body.error! : item)));

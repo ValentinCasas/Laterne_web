@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
-import { revokeCurrentSession } from "@/lib/auth";
+import {
+  PLATFORM_SESSION_COOKIE,
+  revokeCurrentSession,
+  tenantSessionCookieName,
+} from "@/lib/auth";
+import { tenantPublicPath } from "@/lib/routes";
 
-/** @summary Recupera el host usado por el navegador para construir URLs del mismo origen. */
-function requestHost(request: Request) {
-  return (
-    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
-    request.headers.get("host")?.trim() ||
-    ""
-  );
+/** @summary Cookie de sesión correspondiente a la ruta canónica que solicitó el logout. */
+function sessionCookieName(request: Request) {
+  const routeKind = request.headers.get("x-menuclick-route-kind") ?? "";
+  const tenantSlug = request.headers.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  if (routeKind.startsWith("platform")) return PLATFORM_SESSION_COOKIE;
+  if (tenantSlug) return tenantSessionCookieName(tenantSlug);
+  return "laterne_session";
 }
 
-/** @summary Marca la respuesta como sin caché y elimina la cookie de sesión del host. */
-function clearSessionCookie(response: NextResponse<unknown>) {
-  response.cookies.set("laterne_session", "", {
+/** @summary Marca la respuesta como sin caché y elimina únicamente la cookie de la sesión actual. */
+function clearSessionCookie(request: Request, response: NextResponse<unknown>) {
+  response.cookies.set(sessionCookieName(request), "", {
     expires: new Date(0),
     maxAge: 0,
     httpOnly: true,
@@ -24,21 +29,21 @@ function clearSessionCookie(response: NextResponse<unknown>) {
   return response;
 }
 
-/** @summary Cierra la sesión, revocándola en servidor y borrando la cookie del host solicitado. */
+/** @summary Cierra una sesión sin afectar sesiones abiertas de otros tenants. */
 export async function POST(request: Request) {
   await revokeCurrentSession().catch(() => {
-    // Aunque falle la revocación, la cookie se limpia y el token deja de ser útil.
+    // La cookie igualmente se elimina aunque la revocación en DB falle.
   });
 
   const acceptsJson = (request.headers.get("accept") ?? "").toLowerCase().includes("application/json");
-  if (acceptsJson) {
-    return clearSessionCookie(NextResponse.json({ ok: true }));
-  }
+  if (acceptsJson) return clearSessionCookie(request, NextResponse.json({ ok: true }));
 
-  // Formularios tradicionales (sin JavaScript): redirigir al login del MISMO host
-  // para no navegar a un origen distinto (request.url no respeta el Host externo).
-  const host = requestHost(request);
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-  const loginUrl = host ? `${protocol}://${host}/login` : "http://localhost:3000/login";
-  return clearSessionCookie(NextResponse.redirect(loginUrl, { status: 303 }));
+  const routeKind = request.headers.get("x-menuclick-route-kind") ?? "";
+  const tenantSlug = request.headers.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const loginPath = routeKind.startsWith("platform")
+    ? "/platform/login"
+    : tenantSlug
+      ? tenantPublicPath(tenantSlug, "/login")
+      : "/login";
+  return clearSessionCookie(request, NextResponse.redirect(new URL(loginPath, request.url), { status: 303 }));
 }

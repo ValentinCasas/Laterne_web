@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isLocalDevelopmentHost } from "@/lib/domains";
+import { adminHrefForContext, isBranchAdminLogicalPath, tenantAdminPath, tenantBranchAdminPath, tenantPublicPath } from "@/lib/routes";
 import { resolveHostKind } from "@/lib/host-gate";
 import { publicTenantWhere } from "@/lib/subscription-access";
 import { paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
@@ -30,6 +31,25 @@ export type AuthorizationContext = {
   allBranches: boolean;
   activeBranchId?: number;
 };
+
+export const PLATFORM_SESSION_COOKIE = "menuclick_platform_session";
+
+/** @summary Nombre de cookie aislado por tenant para permitir sesiones simultáneas en un único host admin. */
+export function tenantSessionCookieName(tenantSlug: string) {
+  const safe = tenantSlug.trim().toLocaleLowerCase("es").replace(/[^a-z0-9_-]/g, "-");
+  return `menuclick_t_${safe}`;
+}
+
+/** @summary Cookie correspondiente a la ruta visible. Conserva `laterne_session` solo como fallback legacy. */
+async function sessionCookieToken() {
+  const requestHeaders = await headers();
+  const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
+  const tenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const store = await cookies();
+  if (routeKind.startsWith("platform")) return store.get(PLATFORM_SESSION_COOKIE)?.value;
+  if (tenantSlug) return store.get(tenantSessionCookieName(tenantSlug))?.value;
+  return store.get("laterne_session")?.value;
+}
 
 /** @summary Genera la clave binaria utilizada para firmar y validar las sesiones. */
 const key = () => {
@@ -67,7 +87,7 @@ export async function createSession(
 
 /** @summary Recupera y valida la sesión almacenada en las cookies de la solicitud. */
 export async function getSession(): Promise<Session | null> {
-  const token = (await cookies()).get("laterne_session")?.value;
+  const token = await sessionCookieToken();
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key());
@@ -118,22 +138,30 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
-/** @summary Resuelve la membresía vigente y comprueba opcionalmente un permiso administrativo. */
+/** @summary Resuelve la membresía vigente usando tenant/branch de la URL como fuente de verdad. */
 export async function authorize(permission?: string): Promise<AuthorizationContext | null> {
   const session = await getSession();
   if (!session || session.context !== "tenant" || !session.membershipId) return null;
   if (permission && ["plan.manage", "lead.manage"].includes(permission)) return null;
 
   const requestHeaders = await headers();
+  const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
+  const adminScope = requestHeaders.get("x-menuclick-admin-scope") ?? "";
   const host = (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
     .split(",")[0]
     .trim()
     .split(":")[0]
     .toLocaleLowerCase("es");
   const hostContext = await resolveHostKind(host);
-  if (hostContext.kind !== "app" && !(isLocalDevelopmentHost(host) && process.env.NODE_ENV === "development"))
-    return null;
 
+  // Las rutas canónicas llevan tenant en el path. El host solo se usa para compatibilidad legacy.
+  if (!routeTenantSlug && hostContext.kind !== "app" && !(isLocalDevelopmentHost(host) && process.env.NODE_ENV === "development")) {
+    return null;
+  }
+  if (routeTenantSlug && routeKind !== "tenant-admin" && routeKind !== "tenant-auth") return null;
+
+  const expectedTenantSlug = routeTenantSlug || (hostContext.kind === "app" ? hostContext.slug : undefined);
   const membership = await prisma.tenantMembership.findFirst({
     where: {
       id: session.membershipId,
@@ -141,7 +169,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       status: "active",
       tenant: {
         ...publicTenantWhere(),
-        ...(hostContext.kind === "app" && hostContext.slug ? { slug: hostContext.slug } : {}),
+        ...(expectedTenantSlug ? { slug: expectedTenantSlug } : {}),
       },
     },
     include: {
@@ -150,11 +178,11 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           id: true,
           name: true,
           slug: true,
-           status: true,
-           subscription: { select: { status: true, currentPeriodEnd: true, trialEndsAt: true, gracePeriodEndsAt: true } },
+          status: true,
+          subscription: { select: { status: true, currentPeriodEnd: true, trialEndsAt: true, gracePeriodEndsAt: true } },
           timeZone: true,
-           brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true, primaryColor: true, secondaryColor: true, backgroundColor: true } },
-           activePalette: { select: { primary: true, secondary: true, accent: true, background: true, surface: true, surfaceElevated: true, text: true, textMuted: true, border: true, success: true, warning: true, danger: true, baseMode: true } },
+          brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true, primaryColor: true, secondaryColor: true, backgroundColor: true } },
+          activePalette: { select: { primary: true, secondary: true, accent: true, background: true, surface: true, surfaceElevated: true, text: true, textMuted: true, border: true, success: true, warning: true, danger: true, baseMode: true } },
         },
       },
       role: {
@@ -173,7 +201,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
               slug: true,
               active: true,
               isPrimary: true,
-               licenses: { select: { status: true, currentPeriodEnd: true, graceUntil: true }, orderBy: { id: "asc" }, take: 1 },
+              licenses: { select: { status: true, currentPeriodEnd: true, graceUntil: true }, orderBy: { id: "asc" }, take: 1 },
             },
           },
         },
@@ -198,7 +226,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       active: branch.active,
       isPrimary: branch.isPrimary,
       licenseStatus,
-       status: effectiveBranchStatus({
+      status: effectiveBranchStatus({
         tenantStatus: membership.tenant.status,
         tenantSubscription: membership.tenant.subscription,
         branchActive: branch.active,
@@ -207,25 +235,28 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     };
   });
 
-  const allBranches =
-    membership.allBranches === true;
+  const allBranches = membership.allBranches === true;
+  const branchSlug = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es");
+  let activeBranchId: number | undefined;
 
-  const branchHeader = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es");
-  if (branchHeader && !branches.some((branch) => branch.slug === branchHeader && branch.active && branch.status === "active")) return null;
-  const requestedBranch = branchHeader
-    ? branches.find((branch) => branch.slug === branchHeader)?.id
-    : session.branchId;
-  const wantsConsolidated = requestedBranch === 0 && allBranches;
-  const canUseActive =
-    requestedBranch !== undefined &&
-    requestedBranch !== null &&
-    requestedBranch > 0 &&
-    branches.some((branch) => branch.id === requestedBranch && branch.active && branch.status === "active");
-  const activeBranchId = wantsConsolidated
-    ? 0
-    : canUseActive
-      ? requestedBranch
-      : branches.find((branch) => branch.active)?.id;
+  if (branchSlug) {
+    const branch = branches.find(
+      (item) => item.slug === branchSlug && item.active && item.status === "active",
+    );
+    if (!branch) return null;
+    activeBranchId = branch.id;
+  } else if (routeTenantSlug) {
+    // En rutas canónicas sin /s/{branch}, no se inventa una sucursal.
+    // `0` representa una vista consolidada autorizada; undefined = tenant-level.
+    activeBranchId = adminScope === "consolidated" && allBranches ? 0 : undefined;
+  } else {
+    // Compatibilidad legacy mientras desaparecen /admin y los subdominios por tenant.
+    const requested = session.branchId;
+    if (requested === 0 && allBranches) activeBranchId = 0;
+    else if (requested && branches.some((item) => item.id === requested && item.active && item.status === "active")) {
+      activeBranchId = requested;
+    }
+  }
 
   return {
     session,
@@ -253,10 +284,10 @@ export async function requireBranch(
   permission: string | undefined,
   branchId?: number | null,
 ): Promise<AuthorizationContext & { branch: AuthorizationContext["branches"][number] }> {
-  if (branchId === undefined || branchId === null) redirect("/admin");
   const context = permission ? await requirePermission(permission) : await requirePermission("admin.access");
+  if (branchId === undefined || branchId === null) redirect(tenantAdminPath(context.tenant.slug));
   const branch = context.branches.find((item) => item.id === branchId && item.active && item.status === "active");
-  if (!branch) redirect("/admin");
+  if (!branch) redirect(tenantAdminPath(context.tenant.slug));
   return { ...context, branch };
 }
 
@@ -273,32 +304,51 @@ export async function requireSession(admin = false) {
   return session;
 }
 
-/** @summary Exige una membresía activa que posea el permiso solicitado. */
+/** @summary Exige una membresía activa y normaliza cualquier acceso legacy a la ruta canónica. */
 export async function requirePermission(permission: string) {
+  const requestHeaders = await headers();
+  const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
+  const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const routeBranchSlug = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es");
+  const adminScope = requestHeaders.get("x-menuclick-admin-scope") ?? "";
   const context = await authorize(permission);
+
   if (!context) {
-    const requestHeaders = await headers();
-    const returnTo = requestHeaders.get("x-menuclick-original-path");
-    redirect(returnTo?.startsWith("/admin/") ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login");
+    const loginPath = routeTenantSlug ? tenantPublicPath(routeTenantSlug, "/login") : "/login";
+    const safeReturnTo = originalPath.startsWith("/t/") ? originalPath : undefined;
+    redirect(safeReturnTo ? `${loginPath}?returnTo=${encodeURIComponent(safeReturnTo)}` : loginPath);
   }
 
-  const requestHeaders = await headers();
-  const isBranchRequest = Boolean(requestHeaders.get("x-menuclick-branch-slug"));
-  // La URL es la fuente real del contexto de sucursal: las rutas planas /admin/...
-  // se reescriben a su variante canónica /admin/s/{branchSlug}/... salvo que se
-  // esté operando en vista consolidada (0) o el path ya incluya la sucursal.
-  if (!isBranchRequest && context.activeBranchId && context.activeBranchId > 0) {
-    const activeBranch = context.branches.find((branch) => branch.id === context.activeBranchId);
-    if (activeBranch?.slug) {
-      const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
-      const remainder =
-        originalPath === "/admin" || originalPath === "/" || originalPath === ""
-          ? ""
-          : originalPath.startsWith("/admin")
-            ? originalPath.slice("/admin".length)
-            : "";
-      redirect(`/admin/s/${activeBranch.slug}${remainder}`);
-    }
+  const logicalPath = originalPath.startsWith("/t/")
+    ? (() => {
+        const marker = routeBranchSlug ? `/admin/s/${routeBranchSlug}` : "/admin";
+        const index = originalPath.indexOf(marker);
+        return index >= 0 ? `/admin${originalPath.slice(index + marker.length).split("?")[0]}` : "/admin";
+      })()
+    : originalPath.startsWith("/admin")
+      ? originalPath.split("?")[0]
+      : "/admin";
+
+  // Una vista consolidada solo existe para membresías autorizadas. Si el usuario
+  // no puede consolidar, lo llevamos a una sucursal explícita conservando sección.
+  if (
+    routeTenantSlug &&
+    !routeBranchSlug &&
+    adminScope === "consolidated" &&
+    isBranchAdminLogicalPath(logicalPath) &&
+    !context.allBranches
+  ) {
+    const firstBranch = context.branches.find((branch) => branch.active && branch.status === "active");
+    if (firstBranch) redirect(tenantBranchAdminPath(context.tenant.slug, firstBranch.slug, logicalPath));
+  }
+
+  // Compatibilidad con bookmarks/enlaces antiguos: /admin/... nunca queda como
+  // URL visible después de resolver la membresía.
+  if (!routeTenantSlug && originalPath.startsWith("/admin")) {
+    const branch = context.activeBranchId && context.activeBranchId > 0
+      ? context.branches.find((item) => item.id === context.activeBranchId)
+      : undefined;
+    redirect(adminHrefForContext(context.tenant.slug, logicalPath, branch?.slug));
   }
 
   return context;
@@ -314,8 +364,9 @@ export async function authorizeSuperAdmin() {
     .trim()
     .split(":")[0]
     .toLocaleLowerCase("es");
+  const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   const hostContext = await resolveHostKind(host);
-  if (hostContext.kind !== "platform") return null;
+  if (routeKind !== "platform-admin" && hostContext.kind !== "platform") return null;
   const user = await prisma.user.findFirst({
     where: {
       id: session.userId,
@@ -328,6 +379,8 @@ export async function authorizeSuperAdmin() {
 
 /** @summary Exige privilegios globales antes de abrir herramientas multiempresa. */
 export async function requireSuperAdmin() {
+  const session = await getSession();
+  if (!session) redirect("/platform/login");
   const context = await authorizeSuperAdmin();
   if (!context) redirect("/403");
   return context;

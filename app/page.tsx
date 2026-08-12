@@ -14,6 +14,8 @@ import { getDefaultTenant } from "@/lib/tenant";
 import { headers } from "next/headers";
 import { classifyHost } from "@/lib/domains";
 import { MenuClickHome } from "@/components/commercial/menuclick-home";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { requestRouteContext } from "@/lib/request-route-context";
 
 export const dynamic = "force-dynamic";
 
@@ -74,14 +76,15 @@ function formatOpeningHours(group: {
 export default async function LandingPage() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
-  if (classifyHost(host).kind === "platform") {
+  const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
+  if (routeKind.startsWith("platform") || (!routeKind && classifyHost(host).kind === "platform")) {
     const [plans, cases] = await Promise.all([
       prisma.plan.findMany({ where: { active: true }, include: { prices: { where: { active: true }, orderBy: { validFrom: "desc" }, take: 1 } }, orderBy: [{ type: "asc" }, { displayOrder: "asc" }], take: 4 }),
       prisma.successCase.findMany({ where: { isPublicCaseStudy: true, status: "published" }, include: { tenant: { select: { name: true } } }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] }),
     ]);
     return <MenuClickHome plans={plans.map((plan) => ({ id: plan.id, slug: plan.slug, name: plan.name, summary: plan.summary, highlighted: plan.highlighted, price: plan.prices[0] ? { amount: plan.prices[0].amount ? Number(plan.prices[0].amount) : null, currency: plan.prices[0].currency, billingPeriod: plan.prices[0].billingPeriod } : null }))} cases={cases.map((item) => ({ id: item.id, slug: item.slug, businessName: item.businessName, businessType: item.businessType, location: item.location, coverUrl: item.coverUrl, results: item.results, tenantName: item.tenant.name }))} />;
   }
-  const tenant = await getDefaultTenant();
+  const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
   const now = new Date();
   const primaryBranch = await prisma.branch.findFirst({
     where: { tenantId: tenant.id, active: true },
@@ -197,7 +200,7 @@ export default async function LandingPage() {
             quienes elegimos.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <Link className="btn" href="/carta">
+            <Link className="btn" href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/carta", route.branchSlug)}>
               Explorar la carta
             </Link>
             <a className="btn btn-secondary" href="#eventos">

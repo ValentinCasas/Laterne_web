@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 
 const steps = [
   [1, "Datos del negocio", "Dirección, contacto y redes", "/admin/negocio"],
@@ -28,6 +31,11 @@ export function OnboardingWizard({
   automaticCompleted: number[];
   publishedAt: string | null;
 }) {
+  const pathname = usePathname();
+  const route = parseCanonicalPath(pathname);
+  const stepHref = (href: string) => href === "/carta" && route.tenantSlug
+    ? publicHrefForContext(route.tenantSlug, href, route.branchSlug)
+    : adminHrefFromPathname(pathname, href);
   const [completed, setCompleted] = useState([...new Set([...initialCompleted, ...automaticCompleted])]);
   const percentage = completed.length * 10;
 
@@ -35,7 +43,7 @@ export function OnboardingWizard({
   async function toggle(step: number) {
     const next = completed.includes(step) ? completed.filter((item) => item !== step) : [...completed, step];
     setCompleted(next);
-    await fetch("/api/admin/onboarding", {
+    await scopedFetch("/api/admin/onboarding", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completedSteps: next, currentStep: step }),
@@ -44,7 +52,7 @@ export function OnboardingWizard({
 
   /** @summary Confirma la revisión final y marca el negocio como publicado en el asistente. */
   async function publish() {
-    const response = await fetch("/api/admin/onboarding", {
+    const response = await scopedFetch("/api/admin/onboarding", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completedSteps: completed, currentStep: 10, publish: true }),
@@ -111,7 +119,7 @@ export function OnboardingWizard({
                     )}
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">{description}</p>
-                  <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href={href}>
+                  <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href={stepHref(href)}>
                     Abrir configuración →
                   </Link>
                 </div>

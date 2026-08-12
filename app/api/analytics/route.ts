@@ -34,13 +34,15 @@ function validOrigin(request: Request) {
 }
 
 /** @summary Resuelve la sucursal activa cuando la ruta pertenece a una carta/sitio de sucursal. */
-async function branchIdFromPath(path: string | undefined) {
-  if (!path) return null;
-  const match = path.match(/^\/s\/([a-z0-9-]+)(?:\/|$)/i);
-  if (!match) return null;
+async function branchIdFromRequest(request: Request, path: string | undefined) {
+  const headerSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es");
+  const canonicalMatch = path?.match(/^\/t\/[^/]+\/s\/([a-z0-9-]+)(?:\/|$)/i);
+  const legacyMatch = path?.match(/^\/s\/([a-z0-9-]+)(?:\/|$)/i);
+  const branchSlug = headerSlug || canonicalMatch?.[1] || legacyMatch?.[1];
+  if (!branchSlug) return null;
   const tenant = await getDefaultTenant();
   const branch = await prisma.branch.findFirst({
-    where: { tenantId: tenant.id, slug: match[1], active: true },
+    where: { tenantId: tenant.id, slug: branchSlug, active: true },
     select: { id: true },
   });
   return branch?.id ?? null;
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
     where: { ipHash, occurredAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
   });
   if (count >= 300) return new NextResponse(null, { status: 204 });
-  const branchId = await branchIdFromPath(parsed.data.path);
+  const branchId = await branchIdFromRequest(request, parsed.data.path);
   await prisma.analyticsEvent.create({
     data: {
       tenantId: tenant.id,

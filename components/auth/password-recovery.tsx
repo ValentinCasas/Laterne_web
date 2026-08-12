@@ -1,11 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { scopedFetch } from "@/lib/client-routing";
+import { parseCanonicalPath, tenantPublicPath } from "@/lib/routes";
 
 /** @summary Gestiona la solicitud y el uso de enlaces privados para recuperar una cuenta administrativa. */
 export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
+  const pathname = usePathname();
+  const route = parseCanonicalPath(pathname);
+  const loginHref = route.surface === "platform-admin"
+    ? "/platform/login"
+    : route.tenantSlug
+      ? tenantPublicPath(route.tenantSlug, "/login")
+      : "/login";
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [message, setMessage] = useState("");
@@ -18,7 +27,7 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
     setLoading(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/password-reset", {
+    const response = await scopedFetch("/api/auth/password-reset", {
       method: reset ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
@@ -84,7 +93,7 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
       <button className="btn mt-6 w-full" disabled={loading || (reset && !token)}>
         {loading ? "Procesando…" : reset ? "Guardar contraseña" : "Enviar instrucciones"}
       </button>
-      <Link className="mt-5 block text-center text-sm text-pink-300" href="/login">
+      <Link className="mt-5 block text-center text-sm text-pink-300" href={loginHref}>
         Volver al acceso
       </Link>
     </form>

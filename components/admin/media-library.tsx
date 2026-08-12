@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type MediaAssetData = {
   id: number;
@@ -59,7 +60,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
       inputAttributes: { maxlength: "300" },
     });
     if (!result.isConfirmed) return;
-    const response = await fetch(`/api/admin/media/${asset.id}`, {
+    const response = await scopedFetch(`/api/admin/media/${asset.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ altText: result.value }),
@@ -96,7 +97,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
       color: "#fafafa",
     });
     if (!selection.isConfirmed) return;
-    const response = await fetch(`/api/admin/media/${asset.id}/crop`, {
+    const response = await scopedFetch(`/api/admin/media/${asset.id}/crop`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ preset: selection.value }),
@@ -134,7 +135,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
       color: "#fafafa",
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch(`/api/admin/media/${asset.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/media/${asset.id}`, { method: "DELETE" });
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) {
       await Swal.fire({

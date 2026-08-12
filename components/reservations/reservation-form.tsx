@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/components/analytics/tracker";
+import { scopedFetch } from "@/lib/client-routing";
 
 type Availability = {
   slots: Array<{ time: string; remaining: number }>;
@@ -43,7 +44,7 @@ export function ReservationForm({
     if (!date) return;
     let active = true;
 
-    fetch(`/api/reservations?date=${encodeURIComponent(date)}${branchSlug ? `&branch=${encodeURIComponent(branchSlug)}` : ""}`)
+    scopedFetch(`/api/reservations?date=${encodeURIComponent(date)}${branchSlug ? `&branch=${encodeURIComponent(branchSlug)}` : ""}`)
       .then(async (response) => {
         const body = (await response.json()) as Availability;
         if (!response.ok) throw new Error(body.error ?? "No se pudo consultar disponibilidad");
@@ -94,7 +95,7 @@ export function ReservationForm({
     };
 
     try {
-      const response = await fetch("/api/reservations", {
+      const response = await scopedFetch("/api/reservations", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),

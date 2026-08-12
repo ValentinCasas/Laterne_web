@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type AdminOrderItem = {
   id: number;
@@ -32,8 +33,6 @@ export type AdminOrder = {
   table: { name: string; code: string } | null;
   items: AdminOrderItem[];
 };
-type Branch = { id: number; name: string; active: boolean; isPrimary: boolean };
-
 const statusStyle: Record<string, string> = {
   received: "border-sky-500/30 bg-sky-500/5",
   confirmed: "border-indigo-500/30 bg-indigo-500/5",
@@ -55,7 +54,7 @@ function orderTypeLabel(type: string) {
 }
 
 /** @summary Gestiona pedidos en columnas, permite filtrarlos y avanzar su estado sin recargar. */
-export function OrderBoard({ initialOrders, branches, selectedBranchId }: { initialOrders: AdminOrder[]; branches: Branch[]; selectedBranchId: number | null }) {
+export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const [orders, setOrders] = useState(initialOrders);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AdminOrder | null>(null);
@@ -72,7 +71,7 @@ export function OrderBoard({ initialOrders, branches, selectedBranchId }: { init
   /** @summary Solicita un cambio de estado y sincroniza el resultado con todas las vistas del tablero. */
   async function updateStatus(order: AdminOrder, status: OrderStatus) {
     if (order.status === status) return;
-    const response = await fetch(`/api/admin/orders/${order.id}`, {
+    const response = await scopedFetch(`/api/admin/orders/${order.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -100,10 +99,10 @@ export function OrderBoard({ initialOrders, branches, selectedBranchId }: { init
         description="Cada pedido queda almacenado con precios verificados e historial de estados."
         section="pedidos"
         actions={
-          <div className="grid w-full gap-3 sm:grid-cols-[220px_minmax(240px,1fr)]">
-            <label><span className="sr-only">Sucursal</span><select className="input" value={selectedBranchId ?? "all"} onChange={(event) => { window.location.href = event.target.value === "all" ? "/admin/pedidos" : `/admin/pedidos?branchId=${event.target.value}`; }}><option value="all">Todas las sucursales</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label>
-            <label><span className="sr-only">Buscar pedidos</span><input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar referencia, cliente o mesa" type="search" /></label>
-          </div>
+          <label className="block w-full min-w-[240px]">
+            <span className="sr-only">Buscar pedidos</span>
+            <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar referencia, cliente o mesa" type="search" />
+          </label>
         }
       />
 

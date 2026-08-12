@@ -3,11 +3,12 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { scopedFetch } from "@/lib/client-routing";
 
 type BranchOption = { id: number; name: string; slug: string; isPrimary: boolean };
 
 /** @summary Gestiona el formulario de acceso y redirige al panel correcto con credenciales válidas. */
-export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenantSlug }: { redirectTo?: string; initialTenantId?: string; initialTenantSlug?: string }) {
+export function LoginForm({ redirectTo = "", initialTenantId, initialTenantSlug, recoveryHref = "/recuperar-acceso" }: { redirectTo?: string; initialTenantId?: string; initialTenantSlug?: string; recoveryHref?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [tenantOptions, setTenantOptions] = useState<Array<{ id: number; name: string; slug: string }>>([]);
@@ -29,7 +30,7 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
       ...(selectedBranchId ? { branchId: Number(selectedBranchId) } : {}),
       ...extra,
     };
-    const response = await fetch("/api/auth/login", {
+    const response = await scopedFetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -65,15 +66,16 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
       window.location.assign(success.handoffUrl);
       return;
     }
-    if (redirectTo.startsWith("/admin/") ) {
-      window.location.assign(redirectTo);
+    const destination = redirectTo || success.adminUrl;
+    if (destination) {
+      window.location.assign(destination);
       return;
     }
     if (success.adminUrl) {
       window.location.assign(success.adminUrl);
       return;
     }
-    router.push(redirectTo as Route);
+    router.push("/" as Route);
     router.refresh();
   }
 
@@ -172,7 +174,7 @@ export function LoginForm({ redirectTo = "/admin", initialTenantId, initialTenan
       <button className="btn w-full" disabled={pending}>
         {pending ? "Ingresando…" : "Ingresar"}
       </button>
-      <Link className="block text-center text-sm text-pink-300 hover:underline" href="/recuperar-acceso">
+      <Link className="block text-center text-sm text-pink-300 hover:underline" href={recoveryHref as Route}>
         ¿Olvidaste tu contraseña?
       </Link>
     </form>

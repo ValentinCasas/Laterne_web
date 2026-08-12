@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type NotificationSettingsData = {
   panel: boolean;
@@ -35,7 +36,7 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/notifications/settings", {
+    const response = await scopedFetch("/api/admin/notifications/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

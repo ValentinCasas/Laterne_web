@@ -4,6 +4,7 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { activeBranchWhere, branchProductWhere } from "@/lib/branch";
+import { adminHrefForContext } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,10 @@ const statStyles = [
 export default async function Dashboard() {
   const context = await requirePermission("admin.access");
   const tenantId = context.tenant.id;
+  const activeBranch = context.activeBranchId && context.activeBranchId > 0
+    ? context.branches.find((branch) => branch.id === context.activeBranchId)
+    : undefined;
+  const adminHref = (href: string) => adminHrefForContext(context.tenant.slug, href, activeBranch?.slug) as Route;
   const branchFilter = activeBranchWhere(tenantId, context.activeBranchId);
   const productFilter = branchProductWhere(tenantId, context.activeBranchId);
   const [
@@ -131,10 +136,10 @@ export default async function Dashboard() {
         section="resumen"
         actions={
           <>
-            <Link className="btn" href="/admin/productos">
+            <Link className="btn" href={adminHref("/admin/productos")}>
               Agregar producto
             </Link>
-            <Link className="btn btn-secondary" href="/admin/eventos">
+            <Link className="btn btn-secondary" href={adminHref("/admin/eventos")}>
               Nuevo evento
             </Link>
           </>
@@ -145,7 +150,7 @@ export default async function Dashboard() {
          {overviewStats.map((stat, index) => (
           <Link
             className={`group rounded-3xl border border-white/10 bg-gradient-to-br p-5 transition hover:-translate-y-1 hover:border-white/20 ${statStyles[index]}`}
-             href={stat.href as Route}
+             href={adminHref(stat.href)}
             key={stat.label}
           >
             <div className="flex items-start justify-between gap-3">
@@ -166,7 +171,7 @@ export default async function Dashboard() {
               </p>
               <h2 className="mt-1 text-2xl font-black">Qué conviene revisar ahora</h2>
             </div>
-            <Link className="text-sm font-bold text-pink-300" href="/admin/notificaciones">
+            <Link className="text-sm font-bold text-pink-300" href={adminHref("/admin/notificaciones")}>
               Centro de actividad
             </Link>
           </div>
@@ -174,7 +179,7 @@ export default async function Dashboard() {
             {operationAlerts.map((alert) => (
               <Link
                 className="rounded-2xl bg-white/[.04] p-4 transition hover:bg-white/[.07]"
-                href={alert.href as Route}
+                href={adminHref(alert.href)}
                 key={alert.label}
               >
                 <strong className="text-3xl">{alert.value}</strong>
@@ -185,7 +190,7 @@ export default async function Dashboard() {
         </section>
       )}
       {subscription && subscription.status !== "ACTIVE" && (
-        <Link className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-amber-100" href="/admin/soporte">
+        <Link className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-amber-100" href={adminHref("/admin/soporte")}>
           <strong>Estado de suscripción: {subscription.status}</strong>
           <span className="ml-2 text-sm text-amber-200">Revisá la información de tu cuenta.</span>
         </Link>
@@ -198,7 +203,7 @@ export default async function Dashboard() {
               <p className="text-xs font-black uppercase tracking-widest text-violet-300">Agenda</p>
               <h2 className="mt-1 text-2xl font-black">Eventos recientes</h2>
             </div>
-            <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href="/admin/eventos">
+            <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href={adminHref("/admin/eventos")}>
               Ver todos
             </Link>
           </div>
@@ -223,7 +228,7 @@ export default async function Dashboard() {
               <p className="text-xs font-black uppercase tracking-widest text-emerald-300">Comunidad</p>
               <h2 className="mt-1 text-2xl font-black">Últimas opiniones</h2>
             </div>
-            <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href="/admin/testimonios">
+            <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href={adminHref("/admin/testimonios")}>
               Moderar
             </Link>
           </div>

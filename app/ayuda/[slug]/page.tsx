@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { requestRouteContext } from "@/lib/request-route-context";
 
 export const dynamic = "force-dynamic";
 
 /** @summary Muestra el contenido completo de una guía del centro de ayuda. */
 export default async function HelpArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const tenant = await getDefaultTenant();
+  const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
   const article = await prisma.helpArticle.findUnique({
     where: { tenantId_slug: { tenantId: tenant.id, slug } },
   });
@@ -22,7 +24,7 @@ export default async function HelpArticlePage({ params }: { params: Promise<{ sl
       <article className="card mt-8 max-w-3xl whitespace-pre-wrap p-6 leading-relaxed text-zinc-300 sm:p-8">
         {article.content}
       </article>
-      <Link className="btn btn-secondary mt-8" href="/ayuda">
+      <Link className="btn btn-secondary mt-8" href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/ayuda", route.branchSlug)}>
         Volver al centro de ayuda
       </Link>
     </main>

@@ -81,7 +81,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Indicá una fecha válida" }, { status: 400 });
   }
   const tenant = await getDefaultTenant();
-  const requestedBranchSlug = new URL(request.url).searchParams.get("branch") ?? "";
+  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") ?? "";
+  const requestedBranchSlug = routeBranchSlug || new URL(request.url).searchParams.get("branch") || "";
   const timeZone = tenant.timeZone ?? defaultReservationTimeZone;
   const offset = zoneOffset(timeZone);
   const selectedDate = new Date(`${date}T00:00:00${offset}`);
@@ -161,16 +162,21 @@ export async function POST(request: Request) {
   }
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
   const tenant = await getDefaultTenant();
+  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || null;
+  if (routeBranchSlug && parsed.data.branchSlug && parsed.data.branchSlug.toLocaleLowerCase("es") !== routeBranchSlug) {
+    return NextResponse.json({ error: "La sucursal de la reserva no coincide con la URL" }, { status: 409 });
+  }
+  const effectiveBranchSlug = routeBranchSlug ?? parsed.data.branchSlug ?? null;
   const branch =
-    parsed.data.branchSlug
-      ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: parsed.data.branchSlug, active: true } })
+    effectiveBranchSlug
+      ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: effectiveBranchSlug, active: true } })
       :
     (await prisma.branch.findFirst({
       where: { tenantId: tenant.id, active: true },
       orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
       select: { id: true },
     })) ?? null;
-  if (parsed.data.branchSlug && !branch) return NextResponse.json({ error: "La sucursal no está disponible" }, { status: 409 });
+  if (effectiveBranchSlug && !branch) return NextResponse.json({ error: "La sucursal no está disponible" }, { status: 404 });
   if (branch && !(await isBranchOperational(tenant.id, branch.id))) return NextResponse.json({ error: "La sucursal no está operativa" }, { status: 409 });
   const settings = await prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } });
   if (!settings?.enabled) {
@@ -233,6 +239,7 @@ export async function POST(request: Request) {
       const occupied = await transaction.reservation.aggregate({
         where: {
           tenantId: tenant.id,
+          branchId: branch?.id ?? null,
           reservationDate: selectedDate,
           reservationTime: reservationTime(parsed.data.time),
           status: { in: ["pending", "confirmed"] },

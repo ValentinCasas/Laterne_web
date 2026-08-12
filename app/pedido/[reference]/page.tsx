@@ -4,6 +4,8 @@ import { asOrderType, orderFlow } from "@/lib/order-status";
 import { orderStatusLabel, orderTokenHash, whatsappPhone, type OrderStatus } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { requestRouteContext } from "@/lib/request-route-context";
 
 type OrderTrackingProps = {
   params: Promise<{ reference: string }>;
@@ -19,7 +21,7 @@ function formatPrice(value: number, currency: string) {
 export default async function OrderTrackingPage({ params, searchParams }: OrderTrackingProps) {
   const [{ reference }, { token }] = await Promise.all([params, searchParams]);
   if (!token) notFound();
-  const tenant = await getDefaultTenant();
+  const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
   const [order, business] = await Promise.all([
     prisma.customerOrder.findFirst({
       where: { tenantId: tenant.id, reference, publicTokenHash: orderTokenHash(token) },
@@ -28,6 +30,9 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
     prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
   ]);
   if (!order) notFound();
+  if (route.branchSlug && order.branch?.slug !== route.branchSlug) notFound();
+  const publicHref = (href: string) =>
+    publicHrefForVisiblePath(route.originalPath, tenant.slug, href, order.branch?.slug ?? route.branchSlug);
   const flow = orderFlow(asOrderType(order.orderType));
   const currentIndex = flow.indexOf(order.status as OrderStatus);
   const message = `Hola, consulto por el pedido ${order.reference}.`;
@@ -140,7 +145,7 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
                   Consultar por WhatsApp
                 </a>
               )}
-              <Link className="btn btn-secondary w-full" href="/carta">
+              <Link className="btn btn-secondary w-full" href={publicHref("/carta")}>
                 Volver a la carta
               </Link>
             </div>

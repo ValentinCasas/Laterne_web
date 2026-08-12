@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type LoyaltyCustomerData = {
   id: number;
@@ -47,7 +48,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
       }),
     });
     if (!result.isConfirmed || !result.value) return;
-    const response = await fetch(`/api/admin/customers/${customer.id}`, {
+    const response = await scopedFetch(`/api/admin/customers/${customer.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(result.value),

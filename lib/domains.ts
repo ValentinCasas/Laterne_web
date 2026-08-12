@@ -1,3 +1,5 @@
+import { tenantAdminPath, tenantPublicPath } from "./routes";
+
 const normalizeConfiguredDomain = (value: string | undefined) =>
   (value ?? "").trim().toLocaleLowerCase("es").replace(/\.$/, "");
 
@@ -73,30 +75,41 @@ export function tenantHost(slug: string) {
   return `${slug.toLocaleLowerCase("es")}.${ROOT_DOMAIN_NAME}`;
 }
 
-/** @summary URL pública de un negocio usando HTTP local, HTTPS en producción y dominio propio cuando corresponde. */
-export function publicTenantUrl(slug: string, customDomain?: string | null) {
-  const host = !isDevelopmentEnvironment && customDomain?.trim() ? customDomain.trim() : tenantHost(slug);
+/** @summary Origen público principal de MenuClick para el entorno activo. */
+export function publicRootUrl() {
+  const host = isDevelopmentEnvironment ? "localhost" : (ROOT_DOMAIN_NAME || "localhost");
   const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
   return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}`;
 }
 
-/** @summary Construye el acceso administrativo del negocio en el host reservado de la aplicación. */
-export function adminLoginUrl(tenantId?: number, tenantSlug?: string) {
-  const host = APP_HOST || "localhost";
+/** @summary Origen administrativo fijo de MenuClick. El tenant vive en el path, no en el host. */
+export function adminRootUrl() {
+  const host = isDevelopmentEnvironment ? "localhost" : (APP_HOST || ROOT_DOMAIN_NAME);
   const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
-  const query = tenantId
-    ? `?tenantId=${encodeURIComponent(String(tenantId))}`
-    : tenantSlug
-      ? `?tenantSlug=${encodeURIComponent(tenantSlug)}`
-      : "";
-  return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}/login${query}`;
+  return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}`;
 }
 
-/** @summary URL canónica del host administrativo aislado de un tenant. */
-export function tenantAdminUrl(tenantSlug: string, path = "/login") {
-  const host = `${tenantSlug.toLocaleLowerCase("es")}.${APP_HOST || "localhost"}`;
-  const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
-  return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}${path.startsWith("/") ? path : `/${path}`}`;
+/** @summary URL pública canónica de un negocio: `/t/{tenant}`; dominio propio solo fuera de development. */
+export function publicTenantUrl(slug: string, customDomain?: string | null) {
+  if (!isDevelopmentEnvironment && customDomain?.trim()) {
+    return `https://${customDomain.trim().replace(/\/$/, "")}`;
+  }
+  return `${publicRootUrl()}${tenantPublicPath(slug)}`;
+}
+
+/** @summary Acceso de login tenant-aware sin querystrings de identidad. */
+export function adminLoginUrl(_tenantId?: number, tenantSlug?: string) {
+  if (tenantSlug) return `${adminRootUrl()}${tenantAdminPath(tenantSlug).replace(/\/admin$/, "/login")}`;
+  return `${adminRootUrl()}/login`;
+}
+
+/** @summary URL canónica administrativa: host fijo + tenant explícito en el path. */
+export function tenantAdminUrl(tenantSlug: string, path = "/admin") {
+  const logical = path.startsWith("/") ? path : `/${path}`;
+  if (logical === "/login" || logical.startsWith("/login?")) {
+    return `${adminRootUrl()}${tenantPublicPath(tenantSlug, logical)}`;
+  }
+  return `${adminRootUrl()}${tenantAdminPath(tenantSlug, logical)}`;
 }
 
 /** @summary Determina si el host corresponde al panel de control de la plataforma. */

@@ -252,13 +252,15 @@ export async function resolveOperatingBranchId(tenantId: number): Promise<number
   return branch?.id ?? null;
 }
 
-/** @summary Convierte una selección 0/activa (consolidada) en el branch efectivo para crear recursos branch-directos. */
+/**
+ * @summary Devuelve únicamente la sucursal explícita de la URL.
+ * Una vista consolidada nunca inventa/fallbackea a Principal para una escritura.
+ */
 export async function resolveEffectiveBranchId(
-  tenantId: number,
+  _tenantId: number,
   activeBranchId: number | undefined | null,
 ): Promise<number | null> {
-  if (activeBranchId && activeBranchId > 0) return activeBranchId;
-  return resolveOperatingBranchId(tenantId);
+  return activeBranchId && activeBranchId > 0 ? activeBranchId : null;
 }
 
 /** @summary Crea (si falta) la licencia DRAFT inicial de una sucursal recién creada. */

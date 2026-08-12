@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { readBrowserText, writeBrowserText } from "@/lib/browser-compat";
+import { parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 
 /** @summary Solicita una preferencia explícita antes de habilitar medición anónima no esencial. */
 export function CookieBanner() {
+  const pathname = usePathname();
+  const route = parseCanonicalPath(pathname);
+  const legalHref = route.tenantSlug
+    ? publicHrefForContext(route.tenantSlug, "/legal", route.branchSlug)
+    : "/legal";
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setVisible(!readBrowserText("laterne_analytics_consent")), 0);
@@ -31,7 +38,7 @@ export function CookieBanner() {
           <p className="mt-1 text-sm text-zinc-400">
             Usamos almacenamiento esencial para carrito y sesión. La medición anónima es opcional.
           </p>
-          <Link className="mt-1 inline-block text-xs text-pink-300 underline" href="/legal">
+          <Link className="mt-1 inline-block text-xs text-pink-300 underline" href={legalHref}>
             Ver políticas
           </Link>
         </div>

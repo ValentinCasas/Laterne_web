@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type DiningTableData = {
   id: number;
@@ -82,7 +83,7 @@ export function TableManager({
       active: form.get("active") === "on",
       branchId: Number(form.get("branchId")),
     };
-    const response = await fetch(editing ? `/api/admin/tables/${editing.id}` : "/api/admin/tables", {
+    const response = await scopedFetch(editing ? `/api/admin/tables/${editing.id}` : "/api/admin/tables", {
       method: editing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -121,7 +122,7 @@ export function TableManager({
       color: "#fafafa",
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch(`/api/admin/tables/${table.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/tables/${table.id}`, { method: "DELETE" });
     const result = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) {
       await Swal.fire({

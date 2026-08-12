@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { readBrowserJson, readBrowserText, removeBrowserText, writeBrowserJson } from "@/lib/browser-compat";
+import { scopedFetch } from "@/lib/client-routing";
+import { publicHrefForVisiblePath } from "@/lib/routes";
 
 type StoredCartItem = {
   id: number;
@@ -57,14 +59,17 @@ export function CheckoutForm({
   branches,
   currency,
   locale,
+  tenantSlug,
   fixedBranchSlug,
 }: {
   branches: BranchOption[];
   currency: string;
   locale: string;
+  tenantSlug: string;
   fixedBranchSlug?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<StoredCartItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -151,7 +156,7 @@ export function CheckoutForm({
         notes: item.notes,
       })),
     };
-    const response = await fetch("/api/orders", {
+    const response = await scopedFetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -174,7 +179,7 @@ export function CheckoutForm({
       return;
     }
     removeBrowserText("laterne_carrito");
-    router.push(`/pedido/${result.reference}?token=${encodeURIComponent(result.token)}`);
+    router.push(`${publicHrefForVisiblePath(pathname, tenantSlug, `/pedido/${result.reference}`, fixedBranchSlug)}?token=${encodeURIComponent(result.token)}`);
   }
 
   if (!ready) return <div className="card p-10 text-center text-zinc-400">Preparando tu pedido…</div>;

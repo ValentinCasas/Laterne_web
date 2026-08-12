@@ -1,9 +1,10 @@
 import bcrypt from "bcryptjs";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createSession } from "@/lib/auth";
-import { classifyHost, tenantAdminUrl } from "@/lib/domains";
+import { createSession, PLATFORM_SESSION_COOKIE, tenantSessionCookieName } from "@/lib/auth";
+import { classifyHost } from "@/lib/domains";
+import { platformAdminPath, tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 
 const credentials = z.object({
@@ -105,21 +106,29 @@ export async function POST(request: Request) {
     user.isSuperAdmin ||
     (user.platformRole && ["superadmin", "admin", "support", "sales"].includes(user.platformRole)),
   );
+  const routeKind = request.headers.get("x-menuclick-route-kind") ?? "";
+  const routeTenantSlug = request.headers.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
   const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
     .split(",")[0]
     .trim()
     .split(":")[0];
   const hostContext = classifyHost(host);
-  const platformContext = hostContext.kind === "platform";
+  const platformContext = routeKind === "platform-admin" || (!routeKind && hostContext.kind === "platform");
+
   let membership = platformContext ? undefined : user.memberships[0];
-  const requestedTenantSlug = hostContext.kind === "app" && hostContext.slug ? hostContext.slug : parsed.data.tenantSlug;
+  const requestedTenantSlug = routeTenantSlug || (hostContext.kind === "app" && hostContext.slug ? hostContext.slug : parsed.data.tenantSlug);
   if (!platformContext && (parsed.data.tenantId || requestedTenantSlug)) {
     membership = parsed.data.tenantId
-      ? user.memberships.find((item) => item.tenantId === parsed.data.tenantId && (!requestedTenantSlug || item.tenant.slug === requestedTenantSlug))
+      ? user.memberships.find(
+          (item) =>
+            item.tenantId === parsed.data.tenantId &&
+            (!requestedTenantSlug || item.tenant.slug === requestedTenantSlug),
+        )
       : user.memberships.find((item) => item.tenant.slug === requestedTenantSlug);
     if (!membership)
       return NextResponse.json({ error: "El negocio seleccionado no está disponible" }, { status: 403 });
   }
+
   if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId && !requestedTenantSlug) {
     return NextResponse.json(
       {
@@ -134,10 +143,11 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   }
-  if ((platformContext && !isPlatformStaff) || (!platformContext && !membership))
-    return NextResponse.json({ error: "Tu usuario no tiene un negocio activo" }, { status: 403 });
 
-  let branchId: number | undefined;
+  if ((platformContext && !isPlatformStaff) || (!platformContext && !membership)) {
+    return NextResponse.json({ error: "Tu usuario no tiene acceso a esta experiencia" }, { status: 403 });
+  }
+
   let branchSlug: string | undefined;
   if (!platformContext && membership) {
     const access = membership.branchAccess.filter((item) => item.branch?.active);
@@ -146,15 +156,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "La sucursal elegida no está disponible" }, { status: 403 });
     }
     const selected = picked ?? (access.length === 1 ? access[0] : null);
-    if (parsed.data.branchId === 0 && membership.allBranches) {
-      branchId = 0;
-    } else if (parsed.data.branchId === 0 && !membership.allBranches) {
+    if (parsed.data.branchId === 0 && !membership.allBranches) {
       return NextResponse.json({ error: "No tenés acceso consolidado a varias sucursales" }, { status: 403 });
-    } else if (selected) {
-      branchId = selected.branchId;
-      branchSlug = selected.branch?.slug ?? undefined;
     }
-    if (access.length > 1 && branchId === undefined) {
+    if (selected) branchSlug = selected.branch?.slug ?? undefined;
+    if (access.length > 1 && parsed.data.branchId === undefined) {
       return NextResponse.json(
         {
           error: "Seleccioná la sucursal",
@@ -172,40 +178,42 @@ export async function POST(request: Request) {
     }
   }
 
-  if (!platformContext && hostContext.kind === "app" && !hostContext.slug && membership) {
-    const rawHandoff = randomBytes(32).toString("base64url");
-    const tokenHash = createHash("sha256").update(rawHandoff).digest("hex");
-    await prisma.authHandoff.create({ data: { tokenHash, userId: user.id, membershipId: membership.id, branchId: branchId ?? null, expiresAt: new Date(Date.now() + 5 * 60 * 1000) } });
-    return NextResponse.json({ ok: true, handoffUrl: tenantAdminUrl(membership.tenant.slug, `/login?handoff=${encodeURIComponent(rawHandoff)}`) });
-  }
+  const token = await createSession({
+    userId: user.id,
+    role: user.role,
+    ...(platformContext
+      ? {}
+      : membership
+        ? {
+            tenantId: membership.tenantId,
+            membershipId: membership.id,
+            roleKey: membership.role.key,
+          }
+        : {}),
+    context: platformContext ? "platform" : "tenant",
+  });
 
-  const adminPath = branchSlug ? `/admin/s/${encodeURIComponent(branchSlug)}` : "/admin";
-  const response = NextResponse.json({ ok: true, adminUrl: membership ? tenantAdminUrl(membership.tenant.slug, adminPath) : undefined });
-  response.cookies.set(
-    "laterne_session",
-    await createSession({
-      userId: user.id,
-      role: user.role,
-      ...(platformContext
-        ? {}
-        : membership
-          ? {
-              tenantId: membership.tenantId,
-              membershipId: membership.id,
-              roleKey: membership.role.key,
-              branchId,
-              branchSlug,
-            }
-          : {}),
-      context: platformContext ? "platform" : "tenant",
-    }),
-    {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 8,
-      path: "/",
-    },
-  );
+  const tenantSlug = membership?.tenant.slug;
+  const adminUrl = platformContext
+    ? platformAdminPath()
+    : tenantSlug
+      ? branchSlug
+        ? tenantBranchAdminPath(tenantSlug, branchSlug)
+        : tenantAdminPath(tenantSlug)
+      : undefined;
+  const response = NextResponse.json({ ok: true, adminUrl });
+  const cookieName = platformContext
+    ? PLATFORM_SESSION_COOKIE
+    : tenantSlug
+      ? tenantSessionCookieName(tenantSlug)
+      : "laterne_session";
+  response.cookies.set(cookieName, token, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 8,
+    path: "/",
+  });
   return response;
+
 }

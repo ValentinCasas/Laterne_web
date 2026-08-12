@@ -8,6 +8,7 @@ import { AssetPicker } from "@/components/admin/asset-picker";
 import { ImagePicker } from "@/components/admin/image-picker";
 import { LocationPicker } from "@/components/admin/location-picker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
+import { scopedFetch } from "@/lib/client-routing";
 import {
   readBrowserJson,
   readBrowserText,
@@ -443,7 +444,7 @@ export function ResourceManager({
     const upload = new FormData();
     upload.set("resource", resource);
     upload.set("file", file);
-    const response = await fetch("/api/admin/upload", { method: "POST", body: upload });
+    const response = await scopedFetch("/api/admin/upload", { method: "POST", body: upload });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error ?? "No se pudo cargar la imagen");
     return String(body.filename);
@@ -457,7 +458,7 @@ export function ResourceManager({
     const upload = new FormData();
     upload.set("resource", "product-model");
     upload.set("file", file);
-    const response = await fetch("/api/admin/upload", { method: "POST", body: upload });
+    const response = await scopedFetch("/api/admin/upload", { method: "POST", body: upload });
     const body = (await response.json()) as { url?: string; error?: string };
     if (!response.ok || !body.url) throw new Error(body.error ?? "No se pudo cargar el modelo");
     return body.url;
@@ -486,7 +487,7 @@ export function ResourceManager({
       }
 
       const id = editing?.id;
-      const response = await fetch(`/api/admin/${resource}${id ? `/${id}` : ""}`, {
+      const response = await scopedFetch(`/api/admin/${resource}${id ? `/${id}` : ""}`, {
         method: id ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -538,7 +539,7 @@ export function ResourceManager({
     });
     if (!confirmation.isConfirmed) return;
 
-    const response = await fetch(`/api/admin/${resource}/${item.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/${resource}/${item.id}`, { method: "DELETE" });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       return Swal.fire({
@@ -576,7 +577,7 @@ export function ResourceManager({
     if ("businessName" in item) payload.businessName = `${String(item.businessName)} · copia`;
     if ("title" in item) payload.title = `${String(item.title)} · copia`;
     if ("slug" in payload) payload.slug = "";
-    const response = await fetch(`/api/admin/${resource}`, {
+    const response = await scopedFetch(`/api/admin/${resource}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -612,7 +613,7 @@ export function ResourceManager({
     if (!confirmation.isConfirmed) return;
     const removed = new Set<number>();
     for (const id of selectedIds) {
-      const response = await fetch(`/api/admin/${resource}/${id}`, { method: "DELETE" });
+      const response = await scopedFetch(`/api/admin/${resource}/${id}`, { method: "DELETE" });
       if (response.ok) removed.add(id);
     }
     setItems((current) => current.filter((item) => !removed.has(item.id)));

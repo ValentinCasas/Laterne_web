@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type SupportTicketData = {
   id: number;
@@ -54,7 +55,7 @@ export function SupportBoard({ initialTickets }: { initialTickets: SupportTicket
       }),
     });
     if (!result.isConfirmed || !result.value) return;
-    const response = await fetch(`/api/admin/support/${ticket.id}`, {
+    const response = await scopedFetch(`/api/admin/support/${ticket.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(result.value),

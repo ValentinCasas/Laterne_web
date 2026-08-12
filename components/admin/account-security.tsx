@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type SessionData = {
   id: number;
@@ -16,7 +17,7 @@ export function AccountSecurity() {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [currentId, setCurrentId] = useState<number | null>(null);
   useEffect(() => {
-    fetch("/api/auth/sessions")
+    scopedFetch("/api/auth/sessions")
       .then((response) => response.json())
       .then((result: { sessions?: SessionData[]; currentId?: number }) => {
         setSessions(result.sessions ?? []);
@@ -37,7 +38,7 @@ export function AccountSecurity() {
       });
       return;
     }
-    const response = await fetch("/api/auth/account", {
+    const response = await scopedFetch("/api/auth/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -58,7 +59,7 @@ export function AccountSecurity() {
 
   /** @summary Cierra una sesión remota y la retira de la lista visible. */
   async function revoke(id: number) {
-    const response = await fetch("/api/auth/sessions", {
+    const response = await scopedFetch("/api/auth/sessions", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),

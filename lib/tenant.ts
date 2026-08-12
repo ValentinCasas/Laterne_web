@@ -55,16 +55,29 @@ export const resolveTenantByHost = cache(async (host: string) => {
 /** @summary Devuelve el negocio del host solicitado sin permitir coincidencias por defecto. */
 export const getDefaultTenant = cache(async () => {
   const requestHeaders = await headers();
-  const host = requestHost(requestHeaders);
+  const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  if (routeTenantSlug) {
+    const routedTenant = await prisma.tenant.findFirst({
+      where: { slug: routeTenantSlug, ...publicTenantWhere() },
+    });
+    if (routedTenant) return routedTenant;
+    throw new UnknownHostError(`tenant:${routeTenantSlug}`);
+  }
 
+  const host = requestHost(requestHeaders);
   const resolved = await resolveTenantByHost(host);
   if (resolved) return resolved;
 
+  // Compatibilidad temporal para rutas legacy durante desarrollo. Las rutas nuevas
+  // siempre llevan /t/{tenant} y no dependen de DEV_TENANT_SLUG.
   if (process.env.NODE_ENV === "development" && isLocalDevelopmentHost(host) && DEV_TENANT_SLUG) {
-    const devTenant = await prisma.tenant.findFirst({
-      where: { slug: DEV_TENANT_SLUG, ...publicTenantWhere() },
-    });
-    if (devTenant) return devTenant;
+    const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
+    if (originalPath && originalPath !== "/") {
+      const devTenant = await prisma.tenant.findFirst({
+        where: { slug: DEV_TENANT_SLUG, ...publicTenantWhere() },
+      });
+      if (devTenant) return devTenant;
+    }
   }
 
   throw new UnknownHostError(host);

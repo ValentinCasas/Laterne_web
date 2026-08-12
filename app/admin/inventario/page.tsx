@@ -5,25 +5,22 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export async function generateMetadata(): Promise<Metadata> { const context = await requirePermission("product.manage"); return { title: `${context.tenant.name} | Inventario` }; }
-
-/** @summary Carga productos, sucursales, existencias y últimos movimientos del negocio autorizado. */
-export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ branchId?: string }> }) {
+export async function generateMetadata(): Promise<Metadata> {
   const context = await requirePermission("product.manage");
-  const requestedBranchId = Number((await searchParams).branchId);
-  const fallbackBranchId =
-    context.activeBranchId && context.activeBranchId > 0
-      ? context.activeBranchId
-      : context.branches.find((branch) => branch.active)?.id ?? 0;
-  const selectedBranchId = context.branches.some((branch) => branch.id === requestedBranchId)
-    ? requestedBranchId
-    : fallbackBranchId;
-  const stockWhere =
-    selectedBranchId > 0 ? { tenantId: context.tenant.id, branchId: selectedBranchId } : { tenantId: context.tenant.id };
-  const movementWhere =
-    selectedBranchId > 0
-      ? { tenantId: context.tenant.id, stock: { branchId: selectedBranchId } }
-      : { tenantId: context.tenant.id };
+  return { title: `${context.tenant.name} | Inventario` };
+}
+
+/** @summary Carga inventario usando exclusivamente la sucursal explícita de la URL o el scope consolidado. */
+export default async function InventoryPage() {
+  const context = await requirePermission("product.manage");
+  const selectedBranchId = context.activeBranchId > 0 ? context.activeBranchId : 0;
+  const stockWhere = selectedBranchId
+    ? { tenantId: context.tenant.id, branchId: selectedBranchId }
+    : { tenantId: context.tenant.id };
+  const movementWhere = selectedBranchId
+    ? { tenantId: context.tenant.id, stock: { branchId: selectedBranchId } }
+    : { tenantId: context.tenant.id };
+
   const [branches, products, stocks, movements] = await Promise.all([
     prisma.branch.findMany({
       where: { id: { in: context.branches.map((branch) => branch.id) } },
@@ -36,7 +33,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
     }),
     prisma.inventoryStock.findMany({ where: stockWhere }),
     prisma.stockMovement.findMany({
-       where: movementWhere,
+      where: movementWhere,
       include: {
         stock: { include: { product: { select: { name: true } }, branch: { select: { name: true } } } },
       },
@@ -44,6 +41,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       take: 30,
     }),
   ]);
+
   return (
     <InventoryManager
       branches={serialize(branches)}

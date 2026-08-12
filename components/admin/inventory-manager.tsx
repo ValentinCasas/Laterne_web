@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { stockMovementTypeLabels } from "@/lib/order-stock";
+import { scopedFetch } from "@/lib/client-routing";
 
 type Branch = { id: number; name: string; active: boolean };
 type Product = { id: number; name: string; imageUrl: string; availability: string | null };
@@ -70,7 +71,7 @@ export function InventoryManager({
       color: "#fafafa",
     });
     if (!reason.isConfirmed) return;
-    const response = await fetch("/api/admin/inventory", {
+    const response = await scopedFetch("/api/admin/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

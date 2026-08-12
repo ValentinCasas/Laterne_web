@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 
 type AdminNotification = {
   id: string;
@@ -15,6 +18,7 @@ type AdminNotification = {
 
 /** @summary Carga, presenta y marca avisos del panel sin interrumpir la tarea actual. */
 export function NotificationCenter() {
+  const pathname = usePathname();
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -23,7 +27,7 @@ export function NotificationCenter() {
     let active = true;
     async function refresh() {
       try {
-        const response = await fetch("/api/admin/notifications");
+        const response = await scopedFetch("/api/admin/notifications");
         if (!response.ok) return;
         const result = (await response.json()) as {
           notifications: AdminNotification[];
@@ -47,7 +51,7 @@ export function NotificationCenter() {
 
   /** @summary Marca los avisos pendientes como leídos y actualiza su apariencia local. */
   async function readAll() {
-    await fetch("/api/admin/notifications", {
+    await scopedFetch("/api/admin/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ all: true }),
@@ -84,7 +88,7 @@ export function NotificationCenter() {
           {items.map((item) => (
             <Link
               className={`block rounded-xl p-3 hover:bg-white/5 ${item.readAt ? "opacity-60" : "bg-pink-500/5"}`}
-              href={(item.link || "/admin") as never}
+              href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
               key={item.id}
               onClick={() => setOpen(false)}
             >

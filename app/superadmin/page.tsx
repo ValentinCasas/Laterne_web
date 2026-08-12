@@ -1,4 +1,4 @@
-import { PlatformDashboard } from "@/components/superadmin/platform-dashboard";
+import { PlatformDashboard } from "@/components/platform/platform-dashboard";
 import { requireSuperAdmin } from "@/lib/auth";
 import { platformTenants } from "@/lib/platform-data";
 

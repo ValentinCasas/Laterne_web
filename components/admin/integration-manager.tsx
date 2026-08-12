@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type Integration = {
   provider: "mercado_pago" | "email" | "whatsapp" | "web_push" | "storage";
@@ -50,7 +51,7 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
   async function save(event: React.FormEvent<HTMLFormElement>, integration: Integration) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/integrations", {
+    const response = await scopedFetch("/api/admin/integrations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

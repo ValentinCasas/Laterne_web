@@ -9,17 +9,27 @@ import { ModelExperience } from "@/components/products/model-experience";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { requestRouteContext } from "@/lib/request-route-context";
 
 type ProductPageProps = { params: Promise<{ slug: string }> };
 
 /** @summary Consulta un producto público mediante un slug perteneciente al negocio activo. */
 async function getProduct(slug: string) {
-  const tenant = await getDefaultTenant();
+  const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
+  const branch = route.branchSlug
+    ? await prisma.branch.findFirst({
+        where: { tenantId: tenant.id, slug: route.branchSlug, active: true },
+        select: { id: true, slug: true },
+      })
+    : null;
+  if (route.branchSlug && !branch) return null;
   return prisma.product.findFirst({
     where: {
       tenantId: tenant.id,
       slug,
       OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
+      ...(branch ? { branchAssignments: { some: { branchId: branch.id, active: true } } } : {}),
     },
     include: {
       categories: { include: { category: true }, take: 3 },
@@ -45,8 +55,10 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 /** @summary Muestra información completa, etiquetas, precio y acciones de un producto individual. */
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const [product, tenant] = await Promise.all([getProduct(slug), getDefaultTenant()]);
+  const [product, tenant, route] = await Promise.all([getProduct(slug), getDefaultTenant(), requestRouteContext()]);
   if (!product) notFound();
+  const publicHref = (href: string) =>
+    publicHrefForVisiblePath(route.originalPath, tenant.slug, href, route.branchSlug);
   const files = new Set(await readdir(path.join(process.cwd(), "public", "images", "images_product")));
   const image =
     product.imageUrl && product.imageUrl !== "product_default.png" && files.has(product.imageUrl)
@@ -90,7 +102,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     <main className="shell py-10 sm:py-16">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <nav className="flex flex-wrap items-center gap-2 text-sm text-zinc-500" aria-label="Migas de pan">
-        <Link className="hover:text-pink-300" href="/carta">
+        <Link className="hover:text-pink-300" href={publicHref("/carta")}>
           Carta
         </Link>
         <span aria-hidden="true">/</span>
@@ -247,7 +259,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {product.relatedFrom.map(({ relatedProduct }) => (
               <Link
                 className="rounded-2xl border border-white/10 p-5 hover:border-pink-500/40"
-                href={`/productos/${relatedProduct.slug}`}
+                href={publicHref(`/productos/${relatedProduct.slug}`)}
                 key={relatedProduct.id}
               >
                 <h2 className="font-black">{relatedProduct.name}</h2>

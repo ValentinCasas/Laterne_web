@@ -3,6 +3,7 @@
 import { useMemo, useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type LeadStatus = "new" | "contacted" | "demo_scheduled" | "quote_sent" | "negotiation" | "won" | "lost";
 type Lead = {
@@ -54,7 +55,7 @@ export function LeadBoard({ initialLeads }: { initialLeads: Lead[] }) {
   /** @summary Guarda una nueva etapa comercial y actualiza la oportunidad de manera optimista. */
   async function move(lead: Lead, status: LeadStatus, note?: string) {
     if (lead.status === status && !note) return;
-    const response = await fetch(`/api/admin/leads/${lead.id}`, {
+    const response = await scopedFetch(`/api/admin/leads/${lead.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ status, note }),

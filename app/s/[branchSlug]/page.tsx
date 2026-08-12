@@ -13,6 +13,8 @@ import { time } from "@/lib/format";
 import { getDefaultTenant } from "@/lib/tenant";
 import { resolvePublicBranch } from "@/lib/branch";
 import { managedPageMetadata } from "@/lib/seo";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { requestRouteContext } from "@/lib/request-route-context";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +40,7 @@ export function generateMetadata() {
 /** @summary Página pública de una sucursal específica del negocio. */
 export default async function BranchLandingPage({ params }: { params: Promise<{ branchSlug: string }> }) {
   const { branchSlug } = await params;
-  const tenant = await getDefaultTenant();
+  const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
   const branch = await resolvePublicBranch(tenant.id, branchSlug);
   if (!branch || !branch.operative) notFound();
 
@@ -199,7 +201,7 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
              {heroSubtitle}
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <Link className="btn" href={`/s/${branch.branchSlug}/carta`}>
+            <Link className="btn" href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/carta", branch.branchSlug)}>
               Explorar la carta
             </Link>
             <a className="btn btn-secondary" href="#eventos">

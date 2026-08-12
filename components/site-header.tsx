@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { parseCanonicalPath, publicHrefForVisiblePath } from "@/lib/routes";
 
 const navGroups = [
   {
@@ -42,17 +43,27 @@ function getGroupId(pathname: string | null) {
 export function SiteHeader({
   brandName = "MenuClick",
   logoUrl,
+  tenantSlug,
+  branchSlug,
 }: {
   brandName?: string;
   logoUrl?: string | null;
+  tenantSlug: string;
+  branchSlug?: string;
 }) {
   const pathname = usePathname();
+  const routeContext = parseCanonicalPath(pathname);
+  const logicalPath = routeContext.surface === "tenant-public"
+    ? routeContext.logicalPath.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/"
+    : pathname.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/";
+  const tenantHref = (href: string) =>
+    publicHrefForVisiblePath(pathname, tenantSlug, href, routeContext.branchSlug ?? branchSlug);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileGroupOpen, setMobileGroupOpen] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
 
-  const activeGroup = getGroupId(pathname);
+  const activeGroup = getGroupId(logicalPath);
 
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
@@ -95,7 +106,7 @@ export function SiteHeader({
         aria-label="Navegación principal"
       >
         <Link
-          href="/"
+          href={tenantHref("/")}
           className="flex items-center gap-2 text-2xl font-black tracking-tight text-pink-400 transition hover:text-white"
         >
           {logoUrl && (
@@ -136,7 +147,7 @@ export function SiteHeader({
                     {group.items.map(([href, label]) => (
                       <li key={href}>
                         <Link
-                          href={href}
+                          href={tenantHref(href)}
                           className="block rounded-2xl px-3 py-2 text-sm text-white/90 transition hover:bg-white/5 hover:text-white"
                           role="menuitem"
                           onClick={() => setOpenGroup(null)}
@@ -155,7 +166,7 @@ export function SiteHeader({
             {directLinks.map(([href, label]) => (
               <Link
                 key={href}
-                href={href}
+                href={tenantHref(href)}
                 className="rounded-full px-3 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/5 hover:text-white"
               >
                 {label}
@@ -213,7 +224,7 @@ export function SiteHeader({
                 {group.items.map(([href, label]) => (
                   <li key={href}>
                     <Link
-                      href={href}
+                      href={tenantHref(href)}
                       onClick={() => {
                         setMobileOpen(false);
                         setMobileGroupOpen(null);
@@ -232,7 +243,7 @@ export function SiteHeader({
             {directLinks.map(([href, label]) => (
               <Link
                 key={href}
-                href={href}
+                href={tenantHref(href)}
                 onClick={() => setMobileOpen(false)}
                 className="block rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:text-white"
               >

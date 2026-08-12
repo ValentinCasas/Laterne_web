@@ -10,8 +10,8 @@ export default function ForbiddenPage() {
         <p className="mt-4 text-zinc-400">
           Si necesitás esta función, pedile al propietario que revise tu rol.
         </p>
-        <Link className="btn mt-6" href="/admin">
-          Volver al panel
+        <Link className="btn mt-6" href="/">
+          Volver a MenuClick
         </Link>
       </section>
     </main>

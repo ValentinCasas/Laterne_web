@@ -1,4 +1,4 @@
-import { PlatformAppearance } from "@/components/superadmin/platform-appearance";
+import { PlatformAppearance } from "@/components/platform/platform-appearance";
 import { requireSuperAdmin } from "@/lib/auth";
 import { menuClickPresets } from "@/lib/menuclick-theme";
 import type { PaletteColors } from "@/lib/theme-palettes";

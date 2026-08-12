@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type ProductOption = { id: number; productId: number; groupId: number | null; name: string; active: boolean; sortOrder: number; price?: string | number; priceAdjustment?: string | number };
 type OptionGroup = { id: number; productId: number; kind: "variant" | "extra"; name: string; required: boolean; minSelections: number; maxSelections: number; sortOrder: number; active: boolean };
@@ -25,7 +26,7 @@ export function ProductOptionsManager({ products, initialVariants, initialExtras
   async function createGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/product-option-groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, kind, name: data.get("name"), required: data.get("required") === "on", minSelections: Number(data.get("minSelections")), maxSelections: Number(data.get("maxSelections")), sortOrder: Number(data.get("sortOrder")) }) });
+    const response = await scopedFetch("/api/admin/product-option-groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, kind, name: data.get("name"), required: data.get("required") === "on", minSelections: Number(data.get("minSelections")), maxSelections: Number(data.get("maxSelections")), sortOrder: Number(data.get("sortOrder")) }) });
     const result = (await response.json().catch(() => ({}))) as { group?: OptionGroup; error?: string };
     if (!response.ok || !result.group) return Swal.fire({ title: "No se pudo crear el grupo", text: result.error, icon: "error", background: "#18181b", color: "#fafafa" });
     setGroups((current) => [...current, result.group!]);
@@ -35,7 +36,7 @@ export function ProductOptionsManager({ products, initialVariants, initialExtras
   async function createOption(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/product-options", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, productId, groupId: Number(data.get("groupId")) || null, name: data.get("name"), price: Number(data.get("price") || 0), sortOrder: Number(data.get("sortOrder") || options.length), active: true }) });
+    const response = await scopedFetch("/api/admin/product-options", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, productId, groupId: Number(data.get("groupId")) || null, name: data.get("name"), price: Number(data.get("price") || 0), sortOrder: Number(data.get("sortOrder") || options.length), active: true }) });
     const result = (await response.json().catch(() => ({}))) as { item?: ProductOption; error?: string };
     if (!response.ok || !result.item) return Swal.fire({ title: "No se pudo crear", text: result.error, icon: "error", background: "#18181b", color: "#fafafa" });
     if (kind === "variant") setVariants((current) => [...current, result.item!]); else setExtras((current) => [...current, result.item!]);
@@ -45,7 +46,7 @@ export function ProductOptionsManager({ products, initialVariants, initialExtras
   async function editOption(option: ProductOption) {
     const result = await Swal.fire({ title: "Editar opción", html: `<input id="option-name" class="swal2-input" value="${option.name.replaceAll('"', "&quot;")}"><input id="option-price" class="swal2-input" type="number" step="0.01" value="${price(option)}"><input id="option-order" class="swal2-input" type="number" value="${option.sortOrder}"><label style="display:flex;gap:.5rem;justify-content:center"><input id="option-active" type="checkbox" ${option.active ? "checked" : ""}> Disponible</label>`, showCancelButton: true, confirmButtonText: "Guardar", cancelButtonText: "Cancelar", background: "#18181b", color: "#fafafa", preConfirm: () => ({ name: (document.querySelector("#option-name") as HTMLInputElement).value, price: Number((document.querySelector("#option-price") as HTMLInputElement).value), sortOrder: Number((document.querySelector("#option-order") as HTMLInputElement).value), active: (document.querySelector("#option-active") as HTMLInputElement).checked, groupId: option.groupId }) });
     if (!result.isConfirmed || !result.value) return;
-    const response = await fetch(`/api/admin/product-options/${kind}/${option.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(result.value) });
+    const response = await scopedFetch(`/api/admin/product-options/${kind}/${option.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(result.value) });
     const body = (await response.json().catch(() => ({}))) as { item?: ProductOption; error?: string };
     if (!response.ok || !body.item) return Swal.fire({ title: "No se pudo guardar", text: body.error, icon: "error", background: "#18181b", color: "#fafafa" });
     const setter = kind === "variant" ? setVariants : setExtras;
@@ -55,7 +56,7 @@ export function ProductOptionsManager({ products, initialVariants, initialExtras
   async function removeOption(option: ProductOption) {
     const confirm = await Swal.fire({ title: `¿Eliminar ${option.name}?`, text: "Los pedidos anteriores conservarán su información.", icon: "warning", showCancelButton: true, confirmButtonText: "Eliminar", cancelButtonText: "Cancelar", confirmButtonColor: "#ef4444", background: "#18181b", color: "#fafafa" });
     if (!confirm.isConfirmed) return;
-    const response = await fetch(`/api/admin/product-options/${kind}/${option.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/product-options/${kind}/${option.id}`, { method: "DELETE" });
     if (!response.ok) return;
     const setter = kind === "variant" ? setVariants : setExtras;
     setter((current) => current.filter((item) => item.id !== option.id));

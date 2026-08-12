@@ -7,6 +7,8 @@ import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 import { copyBrowserText, createBrowserId, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { usePathname } from "next/navigation";
 
 export type MenuProduct = {
   id: number;
@@ -75,6 +77,7 @@ export function MenuClient({
   currency,
   locale,
   businessName,
+  tenantSlug,
   branchSlug,
 }: {
   categories: MenuCategory[];
@@ -82,8 +85,11 @@ export function MenuClient({
   currency: string;
   locale: string;
   businessName: string;
+  tenantSlug: string;
   branchSlug?: string;
 }) {
+  const pathname = usePathname();
+  const publicHref = (href: string) => publicHrefForVisiblePath(pathname, tenantSlug, href, branchSlug);
   const {
     ref: categoryScroll,
     isDragging: isDraggingCategories,
@@ -289,7 +295,7 @@ export function MenuClient({
             </div>
             <Link
               className="hidden rounded-full border border-white/15 px-5 py-3 text-sm font-bold hover:bg-white hover:text-black sm:inline-flex"
-              href="/"
+              href={publicHref("/")}
             >
               Volver al inicio
             </Link>
@@ -406,7 +412,7 @@ export function MenuClient({
               {recentProducts.map((product) => (
                 <Link
                   className="flex min-w-64 items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] p-3 hover:border-pink-500/40"
-                  href={`/productos/${product.slug}`}
+                  href={publicHref(`/productos/${product.slug}`)}
                   key={product.id}
                 >
                   <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">
@@ -531,7 +537,7 @@ export function MenuClient({
                       <div className="mt-auto pt-3 sm:pt-5">
                         <Link
                           className="mb-2 block text-center text-xs font-bold text-zinc-400 hover:text-pink-300 sm:text-sm"
-                          href={`/productos/${product.slug}`}
+                          href={publicHref(`/productos/${product.slug}`)}
                         >
                           Ver detalles
                         </Link>
@@ -672,7 +678,7 @@ export function MenuClient({
               <div className="grid gap-2 sm:grid-cols-2">
                 <Link
                   className={`rounded-xl bg-pink-500 py-3 text-center font-bold text-white sm:col-span-2 ${!cart.length ? "pointer-events-none opacity-40" : ""}`}
-                  href={branchSlug ? `/pedido?branch=${encodeURIComponent(branchSlug)}` : "/pedido"}
+                  href={publicHref("/pedido")}
                   onClick={() => {
                     trackEvent("order.started", { metadata: { itemCount: quantity } });
                     setCartOpen(false);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { scopedFetch } from "@/lib/client-routing";
 
 /** @summary Muestra el formulario público para enviar una opinión anónima sobre Laterne. */
 export function TestimonialForm() {
@@ -8,7 +9,7 @@ export function TestimonialForm() {
   /** @summary Envía la opinión al servidor y comunica el resultado al visitante. */
   async function submit(formData: FormData) {
     const description = String(formData.get("description") ?? "");
-    const response = await fetch("/api/testimonials", {
+    const response = await scopedFetch("/api/testimonials", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ description }),

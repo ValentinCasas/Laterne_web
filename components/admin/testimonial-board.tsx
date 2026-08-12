@@ -3,6 +3,7 @@
 import { useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type ModerationStatus = "approved" | "pending" | "rejected";
 type TestimonialItem = {
@@ -59,7 +60,7 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
   /** @summary Guarda en el servidor el nuevo estado de moderación de una opinión. */
   async function move(item: TestimonialItem, status: ModerationStatus) {
     if (testimonialStatus(item) === status) return;
-    const response = await fetch(`/api/admin/testimonios/${item.id}`, {
+    const response = await scopedFetch(`/api/admin/testimonios/${item.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ moderationStatus: status }),
@@ -101,7 +102,7 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
     if (!editing) return;
     const description = String(formData.get("description") ?? "").trim();
     const moderationStatus = String(formData.get("moderationStatus") ?? "pending") as ModerationStatus;
-    const response = await fetch(`/api/admin/testimonios/${editing.id}`, {
+    const response = await scopedFetch(`/api/admin/testimonios/${editing.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ description, moderationStatus }),
@@ -151,7 +152,7 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
       reverseButtons: true,
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch(`/api/admin/testimonios/${item.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/testimonios/${item.id}`, { method: "DELETE" });
     if (response.ok) setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
   }
 

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 import {
   defaultReservationTimeZone,
   reservationStatuses,
@@ -197,7 +198,7 @@ export function ReservationBoard({
 
   /** @summary Actualiza una reserva y sincroniza su estado en la lista y el detalle. */
   async function changeStatus(reservation: ReservationItem, nextStatus: ReservationStatus) {
-    const response = await fetch(`/api/admin/reservations/${reservation.id}`, {
+    const response = await scopedFetch(`/api/admin/reservations/${reservation.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ status: nextStatus }),
@@ -241,7 +242,7 @@ export function ReservationBoard({
       policy: String(form.get("policy") ?? ""),
       confirmationMode: String(form.get("confirmationMode")),
     };
-    const response = await fetch("/api/admin/reservations/settings", {
+    const response = await scopedFetch("/api/admin/reservations/settings", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
@@ -268,7 +269,7 @@ export function ReservationBoard({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = Object.fromEntries(form.entries());
-    const response = await fetch("/api/admin/reservations/blocks", {
+    const response = await scopedFetch("/api/admin/reservations/blocks", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
@@ -296,7 +297,7 @@ export function ReservationBoard({
       color: "#fafafa",
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch(`/api/admin/reservations/blocks/${block.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/reservations/blocks/${block.id}`, { method: "DELETE" });
     if (response.ok) setBlocks((current) => current.filter((item) => item.id !== block.id));
   }
 

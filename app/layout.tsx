@@ -20,7 +20,15 @@ import { MenuClickThemeProvider } from "@/components/platform/menuclick-theme-pr
 async function resolveRequestContext() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
-  const { kind } = classifyHost(host);
+  const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
+  const hostKind = classifyHost(host).kind;
+  const kind = routeKind === "tenant-public"
+    ? "tenant"
+    : routeKind === "tenant-admin" || routeKind === "tenant-auth"
+      ? "app"
+      : routeKind.startsWith("platform")
+        ? "platform"
+        : hostKind;
 
   let tenant: Awaited<ReturnType<typeof getDefaultTenant>> | null = null;
   let brand: Awaited<ReturnType<typeof prisma.brandSettings.findUnique>> | null = null;
@@ -51,7 +59,9 @@ async function resolveRequestContext() {
       if (!(error instanceof UnknownHostError)) throw error;
     }
   }
-  return { kind, tenant, brand, palette, menuTheme, platformSettings };
+  const branchSlug = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
+  const originalPath = requestHeaders.get("x-menuclick-original-path") || "/";
+  return { kind, tenant, brand, palette, menuTheme, platformSettings, branchSlug, originalPath };
 }
 
 /** @summary Construye metadatos globales administrables para la experiencia resuelta por dominio. */
@@ -106,7 +116,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** @summary Define la estructura global y solo añade la navegación pública cuando existe un negocio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { kind, tenant, brand, palette, menuTheme } = await resolveRequestContext();
+  const { kind, tenant, brand, palette, menuTheme, branchSlug, originalPath } = await resolveRequestContext();
   const style = {
     ...paletteCssVariables(palette),
     ...(kind === "platform" ? menuClickCssVariables(menuTheme) : {}),
@@ -122,12 +132,26 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">
       <body className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined} style={style}>
-        {tenant && <SiteHeader brandName={name} logoUrl={brand?.logoUrl} />}
+        {tenant && (
+          <SiteHeader
+            brandName={name}
+            logoUrl={brand?.logoUrl}
+            tenantSlug={tenant.slug}
+            branchSlug={branchSlug}
+          />
+        )}
         {tenant && <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />}
         <PwaRegister />
         {tenant && <CookieBanner />}
         {kind === "platform" ? <MenuClickThemeProvider initialTheme={menuTheme}>{children}</MenuClickThemeProvider> : children}
-        {tenant && <SiteFooter businessName={name} />}
+        {tenant && (
+          <SiteFooter
+            businessName={name}
+            tenantSlug={tenant.slug}
+            branchSlug={branchSlug}
+            visiblePath={originalPath}
+          />
+        )}
       </body>
     </html>
   );

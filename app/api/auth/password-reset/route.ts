@@ -5,6 +5,7 @@ import { requestOrigin } from "@/lib/domains";
 import { passwordResetHash, passwordResetToken } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { tenantPublicPath } from "@/lib/routes";
 
 const requestInput = z.object({
   email: z.string().trim().email().max(255),
@@ -46,7 +47,11 @@ export async function POST(request: Request) {
   const parsed = requestInput.safeParse(await request.json().catch(() => null));
   const generic = { ok: true, message: "Si el correo existe, vas a recibir instrucciones para continuar." };
   if (!parsed.success || parsed.data.website) return NextResponse.json(generic);
-  const tenant = await getDefaultTenant();
+
+  const routeKind = request.headers.get("x-menuclick-route-kind") ?? "";
+  const routeTenantSlug = request.headers.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const platformContext = routeKind.startsWith("platform");
+  const tenant = platformContext ? null : await getDefaultTenant();
   const email = parsed.data.email.toLocaleLowerCase("es");
   const emailHash = passwordResetHash("email", email);
   const ipHash = requestHash(request);
@@ -54,21 +59,35 @@ export async function POST(request: Request) {
     where: { emailHash, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
   });
   if (recent >= 3) return NextResponse.json(generic);
-  const membership = await prisma.tenantMembership.findFirst({
-    where: { tenantId: tenant.id, status: "active", user: { email } },
-    include: { user: true },
-  });
-  if (!membership) {
+
+  const user = platformContext
+    ? await prisma.user.findFirst({
+        where: {
+          email,
+          OR: [{ isSuperAdmin: true }, { platformRole: { in: ["superadmin", "admin", "support", "sales"] } }],
+        },
+      })
+    : null;
+  const membership = tenant
+    ? await prisma.tenantMembership.findFirst({
+        where: { tenantId: tenant.id, status: "active", user: { email } },
+        include: { user: true },
+      })
+    : null;
+  const targetUser = user ?? membership?.user ?? null;
+
+  if (!targetUser) {
     await prisma.passwordResetRequest.create({
-      data: { tenantId: tenant.id, emailHash, requestedIp: ipHash, status: "unknown_user" },
+      data: { tenantId: tenant?.id ?? null, emailHash, requestedIp: ipHash, status: "unknown_user" },
     });
     return NextResponse.json(generic);
   }
+
   const token = passwordResetToken();
   const entry = await prisma.passwordResetRequest.create({
     data: {
-      tenantId: tenant.id,
-      userId: membership.userId,
+      tenantId: tenant?.id ?? null,
+      userId: targetUser.id,
       emailHash,
       tokenHash: passwordResetHash("token", token),
       requestedIp: ipHash,
@@ -76,16 +95,26 @@ export async function POST(request: Request) {
     },
   });
   const origin = requestOrigin(request.headers) || new URL(request.url).origin;
+  const resetPath = platformContext
+    ? "/platform/restablecer-acceso"
+    : tenant
+      ? tenantPublicPath(routeTenantSlug || tenant.slug, "/restablecer-acceso")
+      : "/restablecer-acceso";
   const delivered = await deliverReset(
     email,
-    `${origin}/restablecer-acceso?token=${encodeURIComponent(token)}`,
+    `${origin}${resetPath}?token=${encodeURIComponent(token)}`,
   ).catch(() => false);
-  await prisma.$transaction([
+
+  const operations = [
     prisma.passwordResetRequest.update({
       where: { id: entry.id },
       data: { status: delivered ? "delivered" : "pending_delivery" },
     }),
-    prisma.notification.create({
+  ];
+  await prisma.$transaction(operations);
+
+  if (tenant) {
+    await prisma.notification.create({
       data: {
         tenantId: tenant.id,
         type: "security.password_reset",
@@ -95,8 +124,8 @@ export async function POST(request: Request) {
           : "Falta configurar el proveedor de email para entregar el enlace.",
         link: "/admin/integraciones",
       },
-    }),
-  ]);
+    });
+  }
   return NextResponse.json(generic);
 }
 

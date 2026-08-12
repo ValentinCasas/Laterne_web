@@ -3,6 +3,7 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { requirePermission } from "@/lib/auth";
 import { activeBranchWhere } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
+import { adminHrefForContext } from "@/lib/routes";
 
 const AUDIT_PAGE_SIZE = 50;
 
@@ -21,6 +22,10 @@ export default async function AuditPage({
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const auditFilter = activeBranchWhere(context.tenant.id, context.activeBranchId);
+  const activeBranch = context.activeBranchId && context.activeBranchId > 0
+    ? context.branches.find((branch) => branch.id === context.activeBranchId)
+    : undefined;
+  const auditHref = (targetPage: number) => `${adminHrefForContext(context.tenant.slug, "/admin/auditoria", activeBranch?.slug)}?page=${targetPage}`;
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where: auditFilter,
@@ -104,12 +109,12 @@ export default async function AuditPage({
         </p>
         <div className="flex gap-3">
           {page > 1 && (
-            <Link className="btn btn-secondary" href={`/admin/auditoria?page=${page - 1}`}>
+            <Link className="btn btn-secondary" href={auditHref(page - 1)}>
               ← Anterior
             </Link>
           )}
           {hasMore && (
-            <Link className="btn btn-secondary" href={`/admin/auditoria?page=${page + 1}`}>
+            <Link className="btn btn-secondary" href={auditHref(page + 1)}>
               Siguiente →
             </Link>
           )}

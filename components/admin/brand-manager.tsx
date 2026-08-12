@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { PaletteManager, type PaletteRecord } from "@/components/admin/palette-manager";
 import type { PalettePreset } from "@/lib/theme-palettes";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type BrandData = {
   logoUrl: string | null;
@@ -54,7 +55,7 @@ export function BrandManager({ initialBrand, palettes, activePaletteId, presets 
     const form = new FormData();
     form.set("resource", "brand-image");
     form.set("file", file);
-    const response = await fetch("/api/admin/upload", { method: "POST", body: form });
+    const response = await scopedFetch("/api/admin/upload", { method: "POST", body: form });
     const result = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
     setUploading(null);
     if (!response.ok || !result.url) {
@@ -88,7 +89,7 @@ export function BrandManager({ initialBrand, palettes, activePaletteId, presets 
     if (!confirmed.isConfirmed) return;
     setDeleting(field);
     try {
-      const response = await fetch("/api/admin/brand", {
+      const response = await scopedFetch("/api/admin/brand", {
         method: "DELETE",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ field, assetUrl: current }),
@@ -114,7 +115,7 @@ export function BrandManager({ initialBrand, palettes, activePaletteId, presets 
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = Object.fromEntries(form.entries());
-    const response = await fetch("/api/admin/brand", {
+    const response = await scopedFetch("/api/admin/brand", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

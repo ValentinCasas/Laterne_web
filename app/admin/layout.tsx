@@ -18,12 +18,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AdminShell
       permissions={context.permissions}
       tenantName={context.tenant.name}
+      tenantSlug={context.tenant.slug}
       publicSiteUrl={publicTenantUrl(context.tenant.slug, context.tenant.customDomain)}
       adminTheme={context.tenant.adminTheme}
       adminAccent={context.tenant.adminAccent}
       palette={context.tenant.palette ?? undefined}
       branches={context.branches}
       activeBranchId={context.activeBranchId}
+      allBranches={context.allBranches}
     >
       {children}
     </AdminShell>

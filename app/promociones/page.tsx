@@ -11,6 +11,8 @@ import {
 } from "@/lib/promotion";
 import { getDefaultTenant } from "@/lib/tenant";
 import { managedPageMetadata } from "@/lib/seo";
+import { publicHrefForVisiblePath } from "@/lib/routes";
+import { requestRouteContext } from "@/lib/request-route-context";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +27,20 @@ export function generateMetadata() {
 
 /** @summary Publica únicamente promociones vigentes con sus productos, categorías y condiciones. */
 export default async function PromotionsPage() {
-  const tenant = await getDefaultTenant();
+  const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
+  const branch = route.branchSlug
+    ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: route.branchSlug, active: true }, select: { id: true } })
+    : null;
   const now = new Date();
+  const publicHref = (href: string) =>
+    publicHrefForVisiblePath(route.originalPath, tenant.slug, href, route.branchSlug);
   const [records, imageFiles] = await Promise.all([
     prisma.promotion.findMany({
-      where: { tenantId: tenant.id, status: { in: ["published", "scheduled"] } },
+      where: {
+        tenantId: tenant.id,
+        status: { in: ["published", "scheduled"] },
+        ...(branch ? { OR: [{ branchId: null }, { branchId: branch.id }] } : {}),
+      },
       include: {
         products: { include: { product: { select: { id: true, name: true, slug: true } } } },
         categories: { include: { category: { select: { id: true, name: true } } } },
@@ -116,7 +127,7 @@ export default async function PromotionsPage() {
                         {promotion.products.slice(0, 5).map(({ product }) => (
                           <Link
                             className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-pink-500"
-                            href={`/productos/${product.slug}`}
+                            href={publicHref(`/productos/${product.slug}`)}
                             key={product.id}
                           >
                             {product.name}
@@ -149,7 +160,7 @@ export default async function PromotionsPage() {
             <p className="mt-3 text-zinc-500">
               La carta completa sigue disponible y se actualiza en tiempo real.
             </p>
-            <Link className="btn mt-6" href="/carta">
+            <Link className="btn mt-6" href={publicHref("/carta")}>
               Ver la carta
             </Link>
           </div>

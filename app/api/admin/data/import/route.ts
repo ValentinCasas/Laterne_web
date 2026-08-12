@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   }
   const targetBranchId = await resolveEffectiveBranchId(auth.tenant.id, auth.activeBranchId);
   if (!targetBranchId) {
-    return NextResponse.json({ error: "Creá primero una sucursal activa" }, { status: 409 });
+    return NextResponse.json({ error: "Elegí una sucursal en la URL antes de importar productos" }, { status: 409 });
   }
   for (const row of valid) {
     const category = await ensureBranchCategory(

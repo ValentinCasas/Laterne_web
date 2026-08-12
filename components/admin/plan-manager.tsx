@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
 
 type FeatureOption = { id: number; name: string; category: string };
 type PlanData = {
@@ -63,7 +64,7 @@ export function PlanManager({
     };
 
     try {
-      const response = await fetch(id ? `/api/admin/plans/${id}` : "/api/admin/plans", {
+      const response = await scopedFetch(id ? `/api/admin/plans/${id}` : "/api/admin/plans", {
         method: id ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -110,7 +111,7 @@ export function PlanManager({
       color: "#fafafa",
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch(`/api/admin/plans/${plan.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/plans/${plan.id}`, { method: "DELETE" });
     if (response.ok)
       setPlans((current) => current.map((item) => (item.id === plan.id ? { ...item, active: false } : item)));
   }

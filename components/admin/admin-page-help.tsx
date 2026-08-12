@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getAdminHelp } from "@/lib/admin-help";
+import { parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 
 /** @summary Muestra ayuda contextual de una sección desde un ícono "?" accesible. */
 export function AdminPageHelp({ section }: { section: string }) {
+  const pathname = usePathname();
+  const route = parseCanonicalPath(pathname);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -85,7 +89,7 @@ export function AdminPageHelp({ section }: { section: string }) {
           {entry.guideSlug && (
             <Link
               className="mt-4 inline-block text-sm font-bold text-pink-300 hover:text-pink-200"
-              href={`/ayuda/${entry.guideSlug}`}
+              href={route.tenantSlug ? publicHrefForContext(route.tenantSlug, `/ayuda/${entry.guideSlug}`) : `/ayuda/${entry.guideSlug}`}
               onClick={() => setOpen(false)}
             >
               Ver guía completa →

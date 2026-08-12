@@ -98,18 +98,30 @@ export async function POST(request: Request) {
         include: { branch: true },
       })
     : null;
-  const selectedBranch = parsed.data.branchId
+  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || null;
+  const routeBranch = routeBranchSlug
+    ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: routeBranchSlug, active: true } })
+    : null;
+  if (routeBranchSlug && !routeBranch) {
+    return NextResponse.json({ error: "La sucursal indicada en la URL no está disponible" }, { status: 404 });
+  }
+  const selectedBranch = !routeBranchSlug && parsed.data.branchId
     ? await prisma.branch.findFirst({
         where: { id: parsed.data.branchId, tenantId: tenant.id, active: true },
       })
     : null;
-  if (parsed.data.branchId && !selectedBranch) {
+  if (!routeBranchSlug && parsed.data.branchId && !selectedBranch) {
     return NextResponse.json({ error: "La sucursal seleccionada ya no está disponible" }, { status: 409 });
   }
-  if (table?.branch && selectedBranch && table.branch.id !== selectedBranch.id) {
+  if (routeBranch && parsed.data.branchId && parsed.data.branchId !== routeBranch.id) {
+    return NextResponse.json({ error: "La sucursal del pedido no coincide con la URL" }, { status: 409 });
+  }
+  const requestedBranch = routeBranch ?? selectedBranch;
+  if (table?.branch && requestedBranch && table.branch.id !== requestedBranch.id) {
     return NextResponse.json({ error: "La mesa no pertenece a la sucursal seleccionada" }, { status: 409 });
   }
   const branch =
+    routeBranch ??
     table?.branch ??
     selectedBranch ??
     (await prisma.branch.findFirst({

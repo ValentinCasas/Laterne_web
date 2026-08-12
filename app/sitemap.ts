@@ -20,9 +20,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: { slug: true, updatedAt: true },
       })
     : [];
-  const staticPages: MetadataRoute.Sitemap = [
+  const platformPages: MetadataRoute.Sitemap = [
     { url: baseUrl, changeFrequency: "weekly", priority: 1 },
-    { url: `${baseUrl}/carta`, changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/para-negocios`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/funcionalidades`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/multi-sucursal`, changeFrequency: "monthly", priority: 0.8 },
@@ -30,10 +29,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/planes`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${baseUrl}/solicitar-demo`, changeFrequency: "monthly", priority: 0.7 },
   ];
+  const tenantPages: MetadataRoute.Sitemap = [
+    { url: baseUrl, changeFrequency: "weekly", priority: 1 },
+    { url: `${baseUrl}/carta`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/reservas`, changeFrequency: "daily", priority: 0.7 },
+  ];
   return [
-    ...(tenant
-       ? staticPages.filter((page) => !["/para-negocios", "/funcionalidades", "/multi-sucursal", "/clientes", "/planes", "/solicitar-demo"].some((path) => page.url.endsWith(path)))
-      : staticPages),
+    ...(tenant ? tenantPages : platformPages),
     ...products.map((product) => ({
       url: `${baseUrl}/productos/${product.slug}`,
       lastModified: product.updatedAt,

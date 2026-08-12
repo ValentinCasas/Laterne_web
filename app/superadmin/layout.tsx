@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireSuperAdmin } from "@/lib/auth";
-import { PlatformShell } from "@/components/superadmin/platform-shell";
+import { PlatformShell } from "@/components/platform/platform-shell";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: { default: "MenuClick Platform", template: `%s | MenuClick Platform` }, description: "Operación global de clientes y suscripciones MenuClick." };

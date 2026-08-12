@@ -73,12 +73,12 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 
 1. Importar `laterne.sql` en una base MySQL llamada `laterne` si se parte de una instalación limpia.
 2. Copiar `.env.example` como `.env`.
-3. Ajustar `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `ROOT_DOMAIN`, `DEV_ROOT_DOMAIN`, `DEV_TENANT_SLUG` y generar un valor seguro para `AUTH_SECRET`.
+3. Ajustar `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `ROOT_DOMAIN` y generar un valor seguro para `AUTH_SECRET`. `DEV_ROOT_DOMAIN` y `DEV_TENANT_SLUG` solo se conservan para compatibilidad con URLs locales antiguas; las rutas canónicas nuevas no los necesitan.
 4. Ejecutar `npm install`.
 5. Ejecutar `npx prisma migrate deploy` para aplicar las migraciones pendientes.
 6. Ejecutar `npm run dev`.
 
-En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base real, sin protocolo. `DEV_ROOT_DOMAIN` se usa únicamente con `next dev`; el valor local recomendado es `lvh.me`, cuyo wildcard resuelve sus subdominios a `127.0.0.1` sin editar el archivo hosts por cada tenant. Los dominios personalizados deben apuntar al mismo despliegue.
+En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base real, sin protocolo. En desarrollo, la navegación canónica funciona directamente sobre `http://localhost:3000` con tenant y sucursal explícitos en el path, por ejemplo `/t/laterne/admin/s/principal/pedidos`; no hace falta `lvh.me`, wildcard DNS ni editar `hosts`. `DEV_ROOT_DOMAIN` y `DEV_TENANT_SLUG` quedan únicamente como compatibilidad transicional para enlaces antiguos. Los dominios personalizados deben apuntar al mismo despliegue.
 
 `EMAIL_WEBHOOK_URL` permite conectar recuperación de acceso con un proveedor de correo sin acoplar el sistema a una marca. El endpoint debe usar HTTPS en producción y aceptar una solicitud JSON autenticada mediante `EMAIL_API_KEY`. Si no se configura, la solicitud queda registrada de forma segura y el panel recibe una notificación, pero no se envía el enlace por correo.
 

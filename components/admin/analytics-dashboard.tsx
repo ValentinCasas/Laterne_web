@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { adminHrefFromPathname, scopedApiPath } from "@/lib/routes";
 
 type Metric = { eventType: string; count: number };
 type ProductMetric = { id: number; name: string; views: number; additions: number };
@@ -49,6 +51,7 @@ export function AnalyticsDashboard({
   operations: Operations;
   activity: ActivityBreakdown;
 }) {
+  const pathname = usePathname();
   const metricMap = new Map(metrics.map((metric) => [metric.eventType, metric.count]));
   const started = metricMap.get("order.started") ?? 0;
   const completed = metricMap.get("order.completed") ?? 0;
@@ -81,13 +84,13 @@ export function AnalyticsDashboard({
             {[7, 30, 90].map((value) => (
               <Link
                 className={`rounded-xl border px-4 py-2 text-sm font-bold ${days === value ? "border-pink-500 bg-pink-500/15" : "border-white/10"}`}
-                href={`/admin/estadisticas?days=${value}`}
+                href={adminHrefFromPathname(pathname, `/admin/estadisticas?days=${value}`)}
                 key={value}
               >
                 {value} días
               </Link>
             ))}
-            <a className="btn btn-secondary" href={`/api/admin/analytics/export?days=${days}`}>
+            <a className="btn btn-secondary" href={scopedApiPath(pathname, `/api/admin/analytics/export?days=${days}`)}>
               Exportar CSV
             </a>
           </div>

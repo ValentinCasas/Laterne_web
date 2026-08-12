@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
+import { scopedApiPath } from "@/lib/routes";
 
 type ValidationResult = {
   ok?: boolean;
@@ -15,6 +18,7 @@ type ValidationResult = {
 
 /** @summary Ofrece exportaciones y una importación de productos con vista previa obligatoria. */
 export function DataPortability() {
+  const pathname = usePathname();
   const [csv, setCsv] = useState("");
   const [filename, setFilename] = useState("");
   const [validation, setValidation] = useState<ValidationResult | null>(null);
@@ -41,7 +45,7 @@ export function DataPortability() {
 
   /** @summary Solicita validación o aplicación definitiva del archivo seleccionado. */
   async function processFile(apply: boolean) {
-    const response = await fetch("/api/admin/data/import", {
+    const response = await scopedFetch("/api/admin/data/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ csv, apply }),
@@ -95,7 +99,7 @@ export function DataPortability() {
       color: "#fafafa",
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch("/api/admin/data/backup", {
+    const response = await scopedFetch("/api/admin/data/backup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...backup, confirmation: confirmation.value }),
@@ -112,7 +116,7 @@ export function DataPortability() {
 
   /** @summary Descarga la copia JSON autenticada y conserva el nombre indicado por el servidor. */
   async function downloadBackup() {
-    const response = await fetch("/api/admin/data/backup");
+    const response = await scopedFetch("/api/admin/data/backup");
     if (!response.ok) {
       await Swal.fire({
         title: "No se pudo descargar",
@@ -151,7 +155,7 @@ export function DataPortability() {
               ["reservations", "Reservas"],
               ["customers", "Clientes frecuentes"],
             ].map(([type, label]) => (
-              <a className="btn btn-secondary" href={`/api/admin/data/export?type=${type}`} key={type}>
+              <a className="btn btn-secondary" href={scopedApiPath(pathname, `/api/admin/data/export?type=${type}`)} key={type}>
                 {label}
               </a>
             ))}
@@ -162,7 +166,7 @@ export function DataPortability() {
         </section>
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Importar productos</h2>
-          <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href="/api/admin/data/template">
+          <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href={scopedApiPath(pathname, "/api/admin/data/template")}>
             Descargar plantilla
           </Link>
           <label className="mt-5 grid min-h-32 cursor-pointer place-items-center rounded-2xl border border-dashed border-white/15 p-5 text-center">

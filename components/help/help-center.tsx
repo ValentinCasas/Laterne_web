@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { scopedFetch } from "@/lib/client-routing";
+import { publicHrefFromPathname } from "@/lib/routes";
 
 export type HelpArticleData = {
   id: number;
@@ -14,6 +17,7 @@ export type HelpArticleData = {
 
 /** @summary Permite buscar respuestas y enviar una consulta cuando la documentación no alcanza. */
 export function HelpCenter({ articles, whatsapp }: { articles: HelpArticleData[]; whatsapp: string }) {
+  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const filtered = useMemo(() => {
@@ -32,7 +36,7 @@ export function HelpCenter({ articles, whatsapp }: { articles: HelpArticleData[]
     event.preventDefault();
     setMessage("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/support", {
+    const response = await scopedFetch("/api/support", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(Object.fromEntries(form.entries())),
@@ -72,7 +76,7 @@ export function HelpCenter({ articles, whatsapp }: { articles: HelpArticleData[]
               </div>
               <Link
                 className="mt-4 inline-block text-sm font-bold text-pink-300 hover:text-pink-200"
-                href={`/ayuda/${article.slug}`}
+                href={publicHrefFromPathname(pathname, `/ayuda/${article.slug}`)}
               >
                 Ver guía completa en una página →
               </Link>

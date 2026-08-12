@@ -8,6 +8,8 @@ import Swal from "sweetalert2";
 import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
 import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
+import { adminHrefForContext, isBranchAdminLogicalPath, parseCanonicalPath, platformAdminPath, tenantPublicPath } from "@/lib/routes";
+import { scopedFetch } from "@/lib/client-routing";
 
 type NavigationLink = {
   href: string;
@@ -150,16 +152,11 @@ function isActivePath(pathname: string, href: string) {
   return href === "/admin" ? pathname === href : pathname.startsWith(href);
 }
 
-/** @summary Quita el segmento de sucursal de la URL para comparar contra rutas administrativas planas. */
+/** @summary Convierte la URL visible canónica al path lógico que usan las definiciones del sidebar. */
 function normalizedAdminPath(pathname: string) {
+  const parsed = parseCanonicalPath(pathname);
+  if (parsed.surface === "tenant-admin") return parsed.logicalPath;
   return pathname.replace(/^\/admin\/s\/[^/]+/, "/admin");
-}
-
-/** @summary Convierte una ruta administrativa a su variante canónica con la sucursal en la URL. */
-function branchAdminHref(branchSlug: string | undefined, href: string) {
-  if (!branchSlug) return href;
-  if (href === "/admin") return `/admin/s/${branchSlug}`;
-  return `/admin/s/${branchSlug}${href.replace(/^\/admin/, "")}`;
 }
 
 /** @summary Localiza el grupo que contiene una ruta para abrirlo al navegar desde búsquedas o accesos directos. */
@@ -172,6 +169,7 @@ export function AdminShell({
   children,
   permissions,
   tenantName,
+  tenantSlug,
   publicSiteUrl,
   isSuperAdmin = false,
   adminTheme = "menuclick-dark",
@@ -179,10 +177,12 @@ export function AdminShell({
   palette = defaultPalette,
   branches = [],
   activeBranchId,
+  allBranches = false,
 }: {
   children: React.ReactNode;
   permissions: string[];
   tenantName: string;
+  tenantSlug: string;
   publicSiteUrl: string;
   isSuperAdmin?: boolean;
   adminTheme?: string;
@@ -190,16 +190,18 @@ export function AdminShell({
   palette?: PaletteColors;
   branches?: Array<{ id: number; name: string; slug: string; isPrimary: boolean }>;
   activeBranchId?: number;
+  allBranches?: boolean;
 }) {
   const pathname = usePathname();
   const clearPath = normalizedAdminPath(pathname);
   const isCurrent = (href: string) => isActivePath(clearPath, href);
+  const branchNavigationAvailable = isBranchAdminLogicalPath(clearPath);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
-  const adminHref = (href: string) => branchAdminHref(branchSlug, href);
+  const adminHref = (href: string) => adminHrefForContext(tenantSlug, href, branchSlug);
   const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
   const [openGroup, setOpenGroup] = useState<string>(
     () =>
@@ -257,13 +259,13 @@ export function AdminShell({
 
     if (!result.isConfirmed) return;
     try {
-      const response = await fetch("/api/auth/logout", {
+      const response = await scopedFetch("/api/auth/logout", {
         method: "POST",
         cache: "no-store",
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw new Error("logout-failed");
-      window.location.replace("/login");
+      window.location.replace(tenantPublicPath(tenantSlug, "/login"));
     } catch {
       await Swal.fire({
         title: "No se pudo cerrar la sesión",
@@ -288,11 +290,14 @@ export function AdminShell({
               Gestioná el contenido que ven tus clientes.
             </p>
             <div className="mt-5 space-y-3">
-              <BranchSwitcher
-                branches={branches}
-                activeBranchId={activeBranchId}
-                activeBranchName={activeBranch?.name}
-              />
+              {branchNavigationAvailable && (
+                <BranchSwitcher
+                  branches={branches}
+                  activeBranchId={activeBranchId}
+                  activeBranchName={activeBranch?.name}
+                  consolidatedAvailable={allBranches}
+                />
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <a
                   className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
@@ -448,7 +453,7 @@ export function AdminShell({
               {isSuperAdmin && (
                 <Link
                   className="group flex items-center gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-3 py-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10"
-                  href="/superadmin"
+                  href={platformAdminPath() as Route}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">

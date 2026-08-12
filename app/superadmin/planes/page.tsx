@@ -23,7 +23,7 @@ export default async function PlatformPlansPage() {
 
   return (
     <main className="shell py-8 sm:py-12">
-      <Link className="mb-6 inline-block text-sm font-bold text-pink-300" href="/superadmin">
+      <Link className="mb-6 inline-block text-sm font-bold text-pink-300" href="/platform">
         ← Volver a clientes
       </Link>
       <PlanManager

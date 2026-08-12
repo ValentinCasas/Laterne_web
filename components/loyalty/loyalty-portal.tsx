@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import { readBrowserText, removeBrowserText, writeBrowserText } from "@/lib/browser-compat";
+import { scopedFetch } from "@/lib/client-routing";
 
 type LoyaltyProfile = {
   name: string;
@@ -33,7 +34,7 @@ export function LoyaltyPortal() {
 
   /** @summary Consulta el perfil utilizando exclusivamente el token privado guardado en el dispositivo. */
   async function loadProfile(accessToken: string) {
-    const response = await fetch("/api/loyalty", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const response = await scopedFetch("/api/loyalty", { headers: { Authorization: `Bearer ${accessToken}` } });
     const result = (await response.json().catch(() => ({}))) as { customer?: LoyaltyProfile; error?: string };
     if (!response.ok || !result.customer) throw new Error(result.error ?? "No se pudo abrir el perfil");
     setProfile(result.customer);
@@ -77,7 +78,7 @@ export function LoyaltyPortal() {
     event.preventDefault();
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/loyalty", {
+    const response = await scopedFetch("/api/loyalty", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -117,7 +118,7 @@ export function LoyaltyPortal() {
       color: "#fafafa",
     });
     if (!confirmation.isConfirmed) return;
-    const response = await fetch("/api/loyalty", {
+    const response = await scopedFetch("/api/loyalty", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });

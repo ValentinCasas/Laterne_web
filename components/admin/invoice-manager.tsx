@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 
 type Invoice = {
   id: number;
@@ -35,12 +38,13 @@ export function InvoiceManager({
   initialInvoices: Invoice[];
   availableOrders: AvailableOrder[];
 }) {
+  const pathname = usePathname();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [orders, setOrders] = useState(availableOrders);
 
   /** @summary Genera un comprobante trazable desde un pedido seleccionado. */
   async function createInvoice(orderId: number) {
-    const response = await fetch("/api/admin/invoices", {
+    const response = await scopedFetch("/api/admin/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId }),
@@ -81,7 +85,7 @@ export function InvoiceManager({
       }),
     });
     if (!dialog.isConfirmed) return;
-    const response = await fetch(`/api/admin/invoices/${invoice.id}`, {
+    const response = await scopedFetch(`/api/admin/invoices/${invoice.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dialog.value),
@@ -144,7 +148,7 @@ export function InvoiceManager({
               <button className="btn btn-secondary" onClick={() => void editInvoice(invoice)}>
                 Editar estado
               </button>
-              <Link className="btn" href={`/admin/facturacion/${invoice.id}`}>
+              <Link className="btn" href={adminHrefFromPathname(pathname, `/admin/facturacion/${invoice.id}`)}>
                 Ver e imprimir
               </Link>
             </div>

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
-import { assertBranchCapacity, ensureBranchProduct, ensureBranchStock, ensureDraftLicense, resolveEffectiveBranchId } from "@/lib/branch";
+import { BRANCH_DIRECT_MODELS, assertBranchCapacity, ensureBranchProduct, ensureBranchStock, ensureDraftLicense, resolveEffectiveBranchId } from "@/lib/branch";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { productAdminData } from "@/lib/product-admin";
@@ -275,6 +275,9 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     }
     let item: unknown;
     const createBranchId = await resolveEffectiveBranchId(auth.tenant.id, auth.activeBranchId);
+    if (BRANCH_DIRECT_MODELS.has(resourceConfig.model) && !createBranchId) {
+      throw new Error("Elegí una sucursal en la URL antes de crear este registro");
+    }
     if (resource === "usuarios") {
       item = await createMember(input, auth.tenant.id);
     } else if (resource === "productos") {

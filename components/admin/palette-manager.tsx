@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { paletteCssVariables, validatePalette, type PaletteColors, type PalettePreset } from "@/lib/theme-palettes";
+import { scopedFetch } from "@/lib/client-routing";
 
 export type PaletteRecord = PaletteColors & { id: number; tenantId: number; name: string; isSystem: boolean; presetKey: string | null };
 
@@ -24,7 +25,7 @@ export function PaletteManager({ initialPalettes, initialActiveId, presets }: { 
 
   async function selectPreset(preset: PalettePreset) {
     setBusy(true); setMessage("");
-    const response = await fetch("/api/admin/palettes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ presetKey: preset.key }) });
+    const response = await scopedFetch("/api/admin/palettes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ presetKey: preset.key }) });
     const result = (await response.json().catch(() => ({}))) as { palette?: PaletteRecord; activePaletteId?: number; error?: string };
     setBusy(false);
     if (!response.ok || !result.palette) return notify(result.error ?? "No se pudo activar la paleta");
@@ -34,7 +35,7 @@ export function PaletteManager({ initialPalettes, initialActiveId, presets }: { 
 
   async function selectSaved(palette: PaletteRecord) {
     setBusy(true);
-    const response = await fetch("/api/admin/palettes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paletteId: palette.id }) });
+    const response = await scopedFetch("/api/admin/palettes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paletteId: palette.id }) });
     const result = (await response.json().catch(() => ({}))) as { error?: string };
     setBusy(false);
     if (!response.ok) return notify(result.error ?? "No se pudo activar la paleta");
@@ -47,7 +48,7 @@ export function PaletteManager({ initialPalettes, initialActiveId, presets }: { 
     const paletteName = name.trim();
     if (paletteName.length < 2) return notify("Escribí un nombre para la paleta");
     setBusy(true);
-    const response = await fetch("/api/admin/palettes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: paletteName, colors: draft }) });
+    const response = await scopedFetch("/api/admin/palettes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: paletteName, colors: draft }) });
     const result = (await response.json().catch(() => ({}))) as { palette?: PaletteRecord; error?: string };
     setBusy(false);
     if (!response.ok || !result.palette) return notify(result.error ?? "No se pudo guardar la paleta");
@@ -60,7 +61,7 @@ export function PaletteManager({ initialPalettes, initialActiveId, presets }: { 
     const errors = validatePalette(draft);
     if (errors.length) return notify(errors[0]);
     setBusy(true);
-    const response = await fetch(`/api/admin/palettes/${current.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ colors: draft }) });
+    const response = await scopedFetch(`/api/admin/palettes/${current.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ colors: draft }) });
     const result = (await response.json().catch(() => ({}))) as { palette?: PaletteRecord; error?: string };
     setBusy(false);
     if (!response.ok || !result.palette) return notify(result.error ?? "No se pudo actualizar la paleta");
@@ -70,14 +71,14 @@ export function PaletteManager({ initialPalettes, initialActiveId, presets }: { 
   async function renamePalette(palette: PaletteRecord) {
     const nextName = window.prompt("Nuevo nombre de la paleta", palette.name)?.trim();
     if (!nextName || nextName === palette.name) return;
-    const response = await fetch(`/api/admin/palettes/${palette.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: nextName }) });
+    const response = await scopedFetch(`/api/admin/palettes/${palette.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: nextName }) });
     const result = (await response.json().catch(() => ({}))) as { palette?: PaletteRecord; error?: string };
     if (!response.ok || !result.palette) return notify(result.error ?? "No se pudo renombrar la paleta");
     setPalettes((items) => items.map((item) => item.id === palette.id ? result.palette! : item));
   }
 
   async function duplicatePalette(palette: PaletteRecord | PalettePreset) {
-    const response = await fetch("/api/admin/palettes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify("id" in palette ? { sourceId: palette.id, name: `${palette.name} personalizada` } : { name: `${palette.name} personalizada`, colors: palette }) });
+    const response = await scopedFetch("/api/admin/palettes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify("id" in palette ? { sourceId: palette.id, name: `${palette.name} personalizada` } : { name: `${palette.name} personalizada`, colors: palette }) });
     const result = (await response.json().catch(() => ({}))) as { palette?: PaletteRecord; error?: string };
     if (!response.ok || !result.palette) return notify(result.error ?? "No se pudo duplicar la paleta");
     setPalettes((items) => [...items, result.palette!]); setActiveId(result.palette.id); setDraft(result.palette); notify("Copia creada y aplicada.");
@@ -85,7 +86,7 @@ export function PaletteManager({ initialPalettes, initialActiveId, presets }: { 
 
   async function deletePalette(palette: PaletteRecord) {
     if (activeId === palette.id) return notify("Seleccioná otra paleta antes de eliminar la activa.");
-    const response = await fetch(`/api/admin/palettes/${palette.id}`, { method: "DELETE" });
+    const response = await scopedFetch(`/api/admin/palettes/${palette.id}`, { method: "DELETE" });
     const result = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) return notify(result.error ?? "No se pudo eliminar la paleta");
     setPalettes((items) => items.filter((item) => item.id !== palette.id)); notify("Paleta eliminada.");
