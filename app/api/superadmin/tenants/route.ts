@@ -3,10 +3,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorizeSuperAdmin } from "@/lib/auth";
+import { deleteTenants } from "@/lib/delete-tenant";
 import { prisma } from "@/lib/prisma";
 import { isReservedSlug } from "@/lib/domains";
 import { slugify } from "@/lib/slug";
 import { defaultPalette } from "@/lib/theme-palettes";
+
+const tenantDeleteInput = z.object({
+  tenantIds: z.array(z.coerce.number().int().positive()).min(1).max(100),
+});
 
 const tenantInput = z.object({
   name: z.string().trim().min(2).max(160),
@@ -144,4 +149,29 @@ export async function POST(request: Request) {
     request,
   });
   return NextResponse.json({ tenant, tenantId: tenant.id }, { status: 201 });
+}
+
+/** @summary Elimina por completo los clientes seleccionados junto con todos sus datos. */
+export async function DELETE(request: Request) {
+  const superAdmin = await authorizeSuperAdmin();
+  if (!superAdmin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const parsed = tenantDeleteInput.safeParse(await request.json().catch(() => null));
+  if (!parsed.success)
+    return NextResponse.json({ error: "Seleccioná al menos un cliente para eliminar" }, { status: 400 });
+  const { deleted } = await deleteTenants([...new Set(parsed.data.tenantIds)]);
+  if (!deleted.length)
+    return NextResponse.json({ error: "No se encontraron clientes con esos IDs" }, { status: 404 });
+  for (const tenant of deleted) {
+    await recordAudit({
+      context: superAdmin,
+      action: "delete",
+      entityType: "tenant",
+      entityId: tenant.id,
+      newValues: { name: tenant.name, slug: tenant.slug, status: tenant.status },
+      request,
+    });
+  }
+  return NextResponse.json({
+    deleted: deleted.map((tenant) => ({ id: tenant.id, name: tenant.name, slug: tenant.slug })),
+  });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { authorizeSuperAdmin } from "@/lib/auth";
+import { deleteTenants } from "@/lib/delete-tenant";
 import { isAppHost, isLocalhost, isPlatformHost, isReservedSlug, ROOT_DOMAIN_NAME } from "@/lib/domains";
 import { prisma } from "@/lib/prisma";
 
@@ -146,4 +147,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ tenan
     request,
   });
   return NextResponse.json({ ok: true });
+}
+
+/** @summary Elimina por completo un cliente y todos los datos asociados. */
+export async function DELETE(request: Request, context: { params: Promise<{ tenantId: string }> }) {
+  const superAdmin = await authorizeSuperAdmin();
+  if (!superAdmin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).tenantId);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
+  const { deleted } = await deleteTenants([id]);
+  const tenant = deleted[0];
+  if (!tenant) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
+  await recordAudit({
+    context: superAdmin,
+    action: "delete",
+    entityType: "tenant",
+    entityId: tenant.id,
+    newValues: { name: tenant.name, slug: tenant.slug, status: tenant.status },
+    request,
+  });
+  return NextResponse.json({ ok: true, deleted: tenant });
 }
