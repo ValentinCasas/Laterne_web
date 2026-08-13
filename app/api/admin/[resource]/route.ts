@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminResource } from "@/lib/admin-resources";
@@ -9,7 +10,7 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { productAdminData } from "@/lib/product-admin";
 import { promotionData } from "@/lib/promotion-admin";
-import { slugify, uniqueCategorySlug } from "@/lib/slug";
+import { slugify, uniqueBranchSlug, uniqueCategorySlug } from "@/lib/slug";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
@@ -164,7 +165,7 @@ async function normalize(resource: string, input: Record<string, string>, tenant
     return {
       tenantId,
       name: input.name.trim(),
-      slug: slugify(input.slug || input.name) || "sucursal",
+      slug: await uniqueBranchSlug(tenantId, input.slug || input.name),
       address: input.address.trim(),
       city: input.city?.trim() || null,
       province: input.province?.trim() || null,
@@ -285,26 +286,30 @@ export async function POST(request: Request, context: { params: Promise<{ resour
       item = await prisma.product.create({ data: product.data });
       await ensureBranchProduct(auth.tenant.id, product.targetBranchId, (item as { id: number }).id);
       await ensureBranchStock(auth.tenant.id, product.targetBranchId, (item as { id: number }).id);
+    } else if (resource === "sucursales") {
+      const branchData = await normalize(resource, input, auth.tenant.id, createBranchId ?? undefined);
+      item = await prisma.$transaction(async (transaction) => {
+        const created = await transaction.branch.create({ data: branchData as Prisma.BranchCreateInput });
+        if ((created as { isPrimary: boolean }).isPrimary) {
+          await transaction.branch.updateMany({
+            where: { tenantId: auth.tenant.id, id: { not: created.id } },
+            data: { isPrimary: false },
+          });
+        }
+        const memberships = await transaction.tenantMembership.findMany({ where: { tenantId: auth.tenant.id }, select: { id: true } });
+        if (memberships.length) {
+          await transaction.branchMembership.createMany({
+            data: memberships.map((membership) => ({ membershipId: membership.id, branchId: created.id })),
+            skipDuplicates: true,
+          });
+        }
+        return created;
+      });
+      await ensureDraftLicense(auth.tenant.id, (item as { id: number }).id);
     } else {
       item = await (prisma[resourceConfig.model] as unknown as Delegate).create({
         data: await normalize(resource, input, auth.tenant.id, createBranchId ?? undefined),
       });
-    }
-    if (resource === "sucursales" && (item as { isPrimary?: boolean }).isPrimary) {
-      await prisma.branch.updateMany({
-        where: { tenantId: auth.tenant.id, id: { not: (item as { id: number }).id } },
-        data: { isPrimary: false },
-      });
-    }
-    if (resource === "sucursales") {
-      const createdBranchId = (item as { id: number }).id;
-      await prisma.branchMembership.createMany({
-        data: (await prisma.tenantMembership.findMany({ where: { tenantId: auth.tenant.id }, select: { id: true } })).map(
-          (membership) => ({ membershipId: membership.id, branchId: createdBranchId }),
-        ),
-        skipDuplicates: true,
-      });
-      await ensureDraftLicense(auth.tenant.id, createdBranchId);
     }
     await recordAudit({
       context: auth,

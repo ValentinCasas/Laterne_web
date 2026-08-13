@@ -18,6 +18,7 @@ const credentials = z.object({
   tenantId: z.coerce.number().int().positive().optional(),
   tenantSlug: z.string().trim().min(1).max(120).optional(),
   branchId: z.coerce.number().int().nonnegative().optional(),
+  context: z.enum(["platform", "tenant"]).optional(),
 });
 const invalidPasswordHash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.";
 const maximumFailedAttempts = 8;
@@ -113,9 +114,30 @@ export async function POST(request: Request) {
     .trim()
     .split(":")[0];
   const hostContext = classifyHost(host);
-  const platformContext = routeKind === "platform-admin" || (!routeKind && hostContext.kind === "platform");
 
-  let membership = platformContext ? undefined : user.memberships[0];
+  // El contexto lo define la URL visible de login (explícito del formulario o
+  // headers canónicos). Nunca se infiere por email, membresía o primer tenant.
+  const explicitContext = parsed.data.context;
+  const routeContext =
+    routeKind === "platform-admin"
+      ? "platform"
+      : routeKind === "tenant-auth" || routeTenantSlug
+        ? "tenant"
+        : undefined;
+  const platformContext =
+    explicitContext === "platform"
+      ? true
+      : explicitContext === "tenant"
+        ? false
+        : routeContext === "platform"
+          ? true
+          : routeContext === "tenant"
+            ? false
+            : hostContext.kind === "platform";
+
+  let membership: (typeof user.memberships)[number] | undefined = platformContext
+    ? undefined
+    : user.memberships[0];
   const requestedTenantSlug = routeTenantSlug || (hostContext.kind === "app" && hostContext.slug ? hostContext.slug : parsed.data.tenantSlug);
   if (!platformContext && (parsed.data.tenantId || requestedTenantSlug)) {
     membership = parsed.data.tenantId
@@ -127,6 +149,10 @@ export async function POST(request: Request) {
       : user.memberships.find((item) => item.tenant.slug === requestedTenantSlug);
     if (!membership)
       return NextResponse.json({ error: "El negocio seleccionado no está disponible" }, { status: 403 });
+  }
+
+  if (!platformContext && explicitContext === "tenant" && !parsed.data.tenantId && !requestedTenantSlug) {
+    return NextResponse.json({ error: "Seleccioná el negocio al que querés ingresar" }, { status: 400 });
   }
 
   if (!platformContext && user.memberships.length > 1 && !parsed.data.tenantId && !requestedTenantSlug) {

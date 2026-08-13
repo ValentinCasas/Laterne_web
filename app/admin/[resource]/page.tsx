@@ -627,16 +627,46 @@ function createDefinition(
         { key: "deliveryFee", label: "Costo de entrega", type: "number", min: 0, step: 0.01 },
         { key: "minimumOrder", label: "Pedido mínimo", type: "number", min: 0, step: 0.01 },
         { key: "orderPrefix", label: "Prefijo de pedido", placeholder: "PED" },
-        { key: "isPrimary", label: "Sucursal principal", control: "checkbox" },
-        { key: "inheritLanding", label: "Usar landing principal", control: "checkbox", defaultChecked: true },
-        { key: "inheritBrand", label: "Usar identidad del tenant", control: "checkbox", defaultChecked: true },
-        { key: "landingHeroTitle", label: "Título de landing propia", placeholder: "Opcional si desactivás la herencia", group: "Landing propia" },
-        { key: "landingHeroSubtitle", label: "Texto de landing propia", control: "textarea", group: "Landing propia" },
         {
           key: "active",
           label: "Sucursal activa",
           control: "checkbox",
           defaultChecked: true,
+          group: "Estado",
+        },
+        {
+          key: "isPrimary",
+          label: "Sucursal principal",
+          control: "checkbox",
+          group: "Tipo de sucursal",
+        },
+        {
+          key: "inheritLanding",
+          label: "Landing",
+          control: "select",
+          required: true,
+          defaultValue: "true",
+          options: [
+            { value: "true", label: "Heredar landing principal" },
+            { value: "false", label: "Landing propia" },
+          ],
+          help: "Elegí si esta sucursal usa la landing del negocio o una propia.",
+          group: "Landing",
+        },
+        { key: "landingHeroTitle", label: "Título de la landing propia", placeholder: "Se usa solo con Landing propia", group: "Landing" },
+        { key: "landingHeroSubtitle", label: "Texto de la landing propia", control: "textarea", group: "Landing" },
+        {
+          key: "inheritBrand",
+          label: "Identidad",
+          control: "select",
+          required: true,
+          defaultValue: "true",
+          options: [
+            { value: "true", label: "Usar identidad del negocio" },
+            { value: "false", label: "Personalización propia" },
+          ],
+          help: "Elegí si esta sucursal usa la marca del negocio o una propia.",
+          group: "Identidad",
         },
       ],
     },
@@ -732,6 +762,21 @@ async function loadItems(definition: ResourceDefinition, tenantId: number, activ
       productIds: products.map((item) => item.productId).join(","),
       categoryIds: categories.map((item) => item.categoryId).join(","),
     }));
+  }
+
+  if (definition.model === "branch") {
+    const branches = await prisma.branch.findMany({ where: branchFilter, orderBy: { id: "asc" } });
+    return branches.map((branch) => {
+      const landing =
+        branch.landingContent && typeof branch.landingContent === "object" && !Array.isArray(branch.landingContent)
+          ? (branch.landingContent as { heroTitle?: unknown; heroSubtitle?: unknown })
+          : {};
+      return {
+        ...branch,
+        landingHeroTitle: typeof landing.heroTitle === "string" ? landing.heroTitle : "",
+        landingHeroSubtitle: typeof landing.heroSubtitle === "string" ? landing.heroSubtitle : "",
+      };
+    });
   }
 
   const delegate = prisma[definition.model as keyof typeof prisma] as unknown as {

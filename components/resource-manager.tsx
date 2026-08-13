@@ -37,6 +37,7 @@ export type ResourceField = {
   accept?: string;
   previewModel?: boolean;
   defaultChecked?: boolean;
+  defaultValue?: string;
 };
 
 type Item = Record<string, unknown> & { id: number };
@@ -295,7 +296,7 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
           className="input mt-2 appearance-none"
           name={field.key}
           required={field.required}
-          defaultValue={value}
+          defaultValue={value || field.defaultValue || ""}
           key={`${item?.id ?? "new"}-${field.key}`}
         >
           {!field.required && <option value="">Sin especificar</option>}
@@ -481,6 +482,10 @@ export function ResourceManager({
         }
         if (field.control === "asset") {
           payload[field.key] = await uploadAsset(field, formData);
+          continue;
+        }
+        if (field.control === "checkbox") {
+          payload[field.key] = formData.getAll(field.key).includes("true") ? "true" : "false";
           continue;
         }
         payload[field.key] = String(formData.get(field.key) ?? "");

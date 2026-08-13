@@ -11,23 +11,23 @@ export default async function PlatformSectionPage({ params }: { params: Promise<
   let rows: PlatformRow[] = [];
   if (section === "suscripciones") {
     const tenants = await prisma.tenant.findMany({ include: { subscription: { include: { plan: { select: { name: true } } } } }, orderBy: { updatedAt: "desc" } });
-    rows = tenants.map((tenant) => ({ title: tenant.name, detail: `${tenant.subscription?.plan?.name ?? "Sin plan"} · ${tenant.subscription?.endsAt ? new Date(tenant.subscription.endsAt).toLocaleDateString("es-AR") : "sin vencimiento"}`, status: tenant.subscription?.status, href: `/platform/clientes/${tenant.id}` }));
+    rows = tenants.map((tenant) => ({ title: tenant.name, detail: `${tenant.subscription?.plan?.name ?? "Sin plan"} · ${tenant.subscription?.endsAt ? new Date(tenant.subscription.endsAt).toLocaleDateString("es-AR") : "sin vencimiento"}`, status: tenant.subscription?.status, href: `/platform/clientes/${tenant.slug}` }));
   }
   if (section === "pagos") {
-    const payments = await prisma.platformPayment.findMany({ include: { tenant: { select: { name: true } } }, orderBy: { paidAt: "desc" }, take: 300 });
-    rows = payments.map((payment) => ({ title: payment.tenant.name, detail: `${payment.currency} ${Number(payment.amount).toLocaleString("es-AR")} · ${payment.method} · ${new Date(payment.paidAt).toLocaleDateString("es-AR")}`, status: payment.reference ?? "Sin referencia", href: `/platform/clientes/${payment.tenantId}` }));
+    const payments = await prisma.platformPayment.findMany({ include: { tenant: { select: { name: true, slug: true } } }, orderBy: { paidAt: "desc" }, take: 300 });
+    rows = payments.map((payment) => ({ title: payment.tenant.name, detail: `${payment.currency} ${Number(payment.amount).toLocaleString("es-AR")} · ${payment.method} · ${new Date(payment.paidAt).toLocaleDateString("es-AR")}`, status: payment.reference ?? "Sin referencia", href: `/platform/clientes/${payment.tenant.slug}` }));
   }
   if (section === "dominios") {
     const tenants = await prisma.tenant.findMany({ include: { brandSettings: { select: { customDomain: true } } }, orderBy: { name: "asc" } });
-    rows = tenants.map((tenant) => ({ title: tenant.name, detail: `${tenant.slug}.app · ${tenant.brandSettings?.customDomain ?? "Sin dominio personalizado"}`, status: tenant.brandSettings?.customDomain ? "Configurado" : "Pendiente", href: `/platform/clientes/${tenant.id}` }));
+    rows = tenants.map((tenant) => ({ title: tenant.name, detail: `${tenant.slug}.app · ${tenant.brandSettings?.customDomain ?? "Sin dominio personalizado"}`, status: tenant.brandSettings?.customDomain ? "Configurado" : "Pendiente", href: `/platform/clientes/${tenant.slug}` }));
   }
   if (section === "uso") {
     const tenants = await prisma.tenant.findMany({ include: { _count: { select: { products: true, memberships: true, branches: true, customerOrders: true, mediaAssets: true } } }, orderBy: { name: "asc" } });
-    rows = tenants.map((tenant) => ({ title: tenant.name, detail: `${tenant._count.products} productos · ${tenant._count.memberships} usuarios · ${tenant._count.branches} sucursales · ${tenant._count.customerOrders} pedidos`, status: `${tenant._count.mediaAssets} archivos`, href: `/platform/clientes/${tenant.id}` }));
+    rows = tenants.map((tenant) => ({ title: tenant.name, detail: `${tenant._count.products} productos · ${tenant._count.memberships} usuarios · ${tenant._count.branches} sucursales · ${tenant._count.customerOrders} pedidos`, status: `${tenant._count.mediaAssets} archivos`, href: `/platform/clientes/${tenant.slug}` }));
   }
   if (section === "soporte") {
-    const tickets = await prisma.supportTicket.findMany({ include: { tenant: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 300 });
-    rows = tickets.map((ticket) => ({ title: `${ticket.tenant.name} · ${ticket.subject}`, detail: ticket.message, status: ticket.status, href: `/platform/clientes/${ticket.tenantId}` }));
+    const tickets = await prisma.supportTicket.findMany({ include: { tenant: { select: { name: true, slug: true } } }, orderBy: { createdAt: "desc" }, take: 300 });
+    rows = tickets.map((ticket) => ({ title: `${ticket.tenant.name} · ${ticket.subject}`, detail: ticket.message, status: ticket.status, href: `/platform/clientes/${ticket.tenant.slug}` }));
   }
   if (section === "auditoria") {
     const logs = await prisma.auditLog.findMany({ where: { tenantId: { not: null } }, include: { tenant: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 300 });

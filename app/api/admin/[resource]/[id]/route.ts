@@ -145,9 +145,12 @@ async function values(resource: string, input: Record<string, string>, tenantId:
     if (!input.name?.trim() || !input.address?.trim()) {
       throw new Error("Completá el nombre y la dirección de la sucursal");
     }
+    // El slug es la identidad estable de la sucursal: solo cambia si se edita
+    // explícitamente. Un slug vacío conserva el actual (nunca se regenera desde el nombre).
+    const nextSlug = input.slug?.trim() ? slugify(input.slug.trim()) : "";
     return {
       name: input.name.trim(),
-      slug: slugify(input.slug || input.name) || `sucursal-${id}`,
+      ...(nextSlug ? { slug: nextSlug } : {}),
       address: input.address.trim(),
       city: input.city?.trim() || null,
       province: input.province?.trim() || null,
@@ -275,16 +278,34 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
     const delegate = prisma[config.model] as unknown as Delegate;
     const oldItem = await delegate.findFirst({ where: { ...itemBranchWhere(auth, config.model), id } });
     if (!oldItem) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
-    if (resource === "sucursales" && booleanValue(input.isPrimary)) {
-      await prisma.branch.updateMany({
-        where: { tenantId: auth.tenant.id, id: { not: id } },
-        data: { isPrimary: false },
+    const data = await values(resource, input, auth.tenant.id, id, auth.activeBranchId);
+    if (resource === "sucursales" && data.slug && data.slug !== (oldItem as { slug?: string }).slug) {
+      const collision = await prisma.branch.findFirst({
+        where: { tenantId: auth.tenant.id, slug: data.slug as string, id: { not: id } },
+        select: { id: true },
       });
+      if (collision) throw new Error("Ya existe una sucursal con ese identificador");
     }
-    const item = await delegate.update({
-      where: { id },
-      data: await values(resource, input, auth.tenant.id, id, auth.activeBranchId),
-    });
+    const item =
+      resource === "sucursales"
+        ? await prisma.$transaction(async (transaction) => {
+            const wasPrimary = Boolean((oldItem as { isPrimary?: boolean }).isPrimary);
+            const becomesPrimary = Boolean((data as { isPrimary: boolean }).isPrimary);
+            if (wasPrimary && !becomesPrimary) {
+              const others = await transaction.branch.count({ where: { tenantId: auth.tenant.id, id: { not: id } } });
+              if (!others) (data as Record<string, unknown>).isPrimary = true;
+              else throw new Error("Asigná otra sucursal principal antes de desmarcar esta");
+            }
+            const updated = await transaction.branch.update({ where: { id }, data });
+            if (becomesPrimary) {
+              await transaction.branch.updateMany({
+                where: { tenantId: auth.tenant.id, id: { not: id } },
+                data: { isPrimary: false },
+              });
+            }
+            return updated;
+          })
+        : await delegate.update({ where: { id }, data });
     if (resource === "productos") {
       const targetBranchId = auth.activeBranchId && auth.activeBranchId > 0 ? auth.activeBranchId : null;
       if (targetBranchId) {

@@ -356,12 +356,14 @@ export async function proxy(request: NextRequest) {
     return redirectTo(request, publicRootUrl(), pathname);
   }
 
-  if (
-    isPlatformMarketing ||
-    pathname === "/login" ||
-    pathname === "/recuperar-acceso" ||
-    pathname === "/restablecer-acceso"
-  ) {
+  // El acceso canónico de la plataforma es /platform/login. /login queda solo como
+  // alias transicional y siempre se normaliza para que el contexto del acceso no
+  // dependa del host ni de la membresía del usuario.
+  if (pathname === "/login" || pathname === "/recuperar-acceso" || pathname === "/restablecer-acceso") {
+    return redirectTo(request, adminRootUrl(), platformAdminPath(pathname));
+  }
+
+  if (isPlatformMarketing) {
     return NextResponse.next({
       request: { headers: contextHeaders(request, { routeKind: "platform-public" }) },
     });

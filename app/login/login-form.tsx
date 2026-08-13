@@ -8,7 +8,7 @@ import { scopedFetch } from "@/lib/client-routing";
 type BranchOption = { id: number; name: string; slug: string; isPrimary: boolean };
 
 /** @summary Gestiona el formulario de acceso y redirige al panel correcto con credenciales válidas. */
-export function LoginForm({ redirectTo = "", initialTenantId, initialTenantSlug, recoveryHref = "/recuperar-acceso" }: { redirectTo?: string; initialTenantId?: string; initialTenantSlug?: string; recoveryHref?: string }) {
+export function LoginForm({ context, redirectTo = "", initialTenantId, initialTenantSlug, recoveryHref = "/recuperar-acceso" }: { context?: "platform" | "tenant"; redirectTo?: string; initialTenantId?: string; initialTenantSlug?: string; recoveryHref?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [tenantOptions, setTenantOptions] = useState<Array<{ id: number; name: string; slug: string }>>([]);
@@ -26,6 +26,7 @@ export function LoginForm({ redirectTo = "", initialTenantId, initialTenantSlug,
     const body = {
       email,
       password,
+      ...(context ? { context } : {}),
       ...(selectedTenantId ? { tenantId: Number(selectedTenantId) } : initialTenantSlug ? { tenantSlug: initialTenantSlug } : {}),
       ...(selectedBranchId ? { branchId: Number(selectedBranchId) } : {}),
       ...extra,

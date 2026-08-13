@@ -1,10 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
+import type { Route } from "next";
 import { cookies } from "next/headers";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isLocalDevelopmentHost } from "@/lib/domains";
-import { adminHrefForContext, isBranchAdminLogicalPath, tenantAdminPath, tenantBranchAdminPath, tenantPublicPath } from "@/lib/routes";
+import { adminHrefForContext, isBranchAdminLogicalPath, tenantBranchAdminPath, tenantPublicPath } from "@/lib/routes";
 import { resolveHostKind } from "@/lib/host-gate";
 import { publicTenantWhere } from "@/lib/subscription-access";
 import { paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
@@ -285,9 +286,11 @@ export async function requireBranch(
   branchId?: number | null,
 ): Promise<AuthorizationContext & { branch: AuthorizationContext["branches"][number] }> {
   const context = permission ? await requirePermission(permission) : await requirePermission("admin.access");
-  if (branchId === undefined || branchId === null) redirect(tenantAdminPath(context.tenant.slug));
+  // La URL es la fuente de verdad: si la sucursal explícita no es accesible se
+  // rechaza con 403. Nunca se redirige silenciosamente a otra sucursal.
+  if (branchId === undefined || branchId === null) redirect("/403");
   const branch = context.branches.find((item) => item.id === branchId && item.active && item.status === "active");
-  if (!branch) redirect(tenantAdminPath(context.tenant.slug));
+  if (!branch) redirect("/403");
   return { ...context, branch };
 }
 
@@ -316,7 +319,24 @@ export async function requirePermission(permission: string) {
   if (!context) {
     const loginPath = routeTenantSlug ? tenantPublicPath(routeTenantSlug, "/login") : "/login";
     const safeReturnTo = originalPath.startsWith("/t/") ? originalPath : undefined;
-    redirect(safeReturnTo ? `${loginPath}?returnTo=${encodeURIComponent(safeReturnTo)}` : loginPath);
+
+    // Solo falta de sesión redirige al acceso. Con sesión válida pero sin acceso
+    // nunca volvemos a login (evita el loop login -> returnTo -> login).
+    const session = await getSession();
+    if (!session || session.context !== "tenant" || !session.membershipId) {
+      redirect((safeReturnTo ? `${loginPath}?returnTo=${encodeURIComponent(safeReturnTo)}` : loginPath) as Route);
+    }
+
+    // Sucursal explícita de la URL: inexistente en el tenant → 404; existente
+    // pero sin acceso/operativa → 403. Nunca se cae silenciosamente a otra sucursal.
+    if (routeTenantSlug && routeBranchSlug) {
+      const branch = await prisma.branch.findFirst({
+        where: { tenant: { slug: routeTenantSlug }, slug: routeBranchSlug },
+        select: { id: true },
+      });
+      if (!branch) notFound();
+    }
+    redirect("/403");
   }
 
   const logicalPath = originalPath.startsWith("/t/")
@@ -339,7 +359,7 @@ export async function requirePermission(permission: string) {
     !context.allBranches
   ) {
     const firstBranch = context.branches.find((branch) => branch.active && branch.status === "active");
-    if (firstBranch) redirect(tenantBranchAdminPath(context.tenant.slug, firstBranch.slug, logicalPath));
+    if (firstBranch) redirect(tenantBranchAdminPath(context.tenant.slug, firstBranch.slug, logicalPath) as Route);
   }
 
   // Compatibilidad con bookmarks/enlaces antiguos: /admin/... nunca queda como
@@ -348,7 +368,7 @@ export async function requirePermission(permission: string) {
     const branch = context.activeBranchId && context.activeBranchId > 0
       ? context.branches.find((item) => item.id === context.activeBranchId)
       : undefined;
-    redirect(adminHrefForContext(context.tenant.slug, logicalPath, branch?.slug));
+    redirect(adminHrefForContext(context.tenant.slug, logicalPath, branch?.slug) as Route);
   }
 
   return context;
@@ -380,7 +400,12 @@ export async function authorizeSuperAdmin() {
 /** @summary Exige privilegios globales antes de abrir herramientas multiempresa. */
 export async function requireSuperAdmin() {
   const session = await getSession();
-  if (!session) redirect("/platform/login");
+  if (!session) {
+    const requestHeaders = await headers();
+    const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
+    const safeReturnTo = originalPath.startsWith("/platform") ? originalPath : undefined;
+    redirect(safeReturnTo ? `/platform/login?returnTo=${encodeURIComponent(safeReturnTo)}` : "/platform/login");
+  }
   const context = await authorizeSuperAdmin();
   if (!context) redirect("/403");
   return context;

@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { classifyHost } from "@/lib/domains";
@@ -24,6 +25,7 @@ export default async function LoginPage({
 
   const requestedTenantId = params.tenantId;
   const requestedTenantSlug = routeTenantSlug || params.tenantSlug;
+  const loginContext = platform ? "platform" : requestedTenantSlug ? "tenant" : "";
   const defaultTarget = platform
     ? platformAdminPath()
     : requestedTenantSlug
@@ -38,7 +40,7 @@ export default async function LoginPage({
 
   const existingSession = await getSession();
   if (existingSession && (platform || requestedTenantSlug)) {
-    redirect(safeReturnTo ?? defaultTarget);
+    redirect((safeReturnTo ?? defaultTarget) as Route);
   }
 
   const recoveryHref = platform
@@ -53,6 +55,7 @@ export default async function LoginPage({
         <p className="mc-eyebrow">{platform ? "Plataforma MenuClick" : requestedTenantSlug ? `Acceso · ${requestedTenantSlug}` : "Acceso MenuClick"}</p>
         <h1 className="mt-2 text-3xl font-black">Ingresar</h1>
         <LoginForm
+          context={loginContext ? (loginContext as "platform" | "tenant") : undefined}
           redirectTo={safeReturnTo}
           initialTenantId={requestedTenantId}
           initialTenantSlug={requestedTenantSlug}

@@ -67,3 +67,22 @@ export async function uniquePromotionSlug(tenantId: number, value: string, exclu
 
   return candidate;
 }
+
+/** @summary Genera un slug de sucursal único dentro del negocio. Solo se usa al CREAR. */
+export async function uniqueBranchSlug(tenantId: number, value: string, excludeId?: number) {
+  const base = slugify(value) || "sucursal";
+  let candidate = base;
+  let suffix = 2;
+
+  while (
+    await prisma.branch.findFirst({
+      where: { tenantId, slug: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) },
+      select: { id: true },
+    })
+  ) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
