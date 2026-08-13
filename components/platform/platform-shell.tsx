@@ -7,7 +7,7 @@ import { useState } from "react";
 
 const groups = [
   { label: "Inicio", links: [["/platform", "Resumen"]] },
-  { label: "Clientes", links: [["/platform/clientes", "Clientes"], ["/platform/clientes/nuevo", "Nuevo cliente"]] },
+  { label: "Clientes", links: [["/platform/clientes", "Clientes"], ["/platform/clientes/nuevo", "Nuevo cliente"], ["/platform/oportunidades", "Oportunidades"]] },
   { label: "Facturación", links: [["/platform/suscripciones", "Suscripciones"], ["/platform/pagos", "Pagos"], ["/platform/planes", "Planes y capacidades"]] },
   { label: "Operación", links: [["/platform/dominios", "Dominios"], ["/platform/uso", "Uso y límites"], ["/platform/soporte", "Soporte SaaS"]] },
   { label: "Sistema", links: [["/platform/auditoria", "Auditoría"], ["/platform/configuracion", "Configuración"]] },

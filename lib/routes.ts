@@ -245,6 +245,10 @@ export function scopedApiPath(pathname: string, apiPath: string) {
     return `/api/platform/auth/${apiPath.slice("/api/auth/".length)}`;
   }
 
+  if (context.surface === "platform-admin" && apiPath.startsWith("/api/admin/leads/")) {
+    return `/api/platform/leads/${apiPath.slice("/api/admin/leads/".length)}`;
+  }
+
   if (!context.tenantSlug) return apiPath;
   const tenant = encodedSlug(context.tenantSlug);
   const branch = context.branchSlug ? `/s/${encodedSlug(context.branchSlug)}` : "";

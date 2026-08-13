@@ -84,6 +84,12 @@ describe("routing canónico de MenuClick", () => {
     expect(scopedApiPath("/platform/clientes", "/api/superadmin/clients")).toBe(
       "/api/platform/clients",
     );
+    expect(scopedApiPath("/platform/oportunidades", "/api/admin/leads/12")).toBe(
+      "/api/platform/leads/12",
+    );
+    expect(scopedApiPath("/t/laterne/admin/oportunidades", "/api/admin/leads/12")).toBe(
+      "/api/t/laterne/admin/leads/12",
+    );
   });
 
   it("cambiar branch conserva el módulo y no usa query branchId", () => {
