@@ -90,7 +90,9 @@ export function LandingEditor({
 }) {
   const [brand, setBrand] = useState(initialBrand);
   const [sections, setSections] = useState<LandingSections>({
-    beerImages: initialSections.beerImages.length ? initialSections.beerImages : LANDING_BEER_DEFAULTS,
+    beerImages: initialSections.beerImages.length
+      ? [...new Set(initialSections.beerImages)]
+      : LANDING_BEER_DEFAULTS,
     stories: initialSections.stories.length ? initialSections.stories : LANDING_STORY_DEFAULTS,
   });
   const [selected, setSelected] = useState<SectionKey>("hero");
@@ -136,6 +138,24 @@ export function LandingEditor({
   }
 
   function appendImage(kind: "beerImages" | "stories", file: File) {
+    if (kind === "beerImages") {
+      const alreadyStaged = [...pendingFiles.current.values()].some(
+        (pending) =>
+          pending.name === file.name && pending.size === file.size && pending.lastModified === file.lastModified,
+      );
+      if (alreadyStaged) {
+        void Swal.fire({
+          title: "Imagen repetida",
+          text: "Esa imagen ya está en el carrusel. Elegí otra o quitá la anterior si querés repetirla.",
+          icon: "warning",
+          timer: 1800,
+          showConfirmButton: false,
+          background: "#18181b",
+          color: "#fafafa",
+        });
+        return;
+      }
+    }
     const url = stageImage(file);
     setSections((current) =>
       kind === "beerImages"
@@ -240,6 +260,8 @@ export function LandingEditor({
         const resolved = await resolveImage(image);
         if (resolved) beerImages.push(resolved);
       }
+      const uniqueBeerImages = [...new Set(beerImages)];
+      const removedDuplicates = beerImages.length - uniqueBeerImages.length;
       const stories: LandingStory[] = [];
       for (const slide of sections.stories) {
         const resolved = await resolveImage(slide.image);
@@ -253,7 +275,7 @@ export function LandingEditor({
           heroTitle: brand.heroTitle.trim() || null,
           heroSubtitle: brand.heroSubtitle.trim() || null,
           heroImageUrl,
-          landingSections: { beerImages, stories },
+          landingSections: { beerImages: uniqueBeerImages, stories },
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
@@ -263,7 +285,21 @@ export function LandingEditor({
       if (!response.ok) throw new Error(result.error ?? "No se pudo guardar la landing");
 
       setBrand((current) => ({ ...current, heroImageUrl }));
-      setSections({ beerImages, stories });
+      setSections({ beerImages: uniqueBeerImages, stories });
+      if (removedDuplicates > 0) {
+        await Swal.fire({
+          title: "Landing guardada",
+          text: `Se quitaron ${removedDuplicates} ${
+            removedDuplicates === 1 ? "imagen repetida" : "imágenes repetidas"
+          } del carrusel para que no se muestren dos veces.`,
+          icon: "info",
+          timer: 2400,
+          showConfirmButton: false,
+          background: "#18181b",
+          color: "#fafafa",
+        });
+        return;
+      }
       await Swal.fire({
         title: "Landing guardada",
         text: "Los cambios ya están visibles para tus clientes.",
@@ -288,9 +324,13 @@ export function LandingEditor({
 
   const previewTitle = brand.heroTitle.trim() || `${brand.tenantName} es`;
   const previewSubtitle = brand.heroSubtitle.trim() || LANDING_HERO_SUBTITLE_DEFAULT;
-  const previewBeers = (sections.beerImages.length ? sections.beerImages : LANDING_BEER_DEFAULTS).filter(
-    (source) => LANDING_IMAGE_PATH_RE.test(source),
-  );
+  const previewBeers = [
+    ...new Set(
+      (sections.beerImages.length ? sections.beerImages : LANDING_BEER_DEFAULTS).filter((source) =>
+        LANDING_IMAGE_PATH_RE.test(source),
+      ),
+    ),
+  ];
   const previewStories = sections.stories.length ? sections.stories : LANDING_STORY_DEFAULTS;
   const previewStorySlides = previewStories.map((slide) => ({
     image: slide.image,
@@ -516,7 +556,7 @@ export function LandingEditor({
             </div>
           </div>
           <div
-            className={`overflow-hidden rounded-3xl border border-white/10 transition-all ${
+            className={`h-[min(720px,calc(100dvh-18rem))] overflow-y-auto rounded-3xl border border-white/10 transition-all ${
               device === "mobile" ? "mx-auto w-full max-w-[400px]" : "w-full"
             }`}
             style={{ backgroundColor: brand.backgroundColor, fontFamily: brand.fontFamily }}

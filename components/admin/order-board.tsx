@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
@@ -129,6 +129,18 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<OrderTypeFilter>("all");
   const [selected, setSelected] = useState<AdminOrder | null>(null);
+
+  /** @summary Abre el detalle del pedido indicado por `?id=` al cargar la página. */
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("id");
+    if (!raw) return;
+    const id = Number(raw);
+    if (!Number.isInteger(id)) return;
+    const found = orders.find((order) => order.id === id);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (found) setSelected(found);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const visibleOrders = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");

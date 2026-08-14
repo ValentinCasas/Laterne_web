@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { scopedFetch } from "@/lib/client-routing";
@@ -177,11 +177,24 @@ export function ReservationBoard({
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ReservationItem | null>(null);
+  const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [view, setView] = useState<BoardView>("list");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [anchor, setAnchor] = useState(today);
   const [dragId, setDragId] = useState<number | null>(null);
+
+  /** @summary Abre el detalle de la reserva indicada por `?id=` al cargar la página. */
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("id");
+    if (!raw) return;
+    const id = Number(raw);
+    if (!Number.isInteger(id)) return;
+    const found = reservations.find((item) => item.id === id);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (found) setSelected(found);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const visibleReservations = useMemo(() => {
     const day = (reservation: ReservationItem) => dateText(reservation.reservationDate);
@@ -697,6 +710,7 @@ export function ReservationBoard({
               today={today}
               onSelect={setSelected}
               onMove={moveReservation}
+              onOpenDay={setDayOpen}
               dragId={dragId}
               setDragId={setDragId}
             />
@@ -708,6 +722,7 @@ export function ReservationBoard({
               today={today}
               onSelect={setSelected}
               onMove={moveReservation}
+              onOpenDay={setDayOpen}
               dragId={dragId}
               setDragId={setDragId}
             />
@@ -981,7 +996,190 @@ export function ReservationBoard({
           </article>
         </div>
       )}
+
+      {dayOpen && (
+        <DayReservationsModal
+          date={dayOpen}
+          items={reservations.filter((item) => dateText(item.reservationDate) === dayOpen)}
+          today={today}
+          onClose={() => setDayOpen(null)}
+          onSelect={(reservation) => {
+            setSelected(reservation);
+            setDayOpen(null);
+          }}
+          onChangeStatus={changeStatus}
+        />
+      )}
     </section>
+  );
+}
+
+/** @summary Modal de día: todas las reservas de una fecha con buscador, filtro y acciones rápidas. */
+function DayReservationsModal({
+  date,
+  items,
+  today,
+  onClose,
+  onSelect,
+  onChangeStatus,
+}: {
+  date: string;
+  items: ReservationItem[];
+  today: string;
+  onClose: () => void;
+  onSelect: (reservation: ReservationItem) => void;
+  onChangeStatus: (reservation: ReservationItem, nextStatus: ReservationStatus) => Promise<void>;
+}) {
+  const [dayQuery, setDayQuery] = useState("");
+  const [dayStatus, setDayStatus] = useState("all");
+  const sorted = [...items].sort((first, second) =>
+    hourText(first.reservationTime).localeCompare(hourText(second.reservationTime)),
+  );
+  const normalizedDayQuery = dayQuery.trim().toLocaleLowerCase("es");
+  const visible = sorted.filter((item) => {
+    if (dayStatus !== "all" && item.status !== dayStatus) return false;
+    if (
+      normalizedDayQuery &&
+      !`${item.customerName} ${item.reference} ${item.phone} ${item.email}`
+        .toLocaleLowerCase("es")
+        .includes(normalizedDayQuery)
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const totalPeople = sorted.reduce((sum, item) => sum + item.partySize, 0);
+  const pendingCount = sorted.filter((item) => item.status === "pending").length;
+  const dayLabel = date === today ? "Hoy" : dateLabel(date, today);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4"
+      onClick={onClose}
+    >
+      <section
+        className="flex max-h-[86dvh] w-full max-w-3xl flex-col rounded-[2rem] border border-white/10 bg-zinc-950 p-5 sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Reservas del ${date}`}
+      >
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="section-eyebrow">Reservas del {date}</p>
+            <h2 className="mt-1 text-2xl font-black sm:text-3xl">{dayLabel}</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                {sorted.length} {sorted.length === 1 ? "reserva" : "reservas"}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                {totalPeople} {totalPeople === 1 ? "persona" : "personas"}
+              </span>
+              {pendingCount > 0 && (
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
+                  {pendingCount} {pendingCount === 1 ? "pendiente" : "pendientes"}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+            onClick={onClose}
+            type="button"
+            aria-label="Cerrar reservas del día"
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <input
+            className="input py-2"
+            type="search"
+            value={dayQuery}
+            onChange={(event) => setDayQuery(event.target.value)}
+            placeholder="Buscar en este día…"
+            autoFocus
+          />
+          <select
+            className="input py-2 sm:max-w-48"
+            value={dayStatus}
+            onChange={(event) => setDayStatus(event.target.value)}
+            aria-label="Filtrar por estado"
+          >
+            <option value="all">Todos los estados</option>
+            {reservationStatuses.map((option) => (
+              <option value={option} key={option}>
+                {reservationStatusLabel(option)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-4 space-y-2 overflow-y-auto pr-1">
+          {visible.map((reservation) => (
+            <article
+              className="grid gap-3 rounded-2xl border border-white/10 bg-black p-3 sm:grid-cols-[4.5rem_1fr_auto] sm:items-center"
+              key={reservation.id}
+            >
+              <span className="text-xl font-black tabular-nums text-pink-300">
+                {hourText(reservation.reservationTime)}
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-black text-pink-300">{reservation.reference}</p>
+                <p className="truncate font-black">{reservation.customerName}</p>
+                <p className="text-sm text-zinc-400">
+                  {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
+                  {reservation.sector ? ` · ${reservation.sector}` : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
+                >
+                  {reservationStatusLabel(reservation.status)}
+                </span>
+                <select
+                  className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1 text-xs"
+                  value={reservation.status}
+                  onChange={(event) => onChangeStatus(reservation, event.target.value as ReservationStatus)}
+                  aria-label={`Cambiar estado de ${reservation.reference}`}
+                >
+                  {reservationStatuses.map((option) => (
+                    <option value={option} key={option}>
+                      {reservationStatusLabel(option)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-pink-500"
+                  onClick={() => onSelect(reservation)}
+                  type="button"
+                >
+                  Detalle
+                </button>
+                {reservation.status !== "cancelled" && (
+                  <button
+                    className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-300"
+                    onClick={() => onChangeStatus(reservation, "cancelled")}
+                    type="button"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+          {!visible.length && (
+            <p className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-500">
+              {sorted.length
+                ? "No hay reservas que coincidan con este filtro."
+                : "No hay reservas para este día."}
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1169,6 +1367,7 @@ function WeekCalendar({
   today,
   onSelect,
   onMove,
+  onOpenDay,
   dragId,
   setDragId,
 }: {
@@ -1177,6 +1376,7 @@ function WeekCalendar({
   today: string;
   onSelect: (reservation: ReservationItem) => void;
   onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  onOpenDay: (date: string) => void;
   dragId: number | null;
   setDragId: (value: number | null) => void;
 }) {
@@ -1202,14 +1402,19 @@ function WeekCalendar({
               void onMove(dragged, { reservationDate: date });
             }}
           >
-            <header>
+            <button
+              className="block w-full text-left"
+              onClick={() => onOpenDay(date)}
+              type="button"
+              title="Ver todas las reservas del día"
+            >
               <p className={`text-[10px] font-black uppercase ${isToday ? "text-pink-300" : "text-zinc-500"}`}>
                 {weekdayShort(date)}
               </p>
               <p className={`text-xl font-black ${isToday ? "text-white" : "text-zinc-300"}`}>
                 {Number(date.slice(8, 10))}
               </p>
-            </header>
+            </button>
             <div className="mt-3 space-y-2">
               {items.map((reservation) => (
                 <button
@@ -1244,13 +1449,14 @@ function WeekCalendar({
   );
 }
 
-/** @summary Vista de mes: grilla de 6 semanas con hasta tres reservas por celda. */
+/** @summary Vista de mes: grilla de 6 semanas con hasta tres reservas por celda y acceso al día completo. */
 function MonthCalendar({
   cells,
   byDay,
   today,
   onSelect,
   onMove,
+  onOpenDay,
   dragId,
   setDragId,
 }: {
@@ -1259,6 +1465,7 @@ function MonthCalendar({
   today: string;
   onSelect: (reservation: ReservationItem) => void;
   onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  onOpenDay: (date: string) => void;
   dragId: number | null;
   setDragId: (value: number | null) => void;
 }) {
@@ -1282,10 +1489,11 @@ function MonthCalendar({
           const isToday = date === today;
           return (
             <div
-              className={`min-h-24 border-b border-r border-white/5 p-1.5 ${inMonth ? "" : "opacity-30"} ${
-                dragId !== null ? "bg-pink-500/[.03]" : ""
-              }`}
+              className={`min-h-24 cursor-pointer border-b border-r border-white/5 p-1.5 transition hover:bg-pink-500/[.05] ${
+                inMonth ? "" : "opacity-30"
+              } ${dragId !== null ? "bg-pink-500/[.03]" : ""}`}
               key={date}
+              onClick={() => onOpenDay(date)}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
@@ -1312,8 +1520,12 @@ function MonthCalendar({
                     className="block w-full truncate rounded-md bg-white/[.04] px-1.5 py-0.5 text-left text-[10px] font-bold hover:bg-white/10"
                     draggable
                     key={reservation.id}
-                    onClick={() => onSelect(reservation)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelect(reservation);
+                    }}
                     onDragStart={(event) => {
+                      event.stopPropagation();
                       event.dataTransfer.effectAllowed = "move";
                       event.dataTransfer.setData("text/plain", String(reservation.id));
                       setDragId(reservation.id);
@@ -1326,7 +1538,17 @@ function MonthCalendar({
                   </button>
                 ))}
                 {items.length > 3 && (
-                  <p className="px-1 text-[10px] font-bold text-zinc-500">+{items.length - 3} más</p>
+                  <button
+                    className="px-1 text-[10px] font-bold text-pink-300 hover:text-pink-200"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onOpenDay(date);
+                    }}
+                    type="button"
+                    title="Ver todas las reservas del día"
+                  >
+                    +{items.length - 3} más
+                  </button>
                 )}
               </div>
             </div>

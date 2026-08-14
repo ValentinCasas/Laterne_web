@@ -2,7 +2,7 @@
 
 import type { Route } from "next";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { BranchSwitcher } from "@/components/admin/branch-switcher";
@@ -24,6 +24,38 @@ type NavigationGroup = {
   icon: string;
   description: string;
   links: readonly NavigationLink[];
+};
+
+type SearchResults = {
+  products: Array<{ id: number; name: string; price: string | null; status: string }>;
+  customers: Array<{ id: number; name: string; email: string | null; phone: string | null; points: number }>;
+  orders: Array<{
+    id: number;
+    reference: string;
+    customerName: string;
+    status: string;
+    orderType: string;
+    total: string | null;
+    currency: string;
+  }>;
+  reservations: Array<{
+    id: number;
+    reference: string;
+    customerName: string;
+    status: string;
+    reservationDate: string;
+    reservationTime: string | null;
+  }>;
+};
+
+type PaletteEntry = {
+  key: string;
+  group: string;
+  label: string;
+  sublabel?: string;
+  icon: string;
+  href: Route;
+  logicalHref?: string;
 };
 
 const navigationGroups = [
@@ -197,11 +229,15 @@ export function AdminShell({
   allBranches?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const clearPath = normalizedAdminPath(pathname);
   const isCurrent = (href: string) => isActivePath(clearPath, href);
   const branchNavigationAvailable = isBranchAdminLogicalPath(clearPath);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  const [commandResults, setCommandResults] = useState<SearchResults | null>(null);
+  const [commandLoading, setCommandLoading] = useState(false);
+  const [commandActive, setCommandActive] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
@@ -230,6 +266,108 @@ export function AdminShell({
   const commandLinks = accessibleLinks.filter((link) =>
     link.label.toLocaleLowerCase("es").includes(commandQuery.trim().toLocaleLowerCase("es")),
   );
+
+  /** @summary Busca de forma consolidada (pedidos, clientes, reservas, productos) con debounce. */
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const query = commandQuery.trim();
+      if (query.length < 2) {
+        setCommandResults(null);
+        setCommandLoading(false);
+        setCommandActive(0);
+        return;
+      }
+      setCommandLoading(true);
+      try {
+        const response = await scopedFetch(`/api/admin/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("search-failed");
+        const data = (await response.json()) as SearchResults;
+        setCommandResults(data);
+        setCommandActive(0);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCommandResults(null);
+      } finally {
+        if (!controller.signal.aborted) setCommandLoading(false);
+      }
+    }, 240);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [commandQuery]);
+
+  const commandGroups = useMemo(() => {
+    const groups: Array<{ id: string; label: string; items: PaletteEntry[] }> = [];
+    const sectionItems: PaletteEntry[] = commandLinks.map((link) => ({
+      key: `section-${link.href}`,
+      group: "sections",
+      label: link.label,
+      icon: link.icon,
+      href: adminHref(link.href),
+      logicalHref: link.href,
+    }));
+    if (sectionItems.length) groups.push({ id: "sections", label: "Secciones", items: sectionItems });
+
+    const results = commandResults;
+    if (results) {
+      const orderItems: PaletteEntry[] = results.orders.map((order) => ({
+        key: `order-${order.id}`,
+        group: "orders",
+        label: `${order.reference} · ${order.customerName}`,
+        sublabel: `${order.orderType.replaceAll("_", " ")} · ${order.status.replaceAll("_", " ")}`,
+        icon: "PE",
+        href: adminHref(`/admin/pedidos?id=${order.id}`),
+      }));
+      if (orderItems.length) groups.push({ id: "orders", label: "Pedidos", items: orderItems });
+
+      const customerItems: PaletteEntry[] = results.customers.map((customer) => ({
+        key: `customer-${customer.id}`,
+        group: "customers",
+        label: customer.name,
+        sublabel: customer.email || customer.phone || `${customer.points} puntos`,
+        icon: "CF",
+        href: adminHref(`/admin/clientes-frecuentes?id=${customer.id}`),
+      }));
+      if (customerItems.length) groups.push({ id: "customers", label: "Clientes", items: customerItems });
+
+      const reservationItems: PaletteEntry[] = results.reservations.map((reservation) => ({
+        key: `reservation-${reservation.id}`,
+        group: "reservations",
+        label: `${reservation.reference} · ${reservation.customerName}`,
+        sublabel: `${reservation.reservationDate}${reservation.reservationTime ? ` ${String(reservation.reservationTime).slice(0, 5)}` : ""} · ${reservation.status.replaceAll("_", " ")}`,
+        icon: "RS",
+        href: adminHref(`/admin/reservas?id=${reservation.id}`),
+      }));
+      if (reservationItems.length) groups.push({ id: "reservations", label: "Reservas", items: reservationItems });
+
+      const productItems: PaletteEntry[] = results.products.map((product) => ({
+        key: `product-${product.id}`,
+        group: "products",
+        label: product.name,
+        sublabel: product.price
+          ? `$${Number(product.price).toLocaleString("es-AR")} · ${product.status}`
+          : product.status,
+        icon: "PR",
+        href: adminHref(`/admin/productos?id=${product.id}`),
+      }));
+      if (productItems.length) groups.push({ id: "products", label: "Productos", items: productItems });
+    }
+    return groups;
+  }, [adminHref, commandLinks, commandResults]);
+
+  const commandItems = useMemo(() => commandGroups.flatMap((group) => group.items), [commandGroups]);
+
+  function closeCommand() {
+    setCommandOpen(false);
+    setCommandQuery("");
+    setCommandResults(null);
+    setCommandActive(0);
+  }
 
   useEffect(() => {
     /** @summary Abre comandos rápidos con Ctrl o Cmd más K y los cierra con Escape. */
@@ -503,49 +641,114 @@ export function AdminShell({
       </div>
       {commandOpen && (
         <div
-          className="fixed inset-0 z-[150] grid place-items-start bg-black/80 p-4 pt-[12vh] backdrop-blur"
-          onClick={() => setCommandOpen(false)}
+          className="fixed inset-0 z-[150] grid place-items-start bg-black/80 p-4 pt-[10vh] backdrop-blur"
+          onClick={closeCommand}
         >
           <section
             className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="Comandos rápidos"
+            aria-label="Búsqueda global"
           >
             <label className="block border-b border-white/10 p-4">
-              <span className="sr-only">Buscar una sección</span>
+              <span className="sr-only">Buscar en todo el panel</span>
               <input
                 className="w-full bg-transparent text-xl font-bold outline-none"
                 value={commandQuery}
-                onChange={(event) => setCommandQuery(event.target.value)}
-                placeholder="Buscar sección…"
+                onChange={(event) => {
+                  setCommandQuery(event.target.value);
+                  setCommandActive(0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setCommandActive((current) =>
+                      commandItems.length ? (current + 1) % commandItems.length : 0,
+                    );
+                  } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setCommandActive((current) =>
+                      commandItems.length ? (current - 1 + commandItems.length) % commandItems.length : 0,
+                    );
+                  } else if (event.key === "Enter") {
+                    const target = commandItems[commandActive];
+                    if (target) {
+                      event.preventDefault();
+                      router.push(target.href);
+                      closeCommand();
+                    }
+                  } else if (event.key === "Escape") {
+                    closeCommand();
+                  }
+                }}
+                placeholder="Buscá pedidos, clientes, reservas, productos o secciones…"
                 autoFocus
               />
+              {commandQuery.trim().length >= 2 && (
+                <p className="mt-2 text-xs text-zinc-500">
+                  {commandLoading ? "Buscando…" : "Resultados de todo el negocio (solo tu sucursal)."}
+                </p>
+              )}
             </label>
             <div className="max-h-[55vh] overflow-y-auto p-2">
-              {commandLinks.map((link) => (
-                <Link
-                  className="flex items-center gap-3 rounded-2xl p-3 hover:bg-white/5"
-                  href={adminHref(link.href) as Route}
-                  key={link.href}
-                  onClick={() => {
-                    setCommandOpen(false);
-                    setCommandQuery("");
-                    setOpenGroup(groupIdForHref(link.href));
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-pink-500/10 text-[10px] font-black text-pink-300">
-                    {link.icon}
-                  </span>
-                  <strong>{link.label}</strong>
-                </Link>
+              {commandGroups.map((group) => (
+                <section key={group.id}>
+                  <h2 className="px-3 pb-1 pt-3 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    {group.label} <span className="text-zinc-600">({group.items.length})</span>
+                  </h2>
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const active = item.key === commandItems[commandActive]?.key;
+                      return (
+                        <Link
+                          className={`flex items-center gap-3 rounded-2xl p-3 ${
+                            active ? "bg-pink-500/10 ring-1 ring-pink-500/30" : "hover:bg-white/5"
+                          }`}
+                          href={item.href}
+                          key={item.key}
+                          onMouseEnter={() => setCommandActive(commandItems.findIndex((entry) => entry.key === item.key))}
+                          onClick={() => {
+                            closeCommand();
+                            setOpenGroup(groupIdForHref(item.logicalHref ?? (item.href as unknown as string)));
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-500/10 text-[10px] font-black text-pink-300">
+                            {item.icon}
+                          </span>
+                          <span className="min-w-0">
+                            <strong className="block truncate">{item.label}</strong>
+                            {item.sublabel && (
+                              <small className="block truncate text-xs text-zinc-500">{item.sublabel}</small>
+                            )}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
-              {!commandLinks.length && (
-                <p className="p-8 text-center text-sm text-zinc-500">No encontramos esa sección.</p>
+              {!commandGroups.length && (
+                <p className="p-8 text-center text-sm text-zinc-500">
+                  {commandQuery.trim().length < 2
+                    ? "Escribí al menos dos caracteres para buscar."
+                    : "No encontramos resultados para esa búsqueda."}
+                </p>
               )}
             </div>
+            <footer className="flex items-center gap-4 border-t border-white/10 px-4 py-2.5 text-[10px] text-zinc-600">
+              <span>
+                <kbd className="rounded-md border border-white/10 px-1.5 py-0.5">↑</kbd>{" "}
+                <kbd className="rounded-md border border-white/10 px-1.5 py-0.5">↓</kbd> navegar
+              </span>
+              <span>
+                <kbd className="rounded-md border border-white/10 px-1.5 py-0.5">↵</kbd> abrir
+              </span>
+              <span>
+                <kbd className="rounded-md border border-white/10 px-1.5 py-0.5">Esc</kbd> cerrar
+              </span>
+            </footer>
           </section>
         </div>
       )}

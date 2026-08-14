@@ -211,15 +211,19 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
           { title: "Bienvenidos", subtitle: displayName, image: "/images/banners/new_banner2_750.jpg" },
           { title: "Hecho para disfrutar", subtitle: "Productos, eventos y comunidad.", image: "/images/banners/new_banner2_750.jpg" },
         ];
-  const beers = (
-    sectionsBeerImages.length > 0
-      ? sectionsBeerImages
-      : [
-          "/images/products/cerveza-artesanal.jpg",
-          "/images/products/cerveza-lager.jpg",
-          "/images/products/cerveza-ipa.jpg",
-        ]
-  ).filter((source) => source && /\/images\/.+\.(?:jpe?g|png|webp|avif)$/i.test(source));
+  const beers = [
+    ...new Set(
+      (
+        sectionsBeerImages.length > 0
+          ? sectionsBeerImages
+          : [
+              "/images/products/cerveza-artesanal.jpg",
+              "/images/products/cerveza-lager.jpg",
+              "/images/products/cerveza-ipa.jpg",
+            ]
+      ).filter((source) => source && /\/images\/.+\.(?:jpe?g|png|webp|avif)$/i.test(source)),
+    ),
+  ];
 
   return (
     <main className="overflow-hidden">

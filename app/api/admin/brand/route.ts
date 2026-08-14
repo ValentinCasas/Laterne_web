@@ -109,7 +109,11 @@ export async function PATCH(request: Request) {
     if (p.adminAccent !== undefined) data.adminAccent = p.adminAccent;
     if (p.heroTitle !== undefined) data.heroTitle = p.heroTitle || null;
     if (p.heroSubtitle !== undefined) data.heroSubtitle = p.heroSubtitle || null;
-    if (p.landingSections !== undefined) data.landingSections = p.landingSections;
+    if (p.landingSections !== undefined) {
+      const normalized = p.landingSections;
+      normalized.beerImages = [...new Set(normalized.beerImages)];
+      data.landingSections = normalized;
+    }
     if (p.tone !== undefined) data.tone = p.tone || null;
     if (p.instagram !== undefined || p.facebook !== undefined) {
       data.socialLinks = {

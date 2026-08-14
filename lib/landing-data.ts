@@ -101,9 +101,13 @@ export async function loadTenantLandingData(tenant: {
       ? brand.heroSubtitle
       : LANDING_HERO_SUBTITLE_DEFAULT;
   const heroImageUrl = brand?.heroImageUrl || null;
-  const beers = (sectionsBeerImages.length ? sectionsBeerImages : LANDING_BEER_DEFAULTS).filter(
-    (source) => LANDING_IMAGE_PATH_RE.test(source),
-  );
+  const beers = [
+    ...new Set(
+      (sectionsBeerImages.length ? sectionsBeerImages : LANDING_BEER_DEFAULTS).filter((source) =>
+        LANDING_IMAGE_PATH_RE.test(source),
+      ),
+    ),
+  ];
   const stories = (sectionsStories.length ? sectionsStories : LANDING_STORY_DEFAULTS).map(
     (slide): LandingStory => ({
       title: typeof slide.title === "string" && slide.title.trim() ? slide.title : tenant.name,

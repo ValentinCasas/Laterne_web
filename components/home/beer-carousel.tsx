@@ -55,7 +55,7 @@ export function BeerCarousel({ images }: { images: string[] }) {
         {images.map((image, index) => (
           <article
             className="relative h-[420px] min-w-[84vw] snap-start overflow-hidden rounded-[2rem] border border-white/10 bg-black/30 sm:min-w-[calc((100%_-_2.5rem)/3)]"
-            key={image}
+            key={`${image}-${index}`}
           >
             <Image
               src={image}
