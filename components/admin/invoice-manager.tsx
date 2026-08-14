@@ -30,17 +30,67 @@ type AvailableOrder = {
   createdAt: string;
 };
 
+export type InvoiceSettingsData = {
+  issuerName: string | null;
+  taxId: string | null;
+  address: string | null;
+  city: string | null;
+  terms: string | null;
+};
+
 /** @summary Gestiona comprobantes internos y aclara el límite entre registro operativo y facturación fiscal. */
 export function InvoiceManager({
   initialInvoices,
   availableOrders,
+  initialSettings,
 }: {
   initialInvoices: Invoice[];
   availableOrders: AvailableOrder[];
+  initialSettings: InvoiceSettingsData | null;
 }) {
   const pathname = usePathname();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [orders, setOrders] = useState(availableOrders);
+  const [settings, setSettings] = useState<InvoiceSettingsData | null>(initialSettings);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  /** @summary Guarda los datos del emisor que se estampan en cada comprobante. */
+  async function saveSettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      issuerName: String(form.get("issuerName") ?? "").trim() || null,
+      taxId: String(form.get("taxId") ?? "").trim() || null,
+      address: String(form.get("address") ?? "").trim() || null,
+      city: String(form.get("city") ?? "").trim() || null,
+      terms: String(form.get("terms") ?? "").trim() || null,
+    };
+    const response = await scopedFetch("/api/admin/invoice-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = (await response.json().catch(() => ({}))) as { settings?: InvoiceSettingsData; error?: string };
+    if (!response.ok || !body.settings) {
+      await Swal.fire({
+        title: "No se pudo guardar",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setSettings(body.settings);
+    await Swal.fire({
+      title: "Configuración guardada",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
 
   /** @summary Genera un comprobante trazable desde un pedido seleccionado. */
   async function createInvoice(orderId: number) {
@@ -102,7 +152,43 @@ export function InvoiceManager({
         title="Comprobantes"
         description="Estos documentos son internos y no sustituyen una factura fiscal. La integración fiscal queda lista para conectarse a un proveedor autorizado."
         section="facturacion"
+        actions={
+          <button className="btn" onClick={() => setSettingsOpen((current) => !current)} type="button">
+            {settingsOpen ? "Cerrar configuración" : "Configuración del comprobante"}
+          </button>
+        }
       />
+
+      {settingsOpen && (
+        <form
+          className="card mt-6 grid gap-4 p-5 sm:grid-cols-2"
+          onSubmit={saveSettings}
+        >
+          <h2 className="text-xl font-black sm:col-span-2">Datos del emisor</h2>
+          <label className="text-sm font-bold">
+            Nombre del negocio en el comprobante
+            <input className="input mt-2" name="issuerName" defaultValue={settings?.issuerName ?? ""} placeholder={settings?.issuerName ? undefined : "Nombre que se estampa en el comprobante"} />
+          </label>
+          <label className="text-sm font-bold">
+            CUIT o documento
+            <input className="input mt-2" name="taxId" defaultValue={settings?.taxId ?? ""} placeholder={settings?.taxId ? undefined : "Ej. 30-12345678-9"} />
+          </label>
+          <label className="text-sm font-bold">
+            Domicilio
+            <input className="input mt-2" name="address" defaultValue={settings?.address ?? ""} placeholder={settings?.address ? undefined : "Calle y número"} />
+          </label>
+          <label className="text-sm font-bold">
+            Localidad
+            <input className="input mt-2" name="city" defaultValue={settings?.city ?? ""} placeholder={settings?.city ? undefined : "Ciudad"} />
+          </label>
+          <label className="text-sm font-bold sm:col-span-2">
+            Condiciones o pie de comprobante
+            <textarea className="input mt-2 min-h-24" name="terms" defaultValue={settings?.terms ?? ""} placeholder="Ej. Gracias por tu compra. Los comprobantes son internos y no fiscales." />
+          </label>
+          <button className="btn sm:col-span-2">Guardar configuración</button>
+        </form>
+      )}
+
       <section className="card mt-6 p-5">
         <h2 className="text-xl font-black">Pedidos sin comprobante</h2>
         <div className="mt-4 flex gap-3 overflow-x-auto pb-2">

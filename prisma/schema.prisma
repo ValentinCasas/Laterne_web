@@ -229,6 +229,7 @@ model Tenant {
   promotions            Promotion[]
   promotionProducts     PromotionProduct[]
   promotionCategories   PromotionCategory[]
+  promotionUsages       PromotionUsage[]
   reservationSettings   ReservationSettings?
   reservationBlocks     ReservationBlock[]
   reservations          Reservation[]
@@ -245,6 +246,7 @@ model Tenant {
   onboarding            OnboardingProgress?
   notificationSettings  NotificationSettings?
   legalPages            LegalPage[]
+  invoiceSettings       InvoiceSettings?
   helpArticles          HelpArticle[]
   supportTickets        SupportTicket[]
   mediaAssets           MediaAsset[]
@@ -632,6 +634,9 @@ model Promotion {
   daysOfWeek      Json?
   conditions      String?             @db.Text
   code            String?             @db.VarChar(80)
+  usageLimit      Int?
+  perCustomerLimit Int?
+  usedCount       Int                 @default(0)
   status          String              @default("published") @db.VarChar(20)
   publishAt       DateTime?
   priority        Int                 @default(0)
@@ -642,10 +647,28 @@ model Promotion {
   products        PromotionProduct[]
   categories      PromotionCategory[]
   orders          CustomerOrder[]
+  usages          PromotionUsage[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, branchId, status, startAt, endAt])
   @@map("promotion")
+}
+
+model PromotionUsage {
+  id            Int            @id @default(autoincrement())
+  tenantId      Int
+  promotionId   Int
+  orderId       Int            @unique
+  customerId    Int?
+  customerEmail String?        @db.VarChar(190)
+  createdAt     DateTime       @default(now())
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promotion     Promotion      @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  order         CustomerOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([promotionId, customerEmail])
+  @@index([tenantId, createdAt])
+  @@map("promotionusage")
 }
 
 model PromotionProduct {
@@ -900,6 +923,7 @@ model CustomerOrder {
   stockMovements  StockMovement[]
   invoice         InvoiceRecord?
   idempotencies   OrderIdempotency[]
+  promotionUsage  PromotionUsage?
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
@@ -999,6 +1023,7 @@ model BrandSettings {
   adminAccent     String   @default("#ec4899") @db.VarChar(20)
   heroTitle       String?  @db.VarChar(220)
   heroSubtitle    String?  @db.VarChar(500)
+  heroImageUrl    String?  @db.VarChar(500)
   tone            String?  @db.VarChar(120)
   socialLinks     Json?
   customDomain    String?  @db.VarChar(255)
@@ -1452,6 +1477,21 @@ model InvoiceRecord {
   @@index([tenantId, status, createdAt])
   @@index([tenantId, number])
   @@map("invoicerecord")
+}
+
+model InvoiceSettings {
+  id         Int      @id @default(autoincrement())
+  tenantId   Int      @unique
+  issuerName String?  @db.VarChar(180)
+  taxId      String?  @db.VarChar(40)
+  address    String?  @db.VarChar(300)
+  city       String?  @db.VarChar(120)
+  terms      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("invoicesettings")
 }
 
 model IntegrationSettings {

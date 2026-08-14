@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { requirePermission } from "@/lib/auth";
 import { activeBranchWhere } from "@/lib/branch";
@@ -25,7 +26,8 @@ export default async function AuditPage({
   const activeBranch = context.activeBranchId && context.activeBranchId > 0
     ? context.branches.find((branch) => branch.id === context.activeBranchId)
     : undefined;
-  const auditHref = (targetPage: number) => `${adminHrefForContext(context.tenant.slug, "/admin/auditoria", activeBranch?.slug)}?page=${targetPage}`;
+  const auditHref = (targetPage: number): Route =>
+    `${adminHrefForContext(context.tenant.slug, "/admin/auditoria", activeBranch?.slug)}?page=${targetPage}` as Route;
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where: auditFilter,

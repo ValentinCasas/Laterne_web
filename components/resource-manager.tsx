@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AssetPicker } from "@/components/admin/asset-picker";
@@ -38,6 +38,8 @@ export type ResourceField = {
   previewModel?: boolean;
   defaultChecked?: boolean;
   defaultValue?: string;
+  /** @summary Muestra el campo solo cuando otro campo (select) toma el valor indicado. */
+  showWhen?: Array<{ key: string; value: string }>;
 };
 
 type Item = Record<string, unknown> & { id: number };
@@ -60,11 +62,15 @@ function inputValue(value: unknown, type?: string) {
   return text;
 }
 
+/** @summary Nombres reservados que el sistema usa como imagen por defecto y que no viven en la carpeta del recurso. */
+const DEFAULT_IMAGE_PLACEHOLDERS = new Set(["product_default.png", "avatar_profile_default.png", "default.png"]);
+
 /** @summary Obtiene la dirección pública de la imagen principal de un registro. */
 function itemImage(resource: string, item: Item) {
   const filename = String(item.imageUrl ?? "").trim();
+  if (!filename || DEFAULT_IMAGE_PLACEHOLDERS.has(filename)) return "";
   const folder = imageFolders[resource];
-  return filename && folder ? `/images/${folder}/${filename}` : "";
+  return folder ? `/images/${folder}/${filename}` : "";
 }
 
 /** @summary Muestra una selección visual para opciones que incluyen nombre e imagen. */
@@ -189,8 +195,33 @@ function MultiChoiceField({ field, initialValue }: { field: ResourceField; initi
   );
 }
 
+/** @summary Determina si un campo debe mostrarse según el estado actual de los campos que condicionan su aparición. */
+function fieldVisible(
+  field: ResourceField,
+  item: Item | null,
+  watchValues: Record<string, string>,
+) {
+  if (!field.showWhen?.length) return true;
+  return field.showWhen.every((condition) => {
+    const actual = String(watchValues[condition.key] ?? item?.[condition.key] ?? "").trim();
+    return actual.toLocaleLowerCase("es") === condition.value;
+  });
+}
+
 /** @summary Renderiza un campo con el control más apropiado para su tipo de contenido. */
-function FormField({ field, item }: { field: ResourceField; item: Item | null }) {
+function FormField({
+  field,
+  item,
+  isWatchedSelect = false,
+  watchValues,
+  onWatchChange,
+}: {
+  field: ResourceField;
+  item: Item | null;
+  isWatchedSelect?: boolean;
+  watchValues?: Record<string, string>;
+  onWatchChange?: (key: string, value: string) => void;
+}) {
   const value = inputValue(item?.[field.key], field.type);
 
   if (field.control === "location") {
@@ -289,6 +320,7 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
   }
 
   if (field.control === "select") {
+    const initial = value || field.defaultValue || "";
     return (
       <label>
         {label}
@@ -296,8 +328,13 @@ function FormField({ field, item }: { field: ResourceField; item: Item | null })
           className="input mt-2 appearance-none"
           name={field.key}
           required={field.required}
-          defaultValue={value || field.defaultValue || ""}
           key={`${item?.id ?? "new"}-${field.key}`}
+          {...(isWatchedSelect
+            ? {
+                value: watchValues?.[field.key] ?? initial,
+                onChange: (event) => onWatchChange?.(field.key, event.target.value),
+              }
+            : { defaultValue: initial })}
         >
           {!field.required && <option value="">Sin especificar</option>}
           {field.options?.map((option) => (
@@ -361,6 +398,14 @@ export function ResourceManager({
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const formPanel = useRef<HTMLDivElement>(null);
   const horizontal = resource === "categorias";
+  const watchedKeys = useMemo(
+    () => new Set(fields.flatMap((field) => field.showWhen?.map((condition) => condition.key) ?? [])),
+    [fields],
+  );
+  const [watchValues, setWatchValues] = useState<Record<string, string>>({});
+  const onWatchChange = useCallback((key: string, nextValue: string) => {
+    setWatchValues((current) => ({ ...current, [key]: nextValue }));
+  }, []);
   const {
     ref: collection,
     isDragging: isDraggingCollection,
@@ -415,6 +460,12 @@ export function ResourceManager({
       const stored = readBrowserJson<Record<string, unknown> | null>(`laterne_admin_draft_${resource}`, null);
       setDraftItem(stored ? ({ id: 0, ...stored } as Item) : null);
     } else setDraftItem(null);
+    const watchedSource = item ?? readBrowserJson<Record<string, unknown> | null>(`laterne_admin_draft_${resource}`, null);
+    const initialValues: Record<string, string> = {};
+    if (watchedSource) {
+      for (const key of watchedKeys) initialValues[key] = inputValue(watchedSource[key], "");
+    }
+    setWatchValues(initialValues);
     setFormOpen(true);
     window.requestAnimationFrame(() =>
       formPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
@@ -687,7 +738,12 @@ export function ResourceManager({
               return fields.map((field) => {
                 if (field.group && !renderedGroups.has(field.group)) {
                   renderedGroups.add(field.group);
-                  const groupedFields = fields.filter((candidate) => candidate.group === field.group);
+                  const groupedFields = fields.filter(
+                    (candidate) =>
+                      candidate.group === field.group &&
+                      fieldVisible(candidate, editing ?? draftItem, watchValues),
+                  );
+                  if (!groupedFields.length) return null;
                   return (
                     <details
                       className="group md:col-span-2 rounded-2xl border border-white/10 bg-white/[.02]"
@@ -707,6 +763,9 @@ export function ResourceManager({
                           <FormField
                             field={groupedField}
                             item={editing ?? draftItem}
+                            isWatchedSelect={watchedKeys.has(groupedField.key)}
+                            watchValues={watchValues}
+                            onWatchChange={onWatchChange}
                             key={groupedField.key}
                           />
                         ))}
@@ -714,7 +773,17 @@ export function ResourceManager({
                     </details>
                   );
                 }
-                return <FormField field={field} item={editing ?? draftItem} key={field.key} />;
+                if (!fieldVisible(field, editing ?? draftItem, watchValues)) return null;
+                return (
+                  <FormField
+                    field={field}
+                    item={editing ?? draftItem}
+                    isWatchedSelect={watchedKeys.has(field.key)}
+                    watchValues={watchValues}
+                    onWatchChange={onWatchChange}
+                    key={field.key}
+                  />
+                );
               });
             })()}
 
@@ -866,6 +935,42 @@ export function ResourceManager({
                   <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed text-zinc-500">
                     {descriptionValue}
                   </p>
+                )}
+                {resource === "promociones" && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-pink-500/15 px-2.5 py-1 text-[10px] font-black uppercase text-pink-300">
+                      {String(item.type ?? "promoción").replaceAll("_", " ")}
+                    </span>
+                    {item.code ? (
+                      <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-300">
+                        Código {String(item.code)}
+                      </span>
+                    ) : null}
+                    {Number(item.usageLimit) > 0 ? (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-black tabular-nums ${
+                          Number(item.usedCount ?? 0) >= Number(item.usageLimit)
+                            ? "bg-red-500/15 text-red-300"
+                            : Number(item.usedCount ?? 0) >= Number(item.usageLimit) * 0.8
+                              ? "bg-amber-500/15 text-amber-300"
+                              : "bg-emerald-500/15 text-emerald-300"
+                        }`}
+                      >
+                        {String(item.usedCount ?? 0)}/{String(item.usageLimit)} usados
+                      </span>
+                    ) : null}
+                    {(Boolean(item.startAt) || Boolean(item.endAt)) && (
+                      <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-black text-zinc-400">
+                        {item.startAt
+                          ? new Date(String(item.startAt)).toLocaleDateString(locale)
+                          : "siempre"}
+                        {" → "}
+                        {item.endAt
+                          ? new Date(String(item.endAt)).toLocaleDateString(locale)
+                          : "sin fecha límite"}
+                      </span>
+                    )}
+                  </div>
                 )}
                 {resource === "productos" && (
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

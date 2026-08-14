@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { scopedFetch } from "@/lib/client-routing";
+import { orderStatusLabel } from "@/lib/orders";
 
 export type LoyaltyCustomerData = {
   id: number;
@@ -17,10 +18,54 @@ export type LoyaltyCustomerData = {
   _count: { orders: number; transactions: number };
 };
 
-/** @summary Permite buscar clientes frecuentes y registrar ajustes manuales de puntos. */
+type CustomerDetail = LoyaltyCustomerData & {
+  orders: Array<{
+    id: number;
+    reference: string;
+    status: string;
+    orderType: string;
+    total: string | number;
+    currency: string;
+    createdAt: string;
+    branch: { name: string } | null;
+  }>;
+  transactions: Array<{
+    id: number;
+    points: number;
+    reason: string;
+    reference: string | null;
+    createdAt: string;
+  }>;
+};
+
+const modalityLabel: Record<string, string> = {
+  takeaway: "Retiro",
+  dine_in: "Mesa",
+  delivery: "Delivery",
+};
+
+/** @summary Permite buscar clientes frecuentes, ver su ficha 360 y registrar ajustes manuales de puntos. */
 export function CustomerManager({ initialCustomers }: { initialCustomers: LoyaltyCustomerData[] }) {
   const [customers, setCustomers] = useState(initialCustomers);
   const [query, setQuery] = useState("");
+  const [detail, setDetail] = useState<CustomerDetail | null>(null);
+
+  /** @summary Carga la ficha completa del cliente con sus pedidos y movimientos. */
+  async function openDetail(customer: LoyaltyCustomerData) {
+    const response = await scopedFetch(`/api/admin/customers/${customer.id}`);
+    const body = (await response.json().catch(() => ({}))) as { customer?: CustomerDetail; error?: string };
+    if (!response.ok || !body.customer) {
+      await Swal.fire({
+        title: "No se pudo abrir la ficha",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setDetail(body.customer);
+  }
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
     return normalized
@@ -105,15 +150,133 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
               <span>{customer._count.orders} pedidos</span>
               <span>{customer._count.transactions} movimientos</span>
             </div>
-            <button className="btn btn-secondary mt-4 w-full" onClick={() => adjust(customer)}>
-              Ajustar puntos
-            </button>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button className="btn btn-secondary w-full" onClick={() => void openDetail(customer)}>
+                Ver ficha 360
+              </button>
+              <button className="btn btn-secondary w-full" onClick={() => adjust(customer)}>
+                Ajustar puntos
+              </button>
+            </div>
           </article>
         ))}
         {!visible.length && (
           <p className="card p-10 text-center text-zinc-500">No hay clientes con esos datos.</p>
         )}
       </div>
+
+      {detail && (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4"
+          onClick={() => setDetail(null)}
+        >
+          <article
+            className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-zinc-950 p-6 sm:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="section-eyebrow">Ficha 360 · Nivel {detail.tier}</p>
+                <h2 className="mt-1 text-3xl font-black">{detail.name}</h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  {detail.email ?? "Sin email"} · {detail.phone ?? "Sin teléfono"}
+                  {detail.birthday ? ` · Cumple ${detail.birthday.slice(0, 10)}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs uppercase text-zinc-600">Puntos</p>
+                  <strong className="text-3xl text-pink-300">{detail.points}</strong>
+                </div>
+                <button
+                  className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+                  onClick={() => setDetail(null)}
+                  type="button"
+                  aria-label="Cerrar ficha"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <section className="mt-6">
+              <h3 className="text-lg font-black">Pedidos recientes</h3>
+              <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                {detail.orders.map((order) => (
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[.03] p-3"
+                    key={order.id}
+                  >
+                    <div>
+                      <strong>{order.reference}</strong>
+                      <p className="text-xs text-zinc-500">
+                        {new Date(order.createdAt).toLocaleString("es-AR")} ·{" "}
+                        {modalityLabel[order.orderType] ?? order.orderType}
+                        {order.branch ? ` · ${order.branch.name}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-black tabular-nums">
+                        {new Intl.NumberFormat("es-AR", {
+                          style: "currency",
+                          currency: order.currency,
+                        }).format(Number(order.total))}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-black uppercase">
+                        {orderStatusLabel(order.status)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {!detail.orders.length && <p className="text-sm text-zinc-500">Sin pedidos todavía.</p>}
+              </div>
+            </section>
+
+            <section className="mt-6">
+              <h3 className="text-lg font-black">Movimientos de puntos</h3>
+              <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                {detail.transactions.map((movement) => (
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[.03] p-3"
+                    key={movement.id}
+                  >
+                    <div>
+                      <strong>{movement.reason}</strong>
+                      <p className="text-xs text-zinc-500">
+                        {new Date(movement.createdAt).toLocaleString("es-AR")}
+                        {movement.reference ? ` · ${movement.reference}` : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-sm font-black ${movement.points >= 0 ? "text-emerald-300" : "text-red-300"}`}
+                    >
+                      {movement.points >= 0 ? "+" : ""}
+                      {movement.points}
+                    </span>
+                  </div>
+                ))}
+                {!detail.transactions.length && <p className="text-sm text-zinc-500">Sin movimientos todavía.</p>}
+              </div>
+            </section>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button className="btn" onClick={() => void adjust(detail)} type="button">
+                Ajustar puntos
+              </button>
+              {detail.phone && (
+                <a
+                  className="btn btn-secondary"
+                  href={`https://wa.me/${detail.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${detail.name}, te escribimos por tu cuenta en MenuClick.`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  WhatsApp
+                </a>
+              )}
+            </div>
+          </article>
+        </div>
+      )}
     </section>
   );
 }

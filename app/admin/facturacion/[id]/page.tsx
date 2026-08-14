@@ -8,11 +8,27 @@ import { prisma } from "@/lib/prisma";
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await requirePermission("order.manage");
   const id = Number((await params).id);
-  const invoice = await prisma.invoiceRecord.findFirst({
-    where: { id, tenantId: context.tenant.id },
-    include: { branch: true, order: { include: { items: true } } },
-  });
+  const [invoice, issuerSettings] = await Promise.all([
+    prisma.invoiceRecord.findFirst({
+      where: { id, tenantId: context.tenant.id },
+      include: { branch: true, order: { include: { items: true } } },
+    }),
+    prisma.invoiceSettings.findUnique({ where: { tenantId: context.tenant.id } }),
+  ]);
   if (!invoice) notFound();
+  const issuerName = issuerSettings?.issuerName?.trim() || context.tenant.name;
+  const issuerAddress = [issuerSettings?.address?.trim(), issuerSettings?.city?.trim()]
+    .filter(Boolean)
+    .join(", ");
+  const issuerBlock = issuerAddress || issuerSettings?.taxId ? (
+    <p className="text-sm text-zinc-500">
+      {issuerAddress}
+      {issuerAddress && issuerSettings?.taxId ? " · " : ""}
+      {issuerSettings?.taxId}
+    </p>
+  ) : (
+    <p className="text-sm text-zinc-500">{invoice.branch?.address}</p>
+  );
   return (
     <main className="mx-auto max-w-3xl rounded-2xl bg-white p-8 text-zinc-950 print:max-w-none print:rounded-none">
       <header className="flex justify-between gap-8 border-b border-zinc-200 pb-6">
@@ -21,8 +37,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           <h1 className="mt-2 text-3xl font-black">{invoice.number}</h1>
         </div>
         <div className="text-right">
-          <strong>{context.tenant.name}</strong>
-          <p className="text-sm text-zinc-500">{invoice.branch?.address}</p>
+          <strong>{issuerName}</strong>
+          {issuerBlock}
         </div>
       </header>
       <section className="grid gap-4 border-b border-zinc-200 py-6 sm:grid-cols-2">
@@ -68,7 +84,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           <strong>{money(invoice.total, invoice.currency)}</strong>
         </p>
       </div>
-      <footer className="mt-10 flex items-center justify-between gap-4 border-t border-zinc-200 pt-6">
+      {issuerSettings?.terms && (
+        <footer className="mt-10 whitespace-pre-wrap border-t border-zinc-200 pt-6 text-sm text-zinc-500">
+          {issuerSettings.terms}
+        </footer>
+      )}
+      <footer className={`flex items-center justify-between gap-4 ${issuerSettings?.terms ? "mt-4" : "mt-10"} border-t border-zinc-200 pt-6`}>
         <p className="text-xs text-zinc-500">Documento operativo. No válido como comprobante fiscal.</p>
         <PrintButton />
       </footer>

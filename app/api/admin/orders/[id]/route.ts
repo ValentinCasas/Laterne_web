@@ -5,8 +5,9 @@ import { authorize, canAccessBranch } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { restoreOrderStock } from "@/lib/order-stock";
 import { asOrderType, transitionError } from "@/lib/order-status";
-import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
+import { orderStatuses, type OrderStatus } from "@/lib/orders";
 import { loyaltyPoints, loyaltyTier } from "@/lib/loyalty";
+import { emitOrderStatusNotification } from "@/lib/order-notifications";
 import { prisma } from "@/lib/prisma";
 
 const updateInput = z.object({
@@ -56,16 +57,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           note: parsed.data.note || null,
         },
       });
-      await transaction.notification.create({
-        data: {
-          tenantId: auth.tenant.id,
-          branchId: current.branchId,
-          type: "order.status",
-          title: `${current.reference} · ${orderStatusLabel(parsed.data.status)}`,
-          message: `El pedido de ${current.customerName} cambió de estado.`,
-          link: "/admin/pedidos",
-        },
-      });
       if (parsed.data.status === "cancelled") {
         await restoreOrderStock(transaction, { id, reference: current.reference });
       }
@@ -94,6 +85,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         }
       }
       return order;
+    });
+    await emitOrderStatusNotification({
+      tenantId: auth.tenant.id,
+      branchId: current.branchId,
+      orderId: current.id,
+      reference: current.reference,
+      customerName: current.customerName,
+      phone: current.phone,
+      status: parsed.data.status,
     });
   } catch (reason) {
     if (reason instanceof Error && reason.message.includes("cambió de estado mientras tanto")) {

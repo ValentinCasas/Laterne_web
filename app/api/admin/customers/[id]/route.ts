@@ -16,6 +16,36 @@ const pointsInput = z.object({
   reason: z.string().trim().min(3).max(220),
 });
 
+/** @summary Devuelve la ficha completa del cliente: datos, pedidos recientes y movimientos de puntos. */
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("customer.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Cliente inválido" }, { status: 400 });
+  const customer = await prisma.loyaltyCustomer.findFirst({
+    where: { id, tenantId: auth.tenant.id, deletedAt: null },
+    include: {
+      orders: {
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          orderType: true,
+          total: true,
+          currency: true,
+          createdAt: true,
+          branch: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
+      transactions: { orderBy: { createdAt: "desc" }, take: 30 },
+    },
+  });
+  if (!customer) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
+  return NextResponse.json({ customer: serialize(customer) });
+}
+
 /** @summary Ajusta puntos con un movimiento explícito, saldo no negativo y auditoría. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await authorize("customer.manage");

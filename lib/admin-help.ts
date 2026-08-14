@@ -109,15 +109,25 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
   },
   pedidos: {
     title: "Pedidos",
-    intro: "Seguí cada pedido de tu carta desde que llega hasta que se entrega.",
+    intro: "Un pedido es una compra de tus clientes. Mesa, retiro y delivery son solo la forma en que lo reciben.",
     points: [
       "Cada pedido guarda productos, precios verificados e historial de estados.",
       "El movimiento de estados (Recibido → Confirmado → En preparación → Listo → Entregado/Cancelado) lo hacés desde las tarjetas.",
+      "Abrí un pedido para ver cliente, entrega, importes, avance y crear o ver su comprobante.",
       "Los pedidos descuentan stock automáticamente cuando corresponde; cancelar devuelve las unidades.",
-      "El cliente puede seguir su pedido con el enlace que recibe al confirmar.",
     ],
     warning: "Cancelar un pedido devuelve las unidades al inventario; no lo canceles dos veces.",
-    related: ["inventario", "facturacion", "estadisticas"],
+    related: ["cocina", "inventario", "facturacion", "estadisticas"],
+  },
+  cocina: {
+    title: "Cocina",
+    intro: "Una pantalla simple para el equipo que prepara: qué hay que hacer y cuándo está listo.",
+    points: [
+      "Los pedidos esperando aparecen para empezar y después pasan a preparación.",
+      "Con EMPEZAR se marca que el pedido está en preparación; con LISTO queda para entregar.",
+      "Esta vista también funciona bien en una tablet o un monitor de cocina.",
+    ],
+    related: ["pedidos"],
   },
   reservas: {
     title: "Reservas",
@@ -202,6 +212,26 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
       "Un cambio se refleja al instante en toda la página.",
     ],
     related: ["negocio", "seo"],
+  },
+  landing: {
+    title: "Editor de portada",
+    intro: "Diseñá el inicio de tu página pública con vista previa en tiempo real.",
+    points: [
+      "El título, el texto y la imagen se guardan con la marca del negocio.",
+      "La vista previa muestra el resultado con tus colores mientras escribís.",
+      "La imagen se carga por arrastre y queda disponible en la biblioteca multimedia.",
+    ],
+    related: ["marca", "seo"],
+  },
+  busqueda: {
+    title: "Búsqueda global",
+    intro: "Encontrá contenido de todo el negocio sin cambiar de sección.",
+    points: [
+      "Buscá productos, categorías, clientes, pedidos y reservas en una sola pantalla.",
+      "Cada resultado lleva directo al registro para editarlo o revisarlo.",
+      "Los resultados respetan los permisos de tu perfil.",
+    ],
+    related: ["pedidos", "clientes-frecuentes", "productos"],
   },
   seo: {
     title: "SEO",

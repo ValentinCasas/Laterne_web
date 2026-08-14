@@ -138,6 +138,44 @@ export function TableManager({
     setTables((current) => current.filter((item) => item.id !== table.id));
   }
 
+  /** @summary Rota el código de la mesa para invalidar el QR impreso y generar uno nuevo. */
+  async function rotateCode(table: DiningTableData) {
+    const confirmation = await Swal.fire({
+      title: `¿Regenerar el QR de ${table.name}?`,
+      text: "El QR impreso dejará de funcionar y tendrás que colocar el nuevo.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Regenerar QR",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ec4899",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmation.isConfirmed) return;
+    const response = await scopedFetch(`/api/admin/tables/${table.id}`, { method: "POST" });
+    const result = (await response.json().catch(() => ({}))) as { table?: DiningTableData; error?: string };
+    if (!response.ok || !result.table) {
+      await Swal.fire({
+        title: "No se pudo regenerar",
+        text: result.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setTables((current) => current.map((item) => (item.id === table.id ? result.table! : item)));
+    await Swal.fire({
+      title: "QR regenerado",
+      text: "Descargá o imprimí el cartel nuevo.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
+
   /** @summary Descarga un código QR individual con un nombre de archivo reconocible. */
   function download(table: DiningTableData) {
     const anchor = document.createElement("a");
@@ -284,6 +322,9 @@ export function TableManager({
             <footer className="flex gap-2 p-3 print:hidden">
               <button className="btn btn-secondary flex-1" onClick={() => download(table)} type="button">
                 Descargar QR
+              </button>
+              <button className="btn btn-secondary" onClick={() => void rotateCode(table)} type="button">
+                Regenerar
               </button>
               <button className="btn btn-secondary" onClick={() => setEditing(table)} type="button">
                 Editar

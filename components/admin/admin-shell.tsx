@@ -74,6 +74,7 @@ const navigationGroups = [
     description: "Atención y funcionamiento diario",
     links: [
       { href: "/admin/pedidos", label: "Pedidos", icon: "PE", permission: "order.manage" },
+      { href: "/admin/cocina", label: "Cocina", icon: "CO", permission: "order.manage" },
       { href: "/admin/reservas", label: "Reservas", icon: "RS", permission: "reservation.manage" },
       { href: "/admin/facturacion", label: "Facturación", icon: "FC", permission: "order.manage" },
       { href: "/admin/inventario", label: "Inventario", icon: "ST", permission: "product.manage" },
@@ -95,6 +96,7 @@ const navigationGroups = [
     links: [
       { href: "/admin/negocio", label: "Negocio", icon: "NE", permission: "business.manage" },
       { href: "/admin/marca", label: "Marca", icon: "BR", permission: "brand.manage" },
+      { href: "/admin/landing", label: "Portada", icon: "LN", permission: "brand.manage" },
       { href: "/admin/seo", label: "SEO", icon: "SE", permission: "business.manage" },
       {
         href: "/admin/redirecciones",
@@ -138,6 +140,7 @@ const navigationGroups = [
     links: [
       { href: "/admin/archivos", label: "Archivos", icon: "MD", permission: "media.manage" },
       { href: "/admin/datos", label: "Importar / exportar", icon: "DT", permission: "admin.access" },
+      { href: "/admin/busqueda", label: "Búsqueda global", icon: "BS", permission: "admin.access" },
       { href: "/admin/ayuda", label: "Centro de ayuda", icon: "AY", permission: "content.manage" },
       { href: "/admin/soporte", label: "Soporte", icon: "SO", permission: "support.manage" },
       { href: "/admin/cuenta", label: "Mi cuenta", icon: "SE", permission: "admin.access" },

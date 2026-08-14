@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** @summary Carga inventario usando exclusivamente la sucursal explícita de la URL o el scope consolidado. */
 export default async function InventoryPage() {
   const context = await requirePermission("product.manage");
-  const selectedBranchId = context.activeBranchId > 0 ? context.activeBranchId : 0;
+  const selectedBranchId = context.activeBranchId != null && context.activeBranchId > 0 ? context.activeBranchId : 0;
   const stockWhere = selectedBranchId
     ? { tenantId: context.tenant.id, branchId: selectedBranchId }
     : { tenantId: context.tenant.id };
@@ -21,14 +21,25 @@ export default async function InventoryPage() {
     ? { tenantId: context.tenant.id, stock: { branchId: selectedBranchId } }
     : { tenantId: context.tenant.id };
 
-  const [branches, products, stocks, movements] = await Promise.all([
+  const [branches, products, categories, stocks, movements] = await Promise.all([
     prisma.branch.findMany({
       where: { id: { in: context.branches.map((branch) => branch.id) } },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     }),
     prisma.product.findMany({
       where: { tenantId: context.tenant.id },
-      select: { id: true, name: true, imageUrl: true, availability: true },
+      select: {
+        id: true,
+        name: true,
+        imageUrl: true,
+        availability: true,
+        categories: { include: { category: { select: { id: true, name: true } } } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.category.findMany({
+      where: { tenantId: context.tenant.id },
+      select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
     prisma.inventoryStock.findMany({ where: stockWhere }),
@@ -46,6 +57,7 @@ export default async function InventoryPage() {
     <InventoryManager
       branches={serialize(branches)}
       products={serialize(products)}
+      categories={serialize(categories)}
       initialStocks={serialize(stocks) as unknown as Parameters<typeof InventoryManager>[0]["initialStocks"]}
       movements={serialize(movements) as unknown as Parameters<typeof InventoryManager>[0]["movements"]}
       initialBranchId={selectedBranchId}

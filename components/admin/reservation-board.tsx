@@ -77,6 +77,56 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
+/** @summary Separa una fecha AAAA-MM-DD en sus componentes. */
+function parseISO(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return { year, month: month - 1, day };
+}
+
+/** @summary Compone una fecha AAAA-MM-DD a partir de componentes, con mes en base 0. */
+function toISO(year: number, monthIndex: number, day: number) {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** @summary Desplaza una fecha una cantidad de meses, sin salirse del mes destino. */
+function addMonthsISO(date: string, months: number) {
+  const { year, month, day } = parseISO(date);
+  const target = new Date(Date.UTC(year, month + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  return toISO(target.getUTCFullYear(), target.getUTCMonth(), Math.min(day, lastDay));
+}
+
+/** @summary Devuelve el lunes de la semana (inicio domingo 0) que contiene la fecha. */
+function mondayOf(date: string) {
+  const { year, month, day } = parseISO(date);
+  const weekday = new Date(Date.UTC(year, month, day)).getUTCDay();
+  return addDays(date, -((weekday + 6) % 7));
+}
+
+/** @summary Día de la semana y número para encabezados compactos del calendario. */
+function weekdayShort(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short" });
+}
+
+/** @summary Fecha corta como “12 jun” para rangos y navegación del calendario. */
+function shortDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
+
+const monthNames = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+type BoardView = "list" | "calendar";
+type CalendarMode = "day" | "week" | "month";
+
+const calendarModeLabels: Record<CalendarMode, string> = {
+  day: "Día",
+  week: "Semana",
+  month: "Mes",
+};
+
 /** @summary Nombre de una fecha para encabezados, resaltando hoy y mañana. */
 function dateLabel(date: string, today: string) {
   if (date === today) return "Hoy";
@@ -128,6 +178,9 @@ export function ReservationBoard({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ReservationItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [view, setView] = useState<BoardView>("list");
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
+  const [anchor, setAnchor] = useState(today);
 
   const visibleReservations = useMemo(() => {
     const day = (reservation: ReservationItem) => dateText(reservation.reservationDate);
@@ -184,6 +237,47 @@ export function ReservationBoard({
     }),
     [reservations, today],
   );
+
+  /** @summary Reservas del calendario, respetando el filtro de estado pero sin las vistas de lista. */
+  const calendarReservations = useMemo(() => {
+    if (status === "all") return reservations;
+    return reservations.filter((item) => item.status === status);
+  }, [reservations, status]);
+
+  /** @summary Mapa fecha → reservas usado por las tres vistas del calendario. */
+  const reservationsByDay = useMemo(() => {
+    const map = new Map<string, ReservationItem[]>();
+    for (const reservation of calendarReservations) {
+      const date = dateText(reservation.reservationDate);
+      map.set(date, [...(map.get(date) ?? []), reservation]);
+    }
+    return map;
+  }, [calendarReservations]);
+
+  const weekDates = useMemo(() => {
+    const monday = mondayOf(anchor);
+    return Array.from({ length: 7 }, (_, index) => addDays(monday, index));
+  }, [anchor]);
+
+  const monthCells = useMemo(() => {
+    const { year, month } = parseISO(anchor);
+    const start = mondayOf(toISO(year, month, 1));
+    return Array.from({ length: 42 }, (_, index) => addDays(start, index));
+  }, [anchor]);
+
+  const calendarTitle = (() => {
+    if (calendarMode === "day") return dateLabel(anchor, today);
+    if (calendarMode === "week") return `${shortDate(weekDates[0])} – ${shortDate(weekDates[6])}`;
+    const { year, month } = parseISO(anchor);
+    return `${monthNames[month]} ${year}`;
+  })();
+
+  /** @summary Mueve el ancla del calendario según la vista activa. */
+  function shiftAnchor(direction: number) {
+    if (calendarMode === "day") setAnchor((current) => addDays(current, direction));
+    else if (calendarMode === "week") setAnchor((current) => addDays(current, 7 * direction));
+    else setAnchor((current) => addMonthsISO(current, direction));
+  }
 
   const hasRefinements = query.trim() !== "" || status !== "all";
   const filtersActive = hasRefinements || range !== "all";
@@ -427,160 +521,238 @@ export function ReservationBoard({
         </section>
       )}
 
-      <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-3 md:grid-cols-[auto_1fr_auto_auto]">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-xl bg-white/5 p-1">
-          {(["upcoming", "today", "past", "all"] as const).map((option) => (
+          {(["list", "calendar"] as const).map((option) => (
             <button
-              className={`rounded-lg px-3 py-2 text-sm font-bold ${tab === option ? "bg-pink-500" : "text-zinc-500"}`}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition ${view === option ? "bg-pink-500" : "text-zinc-500 hover:text-zinc-300"}`}
               key={option}
-              onClick={() => setTab(option)}
+              onClick={() => setView(option)}
               type="button"
             >
-              {tabLabels[option]}
+              {option === "list" ? "Lista" : "Calendario"}
             </button>
           ))}
         </div>
-        <input
-          className="input py-2"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar reserva…"
-        />
-        <select
-          className="input py-2"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          aria-label="Filtrar por estado"
-        >
-          <option value="all">Todos los estados</option>
-          {reservationStatuses.map((option) => (
-            <option value={option} key={option}>
-              {reservationStatusLabel(option)}
-            </option>
-          ))}
-        </select>
-        {filtersActive && (
-          <button
-            className="rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 hover:border-pink-500/40 hover:text-white"
-            onClick={clearFilters}
-            type="button"
-          >
-            Limpiar filtros
-          </button>
-        )}
-      </div>
-
-      {tab === "upcoming" && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(["all", "today", "tomorrow", "week"] as const).map((option) => (
-            <button
-              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
-                range === option
-                  ? "bg-pink-500/15 text-pink-300 ring-1 ring-pink-500/40"
-                  : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
-              }`}
-              key={option}
-              onClick={() => setRange(option)}
-              type="button"
-            >
-              {rangeLabels[option]}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
-          {counts.upcoming} próximas
-        </span>
-        <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
-          {counts.today} hoy
-        </span>
-        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-          {counts.pending} pendientes
-        </span>
-      </div>
-
-      <div className="mt-5 max-h-[720px] space-y-5 overflow-y-auto pr-1">
-        {groupedReservations.map(([date, items]) => (
-          <section className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4" key={date}>
-            <header className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-black">{dateLabel(date, today)}</h2>
-              <span className="text-sm text-zinc-600">
-                {items.reduce((sum, item) => sum + item.partySize, 0)} personas
-              </span>
-            </header>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((reservation) => (
-                <article className="rounded-2xl border border-white/10 bg-black p-4" key={reservation.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black text-pink-300">{reservation.reference}</p>
-                      <h3 className="mt-1 font-black">{reservation.customerName}</h3>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-2xl font-black tabular-nums">
-                        {hourText(reservation.reservationTime)}
-                      </span>
-                      <span
-                        className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
-                      >
-                        {reservationStatusLabel(reservation.status)}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-zinc-400">
-                    {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
-                    {reservation.sector ? ` · ${reservation.sector}` : ""}
-                  </p>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      className="flex-1 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold hover:bg-pink-500"
-                      onClick={() => setSelected(reservation)}
-                      type="button"
-                    >
-                      Ver detalle
-                    </button>
-                    <select
-                      className="rounded-lg border border-white/10 bg-zinc-900 px-2 text-xs"
-                      value={reservation.status}
-                      onChange={(event) => changeStatus(reservation, event.target.value as ReservationStatus)}
-                      aria-label={`Cambiar estado de ${reservation.reference}`}
-                    >
-                      {reservationStatuses.map((option) => (
-                        <option value={option} key={option}>
-                          {reservationStatusLabel(option)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </article>
+        {view === "calendar" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-xl bg-white/5 p-1">
+              {(["day", "week", "month"] as const).map((mode) => (
+                <button
+                  className={`rounded-lg px-3 py-2 text-sm font-bold transition ${calendarMode === mode ? "bg-pink-500" : "text-zinc-500 hover:text-zinc-300"}`}
+                  key={mode}
+                  onClick={() => setCalendarMode(mode)}
+                  type="button"
+                >
+                  {calendarModeLabels[mode]}
+                </button>
               ))}
             </div>
-          </section>
-        ))}
-        {!groupedReservations.length && (
-          <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-            {hasRefinements ? (
-              <>
-                <p className="font-bold text-zinc-400">No hay reservas que coincidan con estos filtros.</p>
-                <button className="btn btn-secondary mt-4" onClick={clearFilters} type="button">
-                  Limpiar filtros
-                </button>
-              </>
-            ) : (
-              <p className="text-zinc-500">
-                {tab === "upcoming" &&
-                  "No hay reservas próximas todavía. Cuando un cliente reserve desde la web, aparecerá acá."}
-                {tab === "today" && "No hay reservas para hoy todavía."}
-                {tab === "past" && "Todavía no hay reservas pasadas."}
-                {tab === "all" && "Todavía no hay reservas registradas."}
-              </p>
-            )}
+            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950 px-2 py-1.5">
+              <button
+                className="grid h-8 w-8 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white"
+                onClick={() => shiftAnchor(-1)}
+                type="button"
+                aria-label="Anterior"
+              >
+                ‹
+              </button>
+              <button
+                className="rounded-lg px-2 py-1 text-xs font-bold text-pink-300 hover:bg-pink-500/10"
+                onClick={() => setAnchor(today)}
+                type="button"
+              >
+                Hoy
+              </button>
+              <span className="min-w-36 text-center text-sm font-black">{calendarTitle}</span>
+              <button
+                className="grid h-8 w-8 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white"
+                onClick={() => shiftAnchor(1)}
+                type="button"
+                aria-label="Siguiente"
+              >
+                ›
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {view === "calendar" ? (
+        <div className="mt-5">
+          {calendarMode === "day" && (
+            <DayCalendar
+              date={anchor}
+              items={reservationsByDay.get(anchor) ?? []}
+              today={today}
+              onSelect={setSelected}
+            />
+          )}
+          {calendarMode === "week" && (
+            <WeekCalendar dates={weekDates} byDay={reservationsByDay} today={today} onSelect={setSelected} />
+          )}
+          {calendarMode === "month" && (
+            <MonthCalendar cells={monthCells} byDay={reservationsByDay} today={today} onSelect={setSelected} />
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 grid gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-3 md:grid-cols-[auto_1fr_auto_auto]">
+            <div className="flex rounded-xl bg-white/5 p-1">
+              {(["upcoming", "today", "past", "all"] as const).map((option) => (
+                <button
+                  className={`rounded-lg px-3 py-2 text-sm font-bold ${tab === option ? "bg-pink-500" : "text-zinc-500"}`}
+                  key={option}
+                  onClick={() => setTab(option)}
+                  type="button"
+                >
+                  {tabLabels[option]}
+                </button>
+              ))}
+            </div>
+            <input
+              className="input py-2"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar reserva…"
+            />
+            <select
+              className="input py-2"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              aria-label="Filtrar por estado"
+            >
+              <option value="all">Todos los estados</option>
+              {reservationStatuses.map((option) => (
+                <option value={option} key={option}>
+                  {reservationStatusLabel(option)}
+                </option>
+              ))}
+            </select>
+            {filtersActive && (
+              <button
+                className="rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 hover:border-pink-500/40 hover:text-white"
+                onClick={clearFilters}
+                type="button"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+
+          {tab === "upcoming" && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(["all", "today", "tomorrow", "week"] as const).map((option) => (
+                <button
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                    range === option
+                      ? "bg-pink-500/15 text-pink-300 ring-1 ring-pink-500/40"
+                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
+                  }`}
+                  key={option}
+                  onClick={() => setRange(option)}
+                  type="button"
+                >
+                  {rangeLabels[option]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
+              {counts.upcoming} próximas
+            </span>
+            <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
+              {counts.today} hoy
+            </span>
+            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
+              {counts.pending} pendientes
+            </span>
+          </div>
+
+          <div className="mt-5 max-h-[720px] space-y-5 overflow-y-auto pr-1">
+            {groupedReservations.map(([date, items]) => (
+              <section className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4" key={date}>
+                <header className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-black">{dateLabel(date, today)}</h2>
+                  <span className="text-sm text-zinc-600">
+                    {items.reduce((sum, item) => sum + item.partySize, 0)} personas
+                  </span>
+                </header>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {items.map((reservation) => (
+                    <article className="rounded-2xl border border-white/10 bg-black p-4" key={reservation.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black text-pink-300">{reservation.reference}</p>
+                          <h3 className="mt-1 font-black">{reservation.customerName}</h3>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-2xl font-black tabular-nums">
+                            {hourText(reservation.reservationTime)}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
+                          >
+                            {reservationStatusLabel(reservation.status)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm text-zinc-400">
+                        {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
+                        {reservation.sector ? ` · ${reservation.sector}` : ""}
+                      </p>
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          className="flex-1 rounded-lg bg-white/5 px-3 py-2 text-xs font-bold hover:bg-pink-500"
+                          onClick={() => setSelected(reservation)}
+                          type="button"
+                        >
+                          Ver detalle
+                        </button>
+                        <select
+                          className="rounded-lg border border-white/10 bg-zinc-900 px-2 text-xs"
+                          value={reservation.status}
+                          onChange={(event) => changeStatus(reservation, event.target.value as ReservationStatus)}
+                          aria-label={`Cambiar estado de ${reservation.reference}`}
+                        >
+                          {reservationStatuses.map((option) => (
+                            <option value={option} key={option}>
+                              {reservationStatusLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+            {!groupedReservations.length && (
+              <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
+                {hasRefinements ? (
+                  <>
+                    <p className="font-bold text-zinc-400">No hay reservas que coincidan con estos filtros.</p>
+                    <button className="btn btn-secondary mt-4" onClick={clearFilters} type="button">
+                      Limpiar filtros
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-zinc-500">
+                    {tab === "upcoming" &&
+                      "No hay reservas próximas todavía. Cuando un cliente reserve desde la web, aparecerá acá."}
+                    {tab === "today" && "No hay reservas para hoy todavía."}
+                    {tab === "past" && "Todavía no hay reservas pasadas."}
+                    {tab === "all" && "Todavía no hay reservas registradas."}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {selected && (
         <div
@@ -686,5 +858,195 @@ export function ReservationBoard({
         </div>
       )}
     </section>
+  );
+}
+
+/** @summary Vista de día: línea de tiempo vertical con cada reserva a su horario. */
+function DayCalendar({
+  date,
+  items,
+  today,
+  onSelect,
+}: {
+  date: string;
+  items: ReservationItem[];
+  today: string;
+  onSelect: (reservation: ReservationItem) => void;
+}) {
+  const sorted = [...items].sort((first, second) =>
+    hourText(first.reservationTime).localeCompare(hourText(second.reservationTime)),
+  );
+  const totalPeople = sorted.reduce((sum, item) => sum + item.partySize, 0);
+  return (
+    <div className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-black">{dateLabel(date, today)}</h2>
+        <span className="text-sm text-zinc-500">
+          {sorted.length} {sorted.length === 1 ? "reserva" : "reservas"} · {totalPeople} personas
+        </span>
+      </header>
+      <div className="mt-4 space-y-2">
+        {sorted.map((reservation) => (
+          <button
+            className="grid w-full items-center gap-4 rounded-2xl border border-white/10 bg-black p-4 text-left transition hover:border-pink-500/40 sm:grid-cols-[5.5rem_1fr_auto]"
+            key={reservation.id}
+            onClick={() => onSelect(reservation)}
+            type="button"
+          >
+            <span className="text-3xl font-black tabular-nums text-pink-300">
+              {hourText(reservation.reservationTime)}
+            </span>
+            <span className="min-w-0">
+              <span className="block font-black">{reservation.customerName}</span>
+              <span className="block text-sm text-zinc-400">
+                {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
+                {reservation.sector ? ` · ${reservation.sector}` : ""} · {reservation.reference}
+              </span>
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
+            >
+              {reservationStatusLabel(reservation.status)}
+            </span>
+          </button>
+        ))}
+        {!sorted.length && (
+          <p className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-600">
+            No hay reservas para este día.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** @summary Vista de semana: una columna por día con las reservas ordenadas por horario. */
+function WeekCalendar({
+  dates,
+  byDay,
+  today,
+  onSelect,
+}: {
+  dates: string[];
+  byDay: Map<string, ReservationItem[]>;
+  today: string;
+  onSelect: (reservation: ReservationItem) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+      {dates.map((date) => {
+        const items = [...(byDay.get(date) ?? [])].sort((first, second) =>
+          hourText(first.reservationTime).localeCompare(hourText(second.reservationTime)),
+        );
+        const isToday = date === today;
+        return (
+          <section
+            className={`min-w-0 rounded-2xl border p-3 ${
+              isToday ? "border-pink-500/40 bg-pink-500/[.04]" : "border-white/10 bg-zinc-950/70"
+            }`}
+            key={date}
+          >
+            <header>
+              <p className={`text-[10px] font-black uppercase ${isToday ? "text-pink-300" : "text-zinc-500"}`}>
+                {weekdayShort(date)}
+              </p>
+              <p className={`text-xl font-black ${isToday ? "text-white" : "text-zinc-300"}`}>
+                {Number(date.slice(8, 10))}
+              </p>
+            </header>
+            <div className="mt-3 space-y-2">
+              {items.map((reservation) => (
+                <button
+                  className="block w-full rounded-xl border border-white/10 bg-black p-2 text-left transition hover:border-pink-500/40"
+                  key={reservation.id}
+                  onClick={() => onSelect(reservation)}
+                  type="button"
+                >
+                  <p className="text-xs font-black tabular-nums text-pink-300">
+                    {hourText(reservation.reservationTime)}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs font-bold">{reservation.customerName}</p>
+                  <p className="text-[10px] text-zinc-500">
+                    {reservation.partySize} {reservation.partySize === 1 ? "pax" : "pax"}
+                    {reservation.sector ? ` · ${reservation.sector}` : ""}
+                  </p>
+                </button>
+              ))}
+              {!items.length && <p className="py-2 text-center text-xs text-zinc-700">Sin reservas</p>}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** @summary Vista de mes: grilla de 6 semanas con hasta tres reservas por celda. */
+function MonthCalendar({
+  cells,
+  byDay,
+  today,
+  onSelect,
+}: {
+  cells: string[];
+  byDay: Map<string, ReservationItem[]>;
+  today: string;
+  onSelect: (reservation: ReservationItem) => void;
+}) {
+  const anchorMonth = cells[10].slice(0, 7);
+  return (
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/70">
+      <div className="grid grid-cols-7 border-b border-white/10 text-center text-[10px] font-black uppercase tracking-wider text-zinc-500">
+        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
+          <div className="py-2" key={day}>
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {cells.map((date) => {
+          const inMonth = date.slice(0, 7) === anchorMonth;
+          const items = (byDay.get(date) ?? []).sort((first, second) =>
+            hourText(first.reservationTime).localeCompare(hourText(second.reservationTime)),
+          );
+          const isToday = date === today;
+          return (
+            <div
+              className={`min-h-24 border-b border-r border-white/5 p-1.5 ${inMonth ? "" : "opacity-30"}`}
+              key={date}
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${
+                    isToday ? "bg-pink-500 text-white" : "text-zinc-400"
+                  }`}
+                >
+                  {Number(date.slice(8, 10))}
+                </span>
+                {items.length > 0 && (
+                  <span className="text-[10px] font-bold text-pink-300">{items.length}</span>
+                )}
+              </div>
+              <div className="mt-1 space-y-1">
+                {items.slice(0, 3).map((reservation) => (
+                  <button
+                    className="block w-full truncate rounded-md bg-white/[.04] px-1.5 py-0.5 text-left text-[10px] font-bold hover:bg-white/10"
+                    key={reservation.id}
+                    onClick={() => onSelect(reservation)}
+                    type="button"
+                    title={`${hourText(reservation.reservationTime)} · ${reservation.customerName} · ${reservation.partySize} personas`}
+                  >
+                    {hourText(reservation.reservationTime)} · {reservation.customerName}
+                  </button>
+                ))}
+                {items.length > 3 && (
+                  <p className="px-1 text-[10px] font-bold text-zinc-500">+{items.length - 3} más</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

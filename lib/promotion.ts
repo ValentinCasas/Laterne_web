@@ -23,6 +23,9 @@ export type PromotionCandidate = PromotionActivable & {
   buyQuantity: number | null;
   receiveQuantity: number | null;
   code: string | null;
+  usageLimit: number | null;
+  perCustomerLimit: number | null;
+  usedCount: number;
   priority: number;
   productIds: number[];
   categoryIds: number[];

@@ -241,6 +241,9 @@ export async function POST(request: Request) {
     buyQuantity: promotion.buyQuantity,
     receiveQuantity: promotion.receiveQuantity,
     code: promotion.code,
+    usageLimit: promotion.usageLimit,
+    perCustomerLimit: promotion.perCustomerLimit,
+    usedCount: promotion.usedCount,
     status: promotion.status,
     publishAt: promotion.publishAt,
     startAt: promotion.startAt,
@@ -279,6 +282,21 @@ export async function POST(request: Request) {
       },
       { status: 409 },
     );
+  }
+  const appliedPromotion = promotion.promotionId !== null ? promotions.find((item) => item.id === promotion.promotionId) : null;
+  const couponEmailKey = (parsed.data.email ?? "").trim().toLowerCase();
+  if (appliedPromotion?.code) {
+    if (appliedPromotion.usageLimit !== null && appliedPromotion.usedCount >= appliedPromotion.usageLimit) {
+      return NextResponse.json({ error: "El cupón ya agotó sus usos" }, { status: 409 });
+    }
+    if (appliedPromotion.perCustomerLimit !== null && couponEmailKey) {
+      const customerUses = await prisma.promotionUsage.count({
+        where: { promotionId: appliedPromotion.id, customerEmail: couponEmailKey },
+      });
+      if (customerUses >= appliedPromotion.perCustomerLimit) {
+        return NextResponse.json({ error: "Ya usaste este cupón para este correo" }, { status: 409 });
+      }
+    }
   }
   const total = Math.max(0, subtotal - discount + deliveryFee + tip);
   const customer = parsed.data.loyaltyToken
@@ -404,6 +422,21 @@ export async function POST(request: Request) {
           link: "/admin/pedidos",
         },
       });
+      if (appliedPromotion?.code) {
+        await transaction.promotionUsage.create({
+          data: {
+            tenantId: tenant.id,
+            promotionId: appliedPromotion.id,
+            orderId: order.id,
+            customerId: customer?.id ?? null,
+            customerEmail: couponEmailKey || null,
+          },
+        });
+        await transaction.promotion.update({
+          where: { id: appliedPromotion.id },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
       await transaction.analyticsEvent.create({
         data: {
           tenantId: tenant.id,

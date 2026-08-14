@@ -1,0 +1,1 @@
+ALTER TABLE `brandsettings` ADD COLUMN `heroImageUrl` VARCHAR(500) NULL;

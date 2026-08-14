@@ -12,6 +12,7 @@ const brandInput = z.object({
   logoUrl: z.string().trim().max(500).optional(),
   isotypeUrl: z.string().trim().max(500).optional(),
   faviconUrl: z.string().trim().max(500).optional(),
+  heroImageUrl: z.string().trim().max(500).optional(),
   primaryColor: color.optional(),
   secondaryColor: color.optional(),
   backgroundColor: color.optional(),
@@ -75,6 +76,7 @@ export async function PATCH(request: Request) {
       logoUrl: brandAsset(parsed.data.logoUrl),
       isotypeUrl: brandAsset(parsed.data.isotypeUrl),
       faviconUrl: brandAsset(parsed.data.faviconUrl),
+      heroImageUrl: brandAsset(parsed.data.heroImageUrl),
        primaryColor: parsed.data.primaryColor ?? current?.primaryColor ?? "#ec4899",
        secondaryColor: parsed.data.secondaryColor ?? current?.secondaryColor ?? "#f5c542",
        backgroundColor: parsed.data.backgroundColor ?? current?.backgroundColor ?? "#09090b",
@@ -131,7 +133,7 @@ export async function PATCH(request: Request) {
   }
 }
 
-const brandFields = ["logoUrl", "isotypeUrl", "faviconUrl"] as const;
+const brandFields = ["logoUrl", "isotypeUrl", "faviconUrl", "heroImageUrl"] as const;
 
 /** @summary Elimina la asociación del recurso de marca y, si es una imagen administrada, remueve el archivo físico. */
 export async function DELETE(request: Request) {

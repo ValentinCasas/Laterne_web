@@ -108,6 +108,14 @@ export async function promotionData(input: Record<string, string>, tenantId: num
   if (minimumPurchase !== null && (!Number.isFinite(minimumPurchase) || minimumPurchase < 0)) {
     throw new Error("La compra mínima no es válida");
   }
+  const usageLimit = input.usageLimit ? Number(input.usageLimit) : null;
+  if (usageLimit !== null && (!Number.isInteger(usageLimit) || usageLimit < 0)) {
+    throw new Error("El límite de usos debe ser un número entero");
+  }
+  const perCustomerLimit = input.perCustomerLimit ? Number(input.perCustomerLimit) : null;
+  if (perCustomerLimit !== null && (!Number.isInteger(perCustomerLimit) || perCustomerLimit < 0)) {
+    throw new Error("El límite por cliente debe ser un número entero");
+  }
 
   return {
     tenantId,
@@ -129,6 +137,8 @@ export async function promotionData(input: Record<string, string>, tenantId: num
     daysOfWeek,
     conditions: input.conditions?.trim() || null,
     code: input.code?.trim().toUpperCase().slice(0, 80) || null,
+    usageLimit,
+    perCustomerLimit,
     status,
     priority: Math.max(0, Number(input.priority || 0)),
     products: { create: productIds.map((productId) => ({ tenantId, productId })) },

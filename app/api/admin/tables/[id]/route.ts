@@ -1,9 +1,16 @@
+import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+
+/** @summary Genera un código corto legible y sin caracteres ambiguos para identificar la mesa. */
+function newTableCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from(randomBytes(8), (byte) => alphabet[byte % alphabet.length]).join("");
+}
 
 const tableUpdate = z.object({
   name: z.string().trim().min(1).max(100),
@@ -12,6 +19,37 @@ const tableUpdate = z.object({
   active: z.boolean(),
   branchId: z.coerce.number().int().positive(),
 });
+
+/** @summary Rota el código de la mesa: el QR impreso deja de funcionar y se genera uno nuevo. */
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("table.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Identificador inválido" }, { status: 400 });
+  const current = await prisma.diningTable.findFirst({
+    where: { id, tenantId: auth.tenant.id, ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchId: auth.activeBranchId } : {}) },
+  });
+  if (!current) return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
+  let code = newTableCode();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const existing = await prisma.diningTable.findUnique({
+      where: { tenantId_code: { tenantId: auth.tenant.id, code } },
+    });
+    if (!existing) break;
+    code = newTableCode();
+  }
+  const updated = await prisma.diningTable.update({ where: { id }, data: { code } });
+  await recordAudit({
+    context: auth,
+    action: "rotate-table-code",
+    entityType: "dining-table",
+    entityId: id,
+    oldValues: toAuditValue({ ...serialize(current), code: current.code }),
+    newValues: toAuditValue({ ...serialize(updated), code: updated.code }),
+    request,
+  });
+  return NextResponse.json({ table: serialize(updated) });
+}
 
 /** @summary Modifica los datos operativos de una mesa sin cambiar el QR ya distribuido. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
