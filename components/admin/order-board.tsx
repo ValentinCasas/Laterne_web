@@ -7,8 +7,9 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { scopedFetch } from "@/lib/client-routing";
-import { adminHrefFromPathname } from "@/lib/routes";
+import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 import { usePathname } from "next/navigation";
+import { CopyTrackingLink } from "@/components/orders/copy-tracking-link";
 
 export type AdminOrderItem = {
   id: number;
@@ -40,10 +41,11 @@ export type AdminOrder = {
   paymentMethod: string;
   paymentStatus: string;
   source: string;
+  trackingToken: string | null;
   createdAt: string;
   updatedAt: string;
   table: { name: string; code: string } | null;
-  branch: { name: string } | null;
+  branch: { name: string; slug: string } | null;
   invoice: { id: number; number: string | null; status: string } | null;
   items: AdminOrderItem[];
   history: Array<{
@@ -482,6 +484,11 @@ function OrderDetail({
   onCancelInvoice: (order: AdminOrder) => Promise<void>;
 }) {
   const pathname = usePathname();
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setOrigin(window.location.origin), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const timeline = [
     { time: order.createdAt, label: "Recibido", note: null as string | null },
     ...[...order.history]
@@ -491,6 +498,11 @@ function OrderDetail({
   const next = allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).find(
     (status) => status !== "cancelled",
   );
+  const route = parseCanonicalPath(pathname);
+  const trackingHref = route.tenantSlug && order.trackingToken
+    ? `${publicHrefForContext(route.tenantSlug, `/pedido/${order.reference}`, order.branch?.slug ?? route.branchSlug)}?token=${encodeURIComponent(order.trackingToken)}`
+    : "";
+  const trackingUrl = trackingHref && origin ? new URL(trackingHref, origin).toString() : trackingHref;
 
   return (
     <div
@@ -690,13 +702,14 @@ function OrderDetail({
             {order.phone && (
               <a
                 className="btn btn-secondary"
-                href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName}, te contactamos por tu pedido ${order.reference}.`)}`}
+                href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName} 👋\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`}
                 target="_blank"
                 rel="noreferrer"
               >
                 WhatsApp
               </a>
             )}
+            {trackingHref && <CopyTrackingLink href={trackingHref} compact />}
             {order.invoice ? (
               <>
                 <Link

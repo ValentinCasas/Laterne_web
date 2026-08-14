@@ -24,7 +24,7 @@ export default async function MenuPage() {
   const primaryBranch = await prisma.branch.findFirst({
     where: { tenantId: tenant.id, active: true },
     orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
-       select: { id: true, slug: true },
+    select: { id: true, slug: true, name: true },
   });
   const branchId = primaryBranch?.id;
   const branchWhere = branchId ? { branchId } : {};
@@ -127,6 +127,7 @@ export default async function MenuPage() {
       locale={tenant.locale}
       tenantSlug={tenant.slug}
       businessName={tenant.name}
+      branchName={primaryBranch?.name}
       branchSlug={primaryBranch?.slug}
     />
   );

@@ -113,6 +113,7 @@ export async function GET(request: Request) {
       where: {
         tenantId: tenant.id,
         branchId: primaryBranch?.id,
+        deletedAt: null,
         reservationDate: selectedDate,
         status: { in: ["pending", "confirmed"] },
       },
@@ -137,7 +138,6 @@ export async function GET(request: Request) {
   if (opening?.eveningStartTime && opening.eveningEndTime) {
     ranges.push([timeText(opening.eveningStartTime), timeText(opening.eveningEndTime)]);
   }
-  if (!ranges.length) ranges.push(["18:00", "23:30"]);
   const occupied = new Map<string, number>();
   const pendingOccupied = new Map<string, number>();
   for (const reservation of reservations) {
@@ -236,7 +236,7 @@ export async function POST(request: Request) {
   if (recentRequests >= 5) {
     return NextResponse.json({ error: "Alcanzaste el límite temporal de solicitudes" }, { status: 429 });
   }
-  const [blocks] = await Promise.all([
+  const [blocks, hours] = await Promise.all([
     prisma.reservationBlock.findMany({
       where: {
            tenantId: tenant.id,
@@ -246,7 +246,27 @@ export async function POST(request: Request) {
         endDate: { gte: selectedDate },
       },
     }),
+    prisma.openingHour.findMany({
+      where: { tenantId: tenant.id, branchId: branch?.id ?? null },
+    }),
   ]);
+  const selectedDayName = new Intl.DateTimeFormat("es-AR", { weekday: "long", timeZone })
+    .format(selectedDate)
+    .toLocaleLowerCase("es");
+  const selectedOpening = hours.find((item) =>
+    item.dayOfWeek.toLocaleLowerCase("es").includes(selectedDayName),
+  );
+  const validOpeningTimes = [
+    selectedOpening?.morningStartTime && selectedOpening.morningEndTime
+      ? buildTimeSlots(timeText(selectedOpening.morningStartTime), timeText(selectedOpening.morningEndTime), settings.slotInterval)
+      : [],
+    selectedOpening?.eveningStartTime && selectedOpening.eveningEndTime
+      ? buildTimeSlots(timeText(selectedOpening.eveningStartTime), timeText(selectedOpening.eveningEndTime), settings.slotInterval)
+      : [],
+  ].flat();
+  if (!validOpeningTimes.includes(parsed.data.time)) {
+    return NextResponse.json({ error: "Ese horario está fuera del horario de atención" }, { status: 409 });
+  }
   if (blockedTime(parsed.data.time, blocks)) {
     return NextResponse.json({ error: "Ese horario se encuentra bloqueado" }, { status: 409 });
   }
@@ -262,6 +282,7 @@ export async function POST(request: Request) {
         where: {
           tenantId: tenant.id,
           branchId: branch?.id ?? null,
+          deletedAt: null,
           reservationDate: selectedDate,
           reservationTime: reservationTime(parsed.data.time),
           status: { in: ["pending", "confirmed"] },

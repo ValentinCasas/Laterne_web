@@ -6,6 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
 import { resolveOrderPromotion, type PromotionCandidate, type PromotionItem } from "@/lib/promotion";
+import {
+  availableOrderSlots,
+  isAvailableOrderSlot,
+  ORDER_MINIMUM_LEAD_MINUTES,
+  orderTimeText,
+} from "@/lib/order-scheduling";
 
 const orderInput = z.object({
   customerName: z.string().trim().min(2).max(160),
@@ -141,18 +147,21 @@ export async function POST(request: Request) {
   }
 
   const productIds = [...new Set(parsed.data.items.map((item) => item.productId))];
-  const products = await prisma.product.findMany({
-    where: {
-      tenantId: tenant.id,
-      id: { in: productIds },
-      OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
-      branchAssignments: { some: { branchId: branch.id, active: true } },
-    },
-    include: {
-      variants: { where: { active: true } },
-      extras: { where: { active: true } },
-    },
-  });
+  const [products, openingHourRecords] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        tenantId: tenant.id,
+        id: { in: productIds },
+        OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: new Date() } }],
+        branchAssignments: { some: { branchId: branch.id, active: true } },
+      },
+      include: {
+        variants: { where: { active: true } },
+        extras: { where: { active: true } },
+      },
+    }),
+    prisma.openingHour.findMany({ where: { tenantId: tenant.id, branchId: branch.id } }),
+  ]);
   const productMap = new Map(products.map((product) => [product.id, product]));
   if (products.length !== productIds.length) {
     return NextResponse.json({ error: "Uno de los productos ya no está disponible" }, { status: 409 });
@@ -312,12 +321,35 @@ export async function POST(request: Request) {
   if (requestedAt && Number.isNaN(requestedAt.getTime())) {
     return NextResponse.json({ error: "El horario solicitado no es válido" }, { status: 400 });
   }
-  if (
-    requestedAt &&
-    (requestedAt.getTime() < Date.now() - 5 * 60 * 1000 ||
-      requestedAt.getTime() > Date.now() + 30 * 24 * 60 * 60 * 1000)
-  ) {
-    return NextResponse.json({ error: "Elegí un horario dentro de los próximos 30 días" }, { status: 400 });
+  const leadMinutes = Math.max(
+    ORDER_MINIMUM_LEAD_MINUTES,
+    ...products.map((product) => Number(product.preparationMinutes ?? 0)),
+  );
+  const validSlots = availableOrderSlots({
+    hours: openingHourRecords.map((opening) => ({
+      dayOfWeek: opening.dayOfWeek,
+      morningStartTime: orderTimeText(opening.morningStartTime),
+      morningEndTime: orderTimeText(opening.morningEndTime),
+      eveningStartTime: orderTimeText(opening.eveningStartTime),
+      eveningEndTime: orderTimeText(opening.eveningEndTime),
+    })),
+    timeZone: tenant.timeZone,
+    now: new Date(),
+    leadMinutes,
+  });
+  if (parsed.data.orderType !== "dine_in" && !requestedAt) {
+    return NextResponse.json({ error: "Elegí un horario disponible para recibir el pedido" }, { status: 400 });
+  }
+  if (requestedAt && !isAvailableOrderSlot(requestedAt, validSlots)) {
+    const next = validSlots[0];
+    return NextResponse.json(
+      {
+        error: next
+          ? `Ese horario ya no está disponible. Próxima disponibilidad: ${next.date} a las ${next.time}`
+          : "Ya no quedan horarios disponibles dentro de los próximos 30 días",
+      },
+      { status: 409 },
+    );
   }
   const quantities = new Map<number, number>();
   for (const item of calculatedItems) {

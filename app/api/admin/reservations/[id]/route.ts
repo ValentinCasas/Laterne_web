@@ -25,7 +25,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!Number.isInteger(id) || !parsed.success) {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
-  const current = await prisma.reservation.findFirst({ where: { id, tenantId: auth.tenant.id } });
+  const current = await prisma.reservation.findFirst({ where: { id, tenantId: auth.tenant.id, deletedAt: null } });
   if (!current) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
   if (current.branchId && !auth.branches.some((branch) => branch.id === current.branchId)) {
     return NextResponse.json({ error: "No tenés acceso a la sucursal de esta reserva" }, { status: 403 });
@@ -108,4 +108,47 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     request,
   });
   return NextResponse.json({ reservation: serialize(updated) });
+}
+
+/** @summary Retira una reserva de la operación mediante soft-delete y conserva auditoría e historial. */
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("reservation.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
+  const current = await prisma.reservation.findFirst({
+    where: { id, tenantId: auth.tenant.id, deletedAt: null },
+  });
+  if (!current) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+  if (current.branchId && !auth.branches.some((branch) => branch.id === current.branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a la sucursal de esta reserva" }, { status: 403 });
+  }
+
+  const deletedAt = new Date();
+  const updated = await prisma.$transaction(async (transaction) => {
+    const reservation = await transaction.reservation.update({
+      where: { id },
+      data: { status: "cancelled", deletedAt },
+    });
+    await transaction.reservationStatusHistory.create({
+      data: {
+        reservationId: id,
+        userId: auth.session.userId,
+        fromStatus: current.status,
+        toStatus: "cancelled",
+        note: "Eliminada de la operación; historial conservado",
+      },
+    });
+    return reservation;
+  });
+  await recordAudit({
+    context: auth,
+    action: "soft-delete",
+    entityType: "reservation",
+    entityId: id,
+    oldValues: toAuditValue(serialize(current)),
+    newValues: toAuditValue(serialize(updated)),
+    request,
+  });
+  return NextResponse.json({ ok: true });
 }

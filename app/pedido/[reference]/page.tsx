@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { publicHrefForVisiblePath } from "@/lib/routes";
 import { requestRouteContext } from "@/lib/request-route-context";
+import { CopyTrackingLink } from "@/components/orders/copy-tracking-link";
 
 type OrderTrackingProps = {
   params: Promise<{ reference: string }>;
@@ -36,15 +37,20 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
   const flow = orderFlow(asOrderType(order.orderType));
   const currentIndex = flow.indexOf(order.status as OrderStatus);
   const message = `Hola, consulto por el pedido ${order.reference}.`;
+  const trackingHref = `${publicHref(`/pedido/${order.reference}`)}?token=${encodeURIComponent(token)}`;
+  const modality = order.orderType === "dine_in" ? "Mesa" : order.orderType === "delivery" ? "Delivery" : "Retiro";
 
   return (
     <main className="shell py-10 sm:py-16">
       <section className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950 shadow-2xl">
         <header className="bg-[radial-gradient(circle_at_top_right,rgba(236,72,153,.3),transparent_45%)] p-6 sm:p-10">
-          <p className="section-eyebrow">Pedido {order.reference}</p>
-          <h1 className="mt-3 text-4xl font-black sm:text-6xl">{orderStatusLabel(order.status)}</h1>
+          <p className={`section-eyebrow ${order.status === "received" ? "text-emerald-300" : ""}`}>
+            {order.status === "received" ? "✓ Pedido recibido" : "Seguimiento del pedido"}
+          </p>
+          <h1 className="mt-3 break-words text-4xl font-black sm:text-6xl">{order.reference}</h1>
+          <p className="mt-3 text-xl font-black text-pink-300">Estado: {orderStatusLabel(order.status)}</p>
           <p className="mt-3 text-zinc-400">
-            Hola, {order.customerName}. Guardá este enlace para volver cuando quieras.
+            {tenant.name} recibió tu pedido · {modality}. Guardá este enlace para volver cuando quieras.
           </p>
         </header>
 
@@ -67,6 +73,8 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
             ))}
           </ol>
         )}
+
+        <CopyTrackingLink href={trackingHref} />
 
         <div className="grid gap-8 p-6 sm:p-10 lg:grid-cols-[1fr_280px]">
           <div>

@@ -125,7 +125,8 @@ export default async function BranchMenuPage({ params }: { params: Promise<{ bra
       currency={tenant.defaultCurrency}
       locale={tenant.locale}
       tenantSlug={tenant.slug}
-      businessName={branch.branch?.name ?? tenant.name}
+      businessName={tenant.name}
+      branchName={branch.branch?.name}
       branchSlug={branch.branchSlug}
     />
   );

@@ -54,7 +54,7 @@ const statusColors: Record<string, string> = {
   pending: "bg-amber-500/15 text-amber-300",
   confirmed: "bg-emerald-500/15 text-emerald-300",
   rejected: "bg-red-500/15 text-red-300",
-  cancelled: "bg-zinc-500/15 text-zinc-400",
+  cancelled: "bg-red-500/15 text-red-300",
   completed: "bg-sky-500/15 text-sky-300",
   no_show: "bg-violet-500/15 text-violet-300",
 };
@@ -427,6 +427,45 @@ export function ReservationBoard({
       color: "#fafafa",
     });
     return true;
+  }
+
+  /** @summary Quita una reserva de la operación conservando su registro histórico y auditoría. */
+  async function deleteReservation(reservation: ReservationItem) {
+    const confirmation = await Swal.fire({
+      title: "¿Eliminar esta reserva?",
+      text: "Esta acción quitará la reserva del calendario. El historial operativo se conservará.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Eliminar reserva",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ef4444",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmation.isConfirmed) return;
+    const response = await scopedFetch(`/api/admin/reservations/${reservation.id}`, { method: "DELETE" });
+    const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!response.ok || !body.ok) {
+      await Swal.fire({
+        title: "No se pudo eliminar",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setReservations((current) => current.filter((item) => item.id !== reservation.id));
+    setSelected(null);
+    await Swal.fire({
+      title: "Reserva eliminada",
+      text: "Se liberó la disponibilidad y se conservó el historial.",
+      icon: "success",
+      timer: 1_300,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
   }
 
   /** @summary Guarda las reglas de disponibilidad utilizadas por el formulario público. */
@@ -898,7 +937,12 @@ export function ReservationBoard({
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="section-eyebrow">{selected.reference}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="section-eyebrow">{selected.reference}</p>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusColors[selected.status]}`}>
+                    ● {reservationStatusLabel(selected.status)}
+                  </span>
+                </div>
                 <h2 className="mt-1 text-3xl font-black">{selected.customerName}</h2>
               </div>
               <button
@@ -992,6 +1036,13 @@ export function ReservationBoard({
                   </option>
                 ))}
               </select>
+              <button
+                className="ml-auto rounded-xl border border-red-500/25 px-4 py-2.5 text-sm font-bold text-red-300 hover:bg-red-500/10"
+                onClick={() => void deleteReservation(selected)}
+                type="button"
+              >
+                Eliminar reserva
+              </button>
             </div>
           </article>
         </div>
@@ -1418,7 +1469,7 @@ function WeekCalendar({
             <div className="mt-3 space-y-2">
               {items.map((reservation) => (
                 <button
-                  className="block w-full rounded-xl border border-white/10 bg-black p-2 text-left transition hover:border-pink-500/40"
+                  className={`block w-full rounded-xl border border-white/10 p-2 text-left transition hover:border-pink-500/40 ${statusColors[reservation.status]}`}
                   draggable
                   key={reservation.id}
                   onClick={() => onSelect(reservation)}
@@ -1517,7 +1568,7 @@ function MonthCalendar({
               <div className="mt-1 space-y-1">
                 {items.slice(0, 3).map((reservation) => (
                   <button
-                    className="block w-full truncate rounded-md bg-white/[.04] px-1.5 py-0.5 text-left text-[10px] font-bold hover:bg-white/10"
+                    className={`block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-bold hover:brightness-110 ${statusColors[reservation.status]}`}
                     draggable
                     key={reservation.id}
                     onClick={(event) => {

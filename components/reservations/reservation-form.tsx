@@ -399,7 +399,9 @@ export function ReservationForm({
                   })
                 ) : (
                   <p className="rounded-xl border border-dashed border-white/15 p-4 text-sm text-zinc-500">
-                    No hay horarios disponibles para ese día.
+                    {date === minimumDate
+                      ? "Ya no quedan horarios disponibles para hoy. Elegí otra fecha en el calendario."
+                      : "No hay horarios disponibles para ese día. Elegí otra fecha en el calendario."}
                   </p>
                 )}
               </div>
@@ -520,7 +522,7 @@ function PublicDateCalendar({
   });
 
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[.02] p-4">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[.02] p-4" role="group" aria-label="Fecha">
       <div className="flex items-center justify-between gap-2">
         <button
           className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-sm disabled:opacity-30"

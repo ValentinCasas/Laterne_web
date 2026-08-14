@@ -4,7 +4,6 @@ import { classifyHost } from "@/lib/domains";
 import { loadTenantLandingData } from "@/lib/landing-data";
 import { prisma } from "@/lib/prisma";
 import { requestRouteContext } from "@/lib/request-route-context";
-import { publicHrefForVisiblePath } from "@/lib/routes";
 import { getDefaultTenant } from "@/lib/tenant";
 import { headers } from "next/headers";
 
@@ -29,11 +28,9 @@ export default async function LandingPage() {
     <main className="overflow-hidden">
       <LandingRenderer
         data={data}
-        resolveHref={(href) =>
-          href.startsWith("#")
-            ? href
-            : publicHrefForVisiblePath(route.originalPath, tenant.slug, href, route.branchSlug)
-        }
+        originalPath={route.originalPath}
+        tenantSlug={tenant.slug}
+        branchSlug={route.branchSlug}
       />
     </main>
   );

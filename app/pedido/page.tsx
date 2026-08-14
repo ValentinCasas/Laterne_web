@@ -3,6 +3,7 @@ import { CheckoutForm } from "@/components/orders/checkout-form";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { managedPageMetadata } from "@/lib/seo";
+import { orderTimeText } from "@/lib/order-scheduling";
 
 /** @summary Recupera metadatos administrables y evita indexar datos transaccionales del pedido. */
 export async function generateMetadata() {
@@ -17,7 +18,23 @@ export default async function OrderPage() {
   const requestedBranch = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const branches = await prisma.branch.findMany({
     where: { tenantId: tenant.id, active: true },
-    select: { id: true, name: true, slug: true, address: true, deliveryFee: true, minimumOrder: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      address: true,
+      deliveryFee: true,
+      minimumOrder: true,
+      openingHours: {
+        select: {
+          dayOfWeek: true,
+          morningStartTime: true,
+          morningEndTime: true,
+          eveningStartTime: true,
+          eveningEndTime: true,
+        },
+      },
+    },
     orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
   });
   return (
@@ -34,9 +51,17 @@ export default async function OrderPage() {
           ...branch,
           deliveryFee: Number(branch.deliveryFee),
           minimumOrder: Number(branch.minimumOrder),
+          openingHours: branch.openingHours.map((opening) => ({
+            dayOfWeek: opening.dayOfWeek,
+            morningStartTime: orderTimeText(opening.morningStartTime),
+            morningEndTime: orderTimeText(opening.morningEndTime),
+            eveningStartTime: orderTimeText(opening.eveningStartTime),
+            eveningEndTime: orderTimeText(opening.eveningEndTime),
+          })),
         }))}
         currency={tenant.defaultCurrency}
         locale={tenant.locale}
+        timeZone={tenant.timeZone}
         tenantSlug={tenant.slug}
         fixedBranchSlug={requestedBranch}
       />

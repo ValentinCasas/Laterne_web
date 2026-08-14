@@ -9,6 +9,7 @@ import { TestimonialCarousel } from "@/components/home/testimonial-carousel";
 import { TestimonialForm } from "@/components/testimonial-form";
 import { time } from "@/lib/format";
 import type { LandingSectionKey, TenantLandingData } from "@/lib/landing-content";
+import { publicHrefForVisiblePath } from "@/lib/routes";
 
 const sectionLabels: Record<LandingSectionKey, string> = {
   hero: "Hero",
@@ -89,20 +90,31 @@ function EditableSection({
 /** @summary Renderiza la landing pública completa y el preview del editor con los mismos componentes y datos. */
 export function LandingRenderer({
   data,
-  resolveHref,
+  originalPath,
+  tenantSlug,
+  branchSlug,
   compact = false,
   preview = false,
   activeSection = null,
   onSectionSelect,
 }: {
   data: TenantLandingData;
-  resolveHref?: (href: string) => string;
+  /** Contexto canónico serializable para resolver hrefs públicos dentro del cliente. */
+  originalPath?: string;
+  tenantSlug?: string;
+  branchSlug?: string;
   compact?: boolean;
   preview?: boolean;
   activeSection?: LandingSectionKey | null;
   onSectionSelect?: (key: LandingSectionKey) => void;
 }) {
-  const href = resolveHref ?? ((value: string) => value);
+  const href =
+    originalPath && tenantSlug
+      ? (value: string) =>
+          value.startsWith("#")
+            ? value
+            : publicHrefForVisiblePath(originalPath, tenantSlug, value, branchSlug)
+      : (value: string) => value;
   const storySlides = data.stories.map((slide) => ({
     image: slide.image,
     imageAlt: slide.title,

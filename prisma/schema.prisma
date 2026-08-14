@@ -756,6 +756,7 @@ model Reservation {
   source            String                     @default("website") @db.VarChar(60)
   ipHash            String?                    @db.VarChar(64)
   estimatedDuration Int?
+  deletedAt         DateTime?
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   tenant            Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -764,6 +765,7 @@ model Reservation {
 
   @@index([tenantId, branchId, reservationDate, reservationTime])
   @@index([tenantId, status, createdAt])
+  @@index([tenantId, deletedAt])
   @@index([ipHash, createdAt])
   @@map("reservation")
 }

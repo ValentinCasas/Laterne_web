@@ -18,7 +18,7 @@ export default async function AdminReservationsPage() {
   const branchFilter = activeBranchWhere(context.tenant.id, context.activeBranchId);
   const [reservations, settings, blocks] = await Promise.all([
     prisma.reservation.findMany({
-      where: branchFilter,
+      where: { ...branchFilter, deletedAt: null },
       orderBy: [{ reservationDate: "desc" }, { reservationTime: "desc" }],
       take: 1000,
     }),

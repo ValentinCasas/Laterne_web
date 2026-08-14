@@ -16,7 +16,7 @@ test("muestra la propuesta comercial y sus planes administrables", async ({ page
 });
 
 test("recorre la carta y abre una ficha individual", async ({ page }) => {
-  await page.goto("/carta");
+  await page.goto("/t/laterne/carta");
   await acceptPrivacy(page);
   const detailLink = page.getByRole("link", { name: "Ver detalles" }).first();
   await expect(detailLink).toBeVisible();

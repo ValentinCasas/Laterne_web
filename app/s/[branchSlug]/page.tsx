@@ -8,7 +8,6 @@ import { time } from "@/lib/format";
 import { getDefaultTenant } from "@/lib/tenant";
 import { resolvePublicBranch } from "@/lib/branch";
 import { managedPageMetadata } from "@/lib/seo";
-import { publicHrefForVisiblePath } from "@/lib/routes";
 import { requestRouteContext } from "@/lib/request-route-context";
 import { resolveLandingHeroConfig, type TenantLandingData } from "@/lib/landing-content";
 
@@ -257,11 +256,9 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
     <main className="overflow-hidden">
       <LandingRenderer
         data={branchData}
-        resolveHref={(href) =>
-          href.startsWith("#")
-            ? href
-            : publicHrefForVisiblePath(route.originalPath, tenant.slug, href, branch.branchSlug)
-        }
+        originalPath={route.originalPath}
+        tenantSlug={tenant.slug}
+        branchSlug={branch.branchSlug}
       />
     </main>
   );

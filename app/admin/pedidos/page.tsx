@@ -20,12 +20,17 @@ export default async function AdminOrdersPage() {
     include: {
       table: { select: { name: true, code: true } },
       items: true,
-      branch: { select: { name: true } },
+      branch: { select: { name: true, slug: true } },
       invoice: { select: { id: true, number: true, status: true } },
       history: { orderBy: { createdAt: "asc" } },
+      idempotencies: { select: { token: true }, orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { createdAt: "desc" },
     take: 500,
   });
-  return <OrderBoard initialOrders={serialize(orders) as unknown as AdminOrder[]} />;
+  const publicOrders = orders.map(({ idempotencies, ...order }) => ({
+    ...order,
+    trackingToken: idempotencies[0]?.token ?? null,
+  }));
+  return <OrderBoard initialOrders={serialize(publicOrders) as unknown as AdminOrder[]} />;
 }
