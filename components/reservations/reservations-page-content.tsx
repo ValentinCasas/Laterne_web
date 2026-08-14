@@ -46,6 +46,8 @@ export async function ReservationsPageContent({ branchSlug }: { branchSlug?: str
             initialSectors={sectors}
             initialPolicy={settings?.policy ?? "La reserva queda sujeta a confirmación del negocio."}
             initialMaximumPartySize={settings?.maximumPartySize ?? 20}
+            initialMaximumAdvanceDays={settings?.maximumAdvanceDays ?? 60}
+            businessName={tenant.name}
             branchSlug={branchSlug}
           />
         )}

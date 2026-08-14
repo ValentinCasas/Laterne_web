@@ -42,6 +42,7 @@ export default async function LandingPage() {
     <LandingEditor
       initialBrand={
         serialize({
+          hero: data.hero,
           heroTitle: brand?.heroTitle ?? "",
           heroSubtitle: brand?.heroSubtitle ?? "",
           heroImageUrl: brand?.heroImageUrl ?? null,
@@ -52,6 +53,15 @@ export default async function LandingPage() {
           fontFamily: brand?.fontFamily ?? "Inter",
           tenantName: context.tenant.name,
           branchName: context.branches[0]?.name ?? "",
+          contactPhone: data.phone,
+          contactEmail: data.email ?? "",
+          contactAddress: data.address,
+          instagramUrl: data.instagramUrl ?? "",
+          facebookUrl: data.facebookUrl ?? "",
+          latitude: data.latitude,
+          longitude: data.longitude,
+          hasMap: data.hasMap,
+          openingGroups: data.openingGroups,
         }) as unknown as LandingData
       }
       initialSections={initialSections}

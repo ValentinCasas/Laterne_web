@@ -74,12 +74,22 @@ async function uniqueReference() {
   throw new Error("No se pudo generar la referencia de reserva");
 }
 
-/** @summary Informa franjas disponibles, sectores y políticas para una fecha determinada. */
+/** @summary Clasifica la franja según capacidad y solicitudes pendientes, sin exponer datos de terceros. */
+function slotStatus(remaining: number, pending: number, partySize: number): "available" | "pending" | "full" {
+  if (remaining < partySize) return "full";
+  if (pending > 0) return "pending";
+  return "available";
+}
+
+/** @summary Informa franjas por fecha con estado agregado de disponibilidad, sin datos privados. */
 export async function GET(request: Request) {
-  const date = new URL(request.url).searchParams.get("date") ?? "";
+  const searchParams = new URL(request.url).searchParams;
+  const date = searchParams.get("date") ?? "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "Indicá una fecha válida" }, { status: 400 });
   }
+  const rawPartySize = Number(searchParams.get("partySize") ?? "1");
+  const partySize = Number.isInteger(rawPartySize) ? rawPartySize : 1;
   const tenant = await getDefaultTenant();
   const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") ?? "";
   const requestedBranchSlug = routeBranchSlug || new URL(request.url).searchParams.get("branch") || "";
@@ -106,7 +116,7 @@ export async function GET(request: Request) {
         reservationDate: selectedDate,
         status: { in: ["pending", "confirmed"] },
       },
-      select: { reservationTime: true, partySize: true },
+      select: { reservationTime: true, partySize: true, status: true },
     }),
   ]);
   if (!settings?.enabled) {
@@ -129,9 +139,13 @@ export async function GET(request: Request) {
   }
   if (!ranges.length) ranges.push(["18:00", "23:30"]);
   const occupied = new Map<string, number>();
+  const pendingOccupied = new Map<string, number>();
   for (const reservation of reservations) {
     const key = timeText(reservation.reservationTime);
     occupied.set(key, (occupied.get(key) ?? 0) + reservation.partySize);
+    if (reservation.status === "pending") {
+      pendingOccupied.set(key, (pendingOccupied.get(key) ?? 0) + reservation.partySize);
+    }
   }
   const now = new Date();
   const slots = ranges
@@ -143,8 +157,16 @@ export async function GET(request: Request) {
         now.getTime() + settings.minimumLeadHours * 3_600_000,
     )
     .filter((time) => !blockedTime(time, blocks))
-    .map((time) => ({ time, remaining: Math.max(0, settings.capacityPerSlot - (occupied.get(time) ?? 0)) }))
-    .filter((slot) => slot.remaining > 0);
+    .map((time) => {
+      const remaining = Math.max(0, settings.capacityPerSlot - (occupied.get(time) ?? 0));
+      const pending = pendingOccupied.get(time) ?? 0;
+      return {
+        time,
+        remaining,
+        pending,
+        status: slotStatus(remaining, pending, Math.max(1, Math.min(partySize, settings.maximumPartySize))),
+      };
+    });
 
   return NextResponse.json({
     slots,

@@ -37,6 +37,37 @@ const brandInput = z.object({
         )
         .max(40)
         .default([]),
+      hero: z
+        .object({
+          eyebrow: z.string().trim().max(120).optional(),
+          title: z.string().trim().max(220).optional(),
+          highlight: z.string().trim().max(80).optional(),
+          description: z.string().trim().max(500).optional(),
+          primaryButton: z
+            .object({
+              label: z.string().trim().max(60).optional(),
+              href: z.string().trim().max(300).optional(),
+              visible: z.boolean().optional(),
+            })
+            .optional(),
+          secondaryButton: z
+            .object({
+              label: z.string().trim().max(60).optional(),
+              href: z.string().trim().max(300).optional(),
+              visible: z.boolean().optional(),
+            })
+            .optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  contact: z
+    .object({
+      phone: z.string().trim().max(30).optional().or(z.literal("")),
+      email: z.string().trim().max(255).optional().or(z.literal("")),
+      address: z.string().trim().max(255).optional().or(z.literal("")),
+      instagram: z.string().trim().max(500).optional().or(z.literal("")),
+      facebook: z.string().trim().max(500).optional().or(z.literal("")),
     })
     .optional(),
   tone: z.string().trim().max(120).optional(),
@@ -137,6 +168,27 @@ export async function PATCH(request: Request) {
         create: { tenantId: auth.tenant.id, ...data } as Prisma.BrandSettingsUncheckedCreateInput,
         update: data,
       });
+      if (p.contact !== undefined) {
+        const phoneDigits = p.contact.phone?.trim().replace(/\D/g, "") || "";
+        await transaction.businessInfo.upsert({
+          where: { tenantId: auth.tenant.id },
+          create: {
+            tenantId: auth.tenant.id,
+            phoneNumber: phoneDigits ? BigInt(phoneDigits) : null,
+            email: p.contact.email?.trim() || null,
+            address: p.contact.address?.trim() || null,
+            instagramUrl: p.contact.instagram?.trim() || null,
+            facebookUrl: p.contact.facebook?.trim() || null,
+          },
+          update: {
+            phoneNumber: phoneDigits ? BigInt(phoneDigits) : null,
+            email: p.contact.email?.trim() || null,
+            address: p.contact.address?.trim() || null,
+            instagramUrl: p.contact.instagram?.trim() || null,
+            facebookUrl: p.contact.facebook?.trim() || null,
+          },
+        });
+      }
       if (Object.keys(tenantData).length > 0) {
         await transaction.tenant.update({ where: { id: auth.tenant.id }, data: tenantData });
       }

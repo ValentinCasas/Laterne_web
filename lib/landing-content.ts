@@ -29,6 +29,67 @@ export type LandingStory = { title: string; subtitle: string; image: string };
 
 export type LandingTestimonialSlide = { id: number; description: string; date: string; avatar: string };
 
+export type LandingHeroButtonConfig = { label: string; href: string; visible: boolean };
+
+export type LandingHeroConfig = {
+  eyebrow: string;
+  title: string;
+  highlight: string;
+  description: string;
+  imageUrl: string | null;
+  primaryButton: LandingHeroButtonConfig;
+  secondaryButton: LandingHeroButtonConfig;
+};
+
+export const LANDING_HERO_DEFAULTS: LandingHeroConfig = {
+  eyebrow: "",
+  title: "",
+  highlight: "birra.",
+  description: LANDING_HERO_SUBTITLE_DEFAULT,
+  imageUrl: null,
+  primaryButton: { label: "Explorar la carta", href: "/carta", visible: true },
+  secondaryButton: { label: "Ver eventos", href: "#eventos", visible: true },
+};
+
+/** @summary Normaliza la configuración guardada del hero combinándola con fallbacks y valores heredados. */
+export function resolveLandingHeroConfig(
+  raw: unknown,
+  fallbacks: {
+    tenantName: string;
+    legacyTitle: string;
+    legacySubtitle: string;
+    legacyImageUrl: string | null;
+  },
+): LandingHeroConfig {
+  const source =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const text = (value: unknown, max: number) =>
+    typeof value === "string" ? value.trim().slice(0, max) : "";
+  const button = (value: unknown, fallback: LandingHeroButtonConfig): LandingHeroButtonConfig => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const entry = value as Record<string, unknown>;
+      return {
+        label: text(entry.label, 60) || fallback.label,
+        href: typeof entry.href === "string" && entry.href.trim() ? entry.href.trim().slice(0, 300) : fallback.href,
+        visible: typeof entry.visible === "boolean" ? entry.visible : fallback.visible,
+      };
+    }
+    return fallback;
+  };
+  return {
+    eyebrow: text(source.eyebrow, 120) || fallbacks.tenantName,
+    title: text(source.title, 220) || fallbacks.legacyTitle,
+    highlight: typeof source.highlight === "string" ? text(source.highlight, 80) : LANDING_HERO_DEFAULTS.highlight,
+    description: text(source.description, 500) || fallbacks.legacySubtitle,
+    imageUrl:
+      typeof source.imageUrl === "string" && source.imageUrl.trim()
+        ? source.imageUrl.trim().slice(0, 500)
+        : fallbacks.legacyImageUrl,
+    primaryButton: button(source.primaryButton, LANDING_HERO_DEFAULTS.primaryButton),
+    secondaryButton: button(source.secondaryButton, LANDING_HERO_DEFAULTS.secondaryButton),
+  };
+}
+
 export type OpeningHourGroup = {
   days: string[];
   morningStartTime: Date | null;
@@ -39,6 +100,7 @@ export type OpeningHourGroup = {
 
 export type TenantLandingData = {
   displayName: string;
+  hero: LandingHeroConfig;
   heroTitle: string;
   heroSubtitle: string;
   heroImageUrl: string | null;
@@ -59,3 +121,13 @@ export type TenantLandingData = {
   longitude: number | null;
   hasMap: boolean;
 };
+
+/** @summary Secciones editables de la landing, compartidas entre el editor y el renderer público. */
+export type LandingSectionKey =
+  | "hero"
+  | "events"
+  | "beers"
+  | "stories"
+  | "testimonials"
+  | "map"
+  | "contact";

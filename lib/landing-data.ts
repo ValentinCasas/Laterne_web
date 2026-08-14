@@ -10,6 +10,7 @@ import {
   type LandingTestimonialSlide,
   type OpeningHourGroup,
   type TenantLandingData,
+  resolveLandingHeroConfig,
 } from "@/lib/landing-content";
 import { prisma } from "@/lib/prisma";
 
@@ -83,7 +84,7 @@ export async function loadTenantLandingData(tenant: {
     brand?.landingSections &&
     typeof brand.landingSections === "object" &&
     !Array.isArray(brand.landingSections)
-      ? (brand.landingSections as { beerImages?: unknown; stories?: unknown })
+      ? (brand.landingSections as { beerImages?: unknown; stories?: unknown; hero?: unknown })
       : {};
   const sectionsBeerImages = Array.isArray(stored.beerImages)
     ? stored.beerImages.filter((source): source is string => typeof source === "string" && !!source.trim())
@@ -183,6 +184,12 @@ export async function loadTenantLandingData(tenant: {
 
   return {
     displayName: tenant.name,
+    hero: resolveLandingHeroConfig(stored.hero, {
+      tenantName: tenant.name,
+      legacyTitle: heroTitle,
+      legacySubtitle: heroSubtitle,
+      legacyImageUrl: heroImageUrl,
+    }),
     heroTitle,
     heroSubtitle,
     heroImageUrl,

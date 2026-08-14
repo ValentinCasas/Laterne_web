@@ -187,72 +187,108 @@ export function SiteHeader({
         </button>
       </nav>
 
-      <div
-        id="mobile-navigation"
-        className={`${mobileOpen ? "fixed inset-x-2" : "hidden"} top-20 z-40 rounded-3xl border border-white/10 bg-black/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl lg:hidden`}
-        role="dialog"
-        aria-modal={mobileOpen}
-      >
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <span className="text-sm font-semibold uppercase tracking-[0.32em] text-white/75">Menú</span>
-          <button
-            type="button"
-            className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            id="mobile-navigation"
+            className="fixed inset-y-0 right-0 z-50 flex w-[min(20rem,88vw)] flex-col border-l border-white/10 bg-[#09090b] shadow-2xl shadow-black/50 lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú de navegación"
           >
-            Cerrar
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {navGroups.map((group) => (
-            <div key={group.id} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+            <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4">
+              <Link href={tenantHref("/")} className="flex items-center gap-2 text-xl font-black tracking-tight text-pink-400 transition hover:text-white">
+                {logoUrl && (
+                  <Image src={logoUrl} alt={`Logo de ${brandName}`} width={30} height={30} className="h-8 w-auto object-contain" />
+                )}
+                <span>
+                  {brandName}
+                  <span className="text-white">&.</span>
+                </span>
+              </Link>
               <button
                 type="button"
-                className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/10"
-                onClick={() => setMobileGroupOpen(mobileGroupOpen === group.id ? null : group.id)}
-                aria-expanded={mobileGroupOpen === group.id}
-                aria-controls={`${group.id}-mobile-panel`}
-              >
-                <span>{group.label}</span>
-                <span className="text-xs">{mobileGroupOpen === group.id ? "▴" : "▾"}</span>
-              </button>
-              <ul
-                id={`${group.id}-mobile-panel`}
-                className={`${mobileGroupOpen === group.id ? "grid" : "hidden"} gap-2 border-t border-white/10 px-4 pb-4 pt-2`}
-              >
-                {group.items.map(([href, label]) => (
-                  <li key={href}>
-                    <Link
-                      href={tenantHref(href)}
-                      onClick={() => {
-                        setMobileOpen(false);
-                        setMobileGroupOpen(null);
-                      }}
-                      className="block rounded-2xl px-3 py-3 text-sm text-white/90 transition hover:bg-white/10 hover:text-white"
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-
-          <div className="space-y-2 rounded-3xl border border-white/10 bg-white/5 p-3">
-            {directLinks.map(([href, label]) => (
-              <Link
-                key={href}
-                href={tenantHref(href)}
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-lg text-white transition hover:bg-white/10"
                 onClick={() => setMobileOpen(false)}
-                className="block rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar navegación"
               >
-                {label}
-              </Link>
-            ))}
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href={tenantHref("/carta")}
+                  onClick={() => setMobileOpen(false)}
+                  className="btn !px-3 !py-2.5 text-center text-sm"
+                >
+                  Ver carta
+                </Link>
+                <Link
+                  href={tenantHref("/reservas")}
+                  onClick={() => setMobileOpen(false)}
+                  className="btn btn-secondary !px-3 !py-2.5 text-center text-sm"
+                >
+                  Reservar mesa
+                </Link>
+              </div>
+
+              {navGroups.map((group) => (
+                <div key={group.id} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/10"
+                    onClick={() => setMobileGroupOpen(mobileGroupOpen === group.id ? null : group.id)}
+                    aria-expanded={mobileGroupOpen === group.id}
+                    aria-controls={`${group.id}-mobile-panel`}
+                  >
+                    <span>{group.label}</span>
+                    <span className="text-xs">{mobileGroupOpen === group.id ? "▴" : "▾"}</span>
+                  </button>
+                  <ul
+                    id={`${group.id}-mobile-panel`}
+                    className={`${mobileGroupOpen === group.id ? "grid" : "hidden"} gap-2 border-t border-white/10 px-4 pb-4 pt-2`}
+                  >
+                    {group.items.map(([href, label]) => (
+                      <li key={href}>
+                        <Link
+                          href={tenantHref(href)}
+                          onClick={() => {
+                            setMobileOpen(false);
+                            setMobileGroupOpen(null);
+                          }}
+                          className="block rounded-2xl px-3 py-3 text-sm text-white/90 transition hover:bg-white/10 hover:text-white"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+              <div className="space-y-2 rounded-3xl border border-white/10 bg-white/5 p-3">
+                {directLinks.map(([href, label]) => (
+                  <Link
+                    key={href}
+                    href={tenantHref(href)}
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:text-white"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </header>
   );
 }

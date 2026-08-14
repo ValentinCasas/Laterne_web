@@ -1,42 +1,43 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
+import type { LandingHeroConfig } from "@/lib/landing-content";
 
 /** @summary Portada de la landing pública y del preview del editor, con o sin imagen de fondo. */
 export function LandingHero({
-  eyebrow,
-  title,
-  subtitle,
-  imageUrl,
+  hero,
   primaryColor,
   secondaryColor,
   backgroundColor,
-  ctaHref,
-  eventsHref,
   compact = false,
   unoptimized = false,
+  resolveHref,
 }: {
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  imageUrl: string | null;
+  hero: LandingHeroConfig;
   primaryColor: string;
   secondaryColor: string;
   backgroundColor: string;
-  ctaHref: string;
-  eventsHref: string;
   compact?: boolean;
   unoptimized?: boolean;
+  resolveHref?: (href: string) => string;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!hero.imageUrl && !imageFailed;
+  const href = resolveHref ?? ((value: string) => value);
+
   return (
     <section className={`relative ${compact ? "min-h-80" : "min-h-[calc(100vh-4rem)]"}`}>
-      {imageUrl ? (
+      {showImage ? (
         <>
           <Image
-            src={imageUrl}
+            src={hero.imageUrl!}
             alt=""
             fill
             priority
             sizes="100vw"
             unoptimized={unoptimized}
+            onError={() => setImageFailed(true)}
             className="object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/10" />
@@ -54,30 +55,38 @@ export function LandingHero({
           compact ? "min-h-80 py-12" : "min-h-[calc(100vh-4rem)] py-24"
         }`}
       >
-        <p className="font-bold uppercase tracking-[.3em] text-pink-400">{eyebrow}</p>
+        <p className="font-bold uppercase tracking-[.3em] text-pink-400">{hero.eyebrow}</p>
         <h1
-          className={`mt-4 max-w-5xl font-black leading-[.92] tracking-tight ${
-            compact ? "text-4xl" : "text-6xl sm:text-8xl lg:text-9xl"
+          className={`mt-4 max-w-5xl break-words font-black leading-[.92] tracking-tight ${
+            compact ? "text-4xl" : "text-5xl sm:text-8xl lg:text-9xl"
           }`}
         >
-          {title}
-          <br />
-          <span className="hero-word">birra.</span>
+          {hero.title}
+          {hero.highlight && (
+            <>
+              <br />
+              <span className="hero-word">{hero.highlight}</span>
+            </>
+          )}
         </h1>
         <p
           className={`mt-7 max-w-xl leading-relaxed text-zinc-200 ${
             compact ? "text-base" : "text-lg"
           }`}
         >
-          {subtitle}
+          {hero.description}
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
-          <a className="btn" href={ctaHref}>
-            Explorar la carta
-          </a>
-          <a className="btn btn-secondary" href={eventsHref}>
-            Ver eventos
-          </a>
+          {hero.primaryButton.visible && (
+            <a className="btn" href={href(hero.primaryButton.href)}>
+              {hero.primaryButton.label}
+            </a>
+          )}
+          {hero.secondaryButton.visible && (
+            <a className="btn btn-secondary" href={href(hero.secondaryButton.href)}>
+              {hero.secondaryButton.label}
+            </a>
+          )}
         </div>
       </div>
     </section>

@@ -262,7 +262,6 @@ export function AdminShell({
         .filter((group) => group.links.length > 0),
     [permissions],
   );
-  const currentLink = accessibleLinks.find((link) => isCurrent(link.href));
   const commandLinks = accessibleLinks.filter((link) =>
     link.label.toLocaleLowerCase("es").includes(commandQuery.trim().toLocaleLowerCase("es")),
   );
@@ -421,11 +420,168 @@ export function AdminShell({
     }
   }
 
+  const navigationContent = (
+    <>
+      <nav
+        className="space-y-2 overflow-y-auto overscroll-contain p-2 lg:max-h-[calc(100dvh-24rem)] lg:p-3"
+        aria-label="Secciones administrativas"
+      >
+        {accessibleGroups.map((group) => {
+          const expanded = openGroup === group.id;
+          const containsActive = group.links.some((link) => isCurrent(link.href));
+          return (
+            <section
+              className={`overflow-hidden rounded-2xl border transition ${
+                containsActive
+                  ? "border-pink-500/25 bg-pink-500/[.04]"
+                  : "border-white/[.07] bg-white/[.02]"
+              }`}
+              key={group.id}
+            >
+              <button
+                className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-white/5"
+                type="button"
+                aria-controls={`admin-group-${group.id}`}
+                aria-expanded={expanded}
+                onClick={() => setOpenGroup((current) => (current === group.id ? "" : group.id))}
+              >
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[10px] font-black tracking-wider ${
+                    containsActive ? "bg-pink-500 text-white" : "bg-white/5 text-pink-300"
+                  }`}
+                >
+                  {group.icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block truncate text-sm">{group.label}</strong>
+                  <small className="hidden truncate text-[10px] text-zinc-600 xl:block">
+                    {group.description}
+                  </small>
+                </span>
+                <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-zinc-500">
+                  {group.links.length}
+                </span>
+                <span
+                  className={`text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                >
+                  ⌄
+                </span>
+              </button>
+
+              {expanded && (
+                <div
+                  className="space-y-1 border-t border-white/[.07] p-2"
+                  id={`admin-group-${group.id}`}
+                >
+                  {group.links.map(({ href, label, icon }) => {
+                    const active = isCurrent(href);
+                    return (
+                      <Link
+                        className={`group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-bold transition ${
+                          active
+                            ? "bg-pink-500 text-white shadow-lg shadow-pink-950/30"
+                            : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                        }`}
+                        href={adminHref(href) as Route}
+                        key={href}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <span
+                          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
+                            active
+                              ? "bg-white/20"
+                              : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
+                          }`}
+                        >
+                          {icon}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })}
+
+        {isSuperAdmin && (
+          <Link
+            className="group flex items-center gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-3 py-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10"
+            href={platformAdminPath() as Route}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">
+              SA
+            </span>
+            Plataforma
+          </Link>
+        )}
+      </nav>
+
+      <div className="border-t border-white/10 p-3 print:hidden">
+        <button
+          className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/10"
+          onClick={() => {
+            setCommandOpen(true);
+            setMobileMenuOpen(false);
+          }}
+          type="button"
+        >
+          <span>Buscar o ir a…</span>
+          <kbd className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-500">
+            Ctrl K
+          </kbd>
+        </button>
+      </div>
+
+      {permissions.includes("notification.manage") && <NotificationCenter />}
+
+      <div className="border-t border-white/10 p-3">
+        <button
+          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-red-300 hover:bg-red-500/10"
+          onClick={logout}
+          type="button"
+        >
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-red-500/10">→</span>
+          Cerrar sesión
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`} style={{ ...paletteCssVariables(palette), colorScheme: palette.baseMode, "--admin-primary-strong": palette.primary, "--admin-primary": palette.primary, "--admin-accent-legacy": adminAccent } as React.CSSProperties}>
       <div className="admin-shell shell grid gap-6 py-6 lg:grid-cols-[288px_minmax(0,1fr)] lg:gap-9 lg:py-9">
-        <aside className="sticky top-20 z-40 h-fit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl">
-          <div className="hidden border-b border-white/10 p-6 lg:block">
+        <aside className="sticky top-20 z-40 lg:hidden">
+          <button
+            className="flex w-full items-center gap-3 rounded-3xl border border-white/10 bg-zinc-950/90 p-3 text-left shadow-2xl shadow-black/40 backdrop-blur-xl"
+            type="button"
+            aria-controls="admin-navigation-panel"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((current) => !current)}
+          >
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pink-500/15 text-lg text-pink-300">
+              ☰
+            </span>
+            <span className="min-w-0 flex-1">
+              <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
+                Administración
+              </small>
+              <strong className="block truncate text-sm">{tenantName} · Principal</strong>
+            </span>
+            <span
+              className={`grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-lg transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            >
+              ⌄
+            </span>
+          </button>
+        </aside>
+
+        <aside className="sticky top-20 z-40 hidden h-fit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl lg:block">
+          <div className="border-b border-white/10 p-6">
             <p className="text-xs font-black uppercase tracking-[.28em] text-[var(--admin-primary)]">{tenantName} Studio</p>
 <h2 className="mt-2 text-2xl font-black">Administración</h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-500">
@@ -461,181 +617,61 @@ export function AdminShell({
             </div>
           </div>
 
-          <button
-            className="flex w-full items-center gap-3 p-3 text-left lg:hidden"
-            type="button"
-            aria-controls="admin-navigation-panel"
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((current) => !current)}
-          >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pink-500/15 text-xs font-black text-pink-300">
-              {currentLink?.icon ?? "AD"}
-            </span>
-            <span className="min-w-0 flex-1">
-              <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
-                Administración
-              </small>
-              <strong className="block truncate text-sm">{currentLink?.label ?? "Elegir sección"}</strong>
-            </span>
-            <span
-              className={`grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-lg transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`}
-              aria-hidden="true"
-            >
-              ⌄
-            </span>
-          </button>
-
-<div className="grid grid-cols-2 gap-2 px-3 pb-3 lg:hidden">
-            <a
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
-              href={publicSite}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Ver sitio
-            </a>
-            <a
-              className="rounded-xl border border-pink-500/20 bg-pink-500/10 px-3 py-2 text-center text-xs font-black text-pink-200 hover:bg-pink-500 hover:text-white"
-              href={`${publicSite}/carta`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Ver carta
-            </a>
-          </div>
-
-          <div
-            className={`${mobileMenuOpen ? "block" : "hidden"} border-t border-white/10 lg:block lg:border-t-0`}
-            id="admin-navigation-panel"
-          >
-            <nav
-              className="max-h-[calc(100dvh-14rem)] space-y-2 overflow-y-auto overscroll-contain p-2 lg:max-h-[calc(100dvh-24rem)] lg:p-3"
-              aria-label="Secciones administrativas"
-            >
-              {accessibleGroups.map((group) => {
-                const expanded = openGroup === group.id;
-                const containsActive = group.links.some((link) => isCurrent(link.href));
-                return (
-                  <section
-                    className={`overflow-hidden rounded-2xl border transition ${
-                      containsActive
-                        ? "border-pink-500/25 bg-pink-500/[.04]"
-                        : "border-white/[.07] bg-white/[.02]"
-                    }`}
-                    key={group.id}
-                  >
-                    <button
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-white/5"
-                      type="button"
-                      aria-controls={`admin-group-${group.id}`}
-                      aria-expanded={expanded}
-                      onClick={() => setOpenGroup((current) => (current === group.id ? "" : group.id))}
-                    >
-                      <span
-                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[10px] font-black tracking-wider ${
-                          containsActive ? "bg-pink-500 text-white" : "bg-white/5 text-pink-300"
-                        }`}
-                      >
-                        {group.icon}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm">{group.label}</strong>
-                        <small className="hidden truncate text-[10px] text-zinc-600 xl:block">
-                          {group.description}
-                        </small>
-                      </span>
-                      <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-zinc-500">
-                        {group.links.length}
-                      </span>
-                      <span
-                        className={`text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
-                        aria-hidden="true"
-                      >
-                        ⌄
-                      </span>
-                    </button>
-
-                    {expanded && (
-                      <div
-                        className="space-y-1 border-t border-white/[.07] p-2"
-                        id={`admin-group-${group.id}`}
-                      >
-                        {group.links.map(({ href, label, icon }) => {
-                          const active = isCurrent(href);
-                          return (
-                            <Link
-                              className={`group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-bold transition ${
-                                active
-                                  ? "bg-pink-500 text-white shadow-lg shadow-pink-950/30"
-                                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                              }`}
-                              href={adminHref(href) as Route}
-                              key={href}
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <span
-                                className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
-                                  active
-                                    ? "bg-white/20"
-                                    : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
-                                }`}
-                              >
-                                {icon}
-                              </span>
-                              <span className="min-w-0 flex-1 truncate">{label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-
-              {isSuperAdmin && (
-                <Link
-                  className="group flex items-center gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-3 py-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10"
-                  href={platformAdminPath() as Route}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">
-                    SA
-                  </span>
-                  Plataforma
-                </Link>
-              )}
-            </nav>
-
-            <div className="border-t border-white/10 p-3 print:hidden">
-              <button
-                className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/10"
-                onClick={() => {
-                  setCommandOpen(true);
-                  setMobileMenuOpen(false);
-                }}
-                type="button"
-              >
-                <span>Buscar o ir a…</span>
-                <kbd className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-500">
-                  Ctrl K
-                </kbd>
-              </button>
-            </div>
-
-            {permissions.includes("notification.manage") && <NotificationCenter />}
-
-            <div className="border-t border-white/10 p-3">
-              <button
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-red-300 hover:bg-red-500/10"
-                onClick={logout}
-                type="button"
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-red-500/10">→</span>
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
+          <div className="border-t border-white/10">{navigationContent}</div>
         </aside>
+
+        {mobileMenuOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              id="admin-navigation-panel"
+              className="fixed inset-y-0 left-0 z-50 flex w-[min(20rem,88vw)] flex-col border-r border-white/10 bg-zinc-950 shadow-2xl shadow-black/50 lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menú de administración"
+            >
+              <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4">
+                <span className="min-w-0">
+                  <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
+                    Administración
+                  </small>
+                  <strong className="block truncate text-sm">{tenantName} · Principal</strong>
+                </span>
+                <button
+                  type="button"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-lg text-white transition hover:bg-white/10"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Cerrar navegación"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 px-3 pb-3 pt-3">
+                <a
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
+                  href={publicSite}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver sitio
+                </a>
+                <a
+                  className="rounded-xl border border-pink-500/20 bg-pink-500/10 px-3 py-2 text-center text-xs font-black text-pink-200 hover:bg-pink-500 hover:text-white"
+                  href={`${publicSite}/carta`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver carta
+                </a>
+              </div>
+              <div className="flex-1 overflow-y-auto overscroll-contain">{navigationContent}</div>
+            </div>
+          </>
+        )}
 
          <main className="admin-main min-w-0">{children}</main>
       </div>

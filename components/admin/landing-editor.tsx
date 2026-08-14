@@ -4,17 +4,18 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { BeerCarousel } from "@/components/home/beer-carousel";
-import { Carousel } from "@/components/home/carousel";
-import { EventGrid, type PublicEvent } from "@/components/home/event-grid";
-import { LandingHero } from "@/components/home/landing-hero";
-import { TestimonialCarousel } from "@/components/home/testimonial-carousel";
+import { LandingRenderer } from "@/components/landing/landing-renderer";
+import type { PublicEvent } from "@/components/home/event-grid";
 import {
   LANDING_BEER_DEFAULTS,
-  LANDING_HERO_SUBTITLE_DEFAULT,
   LANDING_IMAGE_PATH_RE,
   LANDING_STORY_DEFAULTS,
+  type LandingHeroButtonConfig,
+  type LandingHeroConfig,
+  type LandingSectionKey,
   type LandingTestimonialSlide,
+  type OpeningHourGroup,
+  type TenantLandingData,
 } from "@/lib/landing-content";
 import { scopedFetch } from "@/lib/client-routing";
 
@@ -22,6 +23,7 @@ export type LandingStory = { title: string; subtitle: string; image: string };
 export type LandingSections = { beerImages: string[]; stories: LandingStory[] };
 
 export type LandingData = {
+  hero: LandingHeroConfig;
   heroTitle: string;
   heroSubtitle: string;
   heroImageUrl: string | null;
@@ -32,29 +34,72 @@ export type LandingData = {
   fontFamily: string;
   tenantName: string;
   branchName: string;
+  contactPhone: string;
+  contactEmail: string;
+  contactAddress: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  latitude: number | null;
+  longitude: number | null;
+  hasMap: boolean;
+  openingGroups: OpeningHourGroup[];
 };
 
-type SectionKey = "hero" | "beers" | "stories" | "events" | "testimonials";
+type SectionKey = LandingSectionKey;
 
 const sectionMeta: Record<SectionKey, { label: string; hint: string }> = {
-  hero: { label: "Hero / Portada", hint: "Imagen de fondo, título y texto del inicio." },
+  hero: { label: "Hero / Portada", hint: "Textos, botones e imagen de inicio." },
   beers: { label: "Productos / Cervezas", hint: "Imágenes del carrusel de productos." },
   stories: { label: "Historia", hint: "Tarjetas con imagen, título y texto." },
   events: { label: "Eventos", hint: "Los flyers se administran desde Eventos." },
   testimonials: { label: "Testimonios", hint: "Las opiniones se moderan desde Testimonios." },
+  map: { label: "Mapa / Ubicación", hint: "El mapa usa la dirección del negocio." },
+  contact: { label: "Contacto / Pie", hint: "Teléfono, email, dirección y redes." },
 };
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+const IMAGE_TYPES_LABEL = "JPG, PNG, WEBP o AVIF";
+
+/** @summary Valida una imagen contra los límites reales de carga y devuelve el error a mostrar. */
+function validateImageFile(file: File): string | null {
+  if (!IMAGE_TYPES.includes(file.type)) {
+    return `Formato no compatible. Usá ${IMAGE_TYPES_LABEL}.`;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return `La imagen es demasiado grande. Tamaño: ${(file.size / (1024 * 1024)).toFixed(1)} MB. Máximo: 5 MB.`;
+  }
+  return null;
+}
+
+function imageAlert(error: string) {
+  void Swal.fire({
+    title: "Imagen no válida",
+    text: error,
+    icon: "error",
+    confirmButtonColor: "#ec4899",
+    background: "#18181b",
+    color: "#fafafa",
+  });
+}
 
 const isBlobUrl = (value: string | null | undefined) =>
   typeof value === "string" && value.startsWith("blob:");
 
-/** @summary Abre el selector de archivos y entrega la imagen elegida a la acción indicada. */
+/** @summary Abre el selector de archivos, valida la imagen y entrega la elegida a la acción indicada. */
 function pickFile(onFile: (file: File) => void) {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/*";
+  input.accept = IMAGE_TYPES.join(",");
   input.onchange = () => {
     const file = input.files?.[0];
-    if (file) onFile(file);
+    if (!file) return;
+    const error = validateImageFile(file);
+    if (error) {
+      imageAlert(error);
+      return;
+    }
+    onFile(file);
   };
   input.click();
 }
@@ -89,6 +134,14 @@ export function LandingEditor({
   testimonialCount: number;
 }) {
   const [brand, setBrand] = useState(initialBrand);
+  const [hero, setHero] = useState<LandingHeroConfig>(initialBrand.hero);
+  const [contact, setContact] = useState({
+    phone: initialBrand.contactPhone,
+    email: initialBrand.contactEmail,
+    address: initialBrand.contactAddress,
+    instagram: initialBrand.instagramUrl,
+    facebook: initialBrand.facebookUrl,
+  });
   const [sections, setSections] = useState<LandingSections>({
     beerImages: initialSections.beerImages.length
       ? [...new Set(initialSections.beerImages)]
@@ -195,12 +248,7 @@ export function LandingEditor({
     });
   }
 
-  function updateText(kind: "hero" | "stories", index: number | null, field: string, value: string) {
-    if (kind === "hero") {
-      setBrand((current) => ({ ...current, [field]: value }));
-      return;
-    }
-    if (index === null) return;
+  function updateStoryText(index: number, field: "title" | "subtitle", value: string) {
     setSections((current) => ({
       ...current,
       stories: current.stories.map((slide, slideIndex) =>
@@ -272,10 +320,28 @@ export function LandingEditor({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          heroTitle: brand.heroTitle.trim() || null,
-          heroSubtitle: brand.heroSubtitle.trim() || null,
+          heroTitle: hero.title.trim() || null,
+          heroSubtitle: hero.description.trim() || null,
           heroImageUrl,
-          landingSections: { beerImages: uniqueBeerImages, stories },
+          landingSections: {
+            beerImages: uniqueBeerImages,
+            stories,
+            hero: {
+              eyebrow: hero.eyebrow.trim(),
+              title: hero.title.trim(),
+              highlight: hero.highlight,
+              description: hero.description.trim(),
+              primaryButton: hero.primaryButton,
+              secondaryButton: hero.secondaryButton,
+            },
+          },
+          contact: {
+            phone: contact.phone.trim(),
+            email: contact.email.trim(),
+            address: contact.address.trim(),
+            instagram: contact.instagram.trim(),
+            facebook: contact.facebook.trim(),
+          },
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
@@ -322,8 +388,7 @@ export function LandingEditor({
     }
   }
 
-  const previewTitle = brand.heroTitle.trim() || `${brand.tenantName} es`;
-  const previewSubtitle = brand.heroSubtitle.trim() || LANDING_HERO_SUBTITLE_DEFAULT;
+  const previewHero: LandingHeroConfig = { ...hero, imageUrl: pendingHeroImage };
   const previewBeers = [
     ...new Set(
       (sections.beerImages.length ? sections.beerImages : LANDING_BEER_DEFAULTS).filter((source) =>
@@ -332,47 +397,105 @@ export function LandingEditor({
     ),
   ];
   const previewStories = sections.stories.length ? sections.stories : LANDING_STORY_DEFAULTS;
-  const previewStorySlides = previewStories.map((slide) => ({
-    image: slide.image,
-    imageAlt: slide.title,
-    eyebrow: brand.tenantName,
-    title: slide.title,
-    text: slide.subtitle,
-  }));
+  const previewHasMap = initialBrand.hasMap && initialBrand.latitude !== null && initialBrand.longitude !== null;
+  const previewData: TenantLandingData = {
+    displayName: brand.tenantName,
+    hero: previewHero,
+    heroTitle: hero.title,
+    heroSubtitle: hero.description,
+    heroImageUrl: pendingHeroImage,
+    primaryColor: brand.primaryColor,
+    secondaryColor: brand.secondaryColor,
+    backgroundColor: brand.backgroundColor,
+    beers: previewBeers,
+    stories: previewStories,
+    events: initialEvents,
+    testimonials: initialTestimonials,
+    openingGroups: initialBrand.openingGroups,
+    phone: contact.phone,
+    email: contact.email,
+    address: contact.address,
+    instagramUrl: contact.instagram,
+    facebookUrl: contact.facebook,
+    latitude: initialBrand.latitude,
+    longitude: initialBrand.longitude,
+    hasMap: initialBrand.hasMap,
+  };
+
+  const sectionIdByKey: Record<SectionKey, string> = {
+    hero: "landing-sec-hero",
+    events: "eventos",
+    beers: "landing-sec-beers",
+    stories: "landing-sec-stories",
+    testimonials: "landing-sec-testimonials",
+    map: "landing-sec-map",
+    contact: "redes",
+  };
 
   function selectSection(key: SectionKey) {
     setSelected(key);
-    document
-      .getElementById(`landing-sec-${key}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById(sectionIdByKey[key])?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   const editorFor: Record<SectionKey, React.ReactNode> = {
     hero: (
       <div className="space-y-4">
         <label>
-          <span className="label">Título de portada</span>
+          <span className="label">Texto de arriba (eyebrow)</span>
           <input
             className="input"
-            value={brand.heroTitle}
+            value={hero.eyebrow}
+            maxLength={120}
+            onChange={(event) => setHero((current) => ({ ...current, eyebrow: event.target.value }))}
+            placeholder={`Ej. ${brand.tenantName}`}
+          />
+        </label>
+        <label>
+          <span className="label">Título principal</span>
+          <input
+            className="input"
+            value={hero.title}
             maxLength={220}
-            onChange={(event) => updateText("hero", null, "heroTitle", event.target.value)}
+            onChange={(event) => setHero((current) => ({ ...current, title: event.target.value }))}
             placeholder={`Ej. ${brand.tenantName} es`}
           />
         </label>
         <label>
-          <span className="label">Texto de portada</span>
+          <span className="label">Palabra destacada</span>
+          <input
+            className="input"
+            value={hero.highlight}
+            maxLength={80}
+            onChange={(event) => setHero((current) => ({ ...current, highlight: event.target.value }))}
+            placeholder="Ej. birra."
+          />
+          <p className="mt-1 text-xs text-zinc-500">Si lo dejás vacío, no se muestra.</p>
+        </label>
+        <label>
+          <span className="label">Descripción</span>
           <textarea
             className="input min-h-24"
-            value={brand.heroSubtitle}
+            value={hero.description}
             maxLength={500}
-            onChange={(event) => updateText("hero", null, "heroSubtitle", event.target.value)}
+            onChange={(event) => setHero((current) => ({ ...current, description: event.target.value }))}
             placeholder="Contá en una o dos líneas qué hace especial a este lugar."
           />
         </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ButtonConfigEditor
+            title="Botón principal"
+            value={hero.primaryButton}
+            onChange={(next) => setHero((current) => ({ ...current, primaryButton: next }))}
+          />
+          <ButtonConfigEditor
+            title="Botón secundario"
+            value={hero.secondaryButton}
+            onChange={(next) => setHero((current) => ({ ...current, secondaryButton: next }))}
+          />
+        </div>
         <ImageDropzone
           label="Imagen de fondo"
-          hint="Formato horizontal recomendado (16:7)."
+          hint="Formato horizontal recomendado (16:7). Máx. 5 MB (JPG, PNG, WEBP o AVIF)."
           uploading={saving}
           dragging={dragging}
           setDragging={setDragging}
@@ -384,12 +507,15 @@ export function LandingEditor({
           onRemove={pendingHeroImage ? removeHero : undefined}
           value={pendingHeroImage}
         />
+        <p className="text-xs leading-relaxed text-zinc-500">
+          Sin imagen se muestra un fondo con los colores del negocio. Si una imagen no carga, se usa el mismo fondo.
+        </p>
       </div>
     ),
     beers: (
       <div className="space-y-3">
         <p className="text-sm text-zinc-500">
-          Imágenes del carrusel «Nuestros productos». Podés subir varias y ordenarlas.
+          Imágenes del carrusel «Nuestros productos». Podés subir varias, arrastrarlas al recuadro y ordenarlas.
         </p>
         {sections.beerImages.map((image, index) => (
           <ImageRow
@@ -439,7 +565,7 @@ export function LandingEditor({
                 className="input"
                 value={slide.title}
                 maxLength={120}
-                onChange={(event) => updateText("stories", index, "title", event.target.value)}
+                onChange={(event) => updateStoryText(index, "title", event.target.value)}
               />
             </label>
             <label className="mt-3 block">
@@ -448,7 +574,7 @@ export function LandingEditor({
                 className="input min-h-16"
                 value={slide.subtitle}
                 maxLength={300}
-                onChange={(event) => updateText("stories", index, "subtitle", event.target.value)}
+                onChange={(event) => updateStoryText(index, "subtitle", event.target.value)}
               />
             </label>
             <div className="mt-3">
@@ -494,6 +620,79 @@ export function LandingEditor({
           Hay <strong className="text-pink-300">{testimonialCount}</strong>{" "}
           {testimonialCount === 1 ? "opinión aprobada" : "opiniones aprobadas"} visibles.
         </p>
+      </div>
+    ),
+    map: (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[.03] p-5 text-sm leading-relaxed text-zinc-400">
+          <p>
+            La sección <strong className="text-white">Mapa</strong> muestra la ubicación del negocio sobre un mapa
+            interactivo.
+          </p>
+          <p className="mt-2">La dirección y las coordenadas se administran en el recurso Información del negocio.</p>
+          {!previewHasMap && (
+            <p className="mt-2 font-semibold text-amber-300">
+              El mapa no se muestra porque el negocio todavía no tiene coordenadas cargadas.
+            </p>
+          )}
+        </div>
+      </div>
+    ),
+    contact: (
+      <div className="space-y-4">
+        <p className="text-sm text-zinc-500">Datos que aparecen en el pie de la página pública y en la sección de contacto.</p>
+        <label>
+          <span className="label">Teléfono (WhatsApp)</span>
+          <input
+            className="input"
+            type="tel"
+            value={contact.phone}
+            maxLength={30}
+            onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))}
+            placeholder="5491122334455"
+          />
+        </label>
+        <label>
+          <span className="label">Email</span>
+          <input
+            className="input"
+            type="email"
+            value={contact.email}
+            maxLength={255}
+            onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))}
+            placeholder="hola@example.com"
+          />
+        </label>
+        <label>
+          <span className="label">Dirección</span>
+          <input
+            className="input"
+            value={contact.address}
+            maxLength={255}
+            onChange={(event) => setContact((current) => ({ ...current, address: event.target.value }))}
+            placeholder="Calle y número"
+          />
+        </label>
+        <label>
+          <span className="label">Instagram (URL)</span>
+          <input
+            className="input"
+            value={contact.instagram}
+            maxLength={500}
+            onChange={(event) => setContact((current) => ({ ...current, instagram: event.target.value }))}
+            placeholder="https://instagram.com/..."
+          />
+        </label>
+        <label>
+          <span className="label">Facebook (URL)</span>
+          <input
+            className="input"
+            value={contact.facebook}
+            maxLength={500}
+            onChange={(event) => setContact((current) => ({ ...current, facebook: event.target.value }))}
+            placeholder="https://facebook.com/..."
+          />
+        </label>
       </div>
     ),
   };
@@ -561,79 +760,13 @@ export function LandingEditor({
             }`}
             style={{ backgroundColor: brand.backgroundColor, fontFamily: brand.fontFamily }}
           >
-            <PreviewSection
-              id="landing-sec-hero"
-              label="Hero"
-              active={selected === "hero"}
-              onClick={() => setSelected("hero")}
-            >
-              <LandingHero
-                eyebrow={brand.tenantName}
-                title={previewTitle}
-                subtitle={previewSubtitle}
-                imageUrl={pendingHeroImage}
-                primaryColor={brand.primaryColor}
-                secondaryColor={brand.secondaryColor}
-                backgroundColor={brand.backgroundColor}
-                ctaHref="#"
-                eventsHref="#landing-sec-events"
-                compact
-                unoptimized={isBlobUrl(pendingHeroImage)}
-              />
-            </PreviewSection>
-
-            <PreviewSection
-              id="landing-sec-events"
-              label="Eventos"
-              active={selected === "events"}
-              onClick={() => setSelected("events")}
-            >
-              <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
-                <p className="section-eyebrow">Agenda {brand.tenantName}</p>
-                <h4 className="mt-1 text-2xl font-black">Próximos eventos</h4>
-                <EventGrid events={initialEvents} />
-              </div>
-            </PreviewSection>
-
-            <PreviewSection
-              id="landing-sec-beers"
-              label="Productos"
-              active={selected === "beers"}
-              onClick={() => setSelected("beers")}
-            >
-              <div className={`${device === "mobile" ? "pt-5" : "pt-8 sm:pt-10"}`}>
-                <p className="section-eyebrow text-center">Hechas en casa</p>
-                <h4 className="mt-1 text-center text-2xl font-black">Nuestros productos</h4>
-                <div className="mt-2">
-                  <BeerCarousel images={previewBeers} />
-                </div>
-              </div>
-            </PreviewSection>
-
-            <PreviewSection
-              id="landing-sec-stories"
-              label="Historia"
-              active={selected === "stories"}
-              onClick={() => setSelected("stories")}
-            >
-              <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
-                <p className="section-eyebrow">Conocé {brand.tenantName}</p>
-                <Carousel slides={previewStorySlides} label={`Conocé ${brand.tenantName}`} interval={6500} />
-              </div>
-            </PreviewSection>
-
-            <PreviewSection
-              id="landing-sec-testimonials"
-              label="Testimonios"
-              active={selected === "testimonials"}
-              onClick={() => setSelected("testimonials")}
-            >
-              <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
-                <p className="section-eyebrow text-center">Comunidad</p>
-                <h4 className="mt-1 text-center text-2xl font-black">Lo que dice la gente</h4>
-                <TestimonialCarousel testimonials={initialTestimonials} />
-              </div>
-            </PreviewSection>
+            <LandingRenderer
+              data={previewData}
+              preview
+              activeSection={selected}
+              onSectionSelect={setSelected}
+              compact
+            />
           </div>
           <p className="mt-3 text-center text-xs text-zinc-600">
             La vista usa exactamente los mismos componentes y datos que la landing pública de {brand.tenantName}.
@@ -644,35 +777,54 @@ export function LandingEditor({
   );
 }
 
-/** @summary Sección del preview vertical, seleccionable y resaltable. */
-function PreviewSection({
-  id,
-  label,
-  active,
-  onClick,
-  children,
+/** @summary Editor de configuración de un botón del hero: visibilidad, texto y destino. */
+function ButtonConfigEditor({
+  title,
+  value,
+  onChange,
 }: {
-  id: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  title: string;
+  value: LandingHeroButtonConfig;
+  onChange: (next: LandingHeroButtonConfig) => void;
 }) {
   return (
-    <section
-      id={id}
-      className={`relative scroll-mt-4 ${active ? "ring-2 ring-pink-500" : "opacity-90 hover:opacity-100"}`}
-      onClick={onClick}
-    >
-      <span className="absolute left-2 top-2 z-20 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-pink-300">
-        {label}
-      </span>
-      {children}
-    </section>
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[.03] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-black uppercase tracking-widest text-pink-300">{title}</p>
+        <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+          <input
+            type="checkbox"
+            checked={value.visible}
+            onChange={(event) => onChange({ ...value, visible: event.target.checked })}
+            className="accent-pink-500"
+          />
+          Mostrar
+        </label>
+      </div>
+      <label className="block">
+        <span className="label">Texto del botón</span>
+        <input
+          className="input"
+          value={value.label}
+          maxLength={60}
+          onChange={(event) => onChange({ ...value, label: event.target.value })}
+        />
+      </label>
+      <label className="block">
+        <span className="label">Destino</span>
+        <input
+          className="input"
+          value={value.href}
+          maxLength={300}
+          onChange={(event) => onChange({ ...value, href: event.target.value })}
+          placeholder="/carta"
+        />
+      </label>
+    </div>
   );
 }
 
-/** @summary Zona de arrastre y selección para una imagen con estado visual de drag. */
+/** @summary Zona de arrastre y selección para una imagen con estado visual de drag y validación de formato/tamaño. */
 function ImageDropzone({
   label,
   hint,
@@ -710,7 +862,13 @@ function ImageDropzone({
           event.preventDefault();
           setDragging(false);
           const file = event.dataTransfer.files?.[0];
-          if (file) onDrop(file);
+          if (!file) return;
+          const error = validateImageFile(file);
+          if (error) {
+            imageAlert(error);
+            return;
+          }
+          onDrop(file);
         }}
       >
         {value ? (
