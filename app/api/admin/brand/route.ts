@@ -13,7 +13,7 @@ const brandInput = z.object({
   logoUrl: z.string().trim().max(500).optional(),
   isotypeUrl: z.string().trim().max(500).optional(),
   faviconUrl: z.string().trim().max(500).optional(),
-  heroImageUrl: z.string().trim().max(500).optional(),
+  heroImageUrl: z.string().trim().max(500).nullable().optional(),
   primaryColor: color.optional(),
   secondaryColor: color.optional(),
   backgroundColor: color.optional(),
@@ -65,7 +65,7 @@ const brandInput = z.object({
 });
 
 /** @summary Valida una imagen de marca para impedir referencias a esquemas inseguros. */
-function brandAsset(value: string | undefined) {
+function brandAsset(value: string | null | undefined) {
   if (!value) return null;
   if (value.startsWith("/images/images_brand/")) return value;
   throw new Error("La imagen debe cargarse desde el gestor de marca");

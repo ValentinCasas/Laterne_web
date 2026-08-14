@@ -1,76 +1,20 @@
-import Image from "next/image";
-import Link from "next/link";
-import { readdir } from "node:fs/promises";
-import path from "node:path";
 import { BeerCarousel } from "@/components/home/beer-carousel";
 import { BusinessMap } from "@/components/home/business-map";
 import { Carousel } from "@/components/home/carousel";
-import { EventGrid, type PublicEvent } from "@/components/home/event-grid";
+import { EventGrid } from "@/components/home/event-grid";
+import { LandingHero } from "@/components/home/landing-hero";
 import { TestimonialCarousel } from "@/components/home/testimonial-carousel";
 import { TestimonialForm } from "@/components/testimonial-form";
+import { MenuClickHome } from "@/components/commercial/menuclick-home";
+import { classifyHost } from "@/lib/domains";
+import { formatOpeningHours, loadTenantLandingData } from "@/lib/landing-data";
 import { prisma } from "@/lib/prisma";
-import { time } from "@/lib/format";
+import { requestRouteContext } from "@/lib/request-route-context";
+import { publicHrefForVisiblePath } from "@/lib/routes";
 import { getDefaultTenant } from "@/lib/tenant";
 import { headers } from "next/headers";
-import { classifyHost } from "@/lib/domains";
-import { MenuClickHome } from "@/components/commercial/menuclick-home";
-import { publicHrefForVisiblePath } from "@/lib/routes";
-import { requestRouteContext } from "@/lib/request-route-context";
 
 export const dynamic = "force-dynamic";
-
-const beers = ["neipa-tapa.png", "amber-tapa.png", "apa-tapa.png", "american-amber-tapa.png"].map(
-  (image) => `/images/banners/${image}`,
-);
-const stories = [
-  {
-    image: "/images/banners/laterne2.jpg",
-    imageAlt: "Interior del negocio",
-    eyebrow: "Nuestra historia",
-    title: "Nuestra identidad",
-    text: "Una experiencia de sabores, encuentros y momentos compartidos.",
-  },
-  {
-    image: "/images/banners/banner-section-beer.png",
-    imageAlt: "Canillas de cerveza artesanal",
-    eyebrow: "Donde nos encontramos",
-    title: "Nuestra casa",
-    text: "Un espacio para compartir algo rico y disfrutar una cerveza artesanal con identidad propia.",
-  },
-  {
-    image: "/images/banners/banner-eventos2.png",
-    imageAlt: "Evento del negocio",
-    eyebrow: "Lo que importa",
-    title: "Momentos",
-    text: "Birra, música, amigos, familia y esas noches que se vuelven parte de una historia compartida.",
-  },
-];
-
-/** @summary Selecciona un avatar estable para representar una opinión anónima. */
-function pickAvatar(avatarFiles: string[], testimonialId: number) {
-  if (!avatarFiles.length) return "hombre.png";
-  const stableIndex = Math.abs(Math.imul(testimonialId, 2654435761)) % avatarFiles.length;
-  return avatarFiles[stableIndex];
-}
-
-/** @summary Combina los turnos disponibles en una descripción horaria fácil de leer. */
-function formatOpeningHours(group: {
-  morningStartTime: Date | null;
-  morningEndTime: Date | null;
-  eveningStartTime: Date | null;
-  eveningEndTime: Date | null;
-}) {
-  const ranges: string[] = [];
-  if (group.morningStartTime)
-    ranges.push(
-      `de ${time(group.morningStartTime)} a ${group.morningEndTime ? time(group.morningEndTime) : "cierre"}`,
-    );
-  if (group.eveningStartTime)
-    ranges.push(
-      `de ${time(group.eveningStartTime)} a ${group.eveningEndTime ? time(group.eveningEndTime) : "cierre"}`,
-    );
-  return ranges.join(" y ").replace(/^d/, "D");
-}
 
 /** @summary Construye la página pública con los datos actuales almacenados en MySQL. */
 export default async function LandingPage() {
@@ -85,130 +29,29 @@ export default async function LandingPage() {
     return <MenuClickHome plans={plans.map((plan) => ({ id: plan.id, slug: plan.slug, name: plan.name, summary: plan.summary, highlighted: plan.highlighted, price: plan.prices[0] ? { amount: plan.prices[0].amount ? Number(plan.prices[0].amount) : null, currency: plan.prices[0].currency, billingPeriod: plan.prices[0].billingPeriod } : null }))} cases={cases.map((item) => ({ id: item.id, slug: item.slug, businessName: item.businessName, businessType: item.businessType, location: item.location, coverUrl: item.coverUrl, results: item.results, tenantName: item.tenant.name }))} />;
   }
   const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
-  const now = new Date();
-  const primaryBranch = await prisma.branch.findFirst({
-    where: { tenantId: tenant.id, active: true },
-    orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
-    select: { id: true },
-  });
-  const branchId = primaryBranch?.id;
-  const branchWhere = branchId ? { branchId } : {};
-  const [business, events, hours, testimonials, avatarFiles, eventImageFiles] = await Promise.all([
-    prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
-    prisma.event.findMany({
-      where: {
-        tenantId: tenant.id,
-        ...branchWhere,
-        OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
-      },
-      orderBy: [{ date: "desc" }, { id: "desc" }],
-    }),
-    prisma.openingHour.findMany({ where: { tenantId: tenant.id, ...branchWhere }, orderBy: { id: "asc" } }),
-    prisma.testimonial.findMany({
-      where: { tenantId: tenant.id, ...branchWhere, state: true, moderationStatus: "approved" },
-      orderBy: { date: "desc" },
-      take: 12,
-    }),
-    readdir(path.join(process.cwd(), "public", "images", "avatars_defect")),
-    readdir(path.join(process.cwd(), "public", "images", "images_event")),
-  ]);
-  const phone = business?.phoneNumber?.toString() ?? "";
-  const eventImages = new Set(eventImageFiles);
-  const uniqueEvents = new Map<string, (typeof events)[number]>();
-  for (const event of events) {
-    const key = [
-      event.name.trim().toLocaleLowerCase("es"),
-      event.description.trim().toLocaleLowerCase("es"),
-      event.location.trim().toLocaleLowerCase("es"),
-      event.date?.toISOString().slice(0, 10) ?? "",
-      time(event.time),
-    ].join("|");
-    if (!uniqueEvents.has(key)) uniqueEvents.set(key, event);
-  }
-  const publicEvents: PublicEvent[] = [...uniqueEvents.values()].map((event) => ({
-    id: event.id,
-    name: event.name,
-    description: event.description,
-    location: event.location,
-    date: event.date?.toISOString() ?? null,
-    time: time(event.time),
-    imageUrl: event.imageUrl && eventImages.has(event.imageUrl) ? event.imageUrl : null,
+  const data = await loadTenantLandingData(tenant);
+  const storySlides = data.stories.map((slide) => ({
+    image: slide.image,
+    imageAlt: slide.title,
+    eyebrow: data.displayName,
+    title: slide.title,
+    text: slide.subtitle,
   }));
-  const availableAvatars = avatarFiles.filter((file) => /\.(?:avif|jpe?g|png|webp)$/i.test(file)).sort();
-  const testimonialSlides = testimonials.map((item) => ({
-    id: item.id,
-    description: item.description,
-    date: item.date.toLocaleDateString("es-AR"),
-    avatar: pickAvatar(availableAvatars, item.id),
-  }));
-  const groupedHours = new Map<
-    string,
-    {
-      days: string[];
-      morningStartTime: Date | null;
-      morningEndTime: Date | null;
-      eveningStartTime: Date | null;
-      eveningEndTime: Date | null;
-    }
-  >();
-  for (const item of hours) {
-    const key = [
-      time(item.morningStartTime),
-      time(item.morningEndTime),
-      time(item.eveningStartTime),
-      time(item.eveningEndTime),
-    ].join("|");
-    const group = groupedHours.get(key) ?? {
-      days: [],
-      morningStartTime: item.morningStartTime,
-      morningEndTime: item.morningEndTime,
-      eveningStartTime: item.eveningStartTime,
-      eveningEndTime: item.eveningEndTime,
-    };
-    for (const day of item.dayOfWeek
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean))
-      if (!group.days.includes(day)) group.days.push(day);
-    groupedHours.set(key, group);
-  }
-  const lat = Number(business?.latitude);
-  const lng = Number(business?.longitude);
-  const hasMap = Number.isFinite(lat) && Number.isFinite(lng);
+  const ctaHref = publicHrefForVisiblePath(route.originalPath, tenant.slug, "/carta", route.branchSlug);
 
   return (
     <main className="overflow-hidden">
-      <section className="relative min-h-[calc(100vh-4rem)]">
-        <Image
-          src="/images/banners/new_banner2_750.jpg"
-          alt={`Productos de ${tenant.name}`}
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/10" />
-        <div className="shell relative flex min-h-[calc(100vh-4rem)] flex-col justify-center py-24">
-          <p className="font-bold uppercase tracking-[.3em] text-pink-400">La Punta · San Luis</p>
-          <h1 className="mt-4 max-w-5xl text-6xl font-black leading-[.92] tracking-tight sm:text-8xl lg:text-9xl">
-            {tenant.name} es
-            <br />
-            <span className="hero-word">birra.</span>
-          </h1>
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-zinc-200">
-            Amistad, momentos compartidos, cocina y cerveza artesanal. Una casa simple para disfrutar con
-            quienes elegimos.
-          </p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            <Link className="btn" href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/carta", route.branchSlug)}>
-              Explorar la carta
-            </Link>
-            <a className="btn btn-secondary" href="#eventos">
-              Ver eventos
-            </a>
-          </div>
-        </div>
-      </section>
+      <LandingHero
+        eyebrow={data.displayName}
+        title={data.heroTitle}
+        subtitle={data.heroSubtitle}
+        imageUrl={data.heroImageUrl}
+        primaryColor={data.primaryColor}
+        secondaryColor={data.secondaryColor}
+        backgroundColor={data.backgroundColor}
+        ctaHref={ctaHref}
+        eventsHref="#eventos"
+      />
 
       <section id="eventos" className="shell scroll-mt-24 py-24">
         <p className="section-eyebrow">Agenda {tenant.name}</p>
@@ -216,7 +59,7 @@ export default async function LandingPage() {
           <h2 className="section-title">Próximos eventos</h2>
           <p className="max-w-md text-zinc-400">Música, encuentros y noches para compartir.</p>
         </div>
-        <EventGrid events={publicEvents} />
+        <EventGrid events={data.events} />
       </section>
 
       <section className="beer-section py-24">
@@ -224,13 +67,13 @@ export default async function LandingPage() {
           <p className="section-eyebrow text-center">Hechas en casa</p>
           <h2 className="section-title mt-2 text-center">Nuestras cervezas</h2>
           <div className="mt-10">
-            <BeerCarousel images={beers} />
+            <BeerCarousel images={data.beers} />
           </div>
         </div>
       </section>
 
       <section className="shell py-24">
-        <Carousel slides={stories} label={`Conocé ${tenant.name}`} interval={6500} />
+        <Carousel slides={storySlides} label={`Conocé ${data.displayName}`} interval={6500} />
       </section>
 
       <section className="bg-[radial-gradient(circle_at_20%_20%,rgba(236,72,153,.16),transparent_32%),linear-gradient(#09090b,#050505)] py-24">
@@ -238,16 +81,20 @@ export default async function LandingPage() {
           <p className="section-eyebrow text-center">Comunidad</p>
           <h2 className="section-title mt-2 text-center">Lo que dice la gente</h2>
           <div className="mt-10">
-            <TestimonialCarousel testimonials={testimonialSlides} />
+            <TestimonialCarousel testimonials={data.testimonials} />
           </div>
           <TestimonialForm />
         </div>
       </section>
 
-      {hasMap && (
+      {data.hasMap && data.latitude !== null && data.longitude !== null && (
         <section className="bg-white px-4 py-16">
           <div className="shell overflow-hidden rounded-[2rem] shadow-2xl">
-            <BusinessMap latitude={lat} longitude={lng} address={business?.address ?? tenant.name} />
+            <BusinessMap
+              latitude={data.latitude}
+              longitude={data.longitude}
+              address={data.address || tenant.name}
+            />
           </div>
         </section>
       )}
@@ -261,7 +108,7 @@ export default async function LandingPage() {
           <p className="section-eyebrow">Cuándo venir</p>
           <h2 className="section-title mt-2">Horarios</h2>
           <div className="mx-auto mt-12 max-w-4xl space-y-10">
-            {[...groupedHours.values()]
+            {data.openingGroups
               .filter(
                 (group) =>
                   group.morningStartTime ||
@@ -291,30 +138,32 @@ export default async function LandingPage() {
           </div>
           <div>
             <h3 className="font-bold">Encontranos</h3>
-            <p className="mt-3 text-sm text-zinc-400">{business?.address}</p>
+            <p className="mt-3 text-sm text-zinc-400">{data.address}</p>
           </div>
           <div>
             <h3 className="font-bold">Contacto</h3>
-            <a
-              className="mt-3 block text-sm text-zinc-400 hover:text-pink-400"
-              href={`mailto:${business?.email}`}
-            >
-              {business?.email}
-            </a>
-            {phone && (
+            {data.email && (
+              <a
+                className="mt-3 block text-sm text-zinc-400 hover:text-pink-400"
+                href={`mailto:${data.email}`}
+              >
+                {data.email}
+              </a>
+            )}
+            {data.phone && (
               <a
                 className="mt-2 block text-sm text-zinc-400 hover:text-pink-400"
-                href={`https://wa.me/${phone}`}
+                href={`https://wa.me/${data.phone}`}
               >
-                {phone}
+                {data.phone}
               </a>
             )}
           </div>
           <div>
             <h3 className="font-bold">Seguinos</h3>
             <div className="mt-3 flex gap-4 text-sm text-pink-400">
-              <a href={business?.instagramUrl ?? "#"}>Instagram</a>
-              <a href={business?.facebookUrl ?? "#"}>Facebook</a>
+              {data.instagramUrl && <a href={data.instagramUrl}>Instagram</a>}
+              {data.facebookUrl && <a href={data.facebookUrl}>Facebook</a>}
             </div>
           </div>
         </div>

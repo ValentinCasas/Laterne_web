@@ -1,9 +1,8 @@
-import Image from "next/image";
-import Link from "next/link";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { notFound } from "next/navigation";
 import { EventGrid, type PublicEvent } from "@/components/home/event-grid";
+import { LandingHero } from "@/components/home/landing-hero";
 import { TestimonialCarousel } from "@/components/home/testimonial-carousel";
 import { TestimonialForm } from "@/components/testimonial-form";
 import { Carousel } from "@/components/home/carousel";
@@ -114,14 +113,20 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
           !!slide && typeof slide === "object",
       )
     : [];
-  const heroImage = brand?.heroImageUrl || "/images/banners/new_banner2_750.jpg";
+  const heroImage = brand?.heroImageUrl || null;
   const ownLanding = !branch.inheritLanding && branch.branch.landingContent && typeof branch.branch.landingContent === "object" && !Array.isArray(branch.branch.landingContent)
     ? branch.branch.landingContent as { heroTitle?: unknown; heroSubtitle?: unknown }
     : null;
-  const heroTitle = typeof ownLanding?.heroTitle === "string" && ownLanding.heroTitle.trim() ? ownLanding.heroTitle : `${tenant.name} es`;
+  const heroTitle = typeof ownLanding?.heroTitle === "string" && ownLanding.heroTitle.trim()
+    ? ownLanding.heroTitle
+    : typeof brand?.heroTitle === "string" && brand.heroTitle.trim()
+      ? brand.heroTitle
+      : `${tenant.name} es`;
   const heroSubtitle = typeof ownLanding?.heroSubtitle === "string" && ownLanding.heroSubtitle.trim()
     ? ownLanding.heroSubtitle
-    : "Amistad, momentos compartidos, cocina y cerveza artesanal. Una casa simple para disfrutar con quienes elegimos.";
+    : typeof brand?.heroSubtitle === "string" && brand.heroSubtitle.trim()
+      ? brand.heroSubtitle
+      : "Amistad, momentos compartidos, cocina y cerveza artesanal. Una casa simple para disfrutar con quienes elegimos.";
   const phone = branch.inheritLanding
     ? business?.phoneNumber?.toString() ?? ""
     : branchInfo?.phone ?? business?.phoneNumber?.toString() ?? "";
@@ -218,38 +223,17 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
 
   return (
     <main className="overflow-hidden">
-      <section className="relative min-h-[calc(100vh-4rem)]">
-        <Image
-          src={heroImage}
-          alt={`Productos de ${tenant.name}`}
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/10" />
-        <div className="shell relative flex min-h-[calc(100vh-4rem)] flex-col justify-center py-24">
-          <p className="font-bold uppercase tracking-[.3em] text-pink-400">
-{displayName}
-          </p>
-          <h1 className="mt-4 max-w-5xl text-6xl font-black leading-[.92] tracking-tight sm:text-8xl lg:text-9xl">
-             {heroTitle}
-            <br />
-            <span className="hero-word">birra.</span>
-          </h1>
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-zinc-200">
-             {heroSubtitle}
-          </p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            <Link className="btn" href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/carta", branch.branchSlug)}>
-              Explorar la carta
-            </Link>
-            <a className="btn btn-secondary" href="#eventos">
-              Ver eventos
-            </a>
-          </div>
-        </div>
-      </section>
+      <LandingHero
+        eyebrow={displayName}
+        title={heroTitle}
+        subtitle={heroSubtitle}
+        imageUrl={heroImage}
+        primaryColor={brand?.primaryColor ?? "#ec4899"}
+        secondaryColor={brand?.secondaryColor ?? "#f5c542"}
+        backgroundColor={brand?.backgroundColor ?? "#09090b"}
+        ctaHref={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/carta", branch.branchSlug)}
+        eventsHref="#eventos"
+      />
 
       <section id="eventos" className="shell scroll-mt-24 py-24">
         <p className="section-eyebrow">Agenda {tenant.name}</p>

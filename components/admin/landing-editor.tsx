@@ -1,9 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { BeerCarousel } from "@/components/home/beer-carousel";
+import { Carousel } from "@/components/home/carousel";
+import { EventGrid, type PublicEvent } from "@/components/home/event-grid";
+import { LandingHero } from "@/components/home/landing-hero";
+import { TestimonialCarousel } from "@/components/home/testimonial-carousel";
+import {
+  LANDING_BEER_DEFAULTS,
+  LANDING_HERO_SUBTITLE_DEFAULT,
+  LANDING_IMAGE_PATH_RE,
+  LANDING_STORY_DEFAULTS,
+  type LandingTestimonialSlide,
+} from "@/lib/landing-content";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type LandingStory = { title: string; subtitle: string; image: string };
@@ -32,30 +44,8 @@ const sectionMeta: Record<SectionKey, { label: string; hint: string }> = {
   testimonials: { label: "Testimonios", hint: "Las opiniones se moderan desde Testimonios." },
 };
 
-const defaultStories: LandingStory[] = [
-  { title: "Bienvenidos", subtitle: "Un lugar para volver", image: "/images/banners/new_banner2_750.jpg" },
-  {
-    title: "Hecho para disfrutar",
-    subtitle: "Productos, eventos y comunidad.",
-    image: "/images/banners/new_banner2_750.jpg",
-  },
-];
-const defaultBeers = [
-  "/images/products/cerveza-artesanal.jpg",
-  "/images/products/cerveza-lager.jpg",
-  "/images/products/cerveza-ipa.jpg",
-];
-
-/** @summary Fondo decorativo derivado de la paleta del negocio para secciones sin imagen. */
-function sectionBackground(brand: LandingData, variant: "hero" | "soft" | "card") {
-  if (variant === "hero") {
-    return `radial-gradient(120% 90% at 85% 0%, ${brand.primaryColor}45 0%, transparent 55%), radial-gradient(100% 80% at 0% 100%, ${brand.secondaryColor}38 0%, transparent 50%), linear-gradient(160deg, ${brand.backgroundColor} 0%, #000 100%)`;
-  }
-  if (variant === "soft") {
-    return `radial-gradient(90% 70% at 15% 0%, ${brand.primaryColor}30 0%, transparent 55%), linear-gradient(180deg, ${brand.backgroundColor} 0%, #000 100%)`;
-  }
-  return `linear-gradient(150deg, ${brand.primaryColor}2e 0%, ${brand.backgroundColor} 45%, ${brand.secondaryColor}24 100%)`;
-}
+const isBlobUrl = (value: string | null | undefined) =>
+  typeof value === "string" && value.startsWith("blob:");
 
 /** @summary Abre el selector de archivos y entrega la imagen elegida a la acción indicada. */
 function pickFile(onFile: (file: File) => void) {
@@ -69,22 +59,15 @@ function pickFile(onFile: (file: File) => void) {
   input.click();
 }
 
-/** @summary Sube una imagen al gestor de marca y devuelve la URL pública. */
-async function uploadImage(file: File): Promise<string | null> {
+/** @summary Sube una imagen al gestor de marca y devuelve la URL pública final. */
+async function uploadImage(file: File): Promise<string> {
   const form = new FormData();
   form.set("resource", "brand-image");
   form.set("file", file);
   const response = await scopedFetch("/api/admin/upload", { method: "POST", body: form });
   const result = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
   if (!response.ok || !result.url) {
-    await Swal.fire({
-      title: "No se pudo cargar la imagen",
-      text: result.error ?? "Intentá con otra imagen.",
-      icon: "error",
-      background: "#18181b",
-      color: "#fafafa",
-    });
-    return null;
+    throw new Error(result.error ?? "No se pudo cargar una imagen");
   }
   return result.url;
 }
@@ -93,45 +76,58 @@ async function uploadImage(file: File): Promise<string | null> {
 export function LandingEditor({
   initialBrand,
   initialSections,
+  initialEvents,
+  initialTestimonials,
   eventCount,
   testimonialCount,
 }: {
   initialBrand: LandingData;
   initialSections: LandingSections;
+  initialEvents: PublicEvent[];
+  initialTestimonials: LandingTestimonialSlide[];
   eventCount: number;
   testimonialCount: number;
 }) {
   const [brand, setBrand] = useState(initialBrand);
   const [sections, setSections] = useState<LandingSections>({
-    beerImages: initialSections.beerImages.length ? initialSections.beerImages : defaultBeers,
-    stories: initialSections.stories.length ? initialSections.stories : defaultStories,
+    beerImages: initialSections.beerImages.length ? initialSections.beerImages : LANDING_BEER_DEFAULTS,
+    stories: initialSections.stories.length ? initialSections.stories : LANDING_STORY_DEFAULTS,
   });
   const [selected, setSelected] = useState<SectionKey>("hero");
-  const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [saving, setSaving] = useState(false);
+  const pendingFiles = useRef(new Map<string, File>());
 
   const pendingHeroImage = brand.heroImageUrl || null;
 
-  async function uploadHero(file: File) {
-    setUploading(true);
-    const url = await uploadImage(file);
-    setUploading(false);
-    if (url) setBrand((current) => ({ ...current, heroImageUrl: url }));
+  /** @summary Crea un objeto URL local para ver la imagen al instante sin esperar la subida. */
+  function stageImage(file: File): string {
+    const url = URL.createObjectURL(file);
+    pendingFiles.current.set(url, file);
+    return url;
   }
 
-  async function replaceInList(kind: "beerImages" | "stories", index: number, file: File) {
-    setUploading(true);
-    const url = await uploadImage(file);
-    setUploading(false);
-    if (!url) return;
+  function replaceHeroImage(file: File) {
+    const url = stageImage(file);
+    setBrand((current) => {
+      if (isBlobUrl(current.heroImageUrl)) URL.revokeObjectURL(current.heroImageUrl!);
+      return { ...current, heroImageUrl: url };
+    });
+  }
+
+  function replaceInList(kind: "beerImages" | "stories", index: number, file: File) {
+    const url = stageImage(file);
     setSections((current) => {
       if (kind === "beerImages") {
+        const previous = current.beerImages[index];
+        if (isBlobUrl(previous)) URL.revokeObjectURL(previous);
         const beerImages = [...current.beerImages];
         beerImages[index] = url;
         return { ...current, beerImages };
       }
+      const previous = current.stories[index]?.image;
+      if (isBlobUrl(previous)) URL.revokeObjectURL(previous);
       const stories = current.stories.map((slide, slideIndex) =>
         slideIndex === index ? { ...slide, image: url } : slide,
       );
@@ -139,11 +135,8 @@ export function LandingEditor({
     });
   }
 
-  async function appendImage(kind: "beerImages" | "stories", file: File) {
-    setUploading(true);
-    const url = await uploadImage(file);
-    setUploading(false);
-    if (!url) return;
+  function appendImage(kind: "beerImages" | "stories", file: File) {
+    const url = stageImage(file);
     setSections((current) =>
       kind === "beerImages"
         ? { ...current, beerImages: [...current.beerImages, url] }
@@ -158,11 +151,16 @@ export function LandingEditor({
   }
 
   function removeFrom(kind: "beerImages" | "stories", index: number) {
-    setSections((current) =>
-      kind === "beerImages"
-        ? { ...current, beerImages: current.beerImages.filter((_, i) => i !== index) }
-        : { ...current, stories: current.stories.filter((_, i) => i !== index) },
-    );
+    setSections((current) => {
+      if (kind === "beerImages") {
+        const previous = current.beerImages[index];
+        if (isBlobUrl(previous)) URL.revokeObjectURL(previous);
+        return { ...current, beerImages: current.beerImages.filter((_, i) => i !== index) };
+      }
+      const previous = current.stories[index]?.image;
+      if (isBlobUrl(previous)) URL.revokeObjectURL(previous);
+      return { ...current, stories: current.stories.filter((_, i) => i !== index) };
+    });
   }
 
   function move(kind: "beerImages" | "stories", index: number, direction: -1 | 1) {
@@ -191,6 +189,17 @@ export function LandingEditor({
     }));
   }
 
+  /** @summary Sube la imagen pendiente (blob local) y devuelve la URL persistida. */
+  async function resolveImage(value: string | null | undefined): Promise<string | null> {
+    if (!value || !isBlobUrl(value)) return value ?? null;
+    const file = pendingFiles.current.get(value);
+    if (!file) return null;
+    const url = await uploadImage(file);
+    pendingFiles.current.delete(value);
+    URL.revokeObjectURL(value);
+    return url;
+  }
+
   async function removeHero() {
     if (!pendingHeroImage) return;
     const confirmed = await Swal.fire({
@@ -205,6 +214,12 @@ export function LandingEditor({
       color: "#fafafa",
     });
     if (!confirmed.isConfirmed) return;
+    if (isBlobUrl(pendingHeroImage)) {
+      pendingFiles.current.delete(pendingHeroImage);
+      URL.revokeObjectURL(pendingHeroImage);
+      setBrand((current) => ({ ...current, heroImageUrl: null }));
+      return;
+    }
     const response = await scopedFetch("/api/admin/brand", {
       method: "DELETE",
       headers: { "content-type": "application/json" },
@@ -216,47 +231,74 @@ export function LandingEditor({
   }
 
   async function save() {
+    if (saving) return;
     setSaving(true);
-    const response = await scopedFetch("/api/admin/brand", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        heroTitle: brand.heroTitle.trim() || null,
-        heroSubtitle: brand.heroSubtitle.trim() || null,
-        heroImageUrl: pendingHeroImage,
-        landingSections: {
-          beerImages: sections.beerImages,
-          stories: sections.stories,
-        },
-      }),
-    });
-    const result = (await response.json().catch(() => ({}))) as { brand?: LandingData; error?: string };
-    setSaving(false);
-    if (!response.ok) {
+    try {
+      const heroImageUrl = await resolveImage(brand.heroImageUrl);
+      const beerImages: string[] = [];
+      for (const image of sections.beerImages) {
+        const resolved = await resolveImage(image);
+        if (resolved) beerImages.push(resolved);
+      }
+      const stories: LandingStory[] = [];
+      for (const slide of sections.stories) {
+        const resolved = await resolveImage(slide.image);
+        stories.push({ ...slide, image: resolved ?? LANDING_STORY_DEFAULTS[0].image });
+      }
+
+      const response = await scopedFetch("/api/admin/brand", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          heroTitle: brand.heroTitle.trim() || null,
+          heroSubtitle: brand.heroSubtitle.trim() || null,
+          heroImageUrl,
+          landingSections: { beerImages, stories },
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        brand?: LandingData;
+        error?: string;
+      };
+      if (!response.ok) throw new Error(result.error ?? "No se pudo guardar la landing");
+
+      setBrand((current) => ({ ...current, heroImageUrl }));
+      setSections({ beerImages, stories });
+      await Swal.fire({
+        title: "Landing guardada",
+        text: "Los cambios ya están visibles para tus clientes.",
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    } catch (error) {
       await Swal.fire({
         title: "No se pudo guardar",
-        text: result.error ?? "Intentá nuevamente.",
+        text: error instanceof Error ? error.message : "Intentá nuevamente.",
         icon: "error",
         background: "#18181b",
         color: "#fafafa",
       });
-      return;
+    } finally {
+      setSaving(false);
     }
-    await Swal.fire({
-      title: "Landing guardada",
-      text: "Los cambios ya están visibles para tus clientes.",
-      icon: "success",
-      timer: 1400,
-      showConfirmButton: false,
-      background: "#18181b",
-      color: "#fafafa",
-    });
   }
 
   const previewTitle = brand.heroTitle.trim() || `${brand.tenantName} es`;
-  const previewSubtitle =
-    brand.heroSubtitle.trim() ||
-    "Pedí online desde tu carta, reservá una mesa y conocé lo que hacemos.";
+  const previewSubtitle = brand.heroSubtitle.trim() || LANDING_HERO_SUBTITLE_DEFAULT;
+  const previewBeers = (sections.beerImages.length ? sections.beerImages : LANDING_BEER_DEFAULTS).filter(
+    (source) => LANDING_IMAGE_PATH_RE.test(source),
+  );
+  const previewStories = sections.stories.length ? sections.stories : LANDING_STORY_DEFAULTS;
+  const previewStorySlides = previewStories.map((slide) => ({
+    image: slide.image,
+    imageAlt: slide.title,
+    eyebrow: brand.tenantName,
+    title: slide.title,
+    text: slide.subtitle,
+  }));
 
   function selectSection(key: SectionKey) {
     setSelected(key);
@@ -291,14 +333,14 @@ export function LandingEditor({
         <ImageDropzone
           label="Imagen de fondo"
           hint="Formato horizontal recomendado (16:7)."
-          uploading={uploading}
+          uploading={saving}
           dragging={dragging}
           setDragging={setDragging}
           onDrop={(file) => {
             setDragging(false);
-            void uploadHero(file);
+            replaceHeroImage(file);
           }}
-          onPick={() => pickFile((file) => void uploadHero(file))}
+          onPick={() => pickFile((file) => replaceHeroImage(file))}
           onRemove={pendingHeroImage ? removeHero : undefined}
           value={pendingHeroImage}
         />
@@ -313,7 +355,7 @@ export function LandingEditor({
           <ImageRow
             key={`${index}-${image}`}
             image={image}
-            onReplace={(file) => void replaceInList("beerImages", index, file)}
+            onReplace={(file) => replaceInList("beerImages", index, file)}
             onRemove={() => removeFrom("beerImages", index)}
             onMoveUp={index > 0 ? () => move("beerImages", index, -1) : undefined}
             onMoveDown={
@@ -321,7 +363,7 @@ export function LandingEditor({
             }
           />
         ))}
-        <DropAddButton label="Agregar imagen" onPick={() => pickFile((file) => void appendImage("beerImages", file))} />
+        <DropAddButton label="Agregar imagen" onPick={() => pickFile((file) => appendImage("beerImages", file))} />
       </div>
     ),
     stories: (
@@ -373,21 +415,21 @@ export function LandingEditor({
               <ImageDropzone
                 label="Imagen"
                 hint=""
-                uploading={uploading}
+                uploading={saving}
                 dragging={dragging}
                 setDragging={setDragging}
                 onDrop={(file) => {
                   setDragging(false);
-                  void replaceInList("stories", index, file);
+                  replaceInList("stories", index, file);
                 }}
-                onPick={() => pickFile((file) => void replaceInList("stories", index, file))}
+                onPick={() => pickFile((file) => replaceInList("stories", index, file))}
                 onRemove={() => removeFrom("stories", index)}
                 value={slide.image}
               />
             </div>
           </div>
         ))}
-        <DropAddButton label="Agregar tarjeta" onPick={() => pickFile((file) => void appendImage("stories", file))} />
+        <DropAddButton label="Agregar tarjeta" onPick={() => pickFile((file) => appendImage("stories", file))} />
       </div>
     ),
     events: (
@@ -424,7 +466,7 @@ export function LandingEditor({
         description="Elegí una sección, cargá imágenes o textos y mirá el resultado en vivo."
         section="landing"
         actions={
-          <button className="btn" disabled={uploading || saving} onClick={() => void save()} type="button">
+          <button className="btn" disabled={saving} onClick={() => void save()} type="button">
             {saving ? "Guardando…" : "Guardar landing"}
           </button>
         }
@@ -484,42 +526,20 @@ export function LandingEditor({
               label="Hero"
               active={selected === "hero"}
               onClick={() => setSelected("hero")}
-              background={sectionBackground(brand, "hero")}
             >
-              <div
-                className={`relative z-10 flex flex-col items-start justify-center gap-3 ${
-                  device === "mobile" ? "min-h-80 p-5" : "min-h-72 p-8 sm:min-h-80 sm:p-12"
-                }`}
-              >
-                {brand.logoUrl ? (
-                  <Image
-                    src={brand.logoUrl}
-                    alt=""
-                    width={device === "mobile" ? 40 : 56}
-                    height={device === "mobile" ? 40 : 56}
-                    unoptimized
-                    className="rounded-xl object-cover"
-                  />
-                ) : null}
-                <h3 className={`max-w-2xl font-black leading-tight text-white ${device === "mobile" ? "text-3xl" : "text-4xl"}`}>
-                  {previewTitle}
-                </h3>
-                <p className={`max-w-xl leading-relaxed text-zinc-300 ${device === "mobile" ? "text-base" : "text-base sm:text-lg"}`}>
-                  {previewSubtitle}
-                </p>
-                <span
-                  className="mt-1 rounded-full px-5 py-2.5 text-sm font-black text-white"
-                  style={{ backgroundColor: brand.primaryColor }}
-                >
-                  Ver carta
-                </span>
-              </div>
-              {pendingHeroImage && (
-                <div className="absolute inset-0">
-                  <Image src={pendingHeroImage} alt="" fill unoptimized className="object-cover" />
-                </div>
-              )}
-              {pendingHeroImage && <div className="absolute inset-0 bg-black/55" />}
+              <LandingHero
+                eyebrow={brand.tenantName}
+                title={previewTitle}
+                subtitle={previewSubtitle}
+                imageUrl={pendingHeroImage}
+                primaryColor={brand.primaryColor}
+                secondaryColor={brand.secondaryColor}
+                backgroundColor={brand.backgroundColor}
+                ctaHref="#"
+                eventsHref="#landing-sec-events"
+                compact
+                unoptimized={isBlobUrl(pendingHeroImage)}
+              />
             </PreviewSection>
 
             <PreviewSection
@@ -531,15 +551,7 @@ export function LandingEditor({
               <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
                 <p className="section-eyebrow">Agenda {brand.tenantName}</p>
                 <h4 className="mt-1 text-2xl font-black">Próximos eventos</h4>
-                <div className="mt-4 flex gap-3">
-                  {[0, 1, 2].map((slot) => (
-                    <div
-                      key={slot}
-                      className="aspect-[3/4] flex-1 rounded-xl"
-                      style={{ background: sectionBackground(brand, "card") }}
-                    />
-                  ))}
-                </div>
+                <EventGrid events={initialEvents} />
               </div>
             </PreviewSection>
 
@@ -549,20 +561,11 @@ export function LandingEditor({
               active={selected === "beers"}
               onClick={() => setSelected("beers")}
             >
-              <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
+              <div className={`${device === "mobile" ? "pt-5" : "pt-8 sm:pt-10"}`}>
                 <p className="section-eyebrow text-center">Hechas en casa</p>
                 <h4 className="mt-1 text-center text-2xl font-black">Nuestros productos</h4>
-                <div className="mt-5 flex gap-3 overflow-hidden">
-                  {sections.beerImages.slice(0, device === "mobile" ? 2 : 3).map((image, index) => (
-                    <div key={`${image}-${index}`} className="aspect-[4/5] flex-1 overflow-hidden rounded-xl bg-black/30">
-                      {image ? (
-                        <Image src={image} alt="" width={160} height={200} unoptimized className="h-full w-full object-cover" />
-                      ) : null}
-                    </div>
-                  ))}
-                  {!sections.beerImages.length && (
-                    <div className="flex-1 rounded-xl" style={{ background: sectionBackground(brand, "card") }} />
-                  )}
+                <div className="mt-2">
+                  <BeerCarousel images={previewBeers} />
                 </div>
               </div>
             </PreviewSection>
@@ -575,21 +578,7 @@ export function LandingEditor({
             >
               <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
                 <p className="section-eyebrow">Conocé {brand.tenantName}</p>
-                <div className="mt-4 flex gap-3">
-                  {sections.stories.slice(0, 2).map((slide, index) => (
-                    <div key={`${slide.image}-${index}`} className="flex-1">
-                      <div className="aspect-[3/2] overflow-hidden rounded-xl bg-black/30">
-                        {slide.image ? (
-                          <Image src={slide.image} alt="" width={240} height={160} unoptimized className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full" style={{ background: sectionBackground(brand, "card") }} />
-                        )}
-                      </div>
-                      <h5 className="mt-2 text-lg font-black">{slide.title || "Nueva historia"}</h5>
-                      <p className="text-sm text-zinc-400">{slide.subtitle}</p>
-                    </div>
-                  ))}
-                </div>
+                <Carousel slides={previewStorySlides} label={`Conocé ${brand.tenantName}`} interval={6500} />
               </div>
             </PreviewSection>
 
@@ -602,22 +591,12 @@ export function LandingEditor({
               <div className={`${device === "mobile" ? "p-5" : "p-8 sm:p-10"}`}>
                 <p className="section-eyebrow text-center">Comunidad</p>
                 <h4 className="mt-1 text-center text-2xl font-black">Lo que dice la gente</h4>
-                <div className="mt-4 flex gap-3">
-                  {[0, 1, 2].map((slot) => (
-                    <div
-                      key={slot}
-                      className="flex-1 rounded-xl p-4"
-                      style={{ background: sectionBackground(brand, "card") }}
-                    >
-                      <span className="block h-2 w-2 rounded-full" style={{ backgroundColor: brand.primaryColor }} />
-                    </div>
-                  ))}
-                </div>
+                <TestimonialCarousel testimonials={initialTestimonials} />
               </div>
             </PreviewSection>
           </div>
           <p className="mt-3 text-center text-xs text-zinc-600">
-            La vista usa exactamente los mismos datos que la landing pública de {brand.tenantName}.
+            La vista usa exactamente los mismos componentes y datos que la landing pública de {brand.tenantName}.
           </p>
         </div>
       </div>
@@ -631,14 +610,12 @@ function PreviewSection({
   label,
   active,
   onClick,
-  background,
   children,
 }: {
   id: string;
   label: string;
   active: boolean;
   onClick: () => void;
-  background?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -646,7 +623,6 @@ function PreviewSection({
       id={id}
       className={`relative scroll-mt-4 ${active ? "ring-2 ring-pink-500" : "opacity-90 hover:opacity-100"}`}
       onClick={onClick}
-      style={background ? { background } : undefined}
     >
       <span className="absolute left-2 top-2 z-20 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-pink-300">
         {label}
@@ -721,7 +697,7 @@ function ImageDropzone({
             onClick={onPick}
             type="button"
           >
-            {uploading ? "Subiendo imagen…" : "Arrastrá una imagen acá o tocá para elegirla"}
+            {uploading ? "Guardando…" : "Arrastrá una imagen acá o tocá para elegirla"}
           </button>
         )}
       </div>

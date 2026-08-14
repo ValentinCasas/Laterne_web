@@ -1,6 +1,7 @@
 import { LandingEditor, type LandingData, type LandingSections } from "@/components/admin/landing-editor";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
+import { loadTenantLandingData } from "@/lib/landing-data";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
@@ -15,8 +16,9 @@ type LandingSectionsStored = {
 /** @summary Carga la identidad, los textos y las secciones visuales del inicio para editarlas con preview en vivo. */
 export default async function LandingPage() {
   const context = await requirePermission("brand.manage");
-  const [brand, eventCount, testimonialCount] = await Promise.all([
+  const [brand, data, eventCount, testimonialCount] = await Promise.all([
     prisma.brandSettings.findUnique({ where: { tenantId: context.tenant.id } }),
+    loadTenantLandingData(context.tenant),
     prisma.event.count({
       where: { tenantId: context.tenant.id, OR: [{ status: "published" }, { status: "scheduled" }] },
     }),
@@ -53,6 +55,8 @@ export default async function LandingPage() {
         }) as unknown as LandingData
       }
       initialSections={initialSections}
+      initialEvents={data.events}
+      initialTestimonials={data.testimonials}
       eventCount={eventCount}
       testimonialCount={testimonialCount}
     />
