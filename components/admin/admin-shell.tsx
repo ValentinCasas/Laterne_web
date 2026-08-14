@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
@@ -109,6 +109,12 @@ const navigationGroups = [
       { href: "/admin/cocina", label: "Cocina", icon: "CO", permission: "order.manage" },
       { href: "/admin/reservas", label: "Reservas", icon: "RS", permission: "reservation.manage" },
       { href: "/admin/facturacion", label: "Facturación", icon: "FC", permission: "order.manage" },
+      {
+        href: "/admin/configuracion/comprobantes/plantillas",
+        label: "Plantillas de documentos",
+        icon: "PL",
+        permission: "order.manage",
+      },
       { href: "/admin/inventario", label: "Inventario", icon: "ST", permission: "product.manage" },
       { href: "/admin/mesas", label: "Mesas y QR", icon: "QR", permission: "table.manage" },
       { href: "/admin/sucursales", label: "Sucursales", icon: "SU", permission: "business.manage" },
@@ -238,16 +244,29 @@ export function AdminShell({
   const [commandResults, setCommandResults] = useState<SearchResults | null>(null);
   const [commandLoading, setCommandLoading] = useState(false);
   const [commandActive, setCommandActive] = useState(0);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
+  const mobileMenuOpen = mobileMenuPath === pathname;
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
-  const adminHref = (href: string) => adminHrefForContext(tenantSlug, href, branchSlug);
+  const adminHref = useCallback(
+    (href: string) => adminHrefForContext(tenantSlug, href, branchSlug),
+    [branchSlug, tenantSlug],
+  );
   const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
   const [openGroup, setOpenGroup] = useState<string>(
     () =>
       navigationGroups.find((group) => group.links.some((link) => isCurrent(link.href)))?.id ??
       "inicio",
   );
+
+  useEffect(() => {
+    if (!mobileMenuOpen && !commandOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [commandOpen, mobileMenuOpen]);
   const accessibleLinks = useMemo(
     () => links.filter((link) => permissions.includes(link.permission)),
     [permissions],
@@ -377,7 +396,7 @@ export function AdminShell({
       }
       if (event.key === "Escape") {
         setCommandOpen(false);
-        setMobileMenuOpen(false);
+        setMobileMenuPath(null);
       }
     }
     window.addEventListener("keydown", keyboardShortcut);
@@ -485,7 +504,7 @@ export function AdminShell({
                         }`}
                         href={adminHref(href) as Route}
                         key={href}
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={() => setMobileMenuPath(null)}
                       >
                         <span
                           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
@@ -510,7 +529,7 @@ export function AdminShell({
           <Link
             className="group flex items-center gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-3 py-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10"
             href={platformAdminPath() as Route}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={() => setMobileMenuPath(null)}
           >
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">
               SA
@@ -525,7 +544,7 @@ export function AdminShell({
           className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/10"
           onClick={() => {
             setCommandOpen(true);
-            setMobileMenuOpen(false);
+            setMobileMenuPath(null);
           }}
           type="button"
         >
@@ -554,21 +573,18 @@ export function AdminShell({
   return (
     <div className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`} style={{ ...paletteCssVariables(palette), colorScheme: palette.baseMode, "--admin-primary-strong": palette.primary, "--admin-primary": palette.primary, "--admin-accent-legacy": adminAccent } as React.CSSProperties}>
       <div className="admin-shell shell grid gap-6 py-6 lg:grid-cols-[288px_minmax(0,1fr)] lg:gap-9 lg:py-9">
-        <aside className="sticky top-20 z-40 lg:hidden">
+        <aside className="sticky top-0 z-60 lg:hidden">
           <button
-            className="flex w-full items-center gap-3 rounded-3xl border border-white/10 bg-zinc-950/90 p-3 text-left shadow-2xl shadow-black/40 backdrop-blur-xl"
+            className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950/95 p-2.5 text-left shadow-2xl shadow-black/40 backdrop-blur-xl"
             type="button"
             aria-controls="admin-navigation-panel"
             aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((current) => !current)}
+            onClick={() => setMobileMenuPath((current) => current === pathname ? null : pathname)}
           >
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pink-500/15 text-lg text-pink-300">
               ☰
             </span>
             <span className="min-w-0 flex-1">
-              <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
-                Administración
-              </small>
               <strong className="block truncate text-sm">{tenantName} · Principal</strong>
             </span>
             <span
@@ -623,18 +639,18 @@ export function AdminShell({
         {mobileMenuOpen && (
           <>
             <div
-              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
-              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 z-[190] bg-black/70 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileMenuPath(null)}
               aria-hidden="true"
             />
             <div
               id="admin-navigation-panel"
-              className="fixed inset-y-0 left-0 z-50 flex w-[min(20rem,88vw)] flex-col border-r border-white/10 bg-zinc-950 shadow-2xl shadow-black/50 lg:hidden"
+              className="fixed inset-y-0 left-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-r border-white/10 bg-zinc-950 shadow-2xl shadow-black/50 lg:hidden"
               role="dialog"
               aria-modal="true"
               aria-label="Menú de administración"
             >
-              <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4">
+              <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 pt-[env(safe-area-inset-top)]">
                 <span className="min-w-0">
                   <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
                     Administración
@@ -644,7 +660,7 @@ export function AdminShell({
                 <button
                   type="button"
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-lg text-white transition hover:bg-white/10"
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={() => setMobileMenuPath(null)}
                   aria-label="Cerrar navegación"
                 >
                   ×
@@ -747,7 +763,7 @@ export function AdminShell({
                           onClick={() => {
                             closeCommand();
                             setOpenGroup(groupIdForHref(item.logicalHref ?? (item.href as unknown as string)));
-                            setMobileMenuOpen(false);
+                            setMobileMenuPath(null);
                           }}
                         >
                           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-500/10 text-[10px] font-black text-pink-300">

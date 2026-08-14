@@ -96,24 +96,24 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
         description="Las claves privadas se configuran únicamente en el servidor. Nunca se guardan ni se muestran en el panel."
         section="integraciones"
       />
-      <div className="mt-6 grid gap-5 xl:grid-cols-2">
+      <div className="mt-6 grid min-w-0 gap-5 xl:grid-cols-2">
         {integrations.map((integration) => {
           const details = providerDetails[integration.provider];
           const payment = integration.provider === "mercado_pago";
           const upcoming = integration.provider !== "storage";
           return (
             <form
-              className="card p-6"
+              className="card min-w-0 p-4 sm:p-6"
               key={integration.provider}
               onSubmit={(event) => void save(event, integration)}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
+                <div className="min-w-0 flex-1">
                   <h2 className="text-xl font-black">{details.name}</h2>
                   <p className="mt-2 text-sm text-zinc-500">{details.description}</p>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-black ${integration.secretConfigured ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${integration.secretConfigured ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}
                 >
                   {integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
                 </span>
@@ -123,8 +123,8 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                   </span>
                 )}
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <label>
+              <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">
+                <label className="min-w-0">
                   <span className="label">Modo</span>
                   <select className="input" name="mode" defaultValue={integration.mode} disabled={payment}>
                     <option value="disabled">Desactivado</option>
@@ -132,7 +132,7 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                     <option value="live">Producción</option>
                   </select>
                 </label>
-                <label>
+                <label className="min-w-0">
                   <span className="label">Cuenta visible</span>
                   <input
                     className="input"
@@ -141,7 +141,7 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                     placeholder="Nombre interno"
                   />
                 </label>
-                <label className="sm:col-span-2">
+                <label className="min-w-0 sm:col-span-2">
                   <span className="label">Identificador público</span>
                   <input
                     className="input"
@@ -150,10 +150,10 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                   />
                 </label>
               </div>
-              <p className="mt-3 rounded-xl bg-white/[.03] p-3 font-mono text-xs text-zinc-500">
+              <p className="mt-3 min-w-0 break-words rounded-xl bg-white/[.03] p-3 font-mono text-xs text-zinc-500">
                 Variable requerida: {details.env}
               </p>
-              <div className="mt-5 flex items-center justify-between gap-3">
+              <div className="mt-5 flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <label className="flex items-center gap-2 text-sm font-bold">
                   <input
                     name="enabled"

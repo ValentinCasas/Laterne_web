@@ -8,8 +8,7 @@ import { prisma } from "@/lib/prisma";
 const settingsInput = z.object({
   enabled: z.boolean(),
   capacityPerSlot: z.coerce.number().int().min(1).max(1000),
-  slotInterval: z.coerce.number().int().min(10).max(180),
-  minimumLeadHours: z.coerce.number().int().min(0).max(168),
+  minimumLeadMinutes: z.coerce.number().int().min(0).max(10_080),
   maximumAdvanceDays: z.coerce.number().int().min(1).max(730),
   maximumPartySize: z.coerce.number().int().min(1).max(500),
   defaultDuration: z.coerce.number().int().min(15).max(1440),
@@ -24,11 +23,16 @@ export async function PATCH(request: Request) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = settingsInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá la configuración" }, { status: 400 });
+  const data = {
+    ...parsed.data,
+    slotInterval: 30,
+    minimumLeadHours: Math.floor(parsed.data.minimumLeadMinutes / 60),
+  };
   const previous = await prisma.reservationSettings.findUnique({ where: { tenantId: auth.tenant.id } });
   const settings = await prisma.reservationSettings.upsert({
     where: { tenantId: auth.tenant.id },
-    create: { tenantId: auth.tenant.id, ...parsed.data },
-    update: parsed.data,
+    create: { tenantId: auth.tenant.id, ...data },
+    update: data,
   });
   await recordAudit({
     context: auth,

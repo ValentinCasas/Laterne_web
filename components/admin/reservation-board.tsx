@@ -32,7 +32,7 @@ export type ReservationSettingsData = {
   enabled: boolean;
   capacityPerSlot: number;
   slotInterval: number;
-  minimumLeadHours: number;
+  minimumLeadMinutes: number;
   maximumAdvanceDays: number;
   maximumPartySize: number;
   defaultDuration: number;
@@ -475,8 +475,7 @@ export function ReservationBoard({
     const payload = {
       enabled: form.get("enabled") === "on",
       capacityPerSlot: Number(form.get("capacityPerSlot")),
-      slotInterval: Number(form.get("slotInterval")),
-      minimumLeadHours: Number(form.get("minimumLeadHours")),
+      minimumLeadMinutes: Number(form.get("minimumLeadMinutes")),
       maximumAdvanceDays: Number(form.get("maximumAdvanceDays")),
       maximumPartySize: Number(form.get("maximumPartySize")),
       defaultDuration: Number(form.get("defaultDuration")),
@@ -589,8 +588,7 @@ export function ReservationBoard({
             </label>
             {[
               ["capacityPerSlot", "Capacidad por franja", settings.capacityPerSlot],
-              ["slotInterval", "Intervalo en minutos", settings.slotInterval],
-              ["minimumLeadHours", "Anticipación mínima (horas)", settings.minimumLeadHours],
+              ["minimumLeadMinutes", "Anticipación mínima (minutos)", settings.minimumLeadMinutes],
               ["maximumAdvanceDays", "Anticipación máxima (días)", settings.maximumAdvanceDays],
               ["maximumPartySize", "Tamaño máximo de grupo", settings.maximumPartySize],
               ["defaultDuration", "Duración estimada (minutos)", settings.defaultDuration],
@@ -607,6 +605,9 @@ export function ReservationBoard({
                 />
               </label>
             ))}
+            <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-sm text-zinc-400 sm:col-span-2">
+              Los horarios públicos se alinean automáticamente cada 30 minutos.
+            </p>
             <label className="text-sm font-bold sm:col-span-2">
               Sectores, separados por comas
               <input

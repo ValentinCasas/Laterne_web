@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asOrderType, orderFlow } from "@/lib/order-status";
-import { orderStatusLabel, orderTokenHash, whatsappPhone, type OrderStatus } from "@/lib/orders";
+import { orderStatusLabel, whatsappPhone, type OrderStatus } from "@/lib/orders";
+import { orderTokenHash } from "@/lib/order-security";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { publicHrefForVisiblePath } from "@/lib/routes";

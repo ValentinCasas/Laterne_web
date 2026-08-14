@@ -206,16 +206,16 @@ model User {
 }
 
 model Tenant {
-  id                    Int                    @id @default(autoincrement())
-  name                  String                 @db.VarChar(160)
-  slug                  String                 @unique @db.VarChar(120)
-  businessType          String?                @db.VarChar(80)
-  status                String                 @default("active") @db.VarChar(20)
-  defaultCurrency       String                 @default("ARS") @db.VarChar(3)
-  locale                String                 @default("es-AR") @db.VarChar(12)
-  timeZone              String                 @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  id                    Int                       @id @default(autoincrement())
+  name                  String                    @db.VarChar(160)
+  slug                  String                    @unique @db.VarChar(120)
+  businessType          String?                   @db.VarChar(80)
+  status                String                    @default("active") @db.VarChar(20)
+  defaultCurrency       String                    @default("ARS") @db.VarChar(3)
+  locale                String                    @default("es-AR") @db.VarChar(12)
+  timeZone              String                    @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
   businessInfo          BusinessInfo?
   categories            Category[]
   products              Product[]
@@ -257,6 +257,8 @@ model Tenant {
   inventoryStocks       InventoryStock[]
   stockMovements        StockMovement[]
   invoices              InvoiceRecord[]
+  documentTemplates     DocumentTemplate[]
+  invoiceDocuments      InvoiceDocumentArtifact[]
   integrations          IntegrationSettings[]
   seoPages              SeoPage[]
   redirectRules         RedirectRule[]
@@ -267,8 +269,8 @@ model Tenant {
   branchProducts        BranchProduct[]
   loyaltyBranchLinks    LoyaltyBranchLink[]
   activePaletteId       Int?
-  activePalette         ThemePalette?          @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
-  themePalettes         ThemePalette[]         @relation("TenantThemePalettes")
+  activePalette         ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
+  themePalettes         ThemePalette[]            @relation("TenantThemePalettes")
 
   @@map("tenant")
 }
@@ -402,7 +404,9 @@ model AuthSession {
   @@map("authsession")
 }
 
-/** @summary Transferencia de autenticación de un login general al host administrativo del tenant. */
+/**
+ * @summary Transferencia de autenticación de un login general al host administrativo del tenant.
+ */
 model AuthHandoff {
   id           Int              @id @default(autoincrement())
   tokenHash    String           @unique @db.VarChar(64)
@@ -616,39 +620,39 @@ model CommercialFaq {
 }
 
 model Promotion {
-  id              Int                 @id @default(autoincrement())
-  tenantId        Int
-  branchId        Int?
-  slug            String              @db.VarChar(180)
-  name            String              @db.VarChar(180)
-  description     String              @db.VarChar(700)
-  imageUrl        String?             @db.VarChar(255)
-  type            String              @db.VarChar(30)
-  discountValue   Decimal?            @db.Decimal(12, 2)
-  minimumPurchase Decimal?            @db.Decimal(12, 2)
-  buyQuantity     Int?
-  receiveQuantity Int?
-  startAt         DateTime?
-  endAt           DateTime?
-  startTime       DateTime?           @db.Time(0)
-  endTime         DateTime?           @db.Time(0)
-  daysOfWeek      Json?
-  conditions      String?             @db.Text
-  code            String?             @db.VarChar(80)
-  usageLimit      Int?
+  id               Int                 @id @default(autoincrement())
+  tenantId         Int
+  branchId         Int?
+  slug             String              @db.VarChar(180)
+  name             String              @db.VarChar(180)
+  description      String              @db.VarChar(700)
+  imageUrl         String?             @db.VarChar(255)
+  type             String              @db.VarChar(30)
+  discountValue    Decimal?            @db.Decimal(12, 2)
+  minimumPurchase  Decimal?            @db.Decimal(12, 2)
+  buyQuantity      Int?
+  receiveQuantity  Int?
+  startAt          DateTime?
+  endAt            DateTime?
+  startTime        DateTime?           @db.Time(0)
+  endTime          DateTime?           @db.Time(0)
+  daysOfWeek       Json?
+  conditions       String?             @db.Text
+  code             String?             @db.VarChar(80)
+  usageLimit       Int?
   perCustomerLimit Int?
-  usedCount       Int                 @default(0)
-  status          String              @default("published") @db.VarChar(20)
-  publishAt       DateTime?
-  priority        Int                 @default(0)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch          Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  products        PromotionProduct[]
-  categories      PromotionCategory[]
-  orders          CustomerOrder[]
-  usages          PromotionUsage[]
+  usedCount        Int                 @default(0)
+  status           String              @default("published") @db.VarChar(20)
+  publishAt        DateTime?
+  priority         Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  products         PromotionProduct[]
+  categories       PromotionCategory[]
+  orders           CustomerOrder[]
+  usages           PromotionUsage[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, branchId, status, startAt, endAt])
@@ -656,16 +660,16 @@ model Promotion {
 }
 
 model PromotionUsage {
-  id            Int            @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   tenantId      Int
   promotionId   Int
-  orderId       Int            @unique
+  orderId       Int           @unique
   customerId    Int?
-  customerEmail String?        @db.VarChar(190)
-  createdAt     DateTime       @default(now())
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  promotion     Promotion      @relation(fields: [promotionId], references: [id], onDelete: Cascade)
-  order         CustomerOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerEmail String?       @db.VarChar(190)
+  createdAt     DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promotion     Promotion     @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  order         CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([promotionId, customerEmail])
   @@index([tenantId, createdAt])
@@ -706,6 +710,7 @@ model ReservationSettings {
   enabled            Boolean  @default(true)
   capacityPerSlot    Int      @default(30)
   slotInterval       Int      @default(30)
+  minimumLeadMinutes Int      @default(120)
   minimumLeadHours   Int      @default(2)
   maximumAdvanceDays Int      @default(60)
   maximumPartySize   Int      @default(20)
@@ -1477,31 +1482,84 @@ model StockMovement {
 }
 
 model InvoiceRecord {
-  id            Int           @id @default(autoincrement())
+  id            Int                      @id @default(autoincrement())
   tenantId      Int
   branchId      Int?
-  orderId       Int           @unique
-  status        String        @default("draft") @db.VarChar(24)
-  documentType  String        @default("internal_receipt") @db.VarChar(40)
-  number        String?       @db.VarChar(80)
-  customerName  String        @db.VarChar(180)
-  customerTaxId String?       @db.VarChar(40)
-  subtotal      Decimal       @db.Decimal(12, 2)
-  tax           Decimal       @default(0) @db.Decimal(12, 2)
-  total         Decimal       @db.Decimal(12, 2)
-  currency      String        @default("ARS") @db.VarChar(3)
-  externalId    String?       @db.VarChar(180)
-  notes         String?       @db.Text
+  orderId       Int                      @unique
+  status        String                   @default("draft") @db.VarChar(24)
+  documentType  String                   @default("internal_receipt") @db.VarChar(40)
+  number        String?                  @db.VarChar(80)
+  customerName  String                   @db.VarChar(180)
+  customerTaxId String?                  @db.VarChar(40)
+  subtotal      Decimal                  @db.Decimal(12, 2)
+  tax           Decimal                  @default(0) @db.Decimal(12, 2)
+  total         Decimal                  @db.Decimal(12, 2)
+  currency      String                   @default("ARS") @db.VarChar(3)
+  externalId    String?                  @db.VarChar(180)
+  notes         String?                  @db.Text
   issuedAt      DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  order         CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  order         CustomerOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  document      InvoiceDocumentArtifact?
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, number])
   @@map("invoicerecord")
+}
+
+/**
+ * @summary Versión inmutable de una plantilla Word cargada por un tenant.
+ */
+model DocumentTemplate {
+  id               Int                       @id @default(autoincrement())
+  tenantId         Int
+  documentType     String                    @default("internal_receipt") @db.VarChar(40)
+  name             String                    @db.VarChar(160)
+  originalFilename String                    @db.VarChar(255)
+  mimeType         String                    @db.VarChar(120)
+  sizeBytes        Int
+  checksum         String                    @db.Char(64)
+  content          Bytes                     @db.LongBlob
+  version          Int                       @default(1)
+  active           Boolean                   @default(false)
+  isDefault        Boolean                   @default(false)
+  deletedAt        DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documents        InvoiceDocumentArtifact[]
+
+  @@unique([tenantId, documentType, version])
+  @@unique([tenantId, documentType, checksum])
+  @@index([tenantId, documentType, active, deletedAt])
+  @@map("documenttemplate")
+}
+
+/**
+ * @summary Snapshot DOCX/PDF de un comprobante para no alterar documentos históricos al cambiar plantillas.
+ */
+model InvoiceDocumentArtifact {
+  id                Int               @id @default(autoincrement())
+  tenantId          Int
+  invoiceId         Int               @unique
+  templateId        Int?
+  templateVersion   Int?
+  docx              Bytes             @db.LongBlob
+  pdf               Bytes?            @db.LongBlob
+  pdfStatus         String            @default("unavailable") @db.VarChar(24)
+  converter         String?           @db.VarChar(80)
+  conversionMessage String?           @db.VarChar(500)
+  createdAt         DateTime          @default(now())
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice           InvoiceRecord     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  template          DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([templateId])
+  @@map("invoicedocumentartifact")
 }
 
 model InvoiceSettings {

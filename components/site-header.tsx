@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { parseCanonicalPath, publicHrefForVisiblePath } from "@/lib/routes";
 
 const navGroups = [
@@ -28,6 +29,12 @@ const navGroups = [
 ] as const;
 
 const directLinks = [["/ayuda", "Ayuda"] as const];
+const mobileLinks: ReadonlyArray<readonly [string, string]> = [
+  ["/", "Inicio"],
+  ...navGroups[0].items,
+  ...navGroups[1].items,
+  ...directLinks,
+];
 
 function getGroupId(pathname: string | null) {
   if (!pathname) return null;
@@ -60,17 +67,18 @@ export function SiteHeader({
     publicHrefForVisiblePath(pathname, tenantSlug, href, routeContext.branchSlug ?? branchSlug);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileGroupOpen, setMobileGroupOpen] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
 
   const activeGroup = getGroupId(logicalPath);
 
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    setOpenGroup(null);
-    setMobileGroupOpen(null);
-  }
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -83,7 +91,6 @@ export function SiteHeader({
       if (event.key === "Escape") {
         setOpenGroup(null);
         setMobileOpen(false);
-        setMobileGroupOpen(null);
       }
     }
 
@@ -187,21 +194,21 @@ export function SiteHeader({
         </button>
       </nav>
 
-      {mobileOpen && (
+      {mobileOpen && createPortal(
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-[190] bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
           <div
             id="mobile-navigation"
-            className="fixed inset-y-0 right-0 z-50 flex w-[min(20rem,88vw)] flex-col border-l border-white/10 bg-[#09090b] shadow-2xl shadow-black/50 lg:hidden"
+            className="fixed inset-y-0 right-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-l border-white/10 bg-[#09090b] shadow-2xl shadow-black/50 lg:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Menú de navegación"
           >
-            <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4">
+            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 pt-[env(safe-area-inset-top)]">
               <Link href={tenantHref("/")} className="flex items-center gap-2 text-xl font-black tracking-tight text-pink-400 transition hover:text-white">
                 {logoUrl && (
                   <Image src={logoUrl} alt={`Logo de ${brandName}`} width={30} height={30} className="h-8 w-auto object-contain" />
@@ -221,73 +228,28 @@ export function SiteHeader({
               </button>
             </div>
 
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href={tenantHref("/carta")}
-                  onClick={() => setMobileOpen(false)}
-                  className="btn !px-3 !py-2.5 text-center text-sm"
-                >
-                  Ver carta
-                </Link>
-                <Link
-                  href={tenantHref("/reservas")}
-                  onClick={() => setMobileOpen(false)}
-                  className="btn btn-secondary !px-3 !py-2.5 text-center text-sm"
-                >
-                  Reservar mesa
-                </Link>
-              </div>
-
-              {navGroups.map((group) => (
-                <div key={group.id} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/10"
-                    onClick={() => setMobileGroupOpen(mobileGroupOpen === group.id ? null : group.id)}
-                    aria-expanded={mobileGroupOpen === group.id}
-                    aria-controls={`${group.id}-mobile-panel`}
-                  >
-                    <span>{group.label}</span>
-                    <span className="text-xs">{mobileGroupOpen === group.id ? "▴" : "▾"}</span>
-                  </button>
-                  <ul
-                    id={`${group.id}-mobile-panel`}
-                    className={`${mobileGroupOpen === group.id ? "grid" : "hidden"} gap-2 border-t border-white/10 px-4 pb-4 pt-2`}
-                  >
-                    {group.items.map(([href, label]) => (
-                      <li key={href}>
-                        <Link
-                          href={tenantHref(href)}
-                          onClick={() => {
-                            setMobileOpen(false);
-                            setMobileGroupOpen(null);
-                          }}
-                          className="block rounded-2xl px-3 py-3 text-sm text-white/90 transition hover:bg-white/10 hover:text-white"
-                        >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-
-              <div className="space-y-2 rounded-3xl border border-white/10 bg-white/5 p-3">
-                {directLinks.map(([href, label]) => (
+            <div className="flex flex-1 flex-col overflow-y-auto p-4">
+              <nav className="grid gap-1" aria-label="Secciones del sitio">
+                {mobileLinks.map(([href, label]) => (
                   <Link
-                    key={href}
+                    key={`${href}-${label}`}
                     href={tenantHref(href)}
                     onClick={() => setMobileOpen(false)}
-                    className="block rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:text-white"
+                    className="block rounded-2xl px-4 py-3 text-base font-semibold text-white/90 transition hover:bg-white/10 hover:text-white"
                   >
                     {label}
                   </Link>
                 ))}
+              </nav>
+
+              <div className="mt-auto grid grid-cols-2 gap-2 border-t border-white/10 pt-5">
+                <Link href={tenantHref("/carta")} onClick={() => setMobileOpen(false)} className="btn !px-3 !py-3 text-center text-sm">Ver carta</Link>
+                <Link href={tenantHref("/reservas")} onClick={() => setMobileOpen(false)} className="btn btn-secondary !px-3 !py-3 text-center text-sm">Reservar</Link>
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </header>
   );

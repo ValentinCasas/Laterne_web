@@ -133,6 +133,14 @@ export function MenuClient({
     };
   }, []);
   useEffect(() => {
+    if (!cartOpen && !filtersOpen && !preview && !configuring) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [cartOpen, configuring, filtersOpen, preview]);
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
         const stored: unknown = readBrowserJson("laterne_carrito", []);
@@ -438,7 +446,7 @@ export function MenuClient({
               />
             </label>
             <button
-              className="min-h-12 shrink-0 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black md:hidden"
+              className="min-h-12 shrink-0 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black lg:hidden"
               onClick={openFilters}
               type="button"
               aria-haspopup="dialog"
@@ -447,7 +455,7 @@ export function MenuClient({
             </button>
           </div>
           {activeFilterCount > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 md:hidden" aria-label="Filtros activos">
+            <div className="mt-2 flex flex-wrap items-center gap-2 lg:hidden" aria-label="Filtros activos">
               {diet !== "all" && (
                 <button className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200" onClick={() => setDiet("all")} type="button">
                   {diet === "vegetarian" ? "Vegetarianos" : diet === "vegan" ? "Veganos" : diet === "glutenFree" ? "Sin gluten" : "Sin alcohol"} ×
@@ -468,7 +476,7 @@ export function MenuClient({
               </button>
             </div>
           )}
-          <div className="mt-2 hidden grid-cols-3 gap-2 md:grid">
+          <div className="mt-2 hidden grid-cols-3 gap-2 lg:grid">
             <select
               className="input py-2 text-xs sm:text-sm"
               value={diet}
@@ -688,7 +696,7 @@ export function MenuClient({
 
       {filtersOpen && (
         <div
-          className="fixed inset-0 z-[150] flex bg-black/75 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[150] flex bg-black/75 backdrop-blur-sm lg:hidden"
           onClick={() => setFiltersOpen(false)}
         >
           <section
@@ -763,7 +771,7 @@ export function MenuClient({
           onClick={() => setCartOpen(false)}
         >
           <aside
-            className="flex h-full w-full max-w-lg flex-col bg-white text-zinc-950 shadow-2xl"
+            className="flex h-dvh w-full max-w-lg flex-col overflow-hidden bg-white text-zinc-950 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"

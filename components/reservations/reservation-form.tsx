@@ -8,6 +8,7 @@ type SlotStatus = "available" | "pending" | "full";
 type Slot = { time: string; remaining: number; pending: number; status: SlotStatus };
 type Availability = {
   slots: Slot[];
+  availableDates?: string[];
   sectors: string[];
   policy: string | null;
   maximumPartySize?: number;
@@ -84,8 +85,8 @@ export function ReservationForm({
 
   const maximumPartySize = availability.maximumPartySize ?? initialMaximumPartySize;
   const maximumDate = useMemo(
-    () => toDateKey(addDays(new Date(), initialMaximumAdvanceDays)),
-    [initialMaximumAdvanceDays],
+    () => toDateKey(addDays(new Date(`${minimumDate}T00:00:00`), initialMaximumAdvanceDays)),
+    [initialMaximumAdvanceDays, minimumDate],
   );
 
   useEffect(() => {
@@ -345,6 +346,9 @@ export function ReservationForm({
               value={date}
               minimumDate={minimumDate}
               maximumDate={maximumDate}
+              partySize={partySize}
+              sector={sector}
+              branchSlug={branchSlug}
               onSelect={(key) => {
                 setDate(key);
                 setTime("");
@@ -487,14 +491,20 @@ function PublicDateCalendar({
   value,
   minimumDate,
   maximumDate,
+  partySize,
+  sector,
+  branchSlug,
   onSelect,
 }: {
   value: string;
   minimumDate: string;
   maximumDate: string;
+  partySize: number;
+  sector: string;
+  branchSlug?: string;
   onSelect: (key: string) => void;
 }) {
-  const todayKey = useMemo(() => toDateKey(new Date()), []);
+  const todayKey = minimumDate;
   const [view, setView] = useState(() => {
     const base = value ? new Date(`${value}T00:00:00`) : new Date();
     return { year: base.getFullYear(), month: base.getMonth() };
@@ -506,6 +516,55 @@ function PublicDateCalendar({
     const start = new Date(view.year, view.month, 1 - startOffset);
     return Array.from({ length: 42 }, (_, index) => addDays(start, index));
   }, [view.month, view.year]);
+  const firstCell = toDateKey(cells[0]);
+  const lastCell = toDateKey(cells[cells.length - 1]);
+  const availabilityQuery = useMemo(() => {
+    const query = new URLSearchParams({
+      from: firstCell,
+      to: lastCell,
+      partySize: String(partySize),
+    });
+    if (sector) query.set("sector", sector);
+    if (branchSlug) query.set("branch", branchSlug);
+    return query.toString();
+  }, [branchSlug, firstCell, lastCell, partySize, sector]);
+  const [datesState, setDatesState] = useState<{
+    query: string;
+    availableDates: Set<string> | null;
+    error: string;
+  }>({ query: "", availableDates: null, error: "" });
+  const loadingDates = datesState.query !== availabilityQuery;
+  const availableDates = loadingDates ? null : datesState.availableDates;
+  const datesError = loadingDates ? "" : datesState.error;
+
+  useEffect(() => {
+    let active = true;
+    scopedFetch(`/api/reservations?${availabilityQuery}`)
+      .then(async (response) => {
+        const body = (await response.json()) as Availability;
+        if (!response.ok || !body.availableDates) {
+          throw new Error(body.error ?? "No se pudieron consultar los días disponibles");
+        }
+        if (active) {
+          setDatesState({
+            query: availabilityQuery,
+            availableDates: new Set(body.availableDates),
+            error: "",
+          });
+        }
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setDatesState({
+          query: availabilityQuery,
+          availableDates: null,
+          error: reason instanceof Error ? reason.message : "No se pudieron consultar los días disponibles",
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [availabilityQuery]);
 
   const canGoPrev = useMemo(() => {
     const lastOfPrev = new Date(view.year, view.month, 0);
@@ -522,7 +581,7 @@ function PublicDateCalendar({
   });
 
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[.02] p-4" role="group" aria-label="Fecha">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[.02] p-4" role="group" aria-label="Fecha" aria-busy={loadingDates}>
       <div className="flex items-center justify-between gap-2">
         <button
           className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-sm disabled:opacity-30"
@@ -544,6 +603,13 @@ function PublicDateCalendar({
           →
         </button>
       </div>
+      <p className={`mt-3 min-h-5 text-xs ${datesError ? "text-amber-300" : "text-zinc-500"}`} role={datesError ? "alert" : "status"}>
+        {datesError
+          ? "No pudimos anticipar los días; podés elegir uno y consultar sus horarios."
+          : loadingDates
+            ? "Consultando días con disponibilidad…"
+            : "Sólo se habilitan días con al menos un horario disponible."}
+      </p>
       <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-wider text-zinc-500">
         {WEEKDAY_LABELS.map((label) => (
           <span key={label}>{label}</span>
@@ -553,7 +619,10 @@ function PublicDateCalendar({
         {cells.map((cell) => {
           const key = toDateKey(cell);
           const inView = cell.getMonth() === view.month;
-          const disabled = key < minimumDate || key > maximumDate;
+          const disabled =
+            key < minimumDate ||
+            key > maximumDate ||
+            (availableDates !== null && !availableDates.has(key));
           const selected = key === value;
           const today = key === todayKey;
           return (

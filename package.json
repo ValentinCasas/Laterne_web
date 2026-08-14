@@ -13,6 +13,8 @@
     "test": "npm run test:unit",
     "test:unit": "vitest run",
     "test:e2e": "node scripts/run-e2e.mjs",
+    "generate:document-templates": "node --experimental-strip-types scripts/generate-document-template-examples.mjs",
+    "seed:document-templates": "node --env-file=.env scripts/seed-document-templates.mjs",
     "db:generate": "prisma generate",
     "db:pull": "prisma db pull",
     "db:studio": "prisma studio"
@@ -21,6 +23,8 @@
     "@google/model-viewer": "4.3.1",
     "@prisma/client": "6.19.3",
     "bcryptjs": "3.0.3",
+    "docx": "^9.7.1",
+    "docx-templates": "^4.15.0",
     "jose": "6.2.8",
     "maplibre-gl": "6.2.0",
     "next": "16.3.0",

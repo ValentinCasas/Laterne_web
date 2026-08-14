@@ -1,28 +1,23 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { isBranchOperational } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
 import {
-  buildTimeSlots,
-  defaultReservationTimeZone,
-  reservationAddressHash,
-  reservationReference,
-  reservationTime,
-  timeText,
-  zoneOffset,
-} from "@/lib/reservations";
+  getReservationAvailability,
+  getReservationAvailabilityRange,
+  reservationDateValue,
+} from "@/lib/reservation-availability";
+import { reservationAddressHash, reservationReference } from "@/lib/reservation-security";
+import { defaultReservationTimeZone, reservationTime } from "@/lib/reservations";
 import { getDefaultTenant } from "@/lib/tenant";
-import { isBranchOperational } from "@/lib/branch";
+
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 const reservationInput = z.object({
   customerName: z.string().trim().min(2).max(160),
   phone: z.string().trim().min(6).max(60),
-  email: z
-    .string()
-    .trim()
-    .email()
-    .max(190)
-    .transform((value) => value.toLowerCase()),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  email: z.string().trim().email().max(190).transform((value) => value.toLowerCase()),
+  date: z.string().regex(datePattern),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   partySize: z.coerce.number().int().min(1).max(100),
   sector: z.string().trim().max(100).optional(),
@@ -33,16 +28,10 @@ const reservationInput = z.object({
   branchSlug: z.string().trim().max(120).optional(),
 });
 
-/** @summary Recupera la dirección de red declarada por el proxy para aplicar controles de abuso. */
 function requestAddress(request: Request) {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
 }
 
-/** @summary Reduce la procedencia de la solicitud a una ruta breve apta para informes. */
 function requestSource(request: Request) {
   const referer = request.headers.get("referer");
   if (!referer) return "website";
@@ -53,18 +42,8 @@ function requestSource(request: Request) {
   }
 }
 
-/** @summary Indica que la franja seleccionada perdió capacidad durante la confirmación. */
 class ReservationCapacityError extends Error {}
 
-/** @summary Comprueba si una franja se encuentra dentro de un bloqueo total o parcial. */
-function blockedTime(time: string, blocks: Array<{ startTime: Date | null; endTime: Date | null }>) {
-  return blocks.some((block) => {
-    if (!block.startTime || !block.endTime) return true;
-    return time >= timeText(block.startTime) && time <= timeText(block.endTime);
-  });
-}
-
-/** @summary Genera una referencia de reserva que todavía no exista en la base. */
 async function uniqueReference() {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const reference = reservationReference();
@@ -74,159 +53,128 @@ async function uniqueReference() {
   throw new Error("No se pudo generar la referencia de reserva");
 }
 
-/** @summary Clasifica la franja según capacidad y solicitudes pendientes, sin exponer datos de terceros. */
-function slotStatus(remaining: number, pending: number, partySize: number): "available" | "pending" | "full" {
-  if (remaining < partySize) return "full";
-  if (pending > 0) return "pending";
-  return "available";
+async function resolveReservationBranch(tenantId: number, requestedSlug: string) {
+  return prisma.branch.findFirst({
+    where: { tenantId, active: true, ...(requestedSlug ? { slug: requestedSlug } : {}) },
+    orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
+    select: { id: true, slug: true },
+  });
 }
 
-/** @summary Informa franjas por fecha con estado agregado de disponibilidad, sin datos privados. */
+function availabilityMetadata(result: Awaited<ReturnType<typeof getReservationAvailability>>) {
+  return {
+    sectors: result.settings.sectors,
+    policy: result.settings.policy,
+    maximumPartySize: result.settings.maximumPartySize,
+    minimumLeadMinutes: result.settings.minimumLeadMinutes,
+    disabled: !result.settings.enabled,
+  };
+}
+
+/** @summary Publica días o franjas usando la misma fuente server-side que valida el alta final. */
 export async function GET(request: Request) {
-  const searchParams = new URL(request.url).searchParams;
-  const date = searchParams.get("date") ?? "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json({ error: "Indicá una fecha válida" }, { status: 400 });
-  }
-  const rawPartySize = Number(searchParams.get("partySize") ?? "1");
-  const partySize = Number.isInteger(rawPartySize) ? rawPartySize : 1;
+  const params = new URL(request.url).searchParams;
+  const rawPartySize = Number(params.get("partySize") ?? "1");
+  const partySize = Number.isInteger(rawPartySize) && rawPartySize > 0 ? Math.min(rawPartySize, 100) : 1;
   const tenant = await getDefaultTenant();
   const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") ?? "";
-  const requestedBranchSlug = routeBranchSlug || new URL(request.url).searchParams.get("branch") || "";
+  const branch = await resolveReservationBranch(tenant.id, routeBranchSlug || params.get("branch") || "");
+  if (!branch || !(await isBranchOperational(tenant.id, branch.id))) {
+    return NextResponse.json({ slots: [], availableDates: [], sectors: [], policy: null, disabled: true });
+  }
+
   const timeZone = tenant.timeZone ?? defaultReservationTimeZone;
-  const offset = zoneOffset(timeZone);
-  const selectedDate = new Date(`${date}T00:00:00${offset}`);
-  const primaryBranch = await prisma.branch.findFirst({
-    where: { tenantId: tenant.id, active: true, ...(requestedBranchSlug ? { slug: requestedBranchSlug } : {}) },
-    orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
-    select: { id: true },
-  });
-  if (!primaryBranch || !(await isBranchOperational(tenant.id, primaryBranch.id))) return NextResponse.json({ slots: [], sectors: [], policy: null, disabled: true });
-  const branchWhere = primaryBranch ? { branchId: primaryBranch.id } : {};
-  const [settings, hours, blocks, reservations] = await Promise.all([
-    prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } }),
-    prisma.openingHour.findMany({ where: { tenantId: tenant.id, ...branchWhere } }),
-    prisma.reservationBlock.findMany({
-      where: { tenantId: tenant.id, ...branchWhere, startDate: { lte: selectedDate }, endDate: { gte: selectedDate } },
-    }),
-    prisma.reservation.findMany({
-      where: {
-        tenantId: tenant.id,
-        branchId: primaryBranch?.id,
-        deletedAt: null,
-        reservationDate: selectedDate,
-        status: { in: ["pending", "confirmed"] },
-      },
-      select: { reservationTime: true, partySize: true, status: true },
-    }),
-  ]);
-  if (!settings?.enabled) {
-    return NextResponse.json({ slots: [], sectors: [], policy: settings?.policy, disabled: true });
-  }
-
-  const dayName = new Intl.DateTimeFormat("es-AR", {
-    weekday: "long",
-    timeZone,
-  })
-    .format(selectedDate)
-    .toLocaleLowerCase("es");
-  const opening = hours.find((item) => item.dayOfWeek.toLocaleLowerCase("es").includes(dayName));
-  const ranges: Array<[string, string]> = [];
-  if (opening?.morningStartTime && opening.morningEndTime) {
-    ranges.push([timeText(opening.morningStartTime), timeText(opening.morningEndTime)]);
-  }
-  if (opening?.eveningStartTime && opening.eveningEndTime) {
-    ranges.push([timeText(opening.eveningStartTime), timeText(opening.eveningEndTime)]);
-  }
-  const occupied = new Map<string, number>();
-  const pendingOccupied = new Map<string, number>();
-  for (const reservation of reservations) {
-    const key = timeText(reservation.reservationTime);
-    occupied.set(key, (occupied.get(key) ?? 0) + reservation.partySize);
-    if (reservation.status === "pending") {
-      pendingOccupied.set(key, (pendingOccupied.get(key) ?? 0) + reservation.partySize);
+  const from = params.get("from") ?? "";
+  const to = params.get("to") ?? "";
+  if (from || to) {
+    if (!datePattern.test(from) || !datePattern.test(to) || from > to) {
+      return NextResponse.json({ error: "Indicá un rango de fechas válido" }, { status: 400 });
     }
-  }
-  const now = new Date();
-  const slots = ranges
-    .flatMap(([start, end]) => buildTimeSlots(start, end, settings.slotInterval))
-    .filter((time, index, values) => values.indexOf(time) === index)
-    .filter(
-      (time) =>
-        new Date(`${date}T${time}:00${offset}`).getTime() >=
-        now.getTime() + settings.minimumLeadHours * 3_600_000,
-    )
-    .filter((time) => !blockedTime(time, blocks))
-    .map((time) => {
-      const remaining = Math.max(0, settings.capacityPerSlot - (occupied.get(time) ?? 0));
-      const pending = pendingOccupied.get(time) ?? 0;
-      return {
-        time,
-        remaining,
-        pending,
-        status: slotStatus(remaining, pending, Math.max(1, Math.min(partySize, settings.maximumPartySize))),
-      };
+    const rangeDays = Math.round((reservationDateValue(to).getTime() - reservationDateValue(from).getTime()) / 86_400_000);
+    if (rangeDays > 62) {
+      return NextResponse.json({ error: "El rango de disponibilidad es demasiado amplio" }, { status: 400 });
+    }
+    const result = await getReservationAvailabilityRange({
+      tenantId: tenant.id,
+      branchId: branch.id,
+      from,
+      to,
+      partySize,
+      sector: params.get("sector"),
+      timeZone,
     });
+    return NextResponse.json({
+      availableDates: result.availableDates,
+      sectors: result.settings.sectors,
+      policy: result.settings.policy,
+      maximumPartySize: result.settings.maximumPartySize,
+      minimumLeadMinutes: result.settings.minimumLeadMinutes,
+      disabled: !result.settings.enabled,
+    });
+  }
 
-  return NextResponse.json({
-    slots,
-    sectors: Array.isArray(settings.sectors) ? settings.sectors : [],
-    policy: settings.policy,
-    maximumPartySize: settings.maximumPartySize,
+  const date = params.get("date") ?? "";
+  if (!datePattern.test(date)) {
+    return NextResponse.json({ error: "Indicá una fecha válida" }, { status: 400 });
+  }
+  const result = await getReservationAvailability({
+    tenantId: tenant.id,
+    branchId: branch.id,
+    date,
+    partySize,
+    sector: params.get("sector"),
+    timeZone,
   });
+  return NextResponse.json({ slots: result.slots, hasAvailability: result.hasAvailability, ...availabilityMetadata(result) });
 }
 
-/** @summary Valida disponibilidad, guarda una reserva y genera un aviso para administración. */
+/** @summary Valida y crea una reserva bajo bloqueo, recalculando exactamente la misma disponibilidad. */
 export async function POST(request: Request) {
   const parsed = reservationInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Revisá los datos obligatorios de la reserva" }, { status: 400 });
   }
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
+
   const tenant = await getDefaultTenant();
-  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || null;
+  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || "";
   if (routeBranchSlug && parsed.data.branchSlug && parsed.data.branchSlug.toLocaleLowerCase("es") !== routeBranchSlug) {
     return NextResponse.json({ error: "La sucursal de la reserva no coincide con la URL" }, { status: 409 });
   }
-  const effectiveBranchSlug = routeBranchSlug ?? parsed.data.branchSlug ?? null;
-  const branch =
-    effectiveBranchSlug
-      ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: effectiveBranchSlug, active: true } })
-      :
-    (await prisma.branch.findFirst({
-      where: { tenantId: tenant.id, active: true },
-      orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
-      select: { id: true },
-    })) ?? null;
-  if (effectiveBranchSlug && !branch) return NextResponse.json({ error: "La sucursal no está disponible" }, { status: 404 });
-  if (branch && !(await isBranchOperational(tenant.id, branch.id))) return NextResponse.json({ error: "La sucursal no está operativa" }, { status: 409 });
-  const settings = await prisma.reservationSettings.findUnique({ where: { tenantId: tenant.id } });
-  if (!settings?.enabled) {
-    return NextResponse.json(
-      { error: "Las reservas online no están disponibles temporalmente" },
-      { status: 503 },
-    );
-  }
-  if (parsed.data.partySize > settings.maximumPartySize) {
-    return NextResponse.json(
-      { error: `Para grupos de más de ${settings.maximumPartySize} personas, contactanos directamente.` },
-      { status: 400 },
-    );
+  const branch = await resolveReservationBranch(tenant.id, routeBranchSlug || parsed.data.branchSlug || "");
+  if (!branch) return NextResponse.json({ error: "La sucursal no está disponible" }, { status: 404 });
+  if (!(await isBranchOperational(tenant.id, branch.id))) {
+    return NextResponse.json({ error: "La sucursal no está operativa" }, { status: 409 });
   }
 
   const timeZone = tenant.timeZone ?? defaultReservationTimeZone;
-  const offset = zoneOffset(timeZone);
-  const selectedDate = new Date(`${parsed.data.date}T00:00:00${offset}`);
-  const selectedDateTime = new Date(`${parsed.data.date}T${parsed.data.time}:00${offset}`);
-  const now = new Date();
-  if (selectedDateTime.getTime() < now.getTime() + settings.minimumLeadHours * 3_600_000) {
-    return NextResponse.json({ error: "Ese horario ya no posee anticipación suficiente" }, { status: 409 });
+  const initialAvailability = await getReservationAvailability({
+    tenantId: tenant.id,
+    branchId: branch.id,
+    date: parsed.data.date,
+    partySize: parsed.data.partySize,
+    sector: parsed.data.sector,
+    timeZone,
+  });
+  if (!initialAvailability.settings.enabled) {
+    return NextResponse.json({ error: "Las reservas online no están disponibles temporalmente" }, { status: 503 });
   }
-  if (selectedDateTime.getTime() > now.getTime() + settings.maximumAdvanceDays * 86_400_000) {
+  if (parsed.data.partySize > initialAvailability.settings.maximumPartySize) {
     return NextResponse.json(
-      { error: "La fecha supera el período habilitado para reservas" },
+      { error: `Para grupos de más de ${initialAvailability.settings.maximumPartySize} personas, contactanos directamente.` },
       { status: 400 },
     );
+  }
+  const initialSlot = initialAvailability.slots.find((slot) => slot.time === parsed.data.time);
+  if (!initialSlot || initialSlot.status === "full") {
+    return NextResponse.json({ error: "Ese horario ya no está disponible" }, { status: 409 });
+  }
+  if (
+    parsed.data.sector &&
+    initialAvailability.settings.sectors.length > 0 &&
+    !initialAvailability.settings.sectors.includes(parsed.data.sector)
+  ) {
+    return NextResponse.json({ error: "El sector seleccionado no está disponible" }, { status: 409 });
   }
 
   const ipHash = reservationAddressHash(requestAddress(request));
@@ -236,69 +184,34 @@ export async function POST(request: Request) {
   if (recentRequests >= 5) {
     return NextResponse.json({ error: "Alcanzaste el límite temporal de solicitudes" }, { status: 429 });
   }
-  const [blocks, hours] = await Promise.all([
-    prisma.reservationBlock.findMany({
-      where: {
-           tenantId: tenant.id,
-           branchId: branch?.id ?? null,
-        ...(branch ? { branchId: branch.id } : {}),
-        startDate: { lte: selectedDate },
-        endDate: { gte: selectedDate },
-      },
-    }),
-    prisma.openingHour.findMany({
-      where: { tenantId: tenant.id, branchId: branch?.id ?? null },
-    }),
-  ]);
-  const selectedDayName = new Intl.DateTimeFormat("es-AR", { weekday: "long", timeZone })
-    .format(selectedDate)
-    .toLocaleLowerCase("es");
-  const selectedOpening = hours.find((item) =>
-    item.dayOfWeek.toLocaleLowerCase("es").includes(selectedDayName),
-  );
-  const validOpeningTimes = [
-    selectedOpening?.morningStartTime && selectedOpening.morningEndTime
-      ? buildTimeSlots(timeText(selectedOpening.morningStartTime), timeText(selectedOpening.morningEndTime), settings.slotInterval)
-      : [],
-    selectedOpening?.eveningStartTime && selectedOpening.eveningEndTime
-      ? buildTimeSlots(timeText(selectedOpening.eveningStartTime), timeText(selectedOpening.eveningEndTime), settings.slotInterval)
-      : [],
-  ].flat();
-  if (!validOpeningTimes.includes(parsed.data.time)) {
-    return NextResponse.json({ error: "Ese horario está fuera del horario de atención" }, { status: 409 });
-  }
-  if (blockedTime(parsed.data.time, blocks)) {
-    return NextResponse.json({ error: "Ese horario se encuentra bloqueado" }, { status: 409 });
-  }
 
-  const status = settings.confirmationMode === "automatic" ? "confirmed" : "pending";
   const reference = await uniqueReference();
+  let status = "pending";
   try {
     await prisma.$transaction(async (transaction) => {
-      // Bloquea la fila de configuración del negocio para serializar las escrituras
-      // sobre la misma franja y evitar que dos solicitudes simultáneas sobrevendan la capacidad.
-      await transaction.$queryRaw`SELECT id FROM reservationsettings WHERE tenantId = ${tenant.id} FOR UPDATE`;
-      const occupied = await transaction.reservation.aggregate({
-        where: {
-          tenantId: tenant.id,
-          branchId: branch?.id ?? null,
-          deletedAt: null,
-          reservationDate: selectedDate,
-          reservationTime: reservationTime(parsed.data.time),
-          status: { in: ["pending", "confirmed"] },
-        },
-        _sum: { partySize: true },
+      // La sucursal siempre existe; bloquearla también protege tenants que aún no
+      // poseen una fila explícita en ReservationSettings.
+      await transaction.$queryRaw`SELECT id FROM branch WHERE id = ${branch.id} FOR UPDATE`;
+      const current = await getReservationAvailability({
+        tenantId: tenant.id,
+        branchId: branch.id,
+        date: parsed.data.date,
+        partySize: parsed.data.partySize,
+        sector: parsed.data.sector,
+        timeZone,
+        database: transaction,
       });
-      if ((occupied._sum.partySize ?? 0) + parsed.data.partySize > settings.capacityPerSlot) {
-        throw new ReservationCapacityError();
-      }
+      const slot = current.slots.find((candidate) => candidate.time === parsed.data.time);
+      if (!slot || slot.status === "full") throw new ReservationCapacityError();
+      status = current.settings.confirmationMode === "automatic" ? "confirmed" : "pending";
+
       const reservation = await transaction.reservation.create({
         data: {
           tenantId: tenant.id,
-          branchId: branch?.id ?? null,
+          branchId: branch.id,
           reference,
           status,
-          reservationDate: selectedDate,
+          reservationDate: reservationDateValue(parsed.data.date),
           reservationTime: reservationTime(parsed.data.time),
           partySize: parsed.data.partySize,
           sector: parsed.data.sector || null,
@@ -310,7 +223,7 @@ export async function POST(request: Request) {
           acceptedPolicy: true,
           source: requestSource(request),
           ipHash,
-          estimatedDuration: settings.defaultDuration,
+          estimatedDuration: current.settings.defaultDuration,
         },
       });
       await transaction.reservationStatusHistory.create({
@@ -319,7 +232,7 @@ export async function POST(request: Request) {
       await transaction.notification.create({
         data: {
           tenantId: tenant.id,
-          branchId: branch?.id ?? null,
+          branchId: branch.id,
           type: "reservation.new",
           title: `Nueva reserva · ${parsed.data.customerName}`,
           message: `${parsed.data.partySize} personas el ${parsed.data.date} a las ${parsed.data.time}.`,
@@ -329,10 +242,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof ReservationCapacityError) {
-      return NextResponse.json(
-        { error: "La franja seleccionada ya no tiene capacidad suficiente" },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "La franja seleccionada ya no tiene capacidad suficiente" }, { status: 409 });
     }
     return NextResponse.json({ error: "No se pudo concretar la reserva" }, { status: 409 });
   }

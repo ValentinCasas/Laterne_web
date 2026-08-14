@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
+import { documentTypes } from "@/lib/documents/document-fields";
+import { generateInvoiceDocumentArtifact } from "@/lib/documents/invoice-document";
 import { prisma } from "@/lib/prisma";
 
-const invoiceInput = z.object({ orderId: z.coerce.number().int().positive() });
+const invoiceInput = z.object({
+  orderId: z.coerce.number().int().positive(),
+  documentType: z.enum(documentTypes).default("internal_receipt"),
+});
 
 /** @summary Crea un comprobante interno desde un pedido sin presentarlo como factura fiscal electrónica. */
 export async function POST(request: Request) {
@@ -28,6 +33,7 @@ export async function POST(request: Request) {
       tenantId: auth.tenant.id,
       branchId: order.branchId,
       orderId: order.id,
+      documentType: parsed.data.documentType,
       number: `INT-${order.reference}`,
       customerName: order.customerName,
       subtotal: order.subtotal,
@@ -36,8 +42,15 @@ export async function POST(request: Request) {
       currency: order.currency,
       notes: "Comprobante interno no fiscal",
     },
-    include: { order: true, branch: true },
+    include: { order: true, branch: true, document: true },
   });
+  let document = null;
+  let documentError: string | null = null;
+  try {
+    document = await generateInvoiceDocumentArtifact(invoice.id, auth.tenant.id);
+  } catch (error) {
+    documentError = error instanceof Error ? error.message : "No se pudo generar el archivo Word";
+  }
   await recordAudit({
     context: auth,
     action: "invoice.create",
@@ -46,5 +59,15 @@ export async function POST(request: Request) {
     newValues: toAuditValue(invoice),
     request,
   });
-  return NextResponse.json({ invoice }, { status: 201 });
+  const documentSummary = document
+    ? {
+        pdfStatus: document.pdfStatus,
+        conversionMessage: document.conversionMessage,
+        templateVersion: document.templateVersion,
+      }
+    : null;
+  return NextResponse.json(
+    { invoice: { ...invoice, document: documentSummary }, documentError },
+    { status: 201 },
+  );
 }

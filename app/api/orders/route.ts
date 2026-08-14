@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { orderAddressHash, orderPublicToken, orderReference, orderTokenHash } from "@/lib/orders";
+import { orderAddressHash, orderPublicToken, orderReference, orderTokenHash } from "@/lib/order-security";
 import { loyaltyTokenHash } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";

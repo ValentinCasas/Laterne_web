@@ -33,7 +33,7 @@ export default async function AdminReservationsPage() {
     enabled: true,
     capacityPerSlot: 30,
     slotInterval: 30,
-    minimumLeadHours: 2,
+    minimumLeadMinutes: 120,
     maximumAdvanceDays: 60,
     maximumPartySize: 20,
     defaultDuration: 120,

@@ -175,11 +175,11 @@ export function RewardsManager({
         </div>
       </AdminPageHeader>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => (
-          <article className="card flex items-baseline justify-between gap-3 p-5" key={kpi.label}>
+          <article className="card flex min-w-0 flex-wrap items-baseline justify-between gap-3 p-5" key={kpi.label}>
             <span className="text-sm font-bold text-[var(--admin-muted)]">{kpi.label}</span>
-            <strong className={`text-3xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</strong>
+            <strong className={`shrink-0 text-3xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</strong>
           </article>
         ))}
       </div>

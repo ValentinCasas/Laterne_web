@@ -1,7 +1,8 @@
 import {
-  InvoiceManager,
-  type InvoiceSettingsData,
-} from "@/components/admin/invoice-manager";
+  InvoiceManagerV2,
+  type AvailableInvoiceOrder,
+  type InvoiceListItem,
+} from "@/components/admin/invoice-manager-v2";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -13,10 +14,14 @@ export default async function InvoicesPage() {
   const context = await requirePermission("order.manage");
   const activeId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
   const branchScope = activeId ? { branchId: activeId } : { branchId: { in: context.branches.map((branch) => branch.id) } };
-  const [invoices, orders, settings] = await Promise.all([
+  const [invoices, orders] = await Promise.all([
     prisma.invoiceRecord.findMany({
       where: { tenantId: context.tenant.id, ...branchScope },
-      include: { order: true, branch: true },
+      include: {
+        order: true,
+        branch: true,
+        document: { select: { pdfStatus: true, conversionMessage: true, templateVersion: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 300,
     }),
@@ -26,17 +31,11 @@ export default async function InvoicesPage() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    prisma.invoiceSettings.findUnique({ where: { tenantId: context.tenant.id } }),
   ]);
   return (
-    <InvoiceManager
-      initialInvoices={
-        serialize(invoices) as unknown as Parameters<typeof InvoiceManager>[0]["initialInvoices"]
-      }
-      availableOrders={
-        serialize(orders) as unknown as Parameters<typeof InvoiceManager>[0]["availableOrders"]
-      }
-      initialSettings={serialize(settings) as unknown as InvoiceSettingsData | null}
+    <InvoiceManagerV2
+      initialInvoices={serialize(invoices) as unknown as InvoiceListItem[]}
+      availableOrders={serialize(orders) as unknown as AvailableInvoiceOrder[]}
     />
   );
 }

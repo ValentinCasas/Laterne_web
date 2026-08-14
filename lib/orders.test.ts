@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { orderReference, orderStatusLabel, orderTokenHash, whatsappPhone } from "@/lib/orders";
+import { orderStatusLabel, whatsappPhone } from "@/lib/orders";
+import { orderReference, orderTokenHash } from "@/lib/order-security";
 
 describe("pedidos", () => {
   it("genera referencias legibles", () => {
