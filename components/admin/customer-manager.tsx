@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
 import { scopedFetch } from "@/lib/client-routing";
 import { orderStatusLabel } from "@/lib/orders";
 
@@ -49,6 +50,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
   const [customers, setCustomers] = useState(initialCustomers);
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
+  const [view, setView] = useViewMode("clientes-frecuentes");
 
   /** @summary Carga la ficha completa del cliente con sus pedidos y movimientos. */
   async function openDetail(customer: LoyaltyCustomerData) {
@@ -125,45 +127,84 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
         description="Perfiles consentidos, niveles, pedidos y movimientos de puntos."
         section="clientes-frecuentes"
       >
-        <input
-          className="input mt-5 max-w-md"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          type="search"
-          placeholder="Buscar nombre, email o teléfono"
-        />
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <input
+            className="input max-w-md flex-1"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            type="search"
+            placeholder="Buscar nombre, email o teléfono"
+          />
+          <ViewModeToggle value={view} onChange={setView} />
+        </div>
       </AdminPageHeader>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {visible.map((customer) => (
-          <article className="card p-5" key={customer.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-pink-300">
-                  Nivel {customer.tier}
-                </p>
-                <h2 className="mt-1 text-xl font-black">{customer.name}</h2>
-                <p className="text-sm text-zinc-500">{customer.email || customer.phone}</p>
+      {view === "cards" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((customer) => (
+            <article className="card p-5" key={customer.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider text-pink-300">
+                    Nivel {customer.tier}
+                  </p>
+                  <h2 className="mt-1 text-xl font-black">{customer.name}</h2>
+                  <p className="text-sm text-zinc-500">{customer.email || customer.phone}</p>
+                </div>
+                <strong className="text-3xl text-pink-300">{customer.points}</strong>
               </div>
-              <strong className="text-3xl text-pink-300">{customer.points}</strong>
-            </div>
-            <div className="mt-4 flex gap-3 text-xs text-zinc-500">
-              <span>{customer._count.orders} pedidos</span>
-              <span>{customer._count.transactions} movimientos</span>
-            </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <button className="btn btn-secondary w-full" onClick={() => void openDetail(customer)}>
-                Ver ficha 360
-              </button>
-              <button className="btn btn-secondary w-full" onClick={() => adjust(customer)}>
-                Ajustar puntos
-              </button>
-            </div>
-          </article>
-        ))}
-        {!visible.length && (
-          <p className="card p-10 text-center text-zinc-500">No hay clientes con esos datos.</p>
-        )}
-      </div>
+              <div className="mt-4 flex gap-3 text-xs text-zinc-500">
+                <span>{customer._count.orders} pedidos</span>
+                <span>{customer._count.transactions} movimientos</span>
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button className="btn btn-secondary w-full" onClick={() => void openDetail(customer)}>
+                  Ver ficha 360
+                </button>
+                <button className="btn btn-secondary w-full" onClick={() => adjust(customer)}>
+                  Ajustar puntos
+                </button>
+              </div>
+            </article>
+          ))}
+          {!visible.length && (
+            <p className="card p-10 text-center text-zinc-500">No hay clientes con esos datos.</p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[.02]">
+          <div className="hidden grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] gap-4 border-b border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-500 lg:grid">
+            <span>Cliente</span><span>Nivel</span><span>Puntos</span><span>Actividad</span><span /><span />
+          </div>
+          <div className="divide-y divide-white/10">
+            {visible.map((customer) => (
+              <div className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] lg:items-center" key={customer.id}>
+                <div className="min-w-0">
+                  <strong className="block truncate">{customer.name}</strong>
+                  <p className="truncate text-sm text-zinc-500">{customer.email || customer.phone}</p>
+                </div>
+                <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-black uppercase text-pink-300 w-fit">
+                  {customer.tier}
+                </span>
+                <strong className="text-lg text-pink-300 tabular-nums">{customer.points}</strong>
+                <span className="text-sm text-zinc-500">
+                  {customer._count.orders} pedidos · {customer._count.transactions} mov.
+                </span>
+                <div className="flex gap-2">
+                  <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => void openDetail(customer)} type="button">
+                    Ficha 360
+                  </button>
+                  <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => adjust(customer)} type="button">
+                    Ajustar puntos
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!visible.length && (
+              <p className="p-10 text-center text-zinc-500">No hay clientes con esos datos.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {detail && (
         <div

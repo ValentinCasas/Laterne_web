@@ -21,6 +21,7 @@ export default async function AdminKitchenPage() {
     include: {
       table: { select: { name: true, code: true } },
       items: true,
+      history: { orderBy: { createdAt: "asc" } },
     },
     orderBy: { createdAt: "asc" },
     take: 200,

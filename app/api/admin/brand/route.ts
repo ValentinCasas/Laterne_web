@@ -2,6 +2,7 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
@@ -16,13 +17,28 @@ const brandInput = z.object({
   primaryColor: color.optional(),
   secondaryColor: color.optional(),
   backgroundColor: color.optional(),
-  fontFamily: z.enum(["Inter", "system-ui", "Georgia", "Arial"]),
-  buttonStyle: z.enum(["rounded", "pill", "square"]),
-  cardStyle: z.enum(["soft", "bordered", "flat"]),
+  fontFamily: z.enum(["Inter", "system-ui", "Georgia", "Arial"]).optional(),
+  buttonStyle: z.enum(["rounded", "pill", "square"]).optional(),
+  cardStyle: z.enum(["soft", "bordered", "flat"]).optional(),
   adminTheme: z.enum(["menuclick-dark", "grafito", "medianoche", "alto-contraste"]).optional(),
   adminAccent: color.optional(),
   heroTitle: z.string().trim().max(220).optional(),
   heroSubtitle: z.string().trim().max(500).optional(),
+  landingSections: z
+    .object({
+      beerImages: z.array(z.string().trim().min(1).max(500)).max(40).default([]),
+      stories: z
+        .array(
+          z.object({
+            title: z.string().trim().max(120),
+            subtitle: z.string().trim().max(300),
+            image: z.string().trim().min(1).max(500),
+          }),
+        )
+        .max(40)
+        .default([]),
+    })
+    .optional(),
   tone: z.string().trim().max(120).optional(),
   instagram: z.string().trim().url().max(500).optional().or(z.literal("")),
   facebook: z.string().trim().url().max(500).optional().or(z.literal("")),
@@ -36,8 +52,8 @@ const brandInput = z.object({
   analyticsId: z.string().trim().max(100).optional(),
   metaPixelId: z.string().trim().max(100).optional(),
   searchConsoleId: z.string().trim().max(255).optional(),
-  defaultCurrency: z.enum(["ARS", "USD", "UYU", "BRL", "CLP", "EUR"]),
-  locale: z.enum(["es-AR", "es-UY", "es-CL", "en-US", "pt-BR"]),
+  defaultCurrency: z.enum(["ARS", "USD", "UYU", "BRL", "CLP", "EUR"]).optional(),
+  locale: z.enum(["es-AR", "es-UY", "es-CL", "en-US", "pt-BR"]).optional(),
   timeZone: z.enum([
     "America/Argentina/Buenos_Aires",
     "America/Montevideo",
@@ -45,7 +61,7 @@ const brandInput = z.object({
     "America/Sao_Paulo",
     "America/New_York",
     "Europe/Madrid",
-  ]),
+  ]).optional(),
 });
 
 /** @summary Valida una imagen de marca para impedir referencias a esquemas inseguros. */
@@ -63,57 +79,70 @@ export async function PATCH(request: Request) {
   if (!parsed.success)
     return NextResponse.json({ error: "Revisá colores, URLs y textos de marca" }, { status: 400 });
   try {
-    const current = await prisma.brandSettings.findUnique({ where: { tenantId: auth.tenant.id } });
-    const customDomain = parsed.data.customDomain?.toLocaleLowerCase("en") || null;
-    const domainConflict = customDomain
-      ? await prisma.brandSettings.findFirst({
-          where: { customDomain, tenantId: { not: auth.tenant.id } },
-          select: { id: true },
-        })
-      : null;
-    if (domainConflict) throw new Error("El dominio ya está asignado a otro negocio");
-    const data = {
-      logoUrl: brandAsset(parsed.data.logoUrl),
-      isotypeUrl: brandAsset(parsed.data.isotypeUrl),
-      faviconUrl: brandAsset(parsed.data.faviconUrl),
-      heroImageUrl: brandAsset(parsed.data.heroImageUrl),
-       primaryColor: parsed.data.primaryColor ?? current?.primaryColor ?? "#ec4899",
-       secondaryColor: parsed.data.secondaryColor ?? current?.secondaryColor ?? "#f5c542",
-       backgroundColor: parsed.data.backgroundColor ?? current?.backgroundColor ?? "#09090b",
-      fontFamily: parsed.data.fontFamily,
-      buttonStyle: parsed.data.buttonStyle,
-      cardStyle: parsed.data.cardStyle,
-       adminTheme: parsed.data.adminTheme ?? current?.adminTheme ?? "menuclick-dark",
-       adminAccent: parsed.data.adminAccent ?? current?.adminAccent ?? "#ec4899",
-      heroTitle: parsed.data.heroTitle || null,
-      heroSubtitle: parsed.data.heroSubtitle || null,
-      tone: parsed.data.tone || null,
-      socialLinks: { instagram: parsed.data.instagram || "", facebook: parsed.data.facebook || "" },
-      customDomain,
-      analyticsId: parsed.data.analyticsId || null,
-      metaPixelId: parsed.data.metaPixelId || null,
-      searchConsoleId: parsed.data.searchConsoleId || null,
-    };
-    const [brand] = await prisma.$transaction([
-      prisma.brandSettings.upsert({
-        where: { tenantId: auth.tenant.id },
-        create: { tenantId: auth.tenant.id, ...data },
-        update: data,
-      }),
-      prisma.tenant.update({
-        where: { id: auth.tenant.id },
-        data: {
-          defaultCurrency: parsed.data.defaultCurrency,
-          locale: parsed.data.locale,
-          timeZone: parsed.data.timeZone,
-        },
-      }),
+    const [current, currentTenant] = await Promise.all([
+      prisma.brandSettings.findUnique({ where: { tenantId: auth.tenant.id } }),
+      prisma.tenant.findUnique({ where: { id: auth.tenant.id } }),
     ]);
+    const p = parsed.data;
+    const customDomain =
+      p.customDomain === undefined ? undefined : (p.customDomain.toLocaleLowerCase("en") || null);
+    if (customDomain) {
+      const domainConflict = await prisma.brandSettings.findFirst({
+        where: { customDomain, tenantId: { not: auth.tenant.id } },
+        select: { id: true },
+      });
+      if (domainConflict) throw new Error("El dominio ya está asignado a otro negocio");
+    }
+
+    const data: Prisma.BrandSettingsUpdateInput = {};
+    if (p.logoUrl !== undefined) data.logoUrl = brandAsset(p.logoUrl);
+    if (p.isotypeUrl !== undefined) data.isotypeUrl = brandAsset(p.isotypeUrl);
+    if (p.faviconUrl !== undefined) data.faviconUrl = brandAsset(p.faviconUrl);
+    if (p.heroImageUrl !== undefined) data.heroImageUrl = brandAsset(p.heroImageUrl);
+    if (p.primaryColor !== undefined) data.primaryColor = p.primaryColor;
+    if (p.secondaryColor !== undefined) data.secondaryColor = p.secondaryColor;
+    if (p.backgroundColor !== undefined) data.backgroundColor = p.backgroundColor;
+    if (p.fontFamily !== undefined) data.fontFamily = p.fontFamily;
+    if (p.buttonStyle !== undefined) data.buttonStyle = p.buttonStyle;
+    if (p.cardStyle !== undefined) data.cardStyle = p.cardStyle;
+    if (p.adminTheme !== undefined) data.adminTheme = p.adminTheme;
+    if (p.adminAccent !== undefined) data.adminAccent = p.adminAccent;
+    if (p.heroTitle !== undefined) data.heroTitle = p.heroTitle || null;
+    if (p.heroSubtitle !== undefined) data.heroSubtitle = p.heroSubtitle || null;
+    if (p.landingSections !== undefined) data.landingSections = p.landingSections;
+    if (p.tone !== undefined) data.tone = p.tone || null;
+    if (p.instagram !== undefined || p.facebook !== undefined) {
+      data.socialLinks = {
+        instagram: p.instagram || "",
+        facebook: p.facebook || "",
+      };
+    }
+    if (customDomain !== undefined) data.customDomain = customDomain;
+    if (p.analyticsId !== undefined) data.analyticsId = p.analyticsId || null;
+    if (p.metaPixelId !== undefined) data.metaPixelId = p.metaPixelId || null;
+    if (p.searchConsoleId !== undefined) data.searchConsoleId = p.searchConsoleId || null;
+
+    const tenantData: Prisma.TenantUpdateInput = {};
+    if (p.defaultCurrency !== undefined) tenantData.defaultCurrency = p.defaultCurrency;
+    if (p.locale !== undefined) tenantData.locale = p.locale;
+    if (p.timeZone !== undefined) tenantData.timeZone = p.timeZone;
+
+    const brand = await prisma.$transaction(async (transaction) => {
+      const result = await transaction.brandSettings.upsert({
+        where: { tenantId: auth.tenant.id },
+        create: { tenantId: auth.tenant.id, ...data } as Prisma.BrandSettingsUncheckedCreateInput,
+        update: data,
+      });
+      if (Object.keys(tenantData).length > 0) {
+        await transaction.tenant.update({ where: { id: auth.tenant.id }, data: tenantData });
+      }
+      return result;
+    });
     const responseBrand = {
       ...serialize(brand),
-      defaultCurrency: parsed.data.defaultCurrency,
-      locale: parsed.data.locale,
-      timeZone: parsed.data.timeZone,
+      defaultCurrency: p.defaultCurrency ?? currentTenant?.defaultCurrency ?? "ARS",
+      locale: p.locale ?? currentTenant?.locale ?? "es-AR",
+      timeZone: p.timeZone ?? currentTenant?.timeZone ?? "America/Argentina/Buenos_Aires",
     };
     await recordAudit({
       context: auth,

@@ -86,6 +86,7 @@ const navigationGroups = [
         icon: "CF",
         permission: "customer.manage",
       },
+      { href: "/admin/fidelizacion", label: "Fidelización", icon: "FI", permission: "customer.manage" },
     ],
   },
   {

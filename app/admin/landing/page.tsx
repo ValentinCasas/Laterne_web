@@ -1,4 +1,4 @@
-import { LandingEditor, type LandingData } from "@/components/admin/landing-editor";
+import { LandingEditor, type LandingData, type LandingSections } from "@/components/admin/landing-editor";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -7,10 +7,35 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> { const context = await requirePermission("brand.manage"); return { title: `${context.tenant.name} | Landing` }; }
 
-/** @summary Carga la identidad y textos del inicio para editarlos con vista previa en vivo. */
+type LandingSectionsStored = {
+  beerImages?: unknown;
+  stories?: unknown;
+};
+
+/** @summary Carga la identidad, los textos y las secciones visuales del inicio para editarlas con preview en vivo. */
 export default async function LandingPage() {
   const context = await requirePermission("brand.manage");
-  const brand = await prisma.brandSettings.findUnique({ where: { tenantId: context.tenant.id } });
+  const [brand, eventCount, testimonialCount] = await Promise.all([
+    prisma.brandSettings.findUnique({ where: { tenantId: context.tenant.id } }),
+    prisma.event.count({
+      where: { tenantId: context.tenant.id, OR: [{ status: "published" }, { status: "scheduled" }] },
+    }),
+    prisma.testimonial.count({
+      where: { tenantId: context.tenant.id, state: true, moderationStatus: "approved" },
+    }),
+  ]);
+  const stored = (brand?.landingSections ?? {}) as LandingSectionsStored;
+  const initialSections: LandingSections = {
+    beerImages: Array.isArray(stored.beerImages)
+      ? stored.beerImages.filter((value): value is string => typeof value === "string")
+      : [],
+    stories: Array.isArray(stored.stories)
+      ? stored.stories.filter(
+          (value): value is { title: string; subtitle: string; image: string } =>
+            !!value && typeof value === "object",
+        )
+      : [],
+  };
   return (
     <LandingEditor
       initialBrand={
@@ -27,6 +52,9 @@ export default async function LandingPage() {
           branchName: context.branches[0]?.name ?? "",
         }) as unknown as LandingData
       }
+      initialSections={initialSections}
+      eventCount={eventCount}
+      testimonialCount={testimonialCount}
     />
   );
 }

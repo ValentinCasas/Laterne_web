@@ -58,7 +58,7 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
           })
         )?.id
     : branch.branchId;
-  const [business, events, hours, testimonials, avatarFiles, eventImageFiles, branchInfo] =
+  const [business, events, hours, testimonials, avatarFiles, eventImageFiles, branchInfo, brand] =
     await Promise.all([
       prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
       prisma.event.findMany({
@@ -89,9 +89,32 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
         where: { id: branch.branchId },
         select: { name: true, address: true, phone: true, latitude: true, longitude: true },
       }),
+      prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }),
     ]);
 
   const displayName = branch.inheritLanding ? tenant.name : (branchInfo?.name ?? tenant.name);
+  const landingSections =
+    brand?.landingSections &&
+    typeof brand.landingSections === "object" &&
+    !Array.isArray(brand.landingSections)
+      ? (brand.landingSections as {
+          heroImage?: unknown;
+          beerImages?: unknown;
+          stories?: unknown;
+        })
+      : {};
+  const sectionsBeerImages = Array.isArray(landingSections.beerImages)
+    ? landingSections.beerImages.filter(
+        (source): source is string => typeof source === "string" && !!source.trim(),
+      )
+    : [];
+  const sectionsStories = Array.isArray(landingSections.stories)
+    ? landingSections.stories.filter(
+        (slide): slide is { title: string; subtitle: string; image: string } =>
+          !!slide && typeof slide === "object",
+      )
+    : [];
+  const heroImage = brand?.heroImageUrl || "/images/banners/new_banner2_750.jpg";
   const ownLanding = !branch.inheritLanding && branch.branch.landingContent && typeof branch.branch.landingContent === "object" && !Array.isArray(branch.branch.landingContent)
     ? branch.branch.landingContent as { heroTitle?: unknown; heroSubtitle?: unknown }
     : null;
@@ -166,21 +189,38 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
     groupedHours.set(key, group);
   }
 
-  const stories = [
-    { title: "Bienvenidos", subtitle: displayName, image: "/images/banners/new_banner2_750.jpg" },
-    { title: "Hecho para disfrutar", subtitle: "Productos, eventos y comunidad.", image: "/images/banners/new_banner2_750.jpg" },
-  ];
-  const beers = [
-    "/images/products/cerveza-artesanal.jpg",
-    "/images/products/cerveza-lager.jpg",
-    "/images/products/cerveza-ipa.jpg",
-  ].filter((source) => source && /\/images\/products\/.+\.(?:jpe?g|png|webp|avif)$/i.test(source));
+  const stories =
+    sectionsStories.length > 0
+      ? sectionsStories.map((slide) => ({
+          title: typeof slide.title === "string" && slide.title.trim() ? slide.title : displayName,
+          subtitle:
+            typeof slide.subtitle === "string" && slide.subtitle.trim()
+              ? slide.subtitle
+              : "Hecho para disfrutar.",
+          image:
+            typeof slide.image === "string" && slide.image.trim()
+              ? slide.image
+              : "/images/banners/new_banner2_750.jpg",
+        }))
+      : [
+          { title: "Bienvenidos", subtitle: displayName, image: "/images/banners/new_banner2_750.jpg" },
+          { title: "Hecho para disfrutar", subtitle: "Productos, eventos y comunidad.", image: "/images/banners/new_banner2_750.jpg" },
+        ];
+  const beers = (
+    sectionsBeerImages.length > 0
+      ? sectionsBeerImages
+      : [
+          "/images/products/cerveza-artesanal.jpg",
+          "/images/products/cerveza-lager.jpg",
+          "/images/products/cerveza-ipa.jpg",
+        ]
+  ).filter((source) => source && /\/images\/.+\.(?:jpe?g|png|webp|avif)$/i.test(source));
 
   return (
     <main className="overflow-hidden">
       <section className="relative min-h-[calc(100vh-4rem)]">
         <Image
-          src="/images/banners/new_banner2_750.jpg"
+          src={heroImage}
           alt={`Productos de ${tenant.name}`}
           fill
           priority

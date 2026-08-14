@@ -24,10 +24,30 @@ type LoyaltyProfile = {
   }>;
 };
 
+type LoyaltyReward = {
+  id: number;
+  name: string;
+  pointsNeeded: number;
+  description: string | null;
+  benefitType: string;
+  value: string | null;
+  progress: number;
+  reached: boolean;
+};
+
+const rewardLabels: Record<string, string> = {
+  discount: "Descuento",
+  product: "Producto",
+  free: "Gratis",
+  other: "Beneficio",
+};
+
 /** @summary Presenta el registro, saldo, movimientos y control de privacidad del cliente frecuente. */
 export function LoyaltyPortal() {
   const [token, setToken] = useState("");
   const [profile, setProfile] = useState<LoyaltyProfile | null>(null);
+  const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
+  const [nextReward, setNextReward] = useState<LoyaltyReward | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [qr, setQr] = useState("");
@@ -35,9 +55,16 @@ export function LoyaltyPortal() {
   /** @summary Consulta el perfil utilizando exclusivamente el token privado guardado en el dispositivo. */
   async function loadProfile(accessToken: string) {
     const response = await scopedFetch("/api/loyalty", { headers: { Authorization: `Bearer ${accessToken}` } });
-    const result = (await response.json().catch(() => ({}))) as { customer?: LoyaltyProfile; error?: string };
+    const result = (await response.json().catch(() => ({}))) as {
+      customer?: LoyaltyProfile;
+      rewards?: LoyaltyReward[];
+      nextReward?: LoyaltyReward | null;
+      error?: string;
+    };
     if (!response.ok || !result.customer) throw new Error(result.error ?? "No se pudo abrir el perfil");
     setProfile(result.customer);
+    setRewards(result.rewards ?? []);
+    setNextReward(result.nextReward ?? null);
   }
 
   useEffect(() => {
@@ -144,6 +171,28 @@ export function LoyaltyPortal() {
           <p className="section-eyebrow">Nivel {profile.tier}</p>
           <strong className="mt-3 block text-6xl text-pink-300">{profile.points}</strong>
           <p className="text-sm text-zinc-500">puntos disponibles</p>
+          {nextReward && !nextReward.reached && (
+            <div className="mt-5 rounded-2xl bg-white/5 p-4 text-left">
+              <p className="text-xs font-black uppercase tracking-wider text-zinc-400">
+                A {nextReward.pointsNeeded - profile.points} puntos de tu próxima recompensa
+              </p>
+              <p className="mt-1 text-sm font-bold">{nextReward.name}</p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-pink-500 transition-all" style={{ width: `${nextReward.progress}%` }} />
+              </div>
+              <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums">
+                {profile.points} / {nextReward.pointsNeeded}
+              </p>
+            </div>
+          )}
+          {nextReward?.reached && (
+            <div className="mt-5 rounded-2xl bg-emerald-500/15 p-4 text-left">
+              <p className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                ¡Tenías una recompensa lista!
+              </p>
+              <p className="mt-1 text-sm font-bold">{nextReward.name}</p>
+            </div>
+          )}
           {qr && (
             <div className="relative mx-auto mt-5 aspect-square max-w-48 overflow-hidden rounded-2xl bg-white">
               <Image
@@ -162,6 +211,57 @@ export function LoyaltyPortal() {
           </button>
         </aside>
         <div className="space-y-6">
+          <section className="card p-6">
+            <h2 className="text-2xl font-black">Recompensas</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Mostrá tu QR cuando completes el pedido para canjear tu beneficio.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {rewards.map((reward) => (
+                <article
+                  className={`rounded-2xl border p-4 ${
+                    reward.reached ? "border-emerald-500/40 bg-emerald-500/10" : "border-white/10 bg-white/[.03]"
+                  }`}
+                  key={reward.id}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wider text-zinc-400">
+                        {rewardLabels[reward.benefitType] ?? reward.benefitType}
+                      </p>
+                      <h3 className="mt-1 font-black">{reward.name}</h3>
+                      {reward.description && (
+                        <p className="mt-0.5 text-xs text-zinc-500">{reward.description}</p>
+                      )}
+                    </div>
+                    {reward.value && (
+                      <span className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-xs font-black">
+                        {reward.value}
+                      </span>
+                    )}
+                  </div>
+                  {reward.reached ? (
+                    <p className="mt-3 text-sm font-black text-emerald-300">✓ Alcanzada</p>
+                  ) : (
+                    <>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-pink-500"
+                          style={{ width: `${reward.progress}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums">
+                        {profile.points} / {reward.pointsNeeded} pts
+                      </p>
+                    </>
+                  )}
+                </article>
+              ))}
+              {!rewards.length && (
+                <p className="text-sm text-zinc-500">El negocio todavía no publicó recompensas.</p>
+              )}
+            </div>
+          </section>
           <section className="card p-6">
             <h2 className="text-2xl font-black">Movimientos</h2>
             <div className="mt-4 space-y-2">

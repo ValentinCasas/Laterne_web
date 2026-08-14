@@ -46,10 +46,16 @@ export default async function InventoryPage() {
     prisma.stockMovement.findMany({
       where: movementWhere,
       include: {
-        stock: { include: { product: { select: { name: true } }, branch: { select: { name: true } } } },
+        stock: {
+          select: {
+            productId: true,
+            product: { select: { name: true } },
+            branch: { select: { name: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
-      take: 30,
+      take: 60,
     }),
   ]);
 

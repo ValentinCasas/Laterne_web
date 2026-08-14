@@ -25,34 +25,60 @@ function requestToken(request: Request) {
   return authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
 }
 
-/** @summary Devuelve un perfil frecuente, sus movimientos y pedidos sin revelar el token almacenado. */
+/** @summary Devuelve un perfil frecuente, sus movimientos, pedidos y las recompensas del negocio. */
 export async function GET(request: Request) {
   const token = requestToken(request);
   if (token.length < 20) return NextResponse.json({ error: "Acceso inválido" }, { status: 401 });
   const tenant = await getDefaultTenant();
-  const customer = await prisma.loyaltyCustomer.findFirst({
-    where: { tenantId: tenant.id, publicTokenHash: loyaltyTokenHash(token), deletedAt: null },
-    select: {
-      name: true,
-      email: true,
-      phone: true,
-      birthday: true,
-      points: true,
-      tier: true,
-      createdAt: true,
-      transactions: { orderBy: { createdAt: "desc" }, take: 30 },
-      orders: {
-        select: { reference: true, status: true, total: true, currency: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
-        take: 20,
+  const [customer, rewards] = await Promise.all([
+    prisma.loyaltyCustomer.findFirst({
+      where: { tenantId: tenant.id, publicTokenHash: loyaltyTokenHash(token), deletedAt: null },
+      select: {
+        name: true,
+        email: true,
+        phone: true,
+        birthday: true,
+        points: true,
+        tier: true,
+        createdAt: true,
+        transactions: { orderBy: { createdAt: "desc" }, take: 30 },
+        orders: {
+          select: { reference: true, status: true, total: true, currency: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        },
       },
-    },
-  });
+    }),
+    prisma.loyaltyReward.findMany({
+      where: { tenantId: tenant.id, active: true },
+      orderBy: [{ sortOrder: "asc" }, { pointsNeeded: "asc" }],
+    }),
+  ]);
   if (!customer) return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+  const serializedRewards = rewards.map((reward) => ({
+    id: reward.id,
+    name: reward.name,
+    pointsNeeded: reward.pointsNeeded,
+    description: reward.description,
+    benefitType: reward.benefitType,
+    value: reward.value,
+    progress: Math.min(100, Math.round((customer.points / reward.pointsNeeded) * 100)),
+    reached: customer.points >= reward.pointsNeeded,
+  }));
+  const nextReward = [...serializedRewards]
+    .sort((first, second) =>
+      first.reached === second.reached
+        ? first.pointsNeeded - second.pointsNeeded
+        : first.reached
+          ? 1
+          : -1,
+    )[0];
   return NextResponse.json({
     customer: JSON.parse(
       JSON.stringify(customer, (_key, value) => (typeof value === "bigint" ? value.toString() : value)),
     ),
+    rewards: serializedRewards,
+    nextReward: nextReward ?? null,
   });
 }
 

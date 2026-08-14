@@ -32,7 +32,7 @@ function price(option: ProductOption) {
   return Number(option.priceAdjustment ?? option.price ?? 0);
 }
 
-/** @summary Administra grupos y opciones en una estructura que coincide con la experiencia de compra pública. */
+/** @summary Administra grupos y opciones con un flujo guiado paso a paso para crear cada grupo. */
 export function ProductOptionsManager({
   products,
   initialVariants,
@@ -49,6 +49,15 @@ export function ProductOptionsManager({
   const [variants, setVariants] = useState(initialVariants);
   const [extras, setExtras] = useState(initialExtras);
   const [groups, setGroups] = useState(initialGroups);
+
+  const [step, setStep] = useState(1);
+  const [choiceMode, setChoiceMode] = useState<"single" | "multiple">("single");
+  const [groupName, setGroupName] = useState("");
+  const [required, setRequired] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedMin, setAdvancedMin] = useState("");
+  const [advancedMax, setAdvancedMax] = useState("");
+
   const selectedProduct = products.find((product) => product.id === productId);
   const options = (kind === "variant" ? variants : extras)
     .filter((option) => option.productId === productId)
@@ -57,25 +66,33 @@ export function ProductOptionsManager({
     .filter((group) => group.productId === productId && group.kind === kind)
     .sort((a, b) => a.sortOrder - b.sortOrder);
   const ungrouped = options.filter((option) => !option.groupId);
-  const optionCount = (kind === "variant" ? variants : extras).filter(
-    (option) => option.productId === productId,
-  ).length;
+  const optionCount = options.length;
+
+  function resetWizard() {
+    setStep(1);
+    setChoiceMode("single");
+    setGroupName("");
+    setRequired(false);
+    setShowAdvanced(false);
+    setAdvancedMin("");
+    setAdvancedMax("");
+  }
 
   const createGroup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const data = new FormData(formElement);
+    const computedMin = choiceMode === "single" ? (required ? 1 : 0) : required ? 1 : 0;
+    const computedMax = choiceMode === "single" ? 1 : Math.max(computedMin + 1, Number(advancedMax) || 3);
     const response = await scopedFetch("/api/admin/product-option-groups", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         productId,
         kind,
-        name: data.get("name"),
-        required: data.get("required") === "on",
-        minSelections: Number(data.get("minSelections")),
-        maxSelections: Number(data.get("maxSelections")),
-        sortOrder: Number(data.get("sortOrder")),
+        name: groupName,
+        required,
+        minSelections: Number(advancedMin) || computedMin,
+        maxSelections: Number(advancedMax) || computedMax,
+        sortOrder: visibleGroups.length,
       }),
     });
     const result = (await response.json().catch(() => ({}))) as { group?: OptionGroup; error?: string };
@@ -89,7 +106,16 @@ export function ProductOptionsManager({
       });
     }
     setGroups((current) => [...current, result.group!]);
-    formElement.reset();
+    resetWizard();
+    await Swal.fire({
+      title: "Grupo creado",
+      text: "Ahora agregá las opciones que lo componen.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
   };
 
   const createOption = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -248,6 +274,12 @@ export function ProductOptionsManager({
     options: options.filter((option) => option.groupId === group.id),
   }));
 
+  const steps = [
+    { n: 1, label: "Modo de elección" },
+    { n: 2, label: "Nombre" },
+    { n: 3, label: "Reglas" },
+  ];
+
   return (
     <section>
       <AdminPageHeader
@@ -305,31 +337,148 @@ export function ProductOptionsManager({
           <div className="grid gap-6 xl:grid-cols-[minmax(280px,.75fr)_minmax(0,1.5fr)]">
             <section className="space-y-6">
               <article className="card p-5">
-                <h2 className="text-xl font-black">Nuevo grupo</h2>
-                <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {kind === "variant" ? "Ej. Tamaño, presentación o combinación." : "Ej. Extras, ingredientes o preferencias."}
-                </p>
-                <form className="mt-5 space-y-4" onSubmit={createGroup}>
-                  <label>
-                    <span className="label">Nombre del grupo</span>
-                    <input className="input" name="name" required placeholder={kind === "variant" ? "Tamaño" : "Extras"} />
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label>
-                      <span className="label">Elegir mínimo</span>
-                      <input className="input" name="minSelections" type="number" min="0" defaultValue="0" />
-                    </label>
-                    <label>
-                      <span className="label">Elegir máximo</span>
-                      <input className="input" name="maxSelections" type="number" min="1" defaultValue="1" />
-                    </label>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-black">Nuevo grupo</h2>
+                  <div className="flex gap-1.5" aria-hidden>
+                    {steps.map((item) => (
+                      <span
+                        className={`h-1.5 w-6 rounded-full ${step >= item.n ? "bg-pink-500" : "bg-white/10"}`}
+                        key={item.n}
+                      />
+                    ))}
                   </div>
-                  <label className="flex items-center gap-3 rounded-xl border border-[var(--admin-border)] p-3 text-sm">
-                    <input name="required" type="checkbox" /> Elección obligatoria
-                  </label>
-                  <input name="sortOrder" type="hidden" value={visibleGroups.length} />
-                  <button className="btn w-full">Crear grupo</button>
-                </form>
+                </div>
+                <ol className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-black uppercase tracking-wider text-[var(--admin-muted)]">
+                  {steps.map((item) => (
+                    <li className={step >= item.n ? "text-pink-300" : ""} key={item.n}>
+                      {item.n}. {item.label}
+                    </li>
+                  ))}
+                </ol>
+
+                <div className="mt-5">
+                  {step === 1 && (
+                    <div className="grid gap-3">
+                      <p className="text-sm text-[var(--admin-muted)]">
+                        ¿Cómo elige el cliente dentro de este grupo?
+                      </p>
+                      {(
+                        [
+                          { mode: "single" as const, title: "Elegir una opción", hint: "Variantes: tamaños, presentaciones o combinaciones. El cliente elige una." },
+                          { mode: "multiple" as const, title: "Elegir varias", hint: "Agregados: extras o ingredientes. El cliente puede marcar varias." },
+                        ]
+                      ).map((option) => (
+                        <button
+                          className={`rounded-2xl border p-4 text-left transition ${
+                            choiceMode === option.mode
+                              ? "border-pink-500/60 bg-pink-500/10"
+                              : "border-white/10 bg-white/[.03] hover:border-white/25"
+                          }`}
+                          key={option.mode}
+                          onClick={() => setChoiceMode(option.mode)}
+                          type="button"
+                        >
+                          <strong>{option.title}</strong>
+                          <p className="mt-1 text-xs text-[var(--admin-muted)]">{option.hint}</p>
+                        </button>
+                      ))}
+                      <button className="btn mt-2 w-full" onClick={() => setStep(2)} type="button">
+                        Continuar
+                      </button>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-[var(--admin-muted)]">
+                        {choiceMode === "single"
+                          ? "Ej. Tamaño, presentación o combinación."
+                          : "Ej. Extras, ingredientes o preferencias."}
+                      </p>
+                      <label>
+                        <span className="label">Nombre del grupo</span>
+                        <input
+                          className="input"
+                          value={groupName}
+                          onChange={(event) => setGroupName(event.target.value)}
+                          placeholder={choiceMode === "single" ? "Tamaño" : "Extras"}
+                        />
+                      </label>
+                      <div className="flex gap-3">
+                        <button className="btn btn-secondary flex-1" onClick={() => setStep(1)} type="button">
+                          Atrás
+                        </button>
+                        <button
+                          className="btn flex-1"
+                          disabled={groupName.trim().length < 2}
+                          onClick={() => setStep(3)}
+                          type="button"
+                        >
+                          Continuar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 3 && (
+                    <form onSubmit={createGroup}>
+                      <div className="space-y-4">
+                        <p className="text-sm text-[var(--admin-muted)]">
+                          Configurando el grupo <strong className="text-white">{groupName}</strong>.
+                        </p>
+                        <label className="flex items-center gap-3 rounded-xl border border-[var(--admin-border)] p-3 text-sm">
+                          <input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} />{" "}
+                          {choiceMode === "single" ? "Elección obligatoria" : "Al menos una opción obligatoria"}
+                        </label>
+                        <button
+                          className="flex w-full items-center justify-between rounded-xl border border-[var(--admin-border)] p-3 text-sm font-bold"
+                          onClick={() => setShowAdvanced((current) => !current)}
+                          type="button"
+                        >
+                          <span>Configuración avanzada</span>
+                          <span className={showAdvanced ? "rotate-180" : ""}>▾</span>
+                        </button>
+                        {showAdvanced && (
+                          <div className="grid grid-cols-2 gap-3 rounded-xl bg-white/[.03] p-4">
+                            <label>
+                              <span className="label">Elegir mínimo</span>
+                              <input
+                                className="input"
+                                type="number"
+                                min="0"
+                                value={advancedMin}
+                                onChange={(event) => setAdvancedMin(event.target.value)}
+                                placeholder="0"
+                              />
+                            </label>
+                            <label>
+                              <span className="label">Elegir máximo</span>
+                              <input
+                                className="input"
+                                type="number"
+                                min="1"
+                                value={advancedMax}
+                                onChange={(event) => setAdvancedMax(event.target.value)}
+                                placeholder={choiceMode === "single" ? "1" : "3"}
+                              />
+                            </label>
+                            <p className="col-span-2 text-xs text-[var(--admin-muted)]">
+                              Si no definís límites, {choiceMode === "single" ? "se elige una sola opción" : "se podrán elegir varias (hasta 3)"}.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 flex gap-3">
+                        <button className="btn btn-secondary flex-1" onClick={() => setStep(2)} type="button">
+                          Atrás
+                        </button>
+                        <button className="btn flex-1" type="submit">
+                          Crear grupo
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </article>
 
               <article className="card p-5">

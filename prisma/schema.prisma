@@ -251,6 +251,7 @@ model Tenant {
   supportTickets        SupportTicket[]
   mediaAssets           MediaAsset[]
   loyaltyCustomers      LoyaltyCustomer[]
+  loyaltyRewards        LoyaltyReward[]
   successCases          SuccessCase[]
   branches              Branch[]
   inventoryStocks       InventoryStock[]
@@ -1024,6 +1025,7 @@ model BrandSettings {
   heroTitle       String?  @db.VarChar(220)
   heroSubtitle    String?  @db.VarChar(500)
   heroImageUrl    String?  @db.VarChar(500)
+  landingSections Json?
   tone            String?  @db.VarChar(120)
   socialLinks     Json?
   customDomain    String?  @db.VarChar(255)
@@ -1246,6 +1248,27 @@ model LoyaltyTransaction {
 
   @@index([customerId, createdAt])
   @@map("loyaltytransaction")
+}
+
+/**
+ * @summary Recompensas canjeables por puntos definidas por el negocio para su programa de fidelidad.
+ */
+model LoyaltyReward {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  name         String   @db.VarChar(140)
+  pointsNeeded Int
+  description  String?  @db.VarChar(500)
+  benefitType  String   @default("discount") @db.VarChar(30)
+  value        String?  @db.VarChar(120)
+  active       Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active, sortOrder])
+  @@map("loyaltyreward")
 }
 
 model SuccessCase {
@@ -1480,16 +1503,18 @@ model InvoiceRecord {
 }
 
 model InvoiceSettings {
-  id         Int      @id @default(autoincrement())
-  tenantId   Int      @unique
-  issuerName String?  @db.VarChar(180)
-  taxId      String?  @db.VarChar(40)
-  address    String?  @db.VarChar(300)
-  city       String?  @db.VarChar(120)
-  terms      String?  @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @unique
+  issuerName     String?  @db.VarChar(180)
+  taxId          String?  @db.VarChar(40)
+  address        String?  @db.VarChar(300)
+  city           String?  @db.VarChar(120)
+  terms          String?  @db.Text
+  templatePreset String   @default("classic") @db.VarChar(30)
+  design         Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("invoicesettings")
 }

@@ -181,6 +181,7 @@ export function ReservationBoard({
   const [view, setView] = useState<BoardView>("list");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [anchor, setAnchor] = useState(today);
+  const [dragId, setDragId] = useState<number | null>(null);
 
   const visibleReservations = useMemo(() => {
     const day = (reservation: ReservationItem) => dateText(reservation.reservationDate);
@@ -315,6 +316,104 @@ export function ReservationBoard({
     setSelected((current) =>
       current?.id === reservation.id ? { ...current, ...body.reservation } : current,
     );
+  }
+
+  /** @summary Persiste fecha y/o hora de una reserva tras un drag & drop o edición. */
+  async function moveReservation(
+    reservation: ReservationItem,
+    next: { reservationDate?: string; reservationTime?: string },
+  ) {
+    const confirmation = await Swal.fire({
+      title: "¿Mover la reserva?",
+      text: `${reservation.customerName} · ${reservation.reference} → ${
+        next.reservationDate ? `${next.reservationDate} ` : ""
+      }${next.reservationTime ? `a las ${next.reservationTime}` : "mismo horario"}`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Mover",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ec4899",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmation.isConfirmed) return;
+    const response = await scopedFetch(`/api/admin/reservations/${reservation.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    const body = (await response.json()) as { reservation?: ReservationItem; error?: string };
+    if (!response.ok || !body.reservation) {
+      await Swal.fire({
+        title: "No se pudo mover",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setReservations((current) =>
+      current.map((item) => (item.id === reservation.id ? { ...item, ...body.reservation } : item)),
+    );
+    setSelected((current) =>
+      current?.id === reservation.id ? { ...current, ...body.reservation } : current,
+    );
+    await Swal.fire({
+      title: "Reserva actualizada",
+      icon: "success",
+      timer: 1100,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
+
+  /** @summary Guarda los datos editables de una reserva desde el detalle. */
+  async function updateDetails(reservation: ReservationItem, next: {
+    reservationDate: string;
+    reservationTime: string;
+    partySize: number;
+    sector: string;
+    notes: string;
+  }) {
+    const response = await scopedFetch(`/api/admin/reservations/${reservation.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        reservationDate: next.reservationDate,
+        reservationTime: next.reservationTime,
+        partySize: next.partySize,
+        sector: next.sector.trim() || null,
+        notes: next.notes.trim() || null,
+      }),
+    });
+    const body = (await response.json()) as { reservation?: ReservationItem; error?: string };
+    if (!response.ok || !body.reservation) {
+      await Swal.fire({
+        title: "No se pudieron guardar los cambios",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return false;
+    }
+    setReservations((current) =>
+      current.map((item) => (item.id === reservation.id ? { ...item, ...body.reservation } : item)),
+    );
+    setSelected((current) =>
+      current?.id === reservation.id ? { ...current, ...body.reservation } : current,
+    );
+    await Swal.fire({
+      title: "Reserva actualizada",
+      icon: "success",
+      timer: 1100,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    return true;
   }
 
   /** @summary Guarda las reglas de disponibilidad utilizadas por el formulario público. */
@@ -586,13 +685,32 @@ export function ReservationBoard({
               items={reservationsByDay.get(anchor) ?? []}
               today={today}
               onSelect={setSelected}
+              onMove={moveReservation}
+              dragId={dragId}
+              setDragId={setDragId}
             />
           )}
           {calendarMode === "week" && (
-            <WeekCalendar dates={weekDates} byDay={reservationsByDay} today={today} onSelect={setSelected} />
+            <WeekCalendar
+              dates={weekDates}
+              byDay={reservationsByDay}
+              today={today}
+              onSelect={setSelected}
+              onMove={moveReservation}
+              dragId={dragId}
+              setDragId={setDragId}
+            />
           )}
           {calendarMode === "month" && (
-            <MonthCalendar cells={monthCells} byDay={reservationsByDay} today={today} onSelect={setSelected} />
+            <MonthCalendar
+              cells={monthCells}
+              byDay={reservationsByDay}
+              today={today}
+              onSelect={setSelected}
+              onMove={moveReservation}
+              dragId={dragId}
+              setDragId={setDragId}
+            />
           )}
         </div>
       ) : (
@@ -801,6 +919,12 @@ export function ReservationBoard({
                 </div>
               ))}
             </dl>
+            <ReservationEditForm
+              key={selected.id}
+              reservation={selected}
+              maximumPartySize={settings.maximumPartySize}
+              onSave={(next) => updateDetails(selected, next)}
+            />
             {selected.notes && (
               <p className="mt-4 whitespace-pre-wrap rounded-xl border border-white/10 p-4 text-sm text-zinc-400">
                 {selected.notes}
@@ -861,22 +985,105 @@ export function ReservationBoard({
   );
 }
 
-/** @summary Vista de día: línea de tiempo vertical con cada reserva a su horario. */
+/** @summary Formulario para ajustar fecha, hora, personas y sector de una reserva desde el detalle. */
+function ReservationEditForm({
+  reservation,
+  maximumPartySize,
+  onSave,
+}: {
+  reservation: ReservationItem;
+  maximumPartySize: number;
+  onSave: (next: {
+    reservationDate: string;
+    reservationTime: string;
+    partySize: number;
+    sector: string;
+    notes: string;
+  }) => Promise<boolean>;
+}) {
+  const [date, setDate] = useState(dateText(reservation.reservationDate));
+  const [time, setTime] = useState(hourText(reservation.reservationTime));
+  const [partySize, setPartySize] = useState(reservation.partySize);
+  const [sector, setSector] = useState(reservation.sector ?? "");
+  const [notes, setNotes] = useState(reservation.notes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    await onSave({ reservationDate: date, reservationTime: time, partySize, sector, notes });
+    setSaving(false);
+  }
+
+  return (
+    <form
+      className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-4"
+      onSubmit={submit}
+    >
+      <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Editar reserva</h3>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="text-sm font-bold">
+          Fecha
+          <input className="input mt-1" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+        </label>
+        <label className="text-sm font-bold">
+          Hora
+          <input className="input mt-1" type="time" value={time} onChange={(event) => setTime(event.target.value)} required />
+        </label>
+        <label className="text-sm font-bold">
+          Personas
+          <input
+            className="input mt-1"
+            type="number"
+            min={1}
+            max={maximumPartySize || 500}
+            value={partySize}
+            onChange={(event) => setPartySize(Number(event.target.value))}
+            required
+          />
+        </label>
+        <label className="text-sm font-bold">
+          Sector
+          <input className="input mt-1" value={sector} maxLength={100} onChange={(event) => setSector(event.target.value)} />
+        </label>
+        <label className="text-sm font-bold sm:col-span-2">
+          Notas
+          <textarea className="input mt-1 min-h-16" value={notes} maxLength={5000} onChange={(event) => setNotes(event.target.value)} />
+        </label>
+      </div>
+      <button className="btn mt-4" disabled={saving} type="submit">
+        {saving ? "Guardando…" : "Guardar cambios"}
+      </button>
+    </form>
+  );
+}
+
+/** @summary Vista de día: franjas horarias con cada reserva a su horario y movimiento por arrastre. */
 function DayCalendar({
   date,
   items,
   today,
   onSelect,
+  onMove,
+  dragId,
+  setDragId,
 }: {
   date: string;
   items: ReservationItem[];
   today: string;
   onSelect: (reservation: ReservationItem) => void;
+  onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  dragId: number | null;
+  setDragId: (value: number | null) => void;
 }) {
   const sorted = [...items].sort((first, second) =>
     hourText(first.reservationTime).localeCompare(hourText(second.reservationTime)),
   );
   const totalPeople = sorted.reduce((sum, item) => sum + item.partySize, 0);
+  const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+  const byHour = (reservation: ReservationItem) => hourText(reservation.reservationTime).slice(0, 2);
+  const dragged = items.find((item) => item.id === dragId) ?? null;
+
   return (
     <div className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -885,31 +1092,66 @@ function DayCalendar({
           {sorted.length} {sorted.length === 1 ? "reserva" : "reservas"} · {totalPeople} personas
         </span>
       </header>
+      {dragId !== null && (
+        <p className="mt-3 rounded-xl border border-pink-500/30 bg-pink-500/10 px-3 py-2 text-sm text-pink-200">
+          Arrastrá la reserva sobre la hora nueva para moverla.
+        </p>
+      )}
       <div className="mt-4 space-y-2">
-        {sorted.map((reservation) => (
-          <button
-            className="grid w-full items-center gap-4 rounded-2xl border border-white/10 bg-black p-4 text-left transition hover:border-pink-500/40 sm:grid-cols-[5.5rem_1fr_auto]"
-            key={reservation.id}
-            onClick={() => onSelect(reservation)}
-            type="button"
-          >
-            <span className="text-3xl font-black tabular-nums text-pink-300">
-              {hourText(reservation.reservationTime)}
-            </span>
-            <span className="min-w-0">
-              <span className="block font-black">{reservation.customerName}</span>
-              <span className="block text-sm text-zinc-400">
-                {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
-                {reservation.sector ? ` · ${reservation.sector}` : ""} · {reservation.reference}
-              </span>
-            </span>
-            <span
-              className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
+        {hours.map((hour) => {
+          const reservations = sorted.filter((item) => byHour(item) === hour);
+          return (
+            <div
+              className={`grid items-center gap-2 rounded-2xl border px-3 py-1.5 transition sm:grid-cols-[4rem_1fr] ${
+                dragId !== null ? "border-pink-500/20 bg-pink-500/[.03]" : "border-white/5"
+              }`}
+              key={hour}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (!dragged) return;
+                setDragId(null);
+                void onMove(dragged, { reservationDate: date, reservationTime: `${hour}:${hourText(dragged.reservationTime).slice(3, 5)}` });
+              }}
             >
-              {reservationStatusLabel(reservation.status)}
-            </span>
-          </button>
-        ))}
+              <span className="text-sm font-black tabular-nums text-zinc-500">{hour}:00</span>
+              <div className="space-y-1.5">
+                {reservations.map((reservation) => (
+                  <button
+                    className="grid w-full items-center gap-3 rounded-xl border border-white/10 bg-black p-2.5 text-left transition hover:border-pink-500/40 sm:grid-cols-[4.5rem_1fr_auto]"
+                    draggable
+                    key={reservation.id}
+                    onClick={() => onSelect(reservation)}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", String(reservation.id));
+                      setDragId(reservation.id);
+                    }}
+                    onDragEnd={() => setDragId(null)}
+                    type="button"
+                  >
+                    <span className="text-xl font-black tabular-nums text-pink-300">
+                      {hourText(reservation.reservationTime)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-black">{reservation.customerName}</span>
+                      <span className="block text-sm text-zinc-400">
+                        {reservation.partySize} {reservation.partySize === 1 ? "persona" : "personas"}
+                        {reservation.sector ? ` · ${reservation.sector}` : ""}
+                      </span>
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
+                    >
+                      {reservationStatusLabel(reservation.status)}
+                    </span>
+                  </button>
+                ))}
+                {!reservations.length && <p className="py-0.5 text-xs text-zinc-800">—</p>}
+              </div>
+            </div>
+          );
+        })}
         {!sorted.length && (
           <p className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-600">
             No hay reservas para este día.
@@ -926,12 +1168,19 @@ function WeekCalendar({
   byDay,
   today,
   onSelect,
+  onMove,
+  dragId,
+  setDragId,
 }: {
   dates: string[];
   byDay: Map<string, ReservationItem[]>;
   today: string;
   onSelect: (reservation: ReservationItem) => void;
+  onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  dragId: number | null;
+  setDragId: (value: number | null) => void;
 }) {
+  const dragged = [...byDay.values()].flat().find((item) => item.id === dragId) ?? null;
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
       {dates.map((date) => {
@@ -943,8 +1192,15 @@ function WeekCalendar({
           <section
             className={`min-w-0 rounded-2xl border p-3 ${
               isToday ? "border-pink-500/40 bg-pink-500/[.04]" : "border-white/10 bg-zinc-950/70"
-            }`}
+            } ${dragId !== null ? "ring-1 ring-pink-500/20" : ""}`}
             key={date}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (!dragged) return;
+              setDragId(null);
+              void onMove(dragged, { reservationDate: date });
+            }}
           >
             <header>
               <p className={`text-[10px] font-black uppercase ${isToday ? "text-pink-300" : "text-zinc-500"}`}>
@@ -958,8 +1214,15 @@ function WeekCalendar({
               {items.map((reservation) => (
                 <button
                   className="block w-full rounded-xl border border-white/10 bg-black p-2 text-left transition hover:border-pink-500/40"
+                  draggable
                   key={reservation.id}
                   onClick={() => onSelect(reservation)}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", String(reservation.id));
+                    setDragId(reservation.id);
+                  }}
+                  onDragEnd={() => setDragId(null)}
                   type="button"
                 >
                   <p className="text-xs font-black tabular-nums text-pink-300">
@@ -987,13 +1250,20 @@ function MonthCalendar({
   byDay,
   today,
   onSelect,
+  onMove,
+  dragId,
+  setDragId,
 }: {
   cells: string[];
   byDay: Map<string, ReservationItem[]>;
   today: string;
   onSelect: (reservation: ReservationItem) => void;
+  onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  dragId: number | null;
+  setDragId: (value: number | null) => void;
 }) {
   const anchorMonth = cells[10].slice(0, 7);
+  const dragged = [...byDay.values()].flat().find((item) => item.id === dragId) ?? null;
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/70">
       <div className="grid grid-cols-7 border-b border-white/10 text-center text-[10px] font-black uppercase tracking-wider text-zinc-500">
@@ -1012,8 +1282,17 @@ function MonthCalendar({
           const isToday = date === today;
           return (
             <div
-              className={`min-h-24 border-b border-r border-white/5 p-1.5 ${inMonth ? "" : "opacity-30"}`}
+              className={`min-h-24 border-b border-r border-white/5 p-1.5 ${inMonth ? "" : "opacity-30"} ${
+                dragId !== null ? "bg-pink-500/[.03]" : ""
+              }`}
               key={date}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (!dragged) return;
+                setDragId(null);
+                void onMove(dragged, { reservationDate: date });
+              }}
             >
               <div className="flex items-center justify-between">
                 <span
@@ -1031,8 +1310,15 @@ function MonthCalendar({
                 {items.slice(0, 3).map((reservation) => (
                   <button
                     className="block w-full truncate rounded-md bg-white/[.04] px-1.5 py-0.5 text-left text-[10px] font-bold hover:bg-white/10"
+                    draggable
                     key={reservation.id}
                     onClick={() => onSelect(reservation)}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", String(reservation.id));
+                      setDragId(reservation.id);
+                    }}
+                    onDragEnd={() => setDragId(null)}
                     type="button"
                     title={`${hourText(reservation.reservationTime)} · ${reservation.customerName} · ${reservation.partySize} personas`}
                   >

@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { stockMovementTypeLabels } from "@/lib/order-stock";
 import { scopedFetch } from "@/lib/client-routing";
+import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
 
 type Branch = { id: number; name: string; active: boolean };
 type Product = {
@@ -31,7 +32,7 @@ type Movement = {
   balanceAfter: string | number;
   reason: string;
   createdAt: string;
-  stock: { product: { name: string }; branch: { name: string } };
+  stock: { productId: number; product: { name: string }; branch: { name: string } };
 };
 
 type StockStatus = "all" | "normal" | "low" | "out";
@@ -50,7 +51,7 @@ const controlLabels: Record<ControlFilter, string> = {
   inactive: "Sin control",
 };
 
-/** @summary Presenta existencias por sucursal, alertas de mínimo y un historial de ajustes auditables. */
+/** @summary Presenta existencias por sucursal con vista lista/tarjetas, alertas y trazabilidad. */
 export function InventoryManager({
   branches,
   products,
@@ -73,8 +74,11 @@ export function InventoryManager({
   const [status, setStatus] = useState<StockStatus>("all");
   const [control, setControl] = useState<ControlFilter>("all");
   const [onlyLow, setOnlyLow] = useState(false);
+  const [view, setView] = useViewMode("inventario");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [movementsFor, setMovementsFor] = useState<Product | null>(null);
 
-  /** @summary Deriva el estado de stock de un producto en la sucursal elegida. */
   const stockState = useCallback(
     (product: Product): { stock: Stock | undefined; state: StockStatus } => {
       const stock = stocks.find((item) => item.branchId === branchId && item.productId === product.id);
@@ -114,7 +118,7 @@ export function InventoryManager({
       list.push(product);
       map.set(key, list);
     }
-    return [...map.entries()];
+    return [...map.entries()].sort((first, second) => first[0].localeCompare(second[0], "es"));
   }, [visible]);
 
   const stats = useMemo(() => {
@@ -130,9 +134,39 @@ export function InventoryManager({
     return { total: products.length, withControl, low, out };
   }, [products, stockState]);
 
+  /** @summary Aplica el filtro correspondiente al hacer click en un KPI superior. */
+  function applyKpi(kind: "total" | "withControl" | "low" | "out") {
+    setOnlyLow(false);
+    if (kind === "total") {
+      setStatus("all");
+      setControl("all");
+      return;
+    }
+    if (kind === "withControl") {
+      setStatus("all");
+      setControl("active");
+      return;
+    }
+    setControl("all");
+    setStatus(kind === "low" ? "low" : "out");
+  }
+
+  /** @summary Plegar o desplegar una categoría. */
+  function toggleGroup(name: string) {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  function setAllGroups(collapse: boolean) {
+    setCollapsed(collapse ? new Set(groups.map(([name]) => name)) : new Set());
+  }
+
   /** @summary Guarda el nivel indicado y solicita un motivo para conservar trazabilidad del ajuste. */
-  async function save(product: Product, form: HTMLFormElement) {
-    const data = new FormData(form);
+  async function save(product: Product, values: { tracked: boolean; current: string; minimum: string; unit: string }) {
     const reason = await Swal.fire({
       title: "Motivo del ajuste",
       input: "text",
@@ -151,10 +185,10 @@ export function InventoryManager({
       body: JSON.stringify({
         branchId,
         productId: product.id,
-        tracked: data.get("tracked") === "on",
-        current: data.get("current"),
-        minimum: data.get("minimum"),
-        unit: data.get("unit"),
+        tracked: values.tracked,
+        current: values.current,
+        minimum: values.minimum,
+        unit: values.unit,
         reason: reason.value,
       }),
     });
@@ -170,6 +204,7 @@ export function InventoryManager({
       return;
     }
     setStocks((current) => [...current.filter((item) => item.id !== body.stock!.id), body.stock!]);
+    setEditingId(null);
     await Swal.fire({
       title: "Inventario actualizado",
       icon: "success",
@@ -189,6 +224,16 @@ export function InventoryManager({
           ? "bg-red-500/15 text-red-300"
           : "bg-white/10 text-[var(--admin-muted)]";
 
+  const productMovements = (product: Product) =>
+    movements.filter((movement) => movement.stock.productId === product.id);
+
+  const kpis: Array<{ kind: "total" | "withControl" | "low" | "out"; label: string; value: number; color: string }> = [
+    { kind: "total", label: "Productos", value: stats.total, color: "text-zinc-100" },
+    { kind: "withControl", label: "Con control", value: stats.withControl, color: "text-sky-300" },
+    { kind: "low", label: "Bajo mínimo", value: stats.low, color: "text-amber-300" },
+    { kind: "out", label: "Sin stock", value: stats.out, color: "text-red-300" },
+  ];
+
   return (
     <section>
       <AdminPageHeader
@@ -197,20 +242,21 @@ export function InventoryManager({
         description="Activá el control solo en los productos que realmente quieras descontar con cada pedido."
         section="inventario"
       />
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Productos", String(stats.total), "text-zinc-100"],
-          ["Con control de stock", String(stats.withControl), "text-sky-300"],
-          ["Bajo mínimo", String(stats.low), "text-amber-300"],
-          ["Sin stock", String(stats.out), "text-red-300"],
-        ].map(([label, value, color]) => (
-          <article className="card flex items-baseline justify-between gap-3 p-5" key={label}>
-            <p className="text-sm font-bold text-[var(--admin-muted)]">{label}</p>
-            <strong className={`text-3xl font-black tabular-nums ${color}`}>{value}</strong>
-          </article>
+      <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {kpis.map((kpi) => (
+          <button
+            className="card flex items-baseline justify-between gap-3 p-5 text-left transition hover:border-pink-500/40"
+            key={kpi.kind}
+            onClick={() => applyKpi(kpi.kind)}
+            type="button"
+            title="Aplicar filtro"
+          >
+            <span className="text-sm font-bold text-[var(--admin-muted)]">{kpi.label}</span>
+            <span className={`text-3xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</span>
+          </button>
         ))}
       </div>
-      <div className="card mt-4 grid gap-3 p-4 lg:grid-cols-[200px_minmax(240px,1fr)_auto_auto]">
+      <div className="card mt-4 grid gap-3 p-4 lg:grid-cols-[200px_minmax(240px,1fr)_auto]">
         <select
           className="input"
           value={branchId}
@@ -231,25 +277,28 @@ export function InventoryManager({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar producto…"
         />
-        <select
-          className="input"
-          value={categoryId}
-          onChange={(event) =>
-            setCategoryId(event.target.value === "all" ? "all" : Number(event.target.value))
-          }
-          aria-label="Filtrar por categoría"
-        >
-          <option value="all">Todas las categorías</option>
-          {categories.map((category) => (
-            <option value={category.id} key={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold">
-          <input type="checkbox" checked={onlyLow} onChange={(event) => setOnlyLow(event.target.checked)} />{" "}
-          Solo alertas
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="input flex-1"
+            value={categoryId}
+            onChange={(event) =>
+              setCategoryId(event.target.value === "all" ? "all" : Number(event.target.value))
+            }
+            aria-label="Filtrar por categoría"
+          >
+            <option value="all">Todas las categorías</option>
+            {categories.map((category) => (
+              <option value={category.id} key={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-bold">
+            <input type="checkbox" checked={onlyLow} onChange={(event) => setOnlyLow(event.target.checked)} />{" "}
+            Solo alertas
+          </label>
+          <ViewModeToggle value={view} onChange={setView} />
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {(["all", "normal", "low", "out"] as const).map((option) => (
@@ -282,90 +331,246 @@ export function InventoryManager({
           </button>
         ))}
       </div>
-      <div className="mt-5 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]">
-        <div className="hidden grid-cols-[minmax(220px,1.6fr)_120px_120px_130px_130px_120px_100px] gap-4 border-b border-[var(--admin-border)] px-5 py-3 text-xs font-black uppercase tracking-wider text-[var(--admin-muted)] lg:grid">
-          <span>Producto</span><span>Actual</span><span>Mínimo</span><span>Unidad</span><span>Control</span><span>Estado</span><span />
+
+      {groups.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <button className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:border-pink-500/40" onClick={() => setAllGroups(false)} type="button">
+            Expandir todas
+          </button>
+          <button className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:border-pink-500/40" onClick={() => setAllGroups(true)} type="button">
+            Contraer todas
+          </button>
         </div>
-        <div className="divide-y divide-white/10">
-          {groups.map(([groupName, groupProducts]) => (
-            <section key={groupName}>
-              <h3 className="sticky top-0 z-10 flex items-center gap-2 bg-[var(--admin-surface)] px-5 py-2 text-xs font-black uppercase tracking-wider text-[var(--admin-muted)]">
-                <span>{groupName}</span>
-                <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] tabular-nums">
+      )}
+
+      <div className="mt-4 space-y-3">
+        {groups.map(([groupName, groupProducts]) => {
+          const isCollapsed = collapsed.has(groupName);
+          return (
+            <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]" key={groupName}>
+              <button
+                className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left"
+                onClick={() => toggleGroup(groupName)}
+                type="button"
+              >
+                <span className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-[var(--admin-muted)]">
+                  <span className={`inline-block transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>▾</span>
+                  {groupName}
+                </span>
+                <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] tabular-nums text-zinc-400">
                   {groupProducts.length}
                 </span>
-              </h3>
-              <div className="divide-y divide-white/10">
-                {groupProducts.map((product) => {
-                  const { stock, state } = stockState(product);
-                  const label = !stock?.tracked
-                    ? "Control desactivado"
-                    : state === "out"
-                      ? "Sin stock"
-                      : state === "low"
-                        ? "Bajo stock"
-                        : "Normal";
-                  return (
-                    <form
-                      key={`${branchId}-${product.id}`}
-                      className={`grid gap-3 px-5 py-4 lg:grid-cols-[minmax(220px,1.6fr)_120px_120px_130px_130px_120px_100px] lg:items-center ${state === "low" ? "bg-amber-500/[.06]" : ""} ${state === "out" ? "bg-red-500/[.05]" : ""}`}
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void save(product, event.currentTarget);
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <strong className="block truncate">{product.name}</strong>
-                          {product.categories.length > 1 && (
-                            <p className="mt-0.5 truncate text-xs text-zinc-600">
-                              {product.categories.map((entry) => entry.category.name).join(" · ")}
-                            </p>
+              </button>
+              {!isCollapsed && (
+                view === "list" ? (
+                  <div className="divide-y divide-white/10">
+                    {groupProducts.map((product) => {
+                      const { stock, state } = stockState(product);
+                      const label = !stock?.tracked
+                        ? "Sin control"
+                        : state === "out"
+                          ? "Sin stock"
+                          : state === "low"
+                            ? "Bajo mínimo"
+                            : "Normal";
+                      const editing = editingId === product.id;
+                      return (
+                        <div
+                          className={`px-5 py-3 ${state === "low" ? "bg-amber-500/[.06]" : ""} ${state === "out" ? "bg-red-500/[.05]" : ""}`}
+                          key={`${branchId}-${product.id}`}
+                        >
+                          {editing ? (
+                            <ProductEditRow
+                              product={product}
+                              stock={stock}
+                              onCancel={() => setEditingId(null)}
+                              onSave={(values) => void save(product, values)}
+                            />
+                          ) : (
+                            <div className="grid items-center gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
+                              <div className="min-w-0">
+                                <strong className="block truncate">{product.name}</strong>
+                                {product.categories.length > 1 && (
+                                  <p className="mt-0.5 truncate text-xs text-zinc-600">
+                                    {product.categories.map((entry) => entry.category.name).join(" · ")}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm tabular-nums">
+                                <span className="text-zinc-400">Stock <strong className="text-white">{Number(stock?.current ?? 0)}</strong></span>
+                                <span className="text-zinc-500">Mín <strong className="text-zinc-300">{Number(stock?.minimum ?? 0)}</strong></span>
+                              </div>
+                              <span className="text-xs text-zinc-500">{stock?.unit ?? "unidad"}</span>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusColor(stock?.tracked ? state : "all")}`}>{label}</span>
+                              <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => setMovementsFor(product)} type="button">
+                                Ver movimientos
+                              </button>
+                              <div className="flex gap-1.5">
+                                <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-pink-500/20" onClick={() => setEditingId(product.id)} type="button">
+                                  Ajustar
+                                </button>
+                                <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+                                  <input type="checkbox" checked={stock?.tracked ?? false} onChange={(event) => void save(product, { tracked: event.target.checked, current: String(stock?.current ?? 0), minimum: String(stock?.minimum ?? 0), unit: stock?.unit ?? "unidad" })} />
+                                  Auto
+                                </label>
+                              </div>
+                            </div>
                           )}
                         </div>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black lg:hidden ${statusColor(stock?.tracked ? state : "all")}`}>{label}</span>
-                      </div>
-                      <label className="text-xs text-zinc-500"><span className="lg:hidden">Actual</span><input className="input mt-1 py-2" name="current" type="number" min="0" step="0.001" defaultValue={Number(stock?.current ?? 0)} /></label>
-                      <label className="text-xs text-zinc-500"><span className="lg:hidden">Mínimo</span><input className="input mt-1 py-2" name="minimum" type="number" min="0" step="0.001" defaultValue={Number(stock?.minimum ?? 0)} /></label>
-                      <label className="text-xs text-zinc-500"><span className="lg:hidden">Unidad</span><input className="input mt-1 py-2" name="unit" defaultValue={stock?.unit ?? "unidad"} /></label>
-                      <label className="flex items-center gap-2 text-sm lg:justify-center"><input name="tracked" type="checkbox" defaultChecked={stock?.tracked ?? false} /><span>Automático</span></label>
-                      <span className={`hidden rounded-full px-2 py-1 text-center text-xs font-black lg:block ${statusColor(stock?.tracked ? state : "all")}`}>{label}</span>
-                      <button className="btn py-2 text-sm">Guardar</button>
-                    </form>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {groupProducts.map((product) => {
+                      const { stock, state } = stockState(product);
+                      const label = !stock?.tracked
+                        ? "Sin control"
+                        : state === "out"
+                          ? "Sin stock"
+                          : state === "low"
+                            ? "Bajo mínimo"
+                            : "Normal";
+                      return (
+                        <article className={`rounded-2xl border p-4 ${state === "low" ? "border-amber-500/30 bg-amber-500/[.06]" : state === "out" ? "border-red-500/30 bg-red-500/[.05]" : "border-white/10 bg-white/[.02]"}`} key={product.id}>
+                          <h3 className="truncate font-black">{product.name}</h3>
+                          <p className="mt-0.5 truncate text-xs text-zinc-500">
+                            {product.categories[0]?.category.name ?? "Sin categoría"}
+                          </p>
+                          <dl className="mt-4 grid grid-cols-3 gap-2">
+                            <div>
+                              <dt className="text-[10px] uppercase text-zinc-600">Stock</dt>
+                              <dd className="text-lg font-black tabular-nums">{Number(stock?.current ?? 0)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-[10px] uppercase text-zinc-600">Mínimo</dt>
+                              <dd className="text-lg font-black tabular-nums">{Number(stock?.minimum ?? 0)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-[10px] uppercase text-zinc-600">Unidad</dt>
+                              <dd className="truncate text-lg font-black">{stock?.unit ?? "unidad"}</dd>
+                            </div>
+                          </dl>
+                          <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-black ${statusColor(stock?.tracked ? state : "all")}`}>{label}</span>
+                          <div className="mt-4 flex gap-2">
+                            <button className="btn btn-secondary flex-1 py-2 text-xs" onClick={() => setEditingId(product.id)} type="button">
+                              Ajustar
+                            </button>
+                            <button className="btn btn-secondary flex-1 py-2 text-xs" onClick={() => setMovementsFor(product)} type="button">
+                              Movimientos
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )
+              )}
             </section>
-          ))}
-        </div>
+          );
+        })}
         {!visible.length && (
-          <p className="p-8 text-center text-sm text-zinc-500">No hay productos que coincidan con estos filtros.</p>
+          <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-zinc-500">
+            No hay productos que coincidan con estos filtros.
+          </p>
         )}
       </div>
-      <section className="card mt-8 p-5">
-        <h2 className="text-xl font-black">Últimos movimientos</h2>
-        <div className="mt-4 max-h-96 space-y-2 overflow-y-auto">
-          {movements.map((movement) => (
-            <article
-              key={movement.id}
-              className="grid gap-1 rounded-xl bg-white/[.03] p-3 sm:grid-cols-[1fr_auto]"
-            >
+
+      {movementsFor && (
+        <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4" onClick={() => setMovementsFor(null)}>
+          <article className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950 p-6" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <strong>{movement.stock.product.name}</strong>
-                <p className="text-sm text-zinc-500">
-                  {stockMovementTypeLabels[movement.type] ?? "Movimiento"} · {movement.stock.branch.name}
-                </p>
-                <p className="text-xs text-zinc-600">{movement.reason}</p>
+                <p className="section-eyebrow">Historial de stock</p>
+                <h2 className="mt-1 text-2xl font-black">{movementsFor.name}</h2>
               </div>
-              <p className="text-sm font-bold">
-                {Number(movement.quantity) > 0 ? "+" : ""}
-                {Number(movement.quantity)} → {Number(movement.balanceAfter)}
-              </p>
-            </article>
-          ))}
-          {!movements.length && <p className="text-sm text-zinc-500">Todavía no hay ajustes registrados.</p>}
+              <button className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl" onClick={() => setMovementsFor(null)} type="button" aria-label="Cerrar">
+                ×
+              </button>
+            </div>
+            <div className="mt-5 max-h-[60vh] space-y-2 overflow-y-auto">
+              {productMovements(movementsFor).map((movement) => (
+                <article className="rounded-xl bg-white/[.03] p-3" key={movement.id}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold">
+                      {stockMovementTypeLabels[movement.type] ?? "Movimiento"}
+                    </p>
+                    <p className={`text-sm font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                      {Number(movement.quantity) > 0 ? "+" : ""}
+                      {Number(movement.quantity)}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {new Date(movement.createdAt).toLocaleString("es-AR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">{movement.reason}</p>
+                  <p className="mt-1 text-xs text-zinc-600">Stock final: {Number(movement.balanceAfter)}</p>
+                </article>
+              ))}
+              {!productMovements(movementsFor).length && (
+                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-500">
+                  Este producto todavía no tiene movimientos registrados.
+                </p>
+              )}
+            </div>
+          </article>
         </div>
-      </section>
+      )}
     </section>
+  );
+}
+
+/** @summary Fila de edición inline para ajustar existencias sin que la tabla parezca una planilla. */
+function ProductEditRow({
+  product,
+  stock,
+  onCancel,
+  onSave,
+}: {
+  product: Product;
+  stock: Stock | undefined;
+  onCancel: () => void;
+  onSave: (values: { tracked: boolean; current: string; minimum: string; unit: string }) => void;
+}) {
+  const [current, setCurrent] = useState(String(stock?.current ?? 0));
+  const [minimum, setMinimum] = useState(String(stock?.minimum ?? 0));
+  const [unit, setUnit] = useState(stock?.unit ?? "unidad");
+  const [tracked, setTracked] = useState(stock?.tracked ?? false);
+  return (
+    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_110px_110px_120px_auto_auto] md:items-center">
+      <div className="min-w-0">
+        <strong className="block truncate">{product.name}</strong>
+        <p className="text-xs text-zinc-600">Ajustando existencias</p>
+      </div>
+      <label className="text-xs font-bold text-zinc-400">
+        Actual
+        <input className="input mt-1 py-2" type="number" min="0" step="0.001" value={current} onChange={(event) => setCurrent(event.target.value)} />
+      </label>
+      <label className="text-xs font-bold text-zinc-400">
+        Mínimo
+        <input className="input mt-1 py-2" type="number" min="0" step="0.001" value={minimum} onChange={(event) => setMinimum(event.target.value)} />
+      </label>
+      <label className="text-xs font-bold text-zinc-400">
+        Unidad
+        <input className="input mt-1 py-2" value={unit} onChange={(event) => setUnit(event.target.value)} />
+      </label>
+      <label className="flex items-center gap-2 text-xs font-bold text-zinc-400">
+        <input type="checkbox" checked={tracked} onChange={(event) => setTracked(event.target.checked)} /> Control automático
+      </label>
+      <div className="flex gap-2">
+        <button className="btn py-2 text-sm" onClick={() => onSave({ tracked, current, minimum, unit })} type="button">
+          Guardar
+        </button>
+        <button className="btn btn-secondary py-2 text-sm" onClick={onCancel} type="button">
+          Cancelar
+        </button>
+      </div>
+    </div>
   );
 }

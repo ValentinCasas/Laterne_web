@@ -279,14 +279,14 @@ export function TableManager({
           placeholder="Buscar mesa o sector"
         />
       </label>
-      <div className="qr-print-grid grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="qr-print-grid grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {visibleTables.map((table) => (
           <article
-            className="qr-print-card overflow-hidden rounded-3xl border border-white/10 bg-zinc-950"
+            className="qr-print-card min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950"
             key={table.id}
           >
-            <div className="grid grid-cols-[140px_1fr] gap-4 p-4">
-              <div className="relative aspect-square overflow-hidden rounded-2xl bg-white p-2">
+            <div className="grid min-w-0 grid-cols-[120px_1fr] gap-4 p-4 sm:grid-cols-[140px_1fr]">
+              <div className="relative aspect-square w-full max-w-[140px] justify-self-center overflow-hidden rounded-2xl bg-white p-2">
                 {qrCodes[table.code] ? (
                   <Image
                     src={qrCodes[table.code]}
@@ -296,13 +296,15 @@ export function TableManager({
                     className="object-contain p-2"
                   />
                 ) : (
-                  <span className="grid h-full place-items-center text-xs text-black">Generando…</span>
+                  <span className="grid h-full place-items-center text-center text-xs text-black">
+                    Generando…
+                  </span>
                 )}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-widest text-pink-300">Código de mesa</p>
-                <h2 className="mt-1 text-2xl font-black">{table.name}</h2>
-                <p className="text-sm text-zinc-400">
+                <h2 className="mt-1 truncate text-2xl font-black">{table.name}</h2>
+                <p className="mt-1 break-words text-sm text-zinc-400">
                   {table.sector || "Sin sector"} · {table.capacity} personas
                 </p>
                 <p className={`mt-2 text-xs font-bold ${table.active ? "text-emerald-300" : "text-red-300"}`}>
@@ -319,28 +321,95 @@ export function TableManager({
             <p className="qr-instruction border-y border-white/10 px-4 py-3 text-center text-sm font-bold">
               Escaneá para ver la carta y pedir
             </p>
-            <footer className="flex gap-2 p-3 print:hidden">
-              <button className="btn btn-secondary flex-1" onClick={() => download(table)} type="button">
-                Descargar QR
-              </button>
-              <button className="btn btn-secondary" onClick={() => void rotateCode(table)} type="button">
-                Regenerar
-              </button>
-              <button className="btn btn-secondary" onClick={() => setEditing(table)} type="button">
-                Editar
-              </button>
-              <button
-                className="rounded-xl border border-red-500/20 px-3 text-red-300 hover:bg-red-500/10"
-                onClick={() => remove(table)}
-                type="button"
-                aria-label={`Eliminar ${table.name}`}
-              >
-                ×
-              </button>
-            </footer>
+            <TableActions
+              table={table}
+              onDownload={() => download(table)}
+              onRegenerate={() => void rotateCode(table)}
+              onEdit={() => setEditing(table)}
+              onRemove={() => remove(table)}
+            />
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+/** @summary Acciones de una mesa: botones en escritorio y menú ⋯ compacto en móvil. */
+function TableActions({
+  table,
+  onDownload,
+  onRegenerate,
+  onEdit,
+  onRemove,
+}: {
+  table: DiningTableData;
+  onDownload: () => void;
+  onRegenerate: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const actions = [
+    { label: "Descargar QR", action: onDownload },
+    { label: "Regenerar", action: onRegenerate, warn: true },
+    { label: "Editar", action: onEdit },
+    { label: "Imprimir", action: () => window.print() },
+    { label: "Eliminar", action: onRemove, danger: true },
+  ];
+  return (
+    <>
+      <footer className="hidden flex-wrap gap-2 p-3 sm:flex print:hidden">
+        <button className="btn btn-secondary flex-1 px-2 text-xs" onClick={onDownload} type="button">
+          Descargar QR
+        </button>
+        <button className="btn btn-secondary px-2 text-xs" onClick={onRegenerate} type="button">
+          Regenerar
+        </button>
+        <button className="btn btn-secondary px-2 text-xs" onClick={onEdit} type="button">
+          Editar
+        </button>
+        <button className="btn btn-secondary px-2 text-xs" onClick={() => window.print()} type="button">
+          Imprimir
+        </button>
+        <button
+          className="rounded-xl border border-red-500/20 px-2 text-sm text-red-300 hover:bg-red-500/10"
+          onClick={onRemove}
+          type="button"
+          aria-label={`Eliminar ${table.name}`}
+        >
+          ×
+        </button>
+      </footer>
+      <div className="relative p-3 sm:hidden print:hidden">
+        <button
+          className="btn w-full"
+          onClick={() => setOpen((current) => !current)}
+          type="button"
+          aria-expanded={open}
+        >
+          Acciones ⋯
+        </button>
+        {open && (
+          <div className="absolute inset-x-3 bottom-full z-30 mb-2 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl">
+            {actions.map((action) => (
+              <button
+                className={`block w-full border-b border-white/5 px-4 py-3 text-left text-sm font-bold transition last:border-0 ${
+                  action.danger ? "text-red-300" : action.warn ? "text-amber-300" : "text-zinc-200 hover:bg-white/5"
+                }`}
+                key={action.label}
+                onClick={() => {
+                  setOpen(false);
+                  action.action();
+                }}
+                type="button"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

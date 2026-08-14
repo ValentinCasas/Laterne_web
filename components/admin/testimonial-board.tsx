@@ -56,6 +56,14 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
   const [dropTarget, setDropTarget] = useState<ModerationStatus | null>(null);
   const [activeColumn, setActiveColumn] = useState<ModerationStatus>("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [query, setQuery] = useState("");
+
+  /** @summary Devuelve una opinión si coincide con el texto buscado, el identificador o su fecha. */
+  function matches(item: TestimonialItem, normalized: string) {
+    if (!normalized) return true;
+    if (String(item.id).includes(normalized)) return true;
+    return item.description.toLocaleLowerCase("es").includes(normalized);
+  }
 
   /** @summary Guarda en el servidor el nuevo estado de moderación de una opinión. */
   async function move(item: TestimonialItem, status: ModerationStatus) {
@@ -165,12 +173,26 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
         section="testimonios"
       />
 
+      <div className="mt-6 max-w-md">
+        <span className="sr-only">Buscar testimonio</span>
+        <input
+          className="input"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar testimonio…"
+        />
+      </div>
+
        <div className="mt-6 flex gap-2 overflow-x-auto border-b border-[var(--admin-border)] pb-2 lg:hidden" role="tablist" aria-label="Moderación de testimonios">
          {columns.map((column) => <button className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-black ${activeColumn === column.status ? "bg-[var(--admin-primary-strong)] text-white" : "bg-white/5 text-[var(--admin-muted)]"}`} key={column.status} onClick={() => setActiveColumn(column.status)} type="button" role="tab" aria-selected={activeColumn === column.status}>{column.title} · {items.filter((item) => testimonialStatus(item) === column.status).length}</button>)}
        </div>
-       <div className="mt-4 grid min-w-0 gap-6 xl:grid-cols-3">
+       <div className="mt-4 grid min-w-0 gap-6 lg:grid-cols-3">
         {columns.map((column) => {
-          const columnItems = items.filter((item) => testimonialStatus(item) === column.status);
+          const normalizedQuery = query.trim().toLocaleLowerCase("es");
+          const columnItems = items.filter(
+            (item) => testimonialStatus(item) === column.status && matches(item, normalizedQuery),
+          );
           return (
             <section
                className={`${column.status === activeColumn ? "block" : "hidden"} min-w-0 rounded-3xl border p-4 transition lg:block ${column.color} ${
