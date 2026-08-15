@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { LandingRenderer } from "@/components/landing/landing-renderer";
+import { ResponsivePreview, type ResponsivePreviewHandle } from "@/components/admin/responsive-preview";
 import type { PublicEvent } from "@/components/home/event-grid";
 import {
   LANDING_BEER_DEFAULTS,
@@ -18,6 +19,8 @@ import {
   type TenantLandingData,
 } from "@/lib/landing-content";
 import { scopedFetch } from "@/lib/client-routing";
+import { paletteCssVariables, paletteFromLegacy } from "@/lib/theme-palettes";
+import type { CSSProperties } from "react";
 
 export type LandingStory = { title: string; subtitle: string; image: string };
 export type LandingSections = { beerImages: string[]; stories: LandingStory[] };
@@ -150,9 +153,9 @@ export function LandingEditor({
   });
   const [selected, setSelected] = useState<SectionKey>("hero");
   const [dragging, setDragging] = useState(false);
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [saving, setSaving] = useState(false);
   const pendingFiles = useRef(new Map<string, File>());
+  const previewRef = useRef<ResponsivePreviewHandle>(null);
 
   const pendingHeroImage = brand.heroImageUrl || null;
 
@@ -422,6 +425,14 @@ export function LandingEditor({
     hasMap: initialBrand.hasMap,
   };
 
+  const previewPalette = paletteFromLegacy(brand.primaryColor, brand.secondaryColor, brand.backgroundColor);
+  const previewBodyStyle: CSSProperties = {
+    ...paletteCssVariables(previewPalette),
+    backgroundColor: brand.backgroundColor,
+    fontFamily: brand.fontFamily,
+    colorScheme: "dark",
+  };
+
   const sectionIdByKey: Record<SectionKey, string> = {
     hero: "landing-sec-hero",
     events: "eventos",
@@ -434,7 +445,7 @@ export function LandingEditor({
 
   function selectSection(key: SectionKey) {
     setSelected(key);
-    document.getElementById(sectionIdByKey[key])?.scrollIntoView({ behavior: "smooth", block: "center" });
+    previewRef.current?.scrollToId(sectionIdByKey[key]);
   }
 
   const editorFor: Record<SectionKey, React.ReactNode> = {
@@ -739,34 +750,20 @@ export function LandingEditor({
         <div className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-black">Vista previa</h2>
-            <div className="flex gap-1 rounded-full bg-white/5 p-1">
-              {(["desktop", "mobile"] as const).map((candidate) => (
-                <button
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    device === candidate ? "bg-pink-500/20 text-pink-200" : "text-zinc-500"
-                  }`}
-                  key={candidate}
-                  onClick={() => setDevice(candidate)}
-                  type="button"
-                >
-                  {candidate === "desktop" ? "Escritorio" : "Celular"}
-                </button>
-              ))}
-            </div>
+            <p className="text-xs text-zinc-500">
+              El ancho se emula de verdad: los saltos responsive reaccionan al tamaño elegido.
+            </p>
           </div>
-          <div
-            className={`h-[min(720px,calc(100dvh-18rem))] overflow-y-auto rounded-3xl border border-white/10 transition-all ${
-              device === "mobile" ? "mx-auto w-full max-w-[400px]" : "w-full"
-            }`}
-            style={{ backgroundColor: brand.backgroundColor, fontFamily: brand.fontFamily }}
-          >
-            <LandingRenderer
-              data={previewData}
-              preview
-              activeSection={selected}
-              onSectionSelect={setSelected}
-              compact
-            />
+          <div className="h-[min(720px,calc(100dvh-16rem))]">
+            <ResponsivePreview ref={previewRef} bodyClass="tenant-theme" bodyStyle={previewBodyStyle}>
+              <LandingRenderer
+                data={previewData}
+                preview
+                activeSection={selected}
+                onSectionSelect={setSelected}
+                compact
+              />
+            </ResponsivePreview>
           </div>
           <p className="mt-3 text-center text-xs text-zinc-600">
             La vista usa exactamente los mismos componentes y datos que la landing pública de {brand.tenantName}.

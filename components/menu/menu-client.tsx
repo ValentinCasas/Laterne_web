@@ -6,6 +6,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
+import { CartaHeader } from "@/components/menu/carta-header";
+import { MenuProductCard, formatMenuPrice, productFallback } from "@/components/menu/menu-product-card";
+import type { CartaHeaderConfig } from "@/lib/carta-content";
+import { CARTA_HEADER_DEFAULTS } from "@/lib/carta-content";
 import { copyBrowserText, createBrowserId, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
 import { publicHrefForVisiblePath } from "@/lib/routes";
 import { usePathname } from "next/navigation";
@@ -51,11 +55,6 @@ type CartItem = MenuProduct & {
   notes?: string;
 };
 
-/** @summary Convierte un precio al formato monetario configurado por el negocio. */
-const formatPrice = (value: number, currency: string, locale: string) =>
-  new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
-const productFallback = "/images/image_defect/product_default.png";
-
 /** @summary Calcula el precio unitario de una elección incluyendo variante y agregados. */
 function cartItemPrice(item: CartItem) {
   return (
@@ -80,6 +79,7 @@ export function MenuClient({
   branchName,
   tenantSlug,
   branchSlug,
+  cartaConfig = CARTA_HEADER_DEFAULTS,
 }: {
   categories: MenuCategory[];
   phone: string;
@@ -89,6 +89,7 @@ export function MenuClient({
   branchName?: string;
   tenantSlug: string;
   branchSlug?: string;
+  cartaConfig?: CartaHeaderConfig;
 }) {
   const pathname = usePathname();
   const publicHref = (href: string) => publicHrefForVisiblePath(pathname, tenantSlug, href, branchSlug);
@@ -240,16 +241,12 @@ export function MenuClient({
   }, [query, shownCategories.length]);
   const quantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.reduce((sum, item) => sum + cartItemPrice(item) * item.quantity, 0);
-  const locationName = branchName?.trim() || "Principal";
-  const businessLocationLabel = locationName.toLocaleLowerCase("es").startsWith(businessName.toLocaleLowerCase("es"))
-    ? locationName
-    : `${businessName} · ${locationName}`;
   const activeFilterCount = Number(diet !== "all") + Number(Boolean(maximumPrice)) + Number(sort !== "recommended");
   const recentProducts = recentIds
     .map((id) => categories.flatMap((category) => category.products).find((product) => product.id === id))
     .filter((product): product is MenuProduct => Boolean(product));
   /** @summary Formatea importes de la carta con la moneda y región configuradas por el negocio. */
-  const priceText = (value: number) => formatPrice(value, currency, locale);
+  const priceText = (value: number) => formatMenuPrice(value, currency, locale);
   function openFilters() {
     setDraftDiet(diet);
     setDraftMaximumPrice(maximumPrice);
@@ -340,62 +337,14 @@ export function MenuClient({
 
   return (
     <main className="menu-page min-h-screen pb-32">
-      <section className="relative overflow-hidden border-b border-white/10 py-4 md:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(236,72,153,.28),transparent_35%),radial-gradient(circle_at_85%_30%,rgba(245,197,66,.16),transparent_30%)]" />
-        <div className="shell relative">
-          <div className="flex min-w-0 items-center justify-between gap-3 md:hidden">
-            <div className="min-w-0">
-              <p className="truncate text-base font-black">
-                {businessLocationLabel}
-              </p>
-              <p className="mt-0.5 text-xs font-bold text-zinc-400">Carta virtual</p>
-            </div>
-            <button
-              className="min-h-11 shrink-0 rounded-full bg-pink-500 px-4 text-sm font-black text-white"
-              onClick={() => setCartOpen(true)}
-              type="button"
-            >
-              Pedido ({quantity})
-            </button>
-          </div>
-          <div className="hidden items-center justify-between gap-4 md:flex">
-            <div>
-              <p className="text-6xl font-black text-pink-500">
-                {businessName}<span className="text-white">&.</span>
-              </p>
-              <p className="mt-2 text-xs font-black uppercase tracking-[.28em] text-zinc-400">
-                Carta virtual · {locationName}
-              </p>
-            </div>
-            <Link
-              className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm font-bold hover:bg-white hover:text-black"
-              href={publicHref("/")}
-            >
-              Volver al inicio
-            </Link>
-          </div>
-          <div className="mt-16 hidden max-w-3xl md:block">
-            <p className="section-eyebrow">Cervezas · Cocina · Momentos</p>
-            <h1 className="mt-3 text-8xl font-black tracking-[-.06em]">
-              Carta <span className="text-pink-500">{businessName}</span>
-            </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-zinc-400">
-              Recorré las categorías, elegí tus favoritos y armá tu pedido.
-            </p>
-            <div className="mt-8 flex gap-3">
-              <a className="btn" href="#productos">
-                Ver carta
-              </a>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setCartOpen(true)}
-              >
-                Pedido ({quantity})
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <CartaHeader
+        config={cartaConfig}
+        businessName={businessName}
+        branchName={branchName}
+        quantity={quantity}
+        onOpenCart={() => setCartOpen(true)}
+        homeHref={publicHref("/")}
+      />
 
       <section
         ref={toolbarRef}
@@ -564,111 +513,17 @@ export function MenuClient({
               </span>
             </header>
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-              {category.products.map((product) => {
-                const soldOut = product.availability?.toLowerCase() === "agotado";
-                return (
-                  <article
-                    className="group grid min-h-52 min-w-0 grid-cols-[minmax(6.75rem,36%)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-xl shadow-black/20 sm:flex sm:min-h-[410px] sm:flex-col sm:rounded-[1.75rem]"
-                    key={product.id}
-                  >
-                    <div className="relative min-h-52 overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-950 p-2 sm:h-56 sm:min-h-0 sm:p-5">
-                      <button
-                        className="relative h-full w-full"
-                        type="button"
-                        onClick={() => setPreview(product)}
-                        aria-label={`Ampliar ${product.name}`}
-                      >
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          sizes="(max-width: 640px) 116px, 320px"
-                          className="object-contain transition duration-500 group-hover:scale-105"
-                          onError={(event) => {
-                            event.currentTarget.src = productFallback;
-                          }}
-                        />
-                      </button>
-                      {soldOut ? (
-                        <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black uppercase sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
-                          Agotado
-                        </span>
-                      ) : (
-                        <button
-                          className="absolute bottom-4 right-4 hidden h-11 w-11 place-items-center rounded-full bg-pink-500 text-2xl font-bold shadow-lg hover:scale-110 sm:grid"
-                          onClick={() => add(product)}
-                          aria-label={`Agregar ${product.name}`}
-                        >
-                          +
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-5">
-                      {(product.featured || product.isNew || product.recommended || product.arEnabled) && (
-                        <div className="mb-2 flex flex-wrap gap-1.5">
-                          {product.featured && (
-                            <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-black uppercase text-amber-300">
-                              Destacado
-                            </span>
-                          )}
-                          {product.isNew && (
-                            <span className="rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-black uppercase text-sky-300">
-                              Nuevo
-                            </span>
-                          )}
-                          {product.recommended && (
-                            <span className="rounded-full bg-pink-500/15 px-2 py-1 text-[10px] font-black uppercase text-pink-300">
-                              Recomendado
-                            </span>
-                          )}
-                          {product.arEnabled && (
-                            <span className="rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-black uppercase text-violet-300">
-                              3D · AR
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-3">
-                        <h3 className="min-w-0 flex-1 break-words text-base font-black leading-tight sm:text-base">
-                          {product.name}
-                        </h3>
-                        <span className="shrink-0 text-right">
-                          {product.previousPrice && product.previousPrice > product.price && (
-                            <del className="block text-[10px] text-zinc-600">
-                              {priceText(product.previousPrice)}
-                            </del>
-                          )}
-                          <strong className="block rounded-full bg-pink-500/15 px-2.5 py-1 text-xs text-pink-300 sm:px-3 sm:text-sm">
-                            {priceText(product.price)}
-                          </strong>
-                        </span>
-                      </div>
-                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-zinc-500 sm:mt-3 sm:text-sm">
-                        {product.description || "Sin descripción disponible."}
-                      </p>
-                      <div className="mt-auto pt-3 sm:pt-5">
-                        <Link
-                          className="mb-2 block min-h-9 rounded-lg py-2 text-center text-xs font-bold text-zinc-400 hover:bg-white/5 hover:text-pink-300 sm:text-sm"
-                          href={publicHref(`/productos/${product.slug}`)}
-                        >
-                          Ver detalles
-                        </Link>
-                        {soldOut ? (
-                          <span className="text-xs font-bold text-red-300 sm:text-sm">No disponible</span>
-                        ) : (
-                          <button
-                            className="min-h-11 w-full rounded-lg border border-white/15 px-2 py-2 text-sm font-black hover:border-pink-500 hover:bg-pink-500 sm:rounded-xl sm:py-3"
-                            onClick={() => add(product)}
-                            aria-label={`Agregar ${product.name}`}
-                          >
-                            Agregar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+              {category.products.map((product) => (
+                <MenuProductCard
+                  key={product.id}
+                  product={product}
+                  currency={currency}
+                  locale={locale}
+                  detailHref={publicHref(`/productos/${product.slug}`)}
+                  onAdd={add}
+                  onPreview={setPreview}
+                />
+              ))}
             </div>
           </section>
         ))}

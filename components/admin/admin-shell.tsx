@@ -136,6 +136,7 @@ const navigationGroups = [
       { href: "/admin/negocio", label: "Negocio", icon: "NE", permission: "business.manage" },
       { href: "/admin/marca", label: "Marca", icon: "BR", permission: "brand.manage" },
       { href: "/admin/landing", label: "Portada", icon: "LN", permission: "brand.manage" },
+      { href: "/admin/carta", label: "Carta", icon: "CT", permission: "brand.manage" },
       { href: "/admin/seo", label: "SEO", icon: "SE", permission: "business.manage" },
       {
         href: "/admin/redirecciones",

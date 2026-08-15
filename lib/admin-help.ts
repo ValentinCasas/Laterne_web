@@ -223,6 +223,16 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     ],
     related: ["marca", "seo"],
   },
+  carta: {
+    title: "Editor de carta",
+    intro: "Configurá los textos de la cabecera de tu carta virtual con vista previa en vivo.",
+    points: [
+      "Solo se editan los textos: el fondo, los colores y el diseño dependen de tu marca.",
+      "El nombre del negocio, la sucursal y la cantidad del pedido se completan solos.",
+      "El preview usa los mismos componentes y estilos que la carta pública.",
+    ],
+    related: ["marca", "landing", "categorias"],
+  },
   busqueda: {
     title: "Búsqueda global",
     intro: "Encontrá contenido de todo el negocio sin cambiar de sección.",

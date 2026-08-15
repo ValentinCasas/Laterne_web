@@ -1,4 +1,5 @@
 import { MenuClient, type MenuCategory } from "@/components/menu/menu-client";
+import { resolveCartaHeaderConfig } from "@/lib/carta-content";
 import { prisma } from "@/lib/prisma";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
@@ -28,7 +29,7 @@ export default async function MenuPage() {
   });
   const branchId = primaryBranch?.id;
   const branchWhere = branchId ? { branchId } : {};
-  const [records, business, productImageFiles, categoryImageFiles] = await Promise.all([
+  const [records, business, brand, productImageFiles, categoryImageFiles] = await Promise.all([
     prisma.category.findMany({
       where: {
         tenantId: tenant.id,
@@ -57,6 +58,7 @@ export default async function MenuPage() {
       },
     }),
     prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
+    prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }),
     readdir(path.join(process.cwd(), "public", "images", "images_product")),
     readdir(path.join(process.cwd(), "public", "images", "images_categories")),
   ]);
@@ -129,6 +131,7 @@ export default async function MenuPage() {
       businessName={tenant.name}
       branchName={primaryBranch?.name}
       branchSlug={primaryBranch?.slug}
+      cartaConfig={resolveCartaHeaderConfig((brand?.landingSections as { carta?: unknown } | null)?.carta)}
     />
   );
 }

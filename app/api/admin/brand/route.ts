@@ -26,7 +26,7 @@ const brandInput = z.object({
   heroSubtitle: z.string().trim().max(500).optional(),
   landingSections: z
     .object({
-      beerImages: z.array(z.string().trim().min(1).max(500)).max(40).default([]),
+      beerImages: z.array(z.string().trim().min(1).max(500)).max(40).optional(),
       stories: z
         .array(
           z.object({
@@ -36,7 +36,7 @@ const brandInput = z.object({
           }),
         )
         .max(40)
-        .default([]),
+        .optional(),
       hero: z
         .object({
           eyebrow: z.string().trim().max(120).optional(),
@@ -57,6 +57,16 @@ const brandInput = z.object({
               visible: z.boolean().optional(),
             })
             .optional(),
+        })
+        .optional(),
+      carta: z
+        .object({
+          eyebrow: z.string().trim().max(120).optional(),
+          title: z.string().trim().max(120).optional(),
+          highlight: z.string().trim().max(120).optional(),
+          description: z.string().trim().max(500).optional(),
+          primaryButton: z.string().trim().max(60).optional(),
+          cartButton: z.string().trim().max(60).optional(),
         })
         .optional(),
     })
@@ -141,9 +151,11 @@ export async function PATCH(request: Request) {
     if (p.heroTitle !== undefined) data.heroTitle = p.heroTitle || null;
     if (p.heroSubtitle !== undefined) data.heroSubtitle = p.heroSubtitle || null;
     if (p.landingSections !== undefined) {
-      const normalized = p.landingSections;
-      normalized.beerImages = [...new Set(normalized.beerImages)];
-      data.landingSections = normalized;
+      const existing = (current?.landingSections ?? {}) as Record<string, unknown>;
+      const incoming = p.landingSections;
+      const merged: Record<string, unknown> = { ...existing, ...incoming };
+      if (incoming.beerImages) merged.beerImages = [...new Set(incoming.beerImages)];
+      data.landingSections = merged as Prisma.InputJsonValue;
     }
     if (p.tone !== undefined) data.tone = p.tone || null;
     if (p.instagram !== undefined || p.facebook !== undefined) {
