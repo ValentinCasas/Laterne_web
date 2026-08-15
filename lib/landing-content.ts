@@ -5,10 +5,11 @@ import type { PublicEvent } from "@/components/home/event-grid";
  * Este módulo NO importa node:fs, node:path ni prisma: puede importarse
  * desde componentes client (preview del editor) y server (páginas públicas).
  */
+/** @summary Cervezas por defecto del carrusel (imágenes reales existentes en `public/images/banners`). */
 export const LANDING_BEER_DEFAULTS = [
-  "/images/products/cerveza-artesanal.jpg",
-  "/images/products/cerveza-lager.jpg",
-  "/images/products/cerveza-ipa.jpg",
+  "/images/banners/apa.png",
+  "/images/banners/birra.png",
+  "/images/banners/doble-ipa.png",
 ];
 
 export const LANDING_STORY_DEFAULTS = [

@@ -4,6 +4,7 @@ import { createSession, tenantSessionCookieName } from "@/lib/auth";
 import { classifyHost } from "@/lib/domains";
 import { tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
+import { recordAudit } from "@/lib/audit";
 
 /** @summary Canjea una transferencia legacy y termina siempre en la ruta tenant/branch canónica. */
 export async function POST(request: Request) {
@@ -56,6 +57,28 @@ export async function POST(request: Request) {
     roleKey: handoff.membership.role.key,
     context: "tenant",
   });
+
+  // Auditoría de handoff
+  await recordAudit({
+    context: {
+      session: {
+        userId: handoff.userId,
+        role: handoff.user.role,
+        tenantId: handoff.membership.tenantId,
+        membershipId: handoff.membership.id,
+        roleKey: handoff.membership.role.key,
+        sessionId: 0,
+        context: "tenant",
+      },
+      tenant: { id: handoff.membership.tenantId },
+    },
+    action: "auth.handoff",
+    entityType: "auth-handoff",
+    entityId: handoff.id,
+    newValues: { tenantId: handoff.membership.tenantId, userId: handoff.userId, branchId: handoff.branchId ?? null },
+    request,
+  });
+
   const redirectPath = branchSlug
     ? tenantBranchAdminPath(tenantSlug, branchSlug)
     : tenantAdminPath(tenantSlug);

@@ -136,3 +136,8 @@ dist
 test-results/
 playwright-report/
 blob-report/
+
+# Ad-hoc validation/build artifacts
+.next-validation/
+tmp/
+temp/

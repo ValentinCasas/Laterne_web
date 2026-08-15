@@ -13,6 +13,7 @@ import {
   type OrderOpeningHourInput,
 } from "@/lib/order-scheduling";
 import { publicHrefForVisiblePath } from "@/lib/routes";
+import { PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 
 type StoredCartItem = {
   id: number;
@@ -504,7 +505,7 @@ export function CheckoutForm({
               return (
                 <article className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-3" key={`${item.id}-${index}`}>
                   <div className="relative h-16 w-16 shrink-0 rounded-xl bg-white/5">
-                    <Image src={item.image || "/images/image_defect/product_default.png"} alt="" fill className="object-contain p-1" />
+                    <Image src={item.image || PRODUCT_IMAGE_FALLBACK} alt="" fill className="object-contain p-1" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex justify-between gap-2">

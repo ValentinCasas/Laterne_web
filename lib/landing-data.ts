@@ -1,4 +1,5 @@
 import { readdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { time } from "@/lib/format";
 import {
@@ -15,6 +16,23 @@ import {
 import { prisma } from "@/lib/prisma";
 
 export type { LandingStory, LandingTestimonialSlide, TenantLandingData } from "@/lib/landing-content";
+
+/**
+ * @summary Verifica que una URL pública de imagen exista en `public/`.
+ * Solo acepta rutas `/images/...` con extensión de imagen y rechaza segmentos `..`
+ * para evitar path traversal. Se usa para no emitir `<img>` rotos en la landing.
+ */
+export function publicImageExists(url: string): boolean {
+  if (!LANDING_IMAGE_PATH_RE.test(url) || url.includes("..")) return false;
+  return existsSync(path.join(process.cwd(), "public", url.replace(/^\/+/, "")));
+}
+
+/** @summary Deduplica y descarta URLs de imagen inexistentes, usando defaults reales si queda vacío. */
+export function resolveLandingBeers(source: string[]): string[] {
+  const available = [...new Set(source)].filter(publicImageExists);
+  if (available.length > 0) return available;
+  return [...new Set(LANDING_BEER_DEFAULTS)].filter(publicImageExists);
+}
 
 /** @summary Combina los turnos de un grupo horario en una descripción legible. */
 export function formatOpeningHours(group: OpeningHourGroup) {
@@ -102,13 +120,7 @@ export async function loadTenantLandingData(tenant: {
       ? brand.heroSubtitle
       : LANDING_HERO_SUBTITLE_DEFAULT;
   const heroImageUrl = brand?.heroImageUrl || null;
-  const beers = [
-    ...new Set(
-      (sectionsBeerImages.length ? sectionsBeerImages : LANDING_BEER_DEFAULTS).filter((source) =>
-        LANDING_IMAGE_PATH_RE.test(source),
-      ),
-    ),
-  ];
+  const beers = resolveLandingBeers(sectionsBeerImages.length ? sectionsBeerImages : LANDING_BEER_DEFAULTS);
   const stories = (sectionsStories.length ? sectionsStories : LANDING_STORY_DEFAULTS).map(
     (slide): LandingStory => ({
       title: typeof slide.title === "string" && slide.title.trim() ? slide.title : tenant.name,

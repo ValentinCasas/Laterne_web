@@ -2,6 +2,7 @@
 
 import { createElement, forwardRef, useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/components/analytics/tracker";
+import { PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 
 type ViewerElement = HTMLElement & {
   canActivateAR: boolean;
@@ -331,7 +332,7 @@ export function ModelExperience({
           {arEnabled && !arAvailable && quickLookAvailable && iosUrl && (
             <a className="btn" href={iosUrl} rel="ar">
               {createElement("img", {
-                src: posterUrl || "/images/image_defect/product_default.png",
+                src: posterUrl || PRODUCT_IMAGE_FALLBACK,
                 alt: "",
                 "aria-hidden": true,
                 style: { display: "none" },

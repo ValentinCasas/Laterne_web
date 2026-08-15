@@ -9,7 +9,8 @@ import { getDefaultTenant } from "@/lib/tenant";
 import { resolvePublicBranch } from "@/lib/branch";
 import { managedPageMetadata } from "@/lib/seo";
 import { requestRouteContext } from "@/lib/request-route-context";
-import { resolveLandingHeroConfig, type TenantLandingData } from "@/lib/landing-content";
+import { resolveLandingHeroConfig, LANDING_BEER_DEFAULTS, type TenantLandingData } from "@/lib/landing-content";
+import { resolveLandingBeers } from "@/lib/landing-data";
 
 export const dynamic = "force-dynamic";
 
@@ -202,19 +203,9 @@ export default async function BranchLandingPage({ params }: { params: Promise<{ 
           { title: "Bienvenidos", subtitle: displayName, image: "/images/banners/new_banner2_750.jpg" },
           { title: "Hecho para disfrutar", subtitle: "Productos, eventos y comunidad.", image: "/images/banners/new_banner2_750.jpg" },
         ];
-  const beers = [
-    ...new Set(
-      (
-        sectionsBeerImages.length > 0
-          ? sectionsBeerImages
-          : [
-              "/images/products/cerveza-artesanal.jpg",
-              "/images/products/cerveza-lager.jpg",
-              "/images/products/cerveza-ipa.jpg",
-            ]
-      ).filter((source) => source && /\/images\/.+\.(?:jpe?g|png|webp|avif)$/i.test(source)),
-    ),
-  ];
+  const beers = resolveLandingBeers(
+    sectionsBeerImages.length > 0 ? sectionsBeerImages : LANDING_BEER_DEFAULTS,
+  );
 
   const branchLatitude =
     Number.isFinite(Number(branchInfo?.latitude))

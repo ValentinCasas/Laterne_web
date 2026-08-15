@@ -19,6 +19,9 @@ const registrationInput = z
   })
   .refine((value) => value.email || value.phone, { message: "Indicá email o teléfono" });
 
+const MAX_REGISTRATION_ATTEMPTS = 5;
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
+
 /** @summary Recupera el token de cliente enviado mediante un encabezado privado. */
 function requestToken(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
@@ -88,6 +91,19 @@ export async function POST(request: Request) {
   if (!parsed.success)
     return NextResponse.json({ error: "Revisá tus datos y el consentimiento" }, { status: 400 });
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
+
+  // Rate limiting global (5 registros / hora)
+  const attemptWindow = new Date(Date.now() - REGISTRATION_WINDOW_MS);
+  const recentCount = await prisma.loyaltyCustomer.count({
+    where: { createdAt: { gte: attemptWindow } },
+  });
+  if (recentCount >= MAX_REGISTRATION_ATTEMPTS) {
+    return NextResponse.json(
+      { error: "Límite de registros alcanzado. Intentá más tarde." },
+      { status: 429, headers: { "Retry-After": "3600" } },
+    );
+  }
+
   const tenant = await getDefaultTenant();
   const email = parsed.data.email?.toLocaleLowerCase("es") || null;
   const phone = parsed.data.phone?.replace(/\s+/g, "") || null;

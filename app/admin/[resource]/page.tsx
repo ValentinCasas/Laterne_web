@@ -6,6 +6,7 @@ import { serialize } from "@/lib/format";
 import { getAdminResource } from "@/lib/admin-resources";
 import { requirePermission } from "@/lib/auth";
 import { resourceScopedWhere } from "@/lib/branch";
+import { PRODUCT_IMAGE_FALLBACK, CATEGORY_IMAGE_FALLBACK } from "@/lib/image-fallback";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -161,7 +162,7 @@ function createDefinition(
           required: true,
           options: images.productos,
           imageFolder: "images_product",
-          fallbackImage: "/images/image_defect/product_default.png",
+          fallbackImage: PRODUCT_IMAGE_FALLBACK,
         },
         {
           key: "model3dUrl",
@@ -292,7 +293,7 @@ function createDefinition(
           required: true,
           options: images.categorias,
           imageFolder: "images_categories",
-          fallbackImage: "/images/images_categories/bottle-1-svgrepo-com.png",
+          fallbackImage: CATEGORY_IMAGE_FALLBACK,
         },
       ],
     },

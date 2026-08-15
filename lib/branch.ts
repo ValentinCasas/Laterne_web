@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { uniqueCategorySlug } from "@/lib/slug";
 import { publicTenantWhere } from "@/lib/subscription-access";
+import { CATEGORY_IMAGE_FALLBACK_FILE } from "@/lib/image-fallback";
 
 /**
  * Contexto central de sucursal de MenuClick.
@@ -365,7 +366,7 @@ export async function ensureBranchCategory(
   branchId: number,
   name: string,
   description = name,
-  imageUrl = "bottle-1-svgrepo-com.png",
+  imageUrl = CATEGORY_IMAGE_FALLBACK_FILE,
 ) {
   const slug = await uniqueCategorySlug(tenantId, name);
   return prisma.category.upsert({

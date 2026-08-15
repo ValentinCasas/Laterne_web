@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useDragToScroll } from "@/components/use-carousel-drag";
+import { handleImageError } from "@/lib/image-fallback";
 
 /** @summary Presenta las cervezas en un carrusel automático que también admite navegación manual. */
 export function BeerCarousel({ images }: { images: string[] }) {
@@ -64,6 +65,7 @@ export function BeerCarousel({ images }: { images: string[] }) {
               sizes="(max-width: 640px) 84vw, 33vw"
               className="pointer-events-none object-contain p-4"
               draggable={false}
+              onError={handleImageError}
             />
           </article>
         ))}

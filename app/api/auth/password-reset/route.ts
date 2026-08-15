@@ -16,15 +16,6 @@ const resetInput = z.object({
   password: z.string().min(10).max(128).regex(/[a-z]/).regex(/[A-Z]/).regex(/\d/),
 });
 
-/** @summary Obtiene una referencia de red anonimizada para limitar solicitudes abusivas. */
-function requestHash(request: Request) {
-  const address =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-  return passwordResetHash("ip", address);
-}
-
 /** @summary Entrega un enlace de recuperación mediante el webhook de email configurado en el servidor. */
 async function deliverReset(email: string, resetUrl: string) {
   const endpoint = process.env.EMAIL_WEBHOOK_URL;
@@ -53,8 +44,22 @@ export async function POST(request: Request) {
   const platformContext = routeKind.startsWith("platform");
   const tenant = platformContext ? null : await getDefaultTenant();
   const email = parsed.data.email.toLocaleLowerCase("es");
+
+  // Rate limiting por IP (igual que login: 8 intentos / 15 min)
+  const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const ipHash = passwordResetHash("ip", ipAddress);
+  const attemptWindow = new Date(Date.now() - 15 * 60 * 1000);
+  const failedByIp = await prisma.passwordResetRequest.count({
+    where: { requestedIp: passwordResetHash("ip", ipAddress), status: "failed", createdAt: { gte: attemptWindow } },
+  });
+  if (failedByIp >= 8) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Esperá unos minutos antes de volver a probar." },
+      { status: 429, headers: { "Retry-After": "900" } },
+    );
+  }
+
   const emailHash = passwordResetHash("email", email);
-  const ipHash = requestHash(request);
   const recent = await prisma.passwordResetRequest.count({
     where: { emailHash, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
   });
