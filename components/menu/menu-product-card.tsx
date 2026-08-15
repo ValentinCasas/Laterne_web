@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import type { MenuProduct } from "@/components/menu/menu-client";
+import { handleImageError, PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 
-export const productFallback = "/images/image_defect/product_default.png";
+export const productFallback = PRODUCT_IMAGE_FALLBACK;
 
 /** @summary Convierte un precio al formato monetario configurado por el negocio. */
 export function formatMenuPrice(value: number, currency: string, locale: string) {
@@ -51,9 +52,7 @@ export function MenuProductCard({
             fill
             sizes="(max-width: 640px) 116px, 320px"
             className="object-contain transition duration-500 group-hover:scale-105"
-            onError={(event) => {
-              event.currentTarget.src = productFallback;
-            }}
+            onError={handleImageError}
           />
         </button>
         {soldOut ? (

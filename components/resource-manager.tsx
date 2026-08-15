@@ -9,6 +9,7 @@ import { ImagePicker } from "@/components/admin/image-picker";
 import { LocationPicker } from "@/components/admin/location-picker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 import { scopedFetch } from "@/lib/client-routing";
+import { DEFAULT_IMAGE_PLACEHOLDERS, handleImageError } from "@/lib/image-fallback";
 import {
   readBrowserJson,
   readBrowserText,
@@ -62,9 +63,6 @@ function inputValue(value: unknown, type?: string) {
   return text;
 }
 
-/** @summary Nombres reservados que el sistema usa como imagen por defecto y que no viven en la carpeta del recurso. */
-const DEFAULT_IMAGE_PLACEHOLDERS = new Set(["product_default.png", "avatar_profile_default.png", "default.png"]);
-
 /** @summary Obtiene la dirección pública de la imagen principal de un registro. */
 function itemImage(resource: string, item: Item) {
   const filename = String(item.imageUrl ?? "").trim();
@@ -102,14 +100,15 @@ function ChoiceField({ field, initialValue }: { field: ResourceField; initialVal
           >
             {option.image && (
               <span className="relative mb-3 block h-24 overflow-hidden rounded-xl bg-zinc-900">
-                <Image
-                  src={option.image}
-                  alt=""
-                  fill
-                  sizes="160px"
-                  className="pointer-events-none object-contain p-2"
-                  draggable={false}
-                />
+<Image
+                    src={option.image}
+                    alt=""
+                    fill
+                    sizes="160px"
+                    className="pointer-events-none object-contain p-2"
+                    draggable={false}
+                    onError={handleImageError}
+                  />
               </span>
             )}
             <strong className="block truncate text-sm">{option.label}</strong>
@@ -905,6 +904,7 @@ export function ResourceManager({
                     sizes="(max-width: 640px) 100vw, 320px"
                     className="pointer-events-none object-contain p-4 transition duration-500 group-hover:scale-105"
                     draggable={false}
+                    onError={handleImageError}
                   />
                 </div>
               ) : (

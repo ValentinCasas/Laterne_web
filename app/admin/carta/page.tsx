@@ -3,7 +3,10 @@ import type { MenuCategory } from "@/components/menu/menu-client";
 import { resolveCartaHeaderConfig } from "@/lib/carta-content";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
+import { CATEGORY_IMAGE_FALLBACK_FILE, PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 import { prisma } from "@/lib/prisma";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +15,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${context.tenant.name} | Carta` };
 }
 
-const productFallback = "/images/image_defect/product_default.png";
-
 /** @summary Carga la configuración de textos de la cabecera de la carta y un preview real de datos limitado. */
 export default async function CartaPage() {
   const context = await requirePermission("brand.manage");
-  const [brand, tenant, categories] = await Promise.all([
+  const [brand, tenant, categories, productImageFiles, categoryImageFiles] = await Promise.all([
     prisma.brandSettings.findUnique({ where: { tenantId: context.tenant.id } }),
     prisma.tenant.findUnique({
       where: { id: context.tenant.id },
@@ -43,13 +44,20 @@ export default async function CartaPage() {
         },
       },
     }),
+    readdir(path.join(process.cwd(), "public", "images", "images_product")),
+    readdir(path.join(process.cwd(), "public", "images", "images_categories")),
   ]);
+  const productImages = new Set(productImageFiles);
+  const categoryImages = new Set(categoryImageFiles);
   const previewCategories: MenuCategory[] = categories
     .map((category) => ({
       id: category.id,
       name: category.name,
       description: category.description,
-      image: category.imageUrl?.trim() || "bottle-1-svgrepo-com.png",
+      image:
+        category.imageUrl?.trim() && categoryImages.has(category.imageUrl)
+          ? category.imageUrl
+          : CATEGORY_IMAGE_FALLBACK_FILE,
       products: category.products.map(({ product }) => ({
         id: product.id,
         slug: product.slug,
@@ -80,9 +88,11 @@ export default async function CartaPage() {
           price: Number(extra.price),
         })),
         image:
-          product.imageUrl?.trim() && product.imageUrl !== "product_default.png"
+          product.imageUrl?.trim() &&
+          product.imageUrl !== "product_default.png" &&
+          productImages.has(product.imageUrl)
             ? `/images/images_product/${product.imageUrl}`
-            : productFallback,
+            : PRODUCT_IMAGE_FALLBACK,
       })),
     }))
     .filter((category) => category.products.length > 0);

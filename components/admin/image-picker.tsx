@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useDragToScroll } from "@/components/use-carousel-drag";
+import { handleImageError } from "@/lib/image-fallback";
 
 type ImageOption = { filename: string; url: string };
 
@@ -107,12 +108,8 @@ export function ImagePicker({
                 sizes="220px"
                 className="object-contain p-3"
                 unoptimized={preview.startsWith("blob:")}
-                onError={(event) => {
-                  if (fallbackImage && !event.currentTarget.dataset.fallback) {
-                    event.currentTarget.dataset.fallback = "true";
-                    event.currentTarget.src = fallbackImage;
-                  }
-                }}
+                data-fallback-src={fallbackImage ?? undefined}
+                onError={handleImageError}
               />
               <span className="absolute inset-x-3 bottom-3 rounded-xl bg-black/75 px-3 py-2 text-xs font-bold backdrop-blur">
                 Cambiar imagen

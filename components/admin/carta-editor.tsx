@@ -12,6 +12,7 @@ import { SiteHeader } from "@/components/site-header";
 import type { CartaHeaderConfig } from "@/lib/carta-content";
 import { CARTA_HEADER_DEFAULTS } from "@/lib/carta-content";
 import { scopedFetch } from "@/lib/client-routing";
+import { CATEGORY_IMAGE_FALLBACK, handleImageError } from "@/lib/image-fallback";
 import { paletteCssVariables, paletteFromLegacy } from "@/lib/theme-palettes";
 
 export type CartaEditorData = {
@@ -228,9 +229,8 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
                             height={28}
                             draggable={false}
                             className="pointer-events-none h-7 w-7 object-contain"
-                            onError={(event) => {
-                              event.currentTarget.src = "/images/images_categories/bottle-1-svgrepo-com.png";
-                            }}
+                            data-fallback-src={CATEGORY_IMAGE_FALLBACK}
+                            onError={handleImageError}
                           />
                           {category.name}
                         </a>

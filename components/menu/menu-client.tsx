@@ -7,10 +7,11 @@ import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics/tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 import { CartaHeader } from "@/components/menu/carta-header";
-import { MenuProductCard, formatMenuPrice, productFallback } from "@/components/menu/menu-product-card";
+import { MenuProductCard, formatMenuPrice } from "@/components/menu/menu-product-card";
 import type { CartaHeaderConfig } from "@/lib/carta-content";
 import { CARTA_HEADER_DEFAULTS } from "@/lib/carta-content";
 import { copyBrowserText, createBrowserId, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
+import { CATEGORY_IMAGE_FALLBACK, handleImageError, PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 import { publicHrefForVisiblePath } from "@/lib/routes";
 import { usePathname } from "next/navigation";
 
@@ -153,7 +154,7 @@ export function MenuClient({
                 return {
                   ...value,
                   image:
-                    typeof value.image === "string" && value.image.trim() ? value.image : productFallback,
+                    typeof value.image === "string" && value.image.trim() ? value.image : PRODUCT_IMAGE_FALLBACK,
                   price: Number(value.price || 0),
                   quantity: Math.max(1, Number(value.quantity || 1)),
                 };
@@ -375,9 +376,8 @@ export function MenuClient({
                   height={28}
                   draggable={false}
                   className="pointer-events-none h-7 w-7 object-contain"
-                  onError={(event) => {
-                    event.currentTarget.src = "/images/images_categories/bottle-1-svgrepo-com.png";
-                  }}
+                  data-fallback-src={CATEGORY_IMAGE_FALLBACK}
+                  onError={handleImageError}
                 />
                 {category.name}
               </a>
@@ -657,9 +657,7 @@ export function MenuClient({
                         alt={item.name}
                         fill
                         className="object-contain p-1"
-                        onError={(event) => {
-                          event.currentTarget.src = productFallback;
-                        }}
+                        onError={handleImageError}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -775,9 +773,7 @@ export function MenuClient({
               fill
               sizes="90vw"
               className="object-contain p-10"
-              onError={(event) => {
-                event.currentTarget.src = productFallback;
-              }}
+              onError={handleImageError}
             />
             <p className="absolute inset-x-5 bottom-5 rounded-2xl bg-black/80 p-4 text-center font-bold text-white backdrop-blur">
               {preview.name}

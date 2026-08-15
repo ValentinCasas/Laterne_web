@@ -888,7 +888,9 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   const categoryOptions = categories.map((category) => ({
     value: category.id.toString(),
     label: category.name,
-    image: `/images/images_categories/${category.imageUrl}`,
+    image: category.imageUrl?.trim()
+      ? `/images/images_categories/${category.imageUrl}`
+      : "/images/images_categories/bottle-1-svgrepo-com.png",
   }));
   const definition = createDefinition(
     resource,
