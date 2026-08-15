@@ -111,10 +111,14 @@ async function documentImages(businessName: string, logoUrl: string | null | und
   return { businessLogo, documentQr };
 }
 
-/** @summary Genera y persiste una vez el DOCX/PDF del comprobante para preservar su versión histórica. */
-export async function generateInvoiceDocumentArtifact(invoiceId: number, tenantId: number) {
+/** @summary Genera y persiste el DOCX/PDF del comprobante para preservar su versión histórica. */
+export async function generateInvoiceDocumentArtifact(
+  invoiceId: number,
+  tenantId: number,
+  options: { force?: boolean } = {},
+) {
   const existing = await prisma.invoiceDocumentArtifact.findUnique({ where: { invoiceId } });
-  if (existing) return existing;
+  if (existing && !options.force) return existing;
 
   const invoice = await prisma.invoiceRecord.findFirst({
     where: { id: invoiceId, tenantId },
@@ -176,7 +180,7 @@ export async function generateInvoiceDocumentArtifact(invoiceId: number, tenantI
     },
     document: {
       number: invoice.number || `INT-${invoice.order.reference}`,
-      date: dateFormat.format(invoice.createdAt),
+      date: dateFormat.format(invoice.issuedAt ?? invoice.createdAt),
       type: documentTypeLabels[documentType],
       fiscalStatus,
     },
@@ -201,7 +205,7 @@ export async function generateInvoiceDocumentArtifact(invoiceId: number, tenantI
   const images = await documentImages(
     businessName,
     invoice.tenant.brandSettings?.logoUrl,
-    `${invoice.number || invoice.order.reference}|${invoice.order.reference}`,
+    invoice.number || `INT-${invoice.order.reference}`,
   );
 
   let template = selectedTemplate ? new Uint8Array(selectedTemplate.content) : await buildExampleDocumentTemplate("classic");
@@ -221,6 +225,9 @@ export async function generateInvoiceDocumentArtifact(invoiceId: number, tenantI
   }
 
   const conversion = await getDocumentConverter().convert(docx);
+  if (existing) {
+    await prisma.invoiceDocumentArtifact.delete({ where: { invoiceId } });
+  }
   return prisma.invoiceDocumentArtifact.create({
     data: {
       tenantId,

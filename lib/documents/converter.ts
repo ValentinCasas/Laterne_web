@@ -66,8 +66,12 @@ function libreOfficeCandidates() {
   return [
     process.env.LIBREOFFICE_PATH,
     process.env.DOCUMENT_CONVERTER_COMMAND,
+    "C:\\Program Files\\LibreOffice\\program\\soffice.com",
     "C:\\Program Files\\LibreOffice\\program\\soffice.exe",
+    "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.com",
     "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
+    "/usr/bin/soffice",
+    "/usr/lib/libreoffice/program/soffice",
     "soffice",
   ].filter((value, index, values): value is string => Boolean(value && values.indexOf(value) === index));
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
+import { generateInvoiceDocumentArtifact } from "@/lib/documents/invoice-document";
 import { prisma } from "@/lib/prisma";
 
 const updateInput = z.object({
@@ -31,6 +32,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     },
     include: { order: true, branch: true },
   });
+  // Un borrador sigue siendo editable: se regenera el DOCX/PDF con los datos
+  // corregidos. Una vez emitido/anulado queda congelado en su versión histórica.
+  let document = null;
+  if (parsed.data.status === "draft") {
+    try {
+      document = await generateInvoiceDocumentArtifact(id, auth.tenant.id, { force: true });
+    } catch {
+      document = null;
+    }
+  }
   await recordAudit({
     context: auth,
     action: "invoice.update",
@@ -40,5 +51,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     newValues: toAuditValue(invoice),
     request,
   });
-  return NextResponse.json({ invoice });
+  const documentSummary = document
+    ? {
+        pdfStatus: document.pdfStatus,
+        conversionMessage: document.conversionMessage,
+        templateVersion: document.templateVersion,
+      }
+    : null;
+  return NextResponse.json({ invoice, document: documentSummary });
 }

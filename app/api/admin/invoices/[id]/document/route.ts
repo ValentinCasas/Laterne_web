@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorize } from "@/lib/auth";
+import { generateInvoiceDocumentArtifact } from "@/lib/documents/invoice-document";
 import { DOCX_MIME } from "@/lib/documents/template-engine";
 import { prisma } from "@/lib/prisma";
 
@@ -11,17 +12,42 @@ function body(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
+function invoiceScope(tenantId: number, activeBranchId?: number) {
+  return { tenantId, ...(activeBranchId && activeBranchId > 0 ? { branchId: activeBranchId } : {}) };
+}
+
+/** @summary Genera o regenera el DOCX/PDF de un comprobante (por ejemplo los legacy sin archivo). */
+export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("order.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Comprobante inválido" }, { status: 400 });
+  const invoice = await prisma.invoiceRecord.findFirst({ where: { ...invoiceScope(auth.tenant.id, auth.activeBranchId), id } });
+  if (!invoice) return NextResponse.json({ error: "Comprobante no encontrado" }, { status: 404 });
+  try {
+    const document = await generateInvoiceDocumentArtifact(id, auth.tenant.id);
+    return NextResponse.json({
+      document: {
+        pdfStatus: document.pdfStatus,
+        conversionMessage: document.conversionMessage,
+        templateVersion: document.templateVersion,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "No se pudo generar el documento Word" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await authorize("order.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const id = Number((await context.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ error: "Comprobante inválido" }, { status: 400 });
   const invoice = await prisma.invoiceRecord.findFirst({
-    where: {
-      id,
-      tenantId: auth.tenant.id,
-      ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchId: auth.activeBranchId } : {}),
-    },
+    where: { ...invoiceScope(auth.tenant.id, auth.activeBranchId), id },
     include: { document: true },
   });
   if (!invoice) return NextResponse.json({ error: "Comprobante no encontrado" }, { status: 404 });

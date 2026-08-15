@@ -40,6 +40,14 @@ export type AvailableInvoiceOrder = {
   createdAt: string;
 };
 
+export type InvoiceSettingsData = {
+  issuerName: string | null;
+  taxId: string | null;
+  address: string | null;
+  city: string | null;
+  terms: string | null;
+};
+
 function money(value: string | number, currency: string) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(Number(value));
 }
@@ -54,15 +62,93 @@ function documentStatus(document: InvoiceDocumentSummary) {
 export function InvoiceManagerV2({
   initialInvoices,
   availableOrders,
+  initialSettings,
 }: {
   initialInvoices: InvoiceListItem[];
   availableOrders: AvailableInvoiceOrder[];
+  initialSettings: InvoiceSettingsData | null;
 }) {
   const pathname = usePathname();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [orders, setOrders] = useState(availableOrders);
+  const [settings, setSettings] = useState<InvoiceSettingsData | null>(initialSettings);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [documentType, setDocumentType] = useState<DocumentType>("internal_receipt");
   const [busyOrder, setBusyOrder] = useState<number | null>(null);
+  const [busyDocument, setBusyDocument] = useState<number | null>(null);
+
+  async function generateDocument(invoice: InvoiceListItem) {
+    setBusyDocument(invoice.id);
+    const response = await scopedFetch(`/api/admin/invoices/${invoice.id}/document`, { method: "POST" });
+    const body = (await response.json().catch(() => ({}))) as {
+      document?: InvoiceDocumentSummary;
+      error?: string;
+    };
+    setBusyDocument(null);
+    if (!response.ok || !body.document) {
+      await Swal.fire({
+        title: "No se pudo generar el documento",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    setInvoices((current) => current.map((item) => (item.id === invoice.id ? { ...item, document: body.document! } : item)));
+    await Swal.fire({
+      title: "Documento generado",
+      text: body.document.pdfStatus === "ready" ? "El DOCX y el PDF quedaron listos." : "El DOCX quedó disponible; el PDF depende del conversor configurado.",
+      icon: "success",
+      timer: 1500,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
+
+  async function saveIssuerSettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (savingSettings) return;
+    setSavingSettings(true);
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      issuerName: String(form.get("issuerName") ?? "").trim() || null,
+      taxId: String(form.get("taxId") ?? "").trim() || null,
+      address: String(form.get("address") ?? "").trim() || null,
+      city: String(form.get("city") ?? "").trim() || null,
+      terms: String(form.get("terms") ?? "").trim() || null,
+    };
+    try {
+      const response = await scopedFetch("/api/admin/invoice-settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = (await response.json().catch(() => ({}))) as { settings?: InvoiceSettingsData; error?: string };
+      if (!response.ok || !body.settings) throw new Error(body.error ?? "No se pudo guardar la configuración");
+      setSettings(body.settings);
+      await Swal.fire({
+        title: "Emisor guardado",
+        text: "Los próximos comprobantes usarán estos datos en las plantillas Word.",
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    } catch (error) {
+      await Swal.fire({
+        title: "No se pudo guardar",
+        text: error instanceof Error ? error.message : "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  }
 
   async function createInvoice(orderId: number) {
     setBusyOrder(orderId);
@@ -99,7 +185,7 @@ export function InvoiceManagerV2({
   async function editInvoice(invoice: InvoiceListItem) {
     const result = await Swal.fire({
       title: "Editar registro interno",
-      text: "El DOCX/PDF histórico no se modifica; conserva los datos con los que fue generado.",
+      text: "En Borrador el DOCX/PDF se regenera con los datos corregidos. Una vez emitido o anulado queda congelado en su versión histórica.",
       html: `<label style="display:block;text-align:left">Estado<select id="invoice-status" class="swal2-select" style="display:block;width:100%;margin:.5rem 0"><option value="draft" ${invoice.status === "draft" ? "selected" : ""}>Borrador</option><option value="issued" ${invoice.status === "issued" ? "selected" : ""}>Emitido internamente</option><option value="cancelled" ${invoice.status === "cancelled" ? "selected" : ""}>Anulado</option></select></label><input id="invoice-tax" class="swal2-input" maxlength="40" placeholder="CUIT/DNI opcional"><textarea id="invoice-notes" class="swal2-textarea" maxlength="1000" placeholder="Notas internas"></textarea>`,
       didOpen: () => {
         (document.querySelector("#invoice-tax") as HTMLInputElement).value = invoice.customerTaxId ?? "";
@@ -122,10 +208,27 @@ export function InvoiceManagerV2({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(result.value),
     });
-    const body = (await response.json().catch(() => ({}))) as { invoice?: InvoiceListItem };
-    if (response.ok && body.invoice) {
-      setInvoices((current) => current.map((item) => item.id === invoice.id ? { ...item, ...body.invoice!, document: item.document } : item));
+    const body = (await response.json().catch(() => ({}))) as { invoice?: InvoiceListItem; document?: InvoiceDocumentSummary; error?: string };
+    if (!response.ok || !body.invoice) {
+      await Swal.fire({
+        title: "No se pudo actualizar",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
     }
+    setInvoices((current) => current.map((item) => item.id === invoice.id ? { ...item, ...body.invoice!, document: body.document ?? item.document } : item));
+    await Swal.fire({
+      title: "Registro actualizado",
+      text: body.document ? "El DOCX/PDF se regeneró con los datos corregidos." : "Los documentos emitidos conservan su versión histórica.",
+      icon: "success",
+      timer: 1600,
+      showConfirmButton: false,
+      background: "#18181b",
+      color: "#fafafa",
+    });
   }
 
   return (
@@ -145,6 +248,27 @@ export function InvoiceManagerV2({
       <div className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
         Estos documentos son internos. Los tipos Factura A/B son diseños visuales y no representan emisión fiscal, CAE ni integración con un proveedor autorizado.
       </div>
+
+      <section className="card mb-6 min-w-0 p-5 sm:p-7">
+        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-xl font-black">Emisor del comprobante</h2>
+            <p className="mt-1 text-sm text-[var(--admin-muted)]">Estos datos completan los campos business.* de las plantillas Word (nombre, CUIT, domicilio y teléfono).</p>
+          </div>
+          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">Configuración</span>
+        </div>
+        <form className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2" onSubmit={saveIssuerSettings}>
+          <label className="text-sm font-bold">Nombre del negocio<input className="input mt-2" name="issuerName" maxLength={180} defaultValue={settings?.issuerName ?? ""} placeholder="Nombre que se estampa en el comprobante" /></label>
+          <label className="text-sm font-bold">CUIT / documento<input className="input mt-2" name="taxId" maxLength={40} defaultValue={settings?.taxId ?? ""} placeholder="Ej. 30-12345678-9" /></label>
+          <label className="text-sm font-bold">Domicilio<input className="input mt-2" name="address" maxLength={300} defaultValue={settings?.address ?? ""} placeholder="Calle y número" /></label>
+          <label className="text-sm font-bold">Localidad<input className="input mt-2" name="city" maxLength={120} defaultValue={settings?.city ?? ""} placeholder="Ciudad" /></label>
+          <label className="text-sm font-bold sm:col-span-2">Condiciones o pie de comprobante<textarea className="input mt-2 min-h-24" name="terms" maxLength={3000} defaultValue={settings?.terms ?? ""} placeholder="Ej. Gracias por tu compra. Este documento es interno y no fiscal." /></label>
+          <div className="flex min-w-0 flex-wrap items-center gap-3 sm:col-span-2">
+            <button className="btn" disabled={savingSettings} type="submit">{savingSettings ? "Guardando…" : "Guardar emisor"}</button>
+            {!settings?.issuerName && !settings?.taxId && !settings?.address && !settings?.city && <p className="text-xs text-[var(--admin-muted)]">Sin datos cargados: se usa el nombre del negocio y el monograma por defecto.</p>}
+          </div>
+        </form>
+      </section>
 
       <section className="card min-w-0 p-5 sm:p-7">
         <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
@@ -195,6 +319,11 @@ export function InvoiceManagerV2({
               {invoice.document?.conversionMessage && invoice.document.pdfStatus !== "ready" && <p className="mt-3 rounded-xl bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200">{invoice.document.conversionMessage}</p>}
               <div className="mt-5 flex flex-wrap gap-2">
                 <button className="btn btn-secondary" onClick={() => void editInvoice(invoice)} type="button">Editar registro</button>
+                {!invoice.document && (
+                  <button className="btn btn-secondary" disabled={busyDocument === invoice.id} onClick={() => void generateDocument(invoice)} type="button">
+                    {busyDocument === invoice.id ? "Generando…" : "Generar documento"}
+                  </button>
+                )}
                 <Link className="btn" href={adminHrefFromPathname(pathname, `/admin/facturacion/${invoice.id}`)}>Abrir documento</Link>
               </div>
             </article>
