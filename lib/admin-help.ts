@@ -123,13 +123,17 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
   },
   cocina: {
     title: "Cocina",
-    intro: "Una pantalla simple para el equipo que prepara: qué hay que hacer y cuándo está listo.",
+    intro:
+      "Monitor de preparaciones pensado para tablets y pantallas táctiles de la cocina, con los pedidos en columnas por estado y su tiempo en vivo.",
     points: [
-      "Los pedidos esperando aparecen para empezar y después pasan a preparación.",
-      "Con EMPEZAR se marca que el pedido está en preparación; con LISTO queda para entregar.",
-      "Esta vista también funciona bien en una tablet o un monitor de cocina.",
+      "Columnas Nuevo → Preparando → Listo → Entregado: cada botón grande (EMPEZAR, LISTO, ENTREGAR) avanza el pedido de un toque.",
+      "El cronómetro nace cuando entra el pedido y se colorea: a tiempo, demorado o crítico según los umbrales de Ajustes.",
+      "Filtrá por sector del salón, estación de cocina, canal (mesa/retiro/delivery) u origen del pedido.",
+      "Abrí un pedido para ver productos, cantidades, modificadores, notas, mesa, camarero e historial con usuario y hora.",
+      "Los datos se actualizan solos cada pocos segundos; el sonido opcional avisa cuando entra un pedido o pasa a crítico.",
+      "Las estaciones (cocina, barra, cafetería) se crean desde el botón Estaciones y los productos se asignan desde Productos; quedan listas para rutear a impresoras o monitores dedicados a futuro.",
     ],
-    related: ["pedidos"],
+    related: ["pedidos", "salon", "productos"],
   },
   reservas: {
     title: "Reservas",

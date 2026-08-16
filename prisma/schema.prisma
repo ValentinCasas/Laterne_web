@@ -145,9 +145,12 @@ model Product {
   orderItems         OrderItem[]
   inventoryStocks    InventoryStock[]
   branchAssignments  BranchProduct[]
+  station            KitchenStation?      @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  stationId          Int?
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
+  @@index([stationId])
   @@map("product")
 }
 
@@ -183,25 +186,25 @@ model Testimonial {
 }
 
 model User {
-  id               Int                @id @default(autoincrement())
-  name             String             @db.VarChar(255)
-  email            String             @db.VarChar(255)
-  password         String             @db.VarChar(255)
-  role             Int
-  imageUrl         String             @db.VarChar(255)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  memberships      TenantMembership[]
-  sessions         AuthSession[]
-  auditLogs        AuditLog[]
-  assignedLeads    SalesLead[]        @relation("AssignedSalesLeads")
-  isSuperAdmin     Boolean            @default(false)
-  platformRole     String?            @db.VarChar(40)
-  mediaAssets      MediaAsset[]
-  platformPayments PlatformPayment[]  @relation("PlatformPaymentCreatedBy")
-  authHandoffs     AuthHandoff[]
-  tableSessionsWaited TableSession[]   @relation("WaiterTableSessions")
-  tableSessionsClosed TableSession[]   @relation("CloserTableSessions")
+  id                  Int                 @id @default(autoincrement())
+  name                String              @db.VarChar(255)
+  email               String              @db.VarChar(255)
+  password            String              @db.VarChar(255)
+  role                Int
+  imageUrl            String              @db.VarChar(255)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  memberships         TenantMembership[]
+  sessions            AuthSession[]
+  auditLogs           AuditLog[]
+  assignedLeads       SalesLead[]         @relation("AssignedSalesLeads")
+  isSuperAdmin        Boolean             @default(false)
+  platformRole        String?             @db.VarChar(40)
+  mediaAssets         MediaAsset[]
+  platformPayments    PlatformPayment[]   @relation("PlatformPaymentCreatedBy")
+  authHandoffs        AuthHandoff[]
+  tableSessionsWaited TableSession[]      @relation("WaiterTableSessions")
+  tableSessionsClosed TableSession[]      @relation("CloserTableSessions")
   tableSessionEvents  TableSessionEvent[]
 
   @@unique([email])
@@ -278,6 +281,7 @@ model Tenant {
   activePaletteId       Int?
   activePalette         ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
   themePalettes         ThemePalette[]            @relation("TenantThemePalettes")
+  kitchenStations       KitchenStation[]
 
   @@map("tenant")
 }
@@ -880,16 +884,16 @@ model ProductOptionGroup {
  * @summary Sector configurable del salón (salón, terraza, barra, etc.) por sucursal.
  */
 model TableSector {
-  id        Int            @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   tenantId  Int
   branchId  Int
-  name      String         @db.VarChar(100)
-  sortOrder Int            @default(0)
-  active    Boolean        @default(true)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch    Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name      String        @db.VarChar(100)
+  sortOrder Int           @default(0)
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   tables    DiningTable[]
 
   @@unique([tenantId, branchId, name])
@@ -898,32 +902,56 @@ model TableSector {
 }
 
 /**
+ * @summary Estación de preparación de la cocina (cocina, barra, cafetería).
+ * Enruta visualmente los productos hacia el lugar que los prepara; queda
+ * preparada la base para ruteo a impresoras o monitores dedicados.
+ */
+model KitchenStation {
+  id        Int       @id @default(autoincrement())
+  tenantId  Int
+  branchId  Int
+  name      String    @db.VarChar(100)
+  type      String    @default("KITCHEN") @db.VarChar(20)
+  active    Boolean   @default(true)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  products  Product[]
+
+  @@unique([tenantId, branchId, name])
+  @@index([tenantId, branchId, active, sortOrder])
+  @@map("kitchenstation")
+}
+
+/**
  * @summary Ocupación vigente de una mesa: quién está, cuántos son y qué se consumió.
  * Una mesa tiene como máximo una sesión abierta (closedAt = null) a la vez.
  */
 model TableSession {
-  id           Int                @id @default(autoincrement())
-  tenantId     Int
-  branchId     Int
-  tableId      Int
-  status       String             @default("occupied") @db.VarChar(24)
-  customerName String?            @db.VarChar(160)
-  phone        String?            @db.VarChar(60)
-  partySize    Int                @default(1)
-  notes        String?            @db.Text
-  openedAt     DateTime           @default(now())
-  closedAt     DateTime?
+  id             Int                 @id @default(autoincrement())
+  tenantId       Int
+  branchId       Int
+  tableId        Int
+  status         String              @default("occupied") @db.VarChar(24)
+  customerName   String?             @db.VarChar(160)
+  phone          String?             @db.VarChar(60)
+  partySize      Int                 @default(1)
+  notes          String?             @db.Text
+  openedAt       DateTime            @default(now())
+  closedAt       DateTime?
   closedByUserId Int?
-  waiterUserId Int?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch       Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  table        DiningTable        @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  waiter       User?              @relation("WaiterTableSessions", fields: [waiterUserId], references: [id], onDelete: SetNull)
-  closedBy     User?              @relation("CloserTableSessions", fields: [closedByUserId], references: [id], onDelete: SetNull)
-  orders       CustomerOrder[]
-  events       TableSessionEvent[]
+  waiterUserId   Int?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table          DiningTable         @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  waiter         User?               @relation("WaiterTableSessions", fields: [waiterUserId], references: [id], onDelete: SetNull)
+  closedBy       User?               @relation("CloserTableSessions", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  orders         CustomerOrder[]
+  events         TableSessionEvent[]
 
   @@index([tenantId, branchId, closedAt, tableId])
   @@index([tenantId, tableId, closedAt])
@@ -1447,6 +1475,7 @@ model Branch {
   tableSectors       TableSector[]
   tableSessions      TableSession[]
   tableSessionEvents TableSessionEvent[]
+  kitchenStations    KitchenStation[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])
@@ -1478,7 +1507,6 @@ model BranchProduct {
 
 /**
  * @summary Entitlement operativo de una sucursal dentro de la suscripción del tenant.
- *
  * Una sucursal puede tener varias licencias (p. ej. una activa y otra de refuerzo
  * con cupos adicionales). La capacidad de usuarios permitidos de una sucursal es
  * la suma de los cupos de sus licencias operativas vigentes.
@@ -1494,7 +1522,9 @@ model BranchLicense {
   graceUntil       DateTime?
   priceOverride    Decimal?  @db.Decimal(14, 2)
   pricePerUser     Decimal?  @db.Decimal(14, 2)
-  /** Cupos de usuarios permitidos por esta licencia. 0 = usar la capacidad del plan. */
+  /**
+   * Cupos de usuarios permitidos por esta licencia. 0 = usar la capacidad del plan.
+   */
   usersAllowed     Int       @default(0)
   notes            String?   @db.Text
   createdAt        DateTime  @default(now())

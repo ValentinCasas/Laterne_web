@@ -42,6 +42,22 @@ export async function productAdminData(
     },
   });
   if (!category) throw new Error("Seleccioná una categoría válida");
+
+  // Estación de cocina opcional: debe pertenecer al tenant y, si hay sucursal
+  // activa, a esa sucursal. Vacío significa "sin estación" (no se rutea).
+  let stationId: number | null = null;
+  if (input.stationId && input.stationId.trim()) {
+    const station = await prisma.kitchenStation.findFirst({
+      where: {
+        id: Number(input.stationId),
+        tenantId,
+        ...(activeBranchId && activeBranchId > 0 ? { branchId: activeBranchId } : {}),
+      },
+      select: { id: true },
+    });
+    if (!station) throw new Error("Elegí una estación de cocina válida");
+    stationId = station.id;
+  }
   const targetBranchId = activeBranchId && activeBranchId > 0 ? activeBranchId : category.branchId;
   if (!targetBranchId) throw new Error("Indicá la sucursal del producto");
 
@@ -70,6 +86,7 @@ export async function productAdminData(
       promotionalPrice: input.promotionalPrice ? Number(input.promotionalPrice) : undefined,
       previousPrice: input.previousPrice ? Number(input.previousPrice) : undefined,
       preparationMinutes: input.preparationMinutes ? Number(input.preparationMinutes) : undefined,
+      stationId,
       spiceLevel: Math.min(3, Math.max(0, Number(input.spiceLevel || 0))),
       featured: booleanValue(input.featured),
       isNew: booleanValue(input.isNew),

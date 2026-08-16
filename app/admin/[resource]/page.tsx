@@ -90,6 +90,7 @@ function createDefinition(
   productOptions: ResourceOption[],
   roleOptions: ResourceOption[],
   branchOptions: ResourceOption[],
+  stationOptions: ResourceOption[],
 ): ResourceDefinition | null {
   const definitions: Record<string, ResourceDefinition> = {
     productos: {
@@ -172,6 +173,13 @@ function createDefinition(
           ],
         },
         { key: "preparationMinutes", label: "Preparación estimada", type: "number", help: "Minutos" },
+        {
+          key: "stationId",
+          label: "Estación de preparación",
+          control: "select",
+          help: "Rutea los ítems de este producto hacia la estación que lo prepara (cocina, barra, cafetería).",
+          options: stationOptions,
+        },
         { key: "promotionalPrice", label: "Precio promocional", type: "number" },
         { key: "previousPrice", label: "Precio anterior", type: "number" },
         {
@@ -863,8 +871,19 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
   const productFilter = resourceScopedWhere("product", tenantId, context.activeBranchId);
-  const [categories, products, roles, branches, tenant, mediaAssets, events, memberships, promotions, cases] =
-    await Promise.all([
+  const [
+    categories,
+    products,
+    roles,
+    branches,
+    tenant,
+    mediaAssets,
+    events,
+    memberships,
+    promotions,
+    cases,
+    stations,
+  ] = await Promise.all([
       prisma.category.findMany({
         where: resourceScopedWhere("category", tenantId, context.activeBranchId),
         orderBy: { name: "asc" },
@@ -895,6 +914,15 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
       prisma.successCase.findMany({
         where: { tenantId },
         select: { logoUrl: true, coverUrl: true },
+      }),
+      prisma.kitchenStation.findMany({
+        where: {
+          tenantId,
+          ...(context.activeBranchId && context.activeBranchId > 0
+            ? { branchId: context.activeBranchId }
+            : { branchId: { in: context.branches.map((branch) => branch.id) } }),
+        },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       }),
     ]);
 
@@ -950,6 +978,7 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
     products.map((product) => ({ value: product.id.toString(), label: product.name })),
     roles.map((role) => ({ value: role.id.toString(), label: role.name })),
     branches.map((branch) => ({ value: branch.id.toString(), label: branch.name })),
+    stations.map((station) => ({ value: station.id.toString(), label: station.name })),
   );
   if (!definition) notFound();
 
