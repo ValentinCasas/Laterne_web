@@ -165,6 +165,19 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     warning: "El stock se maneja por sucursal: verificá sobre cuál estás trabajando antes de ajustar.",
     related: ["pedidos", "sucursales", "productos"],
   },
+  salon: {
+    title: "Salón",
+    intro:
+      "El plano de tus mesas con su estado en vivo: abrí mesas, cargá consumos, trasladá comensales y cerrá la cuenta.",
+    points: [
+      "Una mesa sin sesión abierta está libre; al abrirla pasa por Ocupada → Esperando pedido → Preparando → Lista para cobrar.",
+      "Cada consumo (comanda) se carga desde la carta de la sucursal y descuenta stock cuando corresponde.",
+      "Podés trasladar mesas, mover comandas entre mesas, unir cuentas y separar comandas hacia una mesa libre.",
+      "La precuenta es digital y no reemplaza la facturación fiscal; el cierre entrega los consumos y quedan listos para facturar.",
+      "En “Editar plano” arrastrá las mesas para acomodar el mapa del salón.",
+    ],
+    related: ["mesas", "pedidos", "cocina", "facturacion"],
+  },
   mesas: {
     title: "Mesas y QR",
     intro: "Cada mesa tiene un código QR que lleva al cliente directamente a tu carta.",
@@ -172,8 +185,9 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
       "Cada mesa pertenece a una sucursal y a un sector del salón.",
       "Imprimí los carteles con el QR para colocarlos en el salón.",
       "Las mesas se vinculan con los pedidos de mesa y con las reservas.",
+      "La operación diaria (abrir mesas, consumos y cierre) se hace desde la vista Salón.",
     ],
-    related: ["reservas", "sucursales", "pedidos"],
+    related: ["salon", "reservas", "sucursales", "pedidos"],
   },
   sucursales: {
     title: "Sucursales",

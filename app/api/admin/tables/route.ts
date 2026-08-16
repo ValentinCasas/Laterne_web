@@ -12,10 +12,27 @@ import { tableCode } from "@/lib/tables";
 const tableInput = z.object({
   name: z.string().trim().min(1).max(100),
   sector: z.string().trim().max(100).optional(),
+  sectorId: z.coerce.number().int().positive().optional().nullable(),
   capacity: z.coerce.number().int().min(1).max(100),
   active: z.boolean().default(true),
   branchId: z.coerce.number().int().positive(),
 });
+
+/** @summary Resuelve el nombre visible de un sector, validando que pertenezca a la sucursal. */
+async function resolveSectorName(
+  tenantId: number,
+  branchId: number,
+  sectorId: number | null | undefined,
+  legacySector: string | undefined,
+) {
+  if (!sectorId) return legacySector?.trim() || null;
+  const sector = await prisma.tableSector.findFirst({
+    where: { id: sectorId, tenantId, branchId, active: true },
+    select: { name: true },
+  });
+  if (!sector) throw new Error("El sector seleccionado no pertenece a la sucursal");
+  return sector.name;
+}
 
 /** @summary Genera un código de mesa que todavía no existe dentro del negocio actual. */
 async function uniqueCode(tenantId: number, name: string) {
@@ -43,13 +60,23 @@ export async function POST(request: Request) {
   if (!auth.branches.some((item) => item.id === branch.id)) {
     return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
   }
+  let sectorName: string | null;
+  try {
+    sectorName = await resolveSectorName(auth.tenant.id, branch.id, parsed.data.sectorId, parsed.data.sector);
+  } catch (reason) {
+    return NextResponse.json(
+      { error: reason instanceof Error ? reason.message : "Sector inválido" },
+      { status: 400 },
+    );
+  }
   const created = await prisma.diningTable.create({
     data: {
       tenantId: auth.tenant.id,
       branchId: branch.id,
       code: await uniqueCode(auth.tenant.id, parsed.data.name),
       name: parsed.data.name,
-      sector: parsed.data.sector || null,
+      sector: sectorName,
+      sectorId: parsed.data.sectorId ?? null,
       capacity: parsed.data.capacity,
       active: parsed.data.active,
     },

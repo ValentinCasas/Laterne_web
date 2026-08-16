@@ -31,6 +31,7 @@ export const BRANCH_ADMIN_SECTIONS = new Set([
   "testimonios",
   "pedidos",
   "cocina",
+  "salon",
   "reservas",
   "facturacion",
   "inventario",

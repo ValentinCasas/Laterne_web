@@ -92,6 +92,13 @@ export const ADMIN_NAVIGATION = [
             description: "Preparaciones en curso",
           },
           {
+            href: "/admin/salon",
+            label: "Salón",
+            icon: "SL",
+            permission: "table.manage",
+            description: "Plano de mesas, estados y consumos del salón",
+          },
+          {
             href: "/admin/reservas",
             label: "Reservas",
             icon: "RS",

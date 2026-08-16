@@ -5,8 +5,9 @@ import { authorize, canAccessBranch } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { restoreOrderStock } from "@/lib/order-stock";
 import { asOrderType, transitionError } from "@/lib/order-status";
-import { orderStatuses, type OrderStatus } from "@/lib/orders";
-import { loyaltyPoints, loyaltyTier } from "@/lib/loyalty";
+import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
+import { awardOrderLoyalty } from "@/lib/loyalty";
+import { deriveSessionStatus } from "@/lib/table-status";
 import { emitOrderStatusNotification } from "@/lib/order-notifications";
 import { prisma } from "@/lib/prisma";
 
@@ -63,29 +64,39 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       if (parsed.data.status === "cancelled") {
         await restoreOrderStock(transaction, { id, reference: current.reference });
       }
-      if (parsed.data.status === "delivered" && current.customerId) {
-        const existingReward = await transaction.loyaltyTransaction.findFirst({
-          where: { customerId: current.customerId, reference: current.reference },
+      if (parsed.data.status === "delivered") {
+        await awardOrderLoyalty(transaction, {
+          id: current.id,
+          customerId: current.customerId,
+          reference: current.reference,
+          total: Number(current.total),
         });
-        if (!existingReward) {
-          const points = loyaltyPoints(Number(current.total));
-          const customer = await transaction.loyaltyCustomer.update({
-            where: { id: current.customerId },
-            data: { points: { increment: points } },
-          });
-          await transaction.loyaltyCustomer.update({
-            where: { id: customer.id },
-            data: { tier: loyaltyTier(customer.points) },
-          });
-          await transaction.loyaltyTransaction.create({
-            data: {
-              customerId: customer.id,
-              points,
-              reason: "Pedido entregado",
-              reference: current.reference,
-            },
-          });
-        }
+      }
+      const tableSessionId = current.tableSessionId;
+      const orderBranchId = current.branchId;
+      if (tableSessionId && orderBranchId) {
+        const sessionStatuses = await transaction.customerOrder.findMany({
+          where: {
+            tenantId: auth.tenant.id,
+            tableSessionId,
+            status: { notIn: ["delivered", "cancelled"] },
+          },
+          select: { status: true },
+        });
+        await transaction.tableSession.update({
+          where: { id: tableSessionId },
+          data: { status: deriveSessionStatus(sessionStatuses.map((item) => item.status)) },
+        });
+        await transaction.tableSessionEvent.create({
+          data: {
+            tenantId: auth.tenant.id,
+            branchId: orderBranchId,
+            sessionId: tableSessionId,
+            eventType: "order_status",
+            note: `${current.reference} · ${orderStatusLabel(parsed.data.status)}`,
+            userId: auth.session.userId,
+          },
+        });
       }
       return order;
     });

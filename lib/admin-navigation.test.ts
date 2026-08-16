@@ -15,6 +15,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/onboarding",
       "/admin/pedidos",
       "/admin/cocina",
+      "/admin/salon",
       "/admin/reservas",
       "/admin/mesas",
       "/admin/facturacion",

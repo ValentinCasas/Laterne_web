@@ -200,6 +200,9 @@ model User {
   mediaAssets      MediaAsset[]
   platformPayments PlatformPayment[]  @relation("PlatformPaymentCreatedBy")
   authHandoffs     AuthHandoff[]
+  tableSessionsWaited TableSession[]   @relation("WaiterTableSessions")
+  tableSessionsClosed TableSession[]   @relation("CloserTableSessions")
+  tableSessionEvents  TableSessionEvent[]
 
   @@unique([email])
   @@map("user")
@@ -269,6 +272,9 @@ model Tenant {
   branchLicenses        BranchLicense[]
   branchProducts        BranchProduct[]
   loyaltyBranchLinks    LoyaltyBranchLink[]
+  tableSectors          TableSector[]
+  tableSessions         TableSession[]
+  tableSessionEvents    TableSessionEvent[]
   activePaletteId       Int?
   activePalette         ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
   themePalettes         ThemePalette[]            @relation("TenantThemePalettes")
@@ -870,6 +876,83 @@ model ProductOptionGroup {
   @@map("productoptiongroup")
 }
 
+/**
+ * @summary Sector configurable del salón (salón, terraza, barra, etc.) por sucursal.
+ */
+model TableSector {
+  id        Int            @id @default(autoincrement())
+  tenantId  Int
+  branchId  Int
+  name      String         @db.VarChar(100)
+  sortOrder Int            @default(0)
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tables    DiningTable[]
+
+  @@unique([tenantId, branchId, name])
+  @@index([tenantId, branchId, active, sortOrder])
+  @@map("tablesector")
+}
+
+/**
+ * @summary Ocupación vigente de una mesa: quién está, cuántos son y qué se consumió.
+ * Una mesa tiene como máximo una sesión abierta (closedAt = null) a la vez.
+ */
+model TableSession {
+  id           Int                @id @default(autoincrement())
+  tenantId     Int
+  branchId     Int
+  tableId      Int
+  status       String             @default("occupied") @db.VarChar(24)
+  customerName String?            @db.VarChar(160)
+  phone        String?            @db.VarChar(60)
+  partySize    Int                @default(1)
+  notes        String?            @db.Text
+  openedAt     DateTime           @default(now())
+  closedAt     DateTime?
+  closedByUserId Int?
+  waiterUserId Int?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table        DiningTable        @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  waiter       User?              @relation("WaiterTableSessions", fields: [waiterUserId], references: [id], onDelete: SetNull)
+  closedBy     User?              @relation("CloserTableSessions", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  orders       CustomerOrder[]
+  events       TableSessionEvent[]
+
+  @@index([tenantId, branchId, closedAt, tableId])
+  @@index([tenantId, tableId, closedAt])
+  @@index([tenantId, openedAt])
+  @@map("tablesession")
+}
+
+/**
+ * @summary Evento del timeline de una sesión de mesa (apertura, consumos, traslados, cierre, etc.).
+ */
+model TableSessionEvent {
+  id        Int          @id @default(autoincrement())
+  tenantId  Int
+  branchId  Int
+  sessionId Int
+  eventType String       @db.VarChar(40)
+  note      String?      @db.VarChar(500)
+  metadata  Json?
+  userId    Int?
+  createdAt DateTime     @default(now())
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  session   TableSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, branchId, sessionId, createdAt])
+  @@map("tablesessionevent")
+}
+
 model DiningTable {
   id        Int             @id @default(autoincrement())
   tenantId  Int
@@ -877,17 +960,23 @@ model DiningTable {
   code      String          @db.VarChar(40)
   name      String          @db.VarChar(100)
   sector    String?         @db.VarChar(100)
+  sectorId  Int?
   capacity  Int             @default(4)
   active    Boolean         @default(true)
+  positionX Int?
+  positionY Int?
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  sectorRef TableSector?    @relation(fields: [sectorId], references: [id], onDelete: SetNull)
   orders    CustomerOrder[]
+  sessions  TableSession[]
 
   @@unique([tenantId, code])
   @@index([tenantId, active, name])
   @@index([tenantId, branchId])
+  @@index([tenantId, sectorId])
   @@map("diningtable")
 }
 
@@ -895,6 +984,7 @@ model CustomerOrder {
   id              Int                  @id @default(autoincrement())
   tenantId        Int
   tableId         Int?
+  tableSessionId  Int?
   branchId        Int?
   customerId      Int?
   reference       String               @unique @db.VarChar(24)
@@ -924,6 +1014,7 @@ model CustomerOrder {
   updatedAt       DateTime             @updatedAt
   tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   table           DiningTable?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  tableSession    TableSession?        @relation(fields: [tableSessionId], references: [id], onDelete: SetNull)
   branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
   customer        LoyaltyCustomer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   promotion       Promotion?           @relation(fields: [promotionId], references: [id], onDelete: SetNull)
@@ -936,6 +1027,7 @@ model CustomerOrder {
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
+  @@index([tenantId, tableSessionId, createdAt])
   @@index([tenantId, branchId, createdAt])
   @@index([tenantId, customerId, createdAt])
   @@index([tenantId, promotionId, createdAt])
@@ -1352,6 +1444,9 @@ model Branch {
   auditLogs          AuditLog[]
   sessions           AuthSession[]
   loyaltyLinks       LoyaltyBranchLink[]
+  tableSectors       TableSector[]
+  tableSessions      TableSession[]
+  tableSessionEvents TableSessionEvent[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])

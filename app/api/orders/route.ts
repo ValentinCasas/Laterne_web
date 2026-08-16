@@ -5,6 +5,8 @@ import { loyaltyTokenHash } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
+import { assertStockAvailability, consumeOrderStock } from "@/lib/order-stock";
+import { deriveSessionStatus } from "@/lib/table-status";
 import { resolveOrderPromotion, type PromotionCandidate, type PromotionItem } from "@/lib/promotion";
 import {
   availableOrderSlots,
@@ -372,19 +374,27 @@ export async function POST(request: Request) {
   for (const item of calculatedItems) {
     quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
   }
-  const trackedStocks = await prisma.inventoryStock.findMany({
-    where: { tenantId: tenant.id, branchId: branch.id, productId: { in: productIds }, tracked: true },
-  });
-  const unavailableStock = trackedStocks.find(
-    (stock) => Number(stock.current) < (quantities.get(stock.productId) ?? 0),
-  );
-  if (unavailableStock) {
-    const product = productMap.get(unavailableStock.productId);
+  let trackedStocks: Awaited<ReturnType<typeof assertStockAvailability>> = [];
+  try {
+    trackedStocks = await assertStockAvailability(
+      tenant.id,
+      branch.id,
+      quantities,
+      (productId) => productMap.get(productId)?.name ?? "Producto",
+    );
+  } catch (reason) {
     return NextResponse.json(
-      { error: `${product?.name ?? "Un producto"} no tiene stock suficiente` },
+      { error: reason instanceof Error ? reason.message : "No se pudo validar el stock" },
       { status: 409 },
     );
   }
+
+  const tableSession = table
+    ? await prisma.tableSession.findFirst({
+        where: { tenantId: tenant.id, tableId: table.id, closedAt: null },
+        select: { id: true },
+      })
+    : null;
 
   const reference = await uniqueReference(branch.orderPrefix);
   const token = orderPublicToken();
@@ -395,6 +405,7 @@ export async function POST(request: Request) {
           tenantId: tenant.id,
           branchId: branch.id,
           tableId: table?.id ?? null,
+          tableSessionId: tableSession?.id ?? null,
           customerId: customer?.id ?? null,
           reference,
           publicTokenHash: orderTokenHash(token),
@@ -423,44 +434,34 @@ export async function POST(request: Request) {
           history: { create: { toStatus: "received", note: "Pedido creado desde la carta" } },
         },
       });
+      if (tableSession) {
+        const sessionStatuses = await transaction.customerOrder.findMany({
+          where: {
+            tenantId: tenant.id,
+            tableSessionId: tableSession.id,
+            status: { notIn: ["delivered", "cancelled"] },
+          },
+          select: { status: true },
+        });
+        await transaction.tableSession.update({
+          where: { id: tableSession.id },
+          data: { status: deriveSessionStatus(sessionStatuses.map((item) => item.status)) },
+        });
+      }
       if (idempotencyKey) {
         await transaction.orderIdempotency.create({
           data: { tenantId: tenant.id, key: idempotencyKey, orderId: order.id, reference, token, total },
         });
       }
-      for (const stock of trackedStocks) {
-        const quantity = quantities.get(stock.productId) ?? 0;
-        if (!quantity) continue;
-        const result = await transaction.inventoryStock.updateMany({
-          where: { id: stock.id, tracked: true, current: { gte: quantity } },
-          data: { current: { decrement: quantity } },
-        });
-        if (result.count !== 1) throw new Error("El stock cambió mientras confirmabas el pedido");
-        const updated = await transaction.inventoryStock.findUniqueOrThrow({ where: { id: stock.id } });
-        await transaction.stockMovement.create({
-          data: {
-            tenantId: tenant.id,
-            stockId: stock.id,
-            orderId: order.id,
-            type: "order",
-            quantity: -quantity,
-            balanceAfter: updated.current,
-            reason: `Pedido ${reference}`,
-          },
-        });
-        if (Number(updated.current) <= Number(updated.minimum)) {
-          await transaction.notification.create({
-            data: {
-              tenantId: tenant.id,
-              branchId: branch.id,
-              type: "stock.low",
-              title: `Stock bajo · ${productMap.get(stock.productId)?.name ?? "Producto"}`,
-              message: `${branch.name}: quedaron ${Number(updated.current)} ${updated.unit}.`,
-              link: "/admin/inventario",
-            },
-          });
-        }
-      }
+      await consumeOrderStock(transaction, {
+        tenantId: tenant.id,
+        branchId: branch.id,
+        orderId: order.id,
+        reference,
+        quantities,
+        stocks: trackedStocks,
+        productName: (productId) => productMap.get(productId)?.name ?? "Producto",
+      });
       await transaction.notification.create({
         data: {
           tenantId: tenant.id,

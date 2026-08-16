@@ -15,10 +15,28 @@ function newTableCode() {
 const tableUpdate = z.object({
   name: z.string().trim().min(1).max(100),
   sector: z.string().trim().max(100).optional(),
+  sectorId: z.coerce.number().int().positive().optional().nullable(),
   capacity: z.coerce.number().int().min(1).max(100),
   active: z.boolean(),
   branchId: z.coerce.number().int().positive(),
 });
+
+/** @summary Resuelve el nombre visible de un sector, validando que pertenezca a la sucursal. */
+async function resolveSectorName(
+  tenantId: number,
+  branchId: number,
+  sectorId: number | null | undefined,
+  legacySector: string | undefined,
+) {
+  if (sectorId === undefined) return legacySector?.trim() ?? null;
+  if (!sectorId) return legacySector?.trim() || null;
+  const sector = await prisma.tableSector.findFirst({
+    where: { id: sectorId, tenantId, branchId, active: true },
+    select: { name: true },
+  });
+  if (!sector) throw new Error("El sector seleccionado no pertenece a la sucursal");
+  return sector.name;
+}
 
 /** @summary Rota el código de la mesa: el QR impreso deja de funcionar y se genera uno nuevo. */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -73,9 +91,27 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
   if (current.branchId !== parsed.data.branchId && !(auth.allBranches && current.branchId))
     return NextResponse.json({ error: "No podés mover una mesa de otra sucursal" }, { status: 403 });
+  let sectorName: string | null;
+  try {
+    sectorName = await resolveSectorName(
+      auth.tenant.id,
+      parsed.data.branchId,
+      parsed.data.sectorId,
+      parsed.data.sector,
+    );
+  } catch (reason) {
+    return NextResponse.json(
+      { error: reason instanceof Error ? reason.message : "Sector inválido" },
+      { status: 400 },
+    );
+  }
   const updated = await prisma.diningTable.update({
     where: { id },
-    data: { ...parsed.data, sector: parsed.data.sector || null },
+    data: {
+      ...parsed.data,
+      sector: sectorName,
+      sectorId: parsed.data.sectorId ?? null,
+    },
   });
   await recordAudit({
     context: auth,
