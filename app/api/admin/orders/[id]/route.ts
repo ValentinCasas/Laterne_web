@@ -10,6 +10,9 @@ import { loyaltyPoints, loyaltyTier } from "@/lib/loyalty";
 import { emitOrderStatusNotification } from "@/lib/order-notifications";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con los pedidos.
+ */
 const updateInput = z.object({
   status: z.enum(orderStatuses),
   note: z.string().trim().max(500).optional(),

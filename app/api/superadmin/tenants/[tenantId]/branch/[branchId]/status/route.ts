@@ -6,7 +6,13 @@ import { prisma } from "@/lib/prisma";
 
 const input = z.object({ action: z.enum(["activate", "suspend"]) });
 
-export async function POST(request: Request, context: { params: Promise<{ tenantId: string; branchId: string }> }) {
+/**
+ * @summary Procesa una creación o acción de las sucursales tras validar contexto y permisos.
+ */
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ tenantId: string; branchId: string }> },
+) {
   const superAdmin = await authorizeSuperAdmin();
   if (!superAdmin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const [{ tenantId, branchId }, parsed] = await Promise.all([

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ModelExperience } from "@/components/products/model-experience";
+import { ModelExperience } from "@/components/product-model-experience";
 
 /** @summary Permite reemplazar o quitar un modelo 3D conservando una referencia visible al archivo actual. */
 export function AssetPicker({

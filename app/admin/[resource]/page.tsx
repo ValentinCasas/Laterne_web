@@ -10,8 +10,34 @@ import { PRODUCT_IMAGE_FALLBACK, CATEGORY_IMAGE_FALLBACK } from "@/lib/image-fal
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-const resourceTitles: Record<string, string> = { productos: "Productos", categorias: "Categorías", eventos: "Eventos", horarios: "Horarios", testimonios: "Testimonios", usuarios: "Usuarios", negocio: "Negocio", promociones: "Promociones", legales: "Páginas legales", ayuda: "Centro de ayuda", casos: "Casos de éxito", sucursales: "Sucursales", seo: "SEO", redirecciones: "Redirecciones" };
-export async function generateMetadata({ params }: { params: Promise<{ resource: string }> }): Promise<Metadata> { const context = await requirePermission("admin.access"); const resource = (await params).resource; return { title: `${context.tenant.name} | ${resourceTitles[resource] ?? "Administración"}` }; }
+const resourceTitles: Record<string, string> = {
+  productos: "Productos",
+  categorias: "Categorías",
+  eventos: "Eventos",
+  horarios: "Horarios",
+  testimonios: "Testimonios",
+  usuarios: "Usuarios",
+  negocio: "Negocio",
+  promociones: "Promociones",
+  legales: "Páginas legales",
+  ayuda: "Centro de ayuda",
+  casos: "Casos de éxito",
+  sucursales: "Sucursales",
+  seo: "SEO",
+  redirecciones: "Redirecciones",
+};
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ resource: string }>;
+}): Promise<Metadata> {
+  const context = await requirePermission("admin.access");
+  const resource = (await params).resource;
+  return { title: `${context.tenant.name} | ${resourceTitles[resource] ?? "Administración"}` };
+}
 
 type ResourceDefinition = {
   title: string;
@@ -386,7 +412,13 @@ function createDefinition(
           options: roleOptions,
         },
         { key: "password", label: "Contraseña", type: "password", help: "Dejala vacía para conservarla" },
-        { key: "branchIds", label: "Sucursales autorizadas", control: "multichoice", options: branchOptions, help: "Seleccioná una o varias sucursales." },
+        {
+          key: "branchIds",
+          label: "Sucursales autorizadas",
+          control: "multichoice",
+          options: branchOptions,
+          help: "Seleccioná una o varias sucursales.",
+        },
         { key: "allBranches", label: "Acceso a todas las sucursales", control: "checkbox" },
         {
           key: "imageUrl",
@@ -769,16 +801,18 @@ async function loadItems(definition: ResourceDefinition, tenantId: number, activ
       },
       orderBy: { user: { name: "asc" } },
     });
-    return memberships.map(({ user, role, sessions, branchAccess, allBranches, id: membershipId, roleId }) => ({
-      ...user,
-      membershipId,
-      roleId: roleId.toString(),
-      roleName: role.name,
-      lastAccessAt: sessions[0]?.lastSeenAt ?? null,
-      password: "",
-      branchIds: branchAccess.map((access) => access.branchId).join(","),
-      allBranches,
-    }));
+    return memberships.map(
+      ({ user, role, sessions, branchAccess, allBranches, id: membershipId, roleId }) => ({
+        ...user,
+        membershipId,
+        roleId: roleId.toString(),
+        roleName: role.name,
+        lastAccessAt: sessions[0]?.lastSeenAt ?? null,
+        password: "",
+        branchIds: branchAccess.map((access) => access.branchId).join(","),
+        allBranches,
+      }),
+    );
   }
 
   if (definition.model === "promotion") {
@@ -802,7 +836,9 @@ async function loadItems(definition: ResourceDefinition, tenantId: number, activ
     const branches = await prisma.branch.findMany({ where: branchFilter, orderBy: { id: "asc" } });
     return branches.map((branch) => {
       const landing =
-        branch.landingContent && typeof branch.landingContent === "object" && !Array.isArray(branch.landingContent)
+        branch.landingContent &&
+        typeof branch.landingContent === "object" &&
+        !Array.isArray(branch.landingContent)
           ? (branch.landingContent as { heroTitle?: unknown; heroSubtitle?: unknown })
           : {};
       return {
@@ -829,10 +865,17 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   const productFilter = resourceScopedWhere("product", tenantId, context.activeBranchId);
   const [categories, products, roles, branches, tenant, mediaAssets, events, memberships, promotions, cases] =
     await Promise.all([
-      prisma.category.findMany({ where: resourceScopedWhere("category", tenantId, context.activeBranchId), orderBy: { name: "asc" } }),
+      prisma.category.findMany({
+        where: resourceScopedWhere("category", tenantId, context.activeBranchId),
+        orderBy: { name: "asc" },
+      }),
       prisma.product.findMany({ where: productFilter, orderBy: { name: "asc" } }),
       prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-      prisma.branch.findMany({ where: { id: { in: context.branches.map((branch) => branch.id) } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      prisma.branch.findMany({
+        where: { id: { in: context.branches.map((branch) => branch.id) } },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
       prisma.tenant.findUniqueOrThrow({
         where: { id: tenantId },
         select: { defaultCurrency: true, locale: true },

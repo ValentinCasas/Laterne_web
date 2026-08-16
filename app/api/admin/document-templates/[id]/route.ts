@@ -5,15 +5,24 @@ import { authorize } from "@/lib/auth";
 import { DOCX_MIME } from "@/lib/documents/template-engine";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las plantillas documentales.
+ */
 const updateInput = z.object({
   active: z.boolean().optional(),
   isDefault: z.boolean().optional(),
 });
 
+/**
+ * @summary Normaliza un nombre de archivo antes de enviarlo como descarga.
+ */
 function safeFilename(value: string) {
   return value.replace(/[\r\n"\\/]/g, "-").slice(0, 180) || "plantilla.docx";
 }
 
+/**
+ * @summary Devuelve datos de las plantillas documentales visibles para el contexto autorizado.
+ */
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await authorize("order.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -33,7 +42,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   });
 }
 
-/** @summary Activa una versión existente o la define como fallback del tenant. */
+/** @summary Activa una versión existente o la define como respaldo del tenant. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await authorize("order.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });

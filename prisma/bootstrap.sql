@@ -1,4 +1,7 @@
--- phpMyAdmin SQL Dump
+-- Bootstrap histórico de Laterne requerido antes de aplicar las migraciones Prisma.
+-- Conserva el esquema y los datos mínimos del sistema original sobre los que opera la primera migración.
+--
+-- Origen: phpMyAdmin SQL Dump
 -- version 5.2.0
 -- https://www.phpmyadmin.net/
 --

@@ -51,6 +51,9 @@ function elapsedLabel(createdAt: string) {
   return `${hours} h ${elapsedMinutes % 60} min`;
 }
 
+/**
+ * @summary Formatea un valor para mostrarlo en el tablero de cocina.
+ */
 function hourLabel(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -125,7 +128,8 @@ export function KitchenBoard({ initialOrders }: { initialOrders: KitchenOrder[] 
         <div className="rounded-3xl border border-white/10 bg-white/[.02] p-10 text-center">
           <p className="text-xl font-black">No hay pedidos para preparar</p>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-500">
-            Los pedidos confirmados aparecerán acá cuando entren. Podés seguir atendiendo desde la vista de Pedidos.
+            Los pedidos confirmados aparecerán acá cuando entren. Podés seguir atendiendo desde la vista de
+            Pedidos.
           </p>
         </div>
       ) : (
@@ -313,9 +317,7 @@ function OrderDetailModal({
             </p>
           </div>
           <div className="text-right">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-black ${statusColors[order.status]}`}
-            >
+            <span className={`rounded-full px-3 py-1 text-xs font-black ${statusColors[order.status]}`}>
               {orderStatusLabel(order.status)}
             </span>
             <p className="mt-2 text-sm font-bold text-zinc-300">{elapsedLabel(order.createdAt)}</p>
@@ -348,7 +350,9 @@ function OrderDetailModal({
 
         {order.notes && (
           <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3">
-            <p className="text-xs font-black uppercase tracking-widest text-amber-300">Observación del pedido</p>
+            <p className="text-xs font-black uppercase tracking-widest text-amber-300">
+              Observación del pedido
+            </p>
             <p className="mt-1 whitespace-pre-wrap text-sm text-amber-100">{order.notes}</p>
           </div>
         )}

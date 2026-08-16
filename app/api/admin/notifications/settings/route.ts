@@ -5,6 +5,9 @@ import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las notificaciones.
+ */
 const settingsInput = z.object({
   panel: z.boolean(),
   email: z.boolean(),

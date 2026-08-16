@@ -5,15 +5,19 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const context = await requirePermission("product.manage");
   return { title: `${context.tenant.name} | Inventario` };
 }
 
-/** @summary Carga inventario usando exclusivamente la sucursal explícita de la URL o el scope consolidado. */
+/** @summary Carga inventario usando exclusivamente la sucursal explícita de la URL o el contexto consolidado. */
 export default async function InventoryPage() {
   const context = await requirePermission("product.manage");
-  const selectedBranchId = context.activeBranchId != null && context.activeBranchId > 0 ? context.activeBranchId : 0;
+  const selectedBranchId =
+    context.activeBranchId != null && context.activeBranchId > 0 ? context.activeBranchId : 0;
   const stockWhere = selectedBranchId
     ? { tenantId: context.tenant.id, branchId: selectedBranchId }
     : { tenantId: context.tenant.id };

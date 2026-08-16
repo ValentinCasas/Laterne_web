@@ -8,7 +8,13 @@ import Swal from "sweetalert2";
 import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
 import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
-import { adminHrefForContext, isBranchAdminLogicalPath, parseCanonicalPath, platformAdminPath, tenantPublicPath } from "@/lib/routes";
+import {
+  adminHrefForContext,
+  isBranchAdminLogicalPath,
+  parseCanonicalPath,
+  platformAdminPath,
+  tenantPublicPath,
+} from "@/lib/routes";
 import { scopedFetch } from "@/lib/client-routing";
 
 type NavigationLink = {
@@ -255,9 +261,7 @@ export function AdminShell({
   );
   const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
   const [openGroup, setOpenGroup] = useState<string>(
-    () =>
-      navigationGroups.find((group) => group.links.some((link) => isCurrent(link.href)))?.id ??
-      "inicio",
+    () => navigationGroups.find((group) => group.links.some((link) => isCurrent(link.href)))?.id ?? "inicio",
   );
 
   useEffect(() => {
@@ -362,7 +366,8 @@ export function AdminShell({
         icon: "RS",
         href: adminHref(`/admin/reservas?id=${reservation.id}`),
       }));
-      if (reservationItems.length) groups.push({ id: "reservations", label: "Reservas", items: reservationItems });
+      if (reservationItems.length)
+        groups.push({ id: "reservations", label: "Reservas", items: reservationItems });
 
       const productItems: PaletteEntry[] = results.products.map((product) => ({
         key: `product-${product.id}`,
@@ -381,6 +386,9 @@ export function AdminShell({
 
   const commandItems = useMemo(() => commandGroups.flatMap((group) => group.items), [commandGroups]);
 
+  /**
+   * @summary Cierra la paleta de comandos y restablece su búsqueda.
+   */
   function closeCommand() {
     setCommandOpen(false);
     setCommandQuery("");
@@ -452,9 +460,7 @@ export function AdminShell({
           return (
             <section
               className={`overflow-hidden rounded-2xl border transition ${
-                containsActive
-                  ? "border-pink-500/25 bg-pink-500/[.04]"
-                  : "border-white/[.07] bg-white/[.02]"
+                containsActive ? "border-pink-500/25 bg-pink-500/[.04]" : "border-white/[.07] bg-white/[.02]"
               }`}
               key={group.id}
             >
@@ -490,10 +496,7 @@ export function AdminShell({
               </button>
 
               {expanded && (
-                <div
-                  className="space-y-1 border-t border-white/[.07] p-2"
-                  id={`admin-group-${group.id}`}
-                >
+                <div className="space-y-1 border-t border-white/[.07] p-2" id={`admin-group-${group.id}`}>
                   {group.links.map(({ href, label, icon }) => {
                     const active = isCurrent(href);
                     return (
@@ -509,9 +512,7 @@ export function AdminShell({
                       >
                         <span
                           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
-                            active
-                              ? "bg-white/20"
-                              : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
+                            active ? "bg-white/20" : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
                           }`}
                         >
                           {icon}
@@ -550,9 +551,7 @@ export function AdminShell({
           type="button"
         >
           <span>Buscar o ir a…</span>
-          <kbd className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-500">
-            Ctrl K
-          </kbd>
+          <kbd className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-500">Ctrl K</kbd>
         </button>
       </div>
 
@@ -572,7 +571,18 @@ export function AdminShell({
   );
 
   return (
-    <div className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`} style={{ ...paletteCssVariables(palette), colorScheme: palette.baseMode, "--admin-primary-strong": palette.primary, "--admin-primary": palette.primary, "--admin-accent-legacy": adminAccent } as React.CSSProperties}>
+    <div
+      className={`admin-theme admin-theme-${adminTheme} min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`}
+      style={
+        {
+          ...paletteCssVariables(palette),
+          colorScheme: palette.baseMode,
+          "--admin-primary-strong": palette.primary,
+          "--admin-primary": palette.primary,
+          "--admin-accent-legacy": adminAccent,
+        } as React.CSSProperties
+      }
+    >
       <div className="admin-shell shell grid gap-6 py-6 lg:grid-cols-[288px_minmax(0,1fr)] lg:gap-9 lg:py-9">
         <aside className="sticky top-0 z-60 lg:hidden">
           <button
@@ -580,7 +590,7 @@ export function AdminShell({
             type="button"
             aria-controls="admin-navigation-panel"
             aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuPath((current) => current === pathname ? null : pathname)}
+            onClick={() => setMobileMenuPath((current) => (current === pathname ? null : pathname))}
           >
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pink-500/15 text-lg text-pink-300">
               ☰
@@ -599,8 +609,10 @@ export function AdminShell({
 
         <aside className="sticky top-20 z-40 hidden h-fit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl lg:block">
           <div className="border-b border-white/10 p-6">
-            <p className="text-xs font-black uppercase tracking-[.28em] text-[var(--admin-primary)]">{tenantName} Studio</p>
-<h2 className="mt-2 text-2xl font-black">Administración</h2>
+            <p className="text-xs font-black uppercase tracking-[.28em] text-[var(--admin-primary)]">
+              {tenantName} Studio
+            </p>
+            <h2 className="mt-2 text-2xl font-black">Administración</h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-500">
               Gestioná el contenido que ven tus clientes.
             </p>
@@ -690,7 +702,7 @@ export function AdminShell({
           </>
         )}
 
-         <main className="admin-main min-w-0">{children}</main>
+        <main className="admin-main min-w-0">{children}</main>
       </div>
       {commandOpen && (
         <div
@@ -760,10 +772,14 @@ export function AdminShell({
                           }`}
                           href={item.href}
                           key={item.key}
-                          onMouseEnter={() => setCommandActive(commandItems.findIndex((entry) => entry.key === item.key))}
+                          onMouseEnter={() =>
+                            setCommandActive(commandItems.findIndex((entry) => entry.key === item.key))
+                          }
                           onClick={() => {
                             closeCommand();
-                            setOpenGroup(groupIdForHref(item.logicalHref ?? (item.href as unknown as string)));
+                            setOpenGroup(
+                              groupIdForHref(item.logicalHref ?? (item.href as unknown as string)),
+                            );
                             setMobileMenuPath(null);
                           }}
                         >

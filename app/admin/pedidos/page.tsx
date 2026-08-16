@@ -5,9 +5,15 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export async function generateMetadata(): Promise<Metadata> { const context = await requirePermission("order.manage"); return { title: `${context.tenant.name} | Pedidos` }; }
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const context = await requirePermission("order.manage");
+  return { title: `${context.tenant.name} | Pedidos` };
+}
 
-/** @summary Carga los pedidos usando exclusivamente el scope tenant/branch de la URL canónica. */
+/** @summary Carga los pedidos usando exclusivamente el contexto de tenant y sucursal de la URL canónica. */
 export default async function AdminOrdersPage() {
   const context = await requirePermission("order.manage");
   const branchIds = context.branches.map((branch) => branch.id);

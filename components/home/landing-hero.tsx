@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import type { LandingHeroConfig } from "@/lib/landing-content";
 
-/** @summary Portada de la landing pública y del preview del editor, con o sin imagen de fondo. */
+/** @summary Portada del inicio público y de la vista previa del editor, con o sin imagen de fondo. */
 export function LandingHero({
   hero,
   primaryColor,
@@ -69,11 +69,7 @@ export function LandingHero({
             </>
           )}
         </h1>
-        <p
-          className={`mt-7 max-w-xl leading-relaxed text-zinc-200 ${
-            compact ? "text-base" : "text-lg"
-          }`}
-        >
+        <p className={`mt-7 max-w-xl leading-relaxed text-zinc-200 ${compact ? "text-base" : "text-lg"}`}>
           {hero.description}
         </p>
         <div className="mt-9 flex flex-wrap gap-3">

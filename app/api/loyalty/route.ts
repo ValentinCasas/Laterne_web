@@ -4,6 +4,9 @@ import { loyaltyToken, loyaltyTokenHash } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
+/**
+ * @summary Valida la entrada relacionada con el programa de fidelización.
+ */
 const registrationInput = z
   .object({
     name: z.string().trim().min(2).max(160),
@@ -68,14 +71,9 @@ export async function GET(request: Request) {
     progress: Math.min(100, Math.round((customer.points / reward.pointsNeeded) * 100)),
     reached: customer.points >= reward.pointsNeeded,
   }));
-  const nextReward = [...serializedRewards]
-    .sort((first, second) =>
-      first.reached === second.reached
-        ? first.pointsNeeded - second.pointsNeeded
-        : first.reached
-          ? 1
-          : -1,
-    )[0];
+  const nextReward = [...serializedRewards].sort((first, second) =>
+    first.reached === second.reached ? first.pointsNeeded - second.pointsNeeded : first.reached ? 1 : -1,
+  )[0];
   return NextResponse.json({
     customer: JSON.parse(
       JSON.stringify(customer, (_key, value) => (typeof value === "bigint" ? value.toString() : value)),

@@ -15,14 +15,30 @@ const input = z.object({
   sortOrder: z.coerce.number().int().min(-1000).max(1000).default(0),
 });
 
+/**
+ * @summary Procesa una creación o acción de los grupos de opciones de producto tras validar contexto y permisos.
+ */
 export async function POST(request: Request) {
   const auth = await authorize("product.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = input.safeParse(await request.json().catch(() => null));
-  if (!parsed.success || parsed.data.minSelections > parsed.data.maxSelections) return NextResponse.json({ error: "Revisá los límites de selección" }, { status: 400 });
-  const product = await prisma.product.findFirst({ where: { id: parsed.data.productId, tenantId: auth.tenant.id }, select: { id: true } });
+  if (!parsed.success || parsed.data.minSelections > parsed.data.maxSelections)
+    return NextResponse.json({ error: "Revisá los límites de selección" }, { status: 400 });
+  const product = await prisma.product.findFirst({
+    where: { id: parsed.data.productId, tenantId: auth.tenant.id },
+    select: { id: true },
+  });
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-  const group = await prisma.productOptionGroup.create({ data: { ...parsed.data, tenantId: auth.tenant.id } });
-  await recordAudit({ context: auth, action: "create", entityType: "product-option-group", entityId: group.id, newValues: toAuditValue(serialize(group)), request });
+  const group = await prisma.productOptionGroup.create({
+    data: { ...parsed.data, tenantId: auth.tenant.id },
+  });
+  await recordAudit({
+    context: auth,
+    action: "create",
+    entityType: "product-option-group",
+    entityId: group.id,
+    newValues: toAuditValue(serialize(group)),
+    request,
+  });
   return NextResponse.json({ group: serialize(group) }, { status: 201 });
 }

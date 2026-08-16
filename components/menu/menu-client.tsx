@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { trackEvent } from "@/components/analytics/tracker";
+import { trackEvent } from "@/components/analytics-tracker";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 import { CartaHeader } from "@/components/menu/carta-header";
 import { MenuProductCard, formatMenuPrice } from "@/components/menu/menu-product-card";
@@ -154,7 +154,9 @@ export function MenuClient({
                 return {
                   ...value,
                   image:
-                    typeof value.image === "string" && value.image.trim() ? value.image : PRODUCT_IMAGE_FALLBACK,
+                    typeof value.image === "string" && value.image.trim()
+                      ? value.image
+                      : PRODUCT_IMAGE_FALLBACK,
                   price: Number(value.price || 0),
                   quantity: Math.max(1, Number(value.quantity || 1)),
                 };
@@ -242,24 +244,34 @@ export function MenuClient({
   }, [query, shownCategories.length]);
   const quantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.reduce((sum, item) => sum + cartItemPrice(item) * item.quantity, 0);
-  const activeFilterCount = Number(diet !== "all") + Number(Boolean(maximumPrice)) + Number(sort !== "recommended");
+  const activeFilterCount =
+    Number(diet !== "all") + Number(Boolean(maximumPrice)) + Number(sort !== "recommended");
   const recentProducts = recentIds
     .map((id) => categories.flatMap((category) => category.products).find((product) => product.id === id))
     .filter((product): product is MenuProduct => Boolean(product));
   /** @summary Formatea importes de la carta con la moneda y región configuradas por el negocio. */
   const priceText = (value: number) => formatMenuPrice(value, currency, locale);
+  /**
+   * @summary Controla la navegación interna de la carta interactiva.
+   */
   function openFilters() {
     setDraftDiet(diet);
     setDraftMaximumPrice(maximumPrice);
     setDraftSort(sort);
     setFiltersOpen(true);
   }
+  /**
+   * @summary Aplica la selección solicitada en la carta interactiva.
+   */
   function applyFilters() {
     setDiet(draftDiet);
     setMaximumPrice(draftMaximumPrice);
     setSort(draftSort);
     setFiltersOpen(false);
   }
+  /**
+   * @summary Restablece todos los filtros de la carta a sus valores iniciales.
+   */
   function clearFilters() {
     setDiet("all");
     setMaximumPrice("");
@@ -406,21 +418,44 @@ export function MenuClient({
           {activeFilterCount > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-2 lg:hidden" aria-label="Filtros activos">
               {diet !== "all" && (
-                <button className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200" onClick={() => setDiet("all")} type="button">
-                  {diet === "vegetarian" ? "Vegetarianos" : diet === "vegan" ? "Veganos" : diet === "glutenFree" ? "Sin gluten" : "Sin alcohol"} ×
+                <button
+                  className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200"
+                  onClick={() => setDiet("all")}
+                  type="button"
+                >
+                  {diet === "vegetarian"
+                    ? "Vegetarianos"
+                    : diet === "vegan"
+                      ? "Veganos"
+                      : diet === "glutenFree"
+                        ? "Sin gluten"
+                        : "Sin alcohol"}{" "}
+                  ×
                 </button>
               )}
               {maximumPrice && (
-                <button className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200" onClick={() => setMaximumPrice("")} type="button">
+                <button
+                  className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200"
+                  onClick={() => setMaximumPrice("")}
+                  type="button"
+                >
                   Hasta {priceText(Number(maximumPrice))} ×
                 </button>
               )}
               {sort !== "recommended" && (
-                <button className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200" onClick={() => setSort("recommended")} type="button">
+                <button
+                  className="rounded-full bg-pink-500/15 px-3 py-1.5 text-xs font-bold text-pink-200"
+                  onClick={() => setSort("recommended")}
+                  type="button"
+                >
                   {sort === "name" ? "Por nombre" : sort === "price_asc" ? "Menor precio" : "Mayor precio"} ×
                 </button>
               )}
-              <button className="px-1 py-1 text-xs font-bold text-zinc-400 underline" onClick={clearFilters} type="button">
+              <button
+                className="px-1 py-1 text-xs font-bold text-zinc-400 underline"
+                onClick={clearFilters}
+                type="button"
+              >
                 Limpiar
               </button>
             </div>
@@ -497,11 +532,17 @@ export function MenuClient({
           >
             <header
               className="mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-1 py-2 md:sticky md:top-[var(--menu-sticky-top)] md:z-20 md:-mx-2 md:mb-7 md:rounded-2xl md:border md:bg-black/90 md:px-4 md:py-3 md:shadow-xl md:shadow-black/30 md:backdrop-blur-xl"
-              style={stickyOffset > 0 ? ({ "--menu-sticky-top": `${stickyOffset}px` } as React.CSSProperties) : undefined}
+              style={
+                stickyOffset > 0
+                  ? ({ "--menu-sticky-top": `${stickyOffset}px` } as React.CSSProperties)
+                  : undefined
+              }
             >
               <div className="min-w-0">
                 <p className="section-eyebrow hidden md:block">{businessName}</p>
-                <h2 className="break-words text-lg font-black uppercase tracking-wide md:mt-1 md:text-3xl md:normal-case md:tracking-normal">{category.name}</h2>
+                <h2 className="break-words text-lg font-black uppercase tracking-wide md:mt-1 md:text-3xl md:normal-case md:tracking-normal">
+                  {category.name}
+                </h2>
                 {category.description && (
                   <p className="mt-1 hidden line-clamp-1 text-sm text-zinc-500 md:block">
                     {category.description}
@@ -541,11 +582,15 @@ export function MenuClient({
         onClick={() => setCartOpen(true)}
         aria-label={`Ver pedido con ${quantity} ${quantity === 1 ? "producto" : "productos"}`}
       >
-        <span className="text-lg" aria-hidden="true">🛒</span>
+        <span className="text-lg" aria-hidden="true">
+          🛒
+        </span>
         <span className="text-sm text-white sm:text-left">
           <small className="hidden text-[10px] uppercase tracking-wider sm:block">Pedido</small>
           <span className="sm:hidden">Pedido ({quantity})</span>
-          <span className="hidden sm:inline">{quantity} {quantity === 1 ? "producto" : "productos"}</span>
+          <span className="hidden sm:inline">
+            {quantity} {quantity === 1 ? "producto" : "productos"}
+          </span>
         </span>
       </button>
 
@@ -564,7 +609,9 @@ export function MenuClient({
             <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
               <div>
                 <p className="section-eyebrow">Carta</p>
-                <h2 className="mt-1 text-2xl font-black" id="filters-title">Filtros</h2>
+                <h2 className="mt-1 text-2xl font-black" id="filters-title">
+                  Filtros
+                </h2>
               </div>
               <button
                 className="grid h-11 w-11 place-items-center rounded-full bg-white/5 text-xl"
@@ -578,7 +625,11 @@ export function MenuClient({
             <div className="mt-5 grid gap-5">
               <label>
                 <span className="label">Preferencias</span>
-                <select className="input min-h-12" value={draftDiet} onChange={(event) => setDraftDiet(event.target.value)}>
+                <select
+                  className="input min-h-12"
+                  value={draftDiet}
+                  onChange={(event) => setDraftDiet(event.target.value)}
+                >
                   <option value="all">Todas</option>
                   <option value="vegetarian">Vegetarianos</option>
                   <option value="vegan">Veganos</option>
@@ -600,7 +651,11 @@ export function MenuClient({
               </label>
               <label>
                 <span className="label">Ordenar por</span>
-                <select className="input min-h-12" value={draftSort} onChange={(event) => setDraftSort(event.target.value)}>
+                <select
+                  className="input min-h-12"
+                  value={draftSort}
+                  onChange={(event) => setDraftSort(event.target.value)}
+                >
                   <option value="recommended">Recomendados</option>
                   <option value="name">Nombre</option>
                   <option value="price_asc">Menor precio</option>
@@ -609,7 +664,11 @@ export function MenuClient({
               </label>
             </div>
             <div className="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-              <button className="min-h-12 rounded-xl border border-white/15 px-4 font-bold text-zinc-300" onClick={clearFilters} type="button">
+              <button
+                className="min-h-12 rounded-xl border border-white/15 px-4 font-bold text-zinc-300"
+                onClick={clearFilters}
+                type="button"
+              >
                 Limpiar
               </button>
               <button className="btn min-h-12 w-full" onClick={applyFilters} type="button">
@@ -700,7 +759,9 @@ export function MenuClient({
                         </div>
                         <span className="text-right text-xs text-zinc-500">
                           Subtotal
-                          <strong className="block text-sm text-zinc-950">{priceText(cartItemPrice(item) * item.quantity)}</strong>
+                          <strong className="block text-sm text-zinc-950">
+                            {priceText(cartItemPrice(item) * item.quantity)}
+                          </strong>
                         </span>
                       </div>
                     </div>
@@ -714,7 +775,9 @@ export function MenuClient({
             </div>
             <footer className="border-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
               <div className="mb-5 flex items-end justify-between">
-                <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Subtotal general</span>
+                <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">
+                  Subtotal general
+                </span>
                 <strong className="text-3xl">{priceText(total)}</strong>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -746,7 +809,11 @@ export function MenuClient({
                     Compartir por WhatsApp
                   </a>
                 )}
-                <button className="py-2 text-sm font-bold text-red-600 sm:col-span-2" onClick={() => setCart([])} type="button">
+                <button
+                  className="py-2 text-sm font-bold text-red-600 sm:col-span-2"
+                  onClick={() => setCart([])}
+                  type="button"
+                >
                   Vaciar pedido
                 </button>
               </div>

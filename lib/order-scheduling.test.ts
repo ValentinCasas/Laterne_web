@@ -23,9 +23,9 @@ describe("order scheduling", () => {
   });
 
   it("convierte la hora local usando la zona del tenant", () => {
-    expect(
-      orderLocalDateTime("2026-08-14", "20:00", "America/Argentina/Buenos_Aires").toISOString(),
-    ).toBe("2026-08-14T23:00:00.000Z");
+    expect(orderLocalDateTime("2026-08-14", "20:00", "America/Argentina/Buenos_Aires").toISOString()).toBe(
+      "2026-08-14T23:00:00.000Z",
+    );
   });
 
   it("rechaza instantes que no pertenecen a una franja publicada", () => {

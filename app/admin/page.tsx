@@ -20,10 +20,12 @@ const statStyles = [
 export default async function Dashboard() {
   const context = await requirePermission("admin.access");
   const tenantId = context.tenant.id;
-  const activeBranch = context.activeBranchId && context.activeBranchId > 0
-    ? context.branches.find((branch) => branch.id === context.activeBranchId)
-    : undefined;
-  const adminHref = (href: string) => adminHrefForContext(context.tenant.slug, href, activeBranch?.slug) as Route;
+  const activeBranch =
+    context.activeBranchId && context.activeBranchId > 0
+      ? context.branches.find((branch) => branch.id === context.activeBranchId)
+      : undefined;
+  const adminHref = (href: string) =>
+    adminHrefForContext(context.tenant.slug, href, activeBranch?.slug) as Route;
   const branchFilter = activeBranchWhere(tenantId, context.activeBranchId);
   const productFilter = branchProductWhere(tenantId, context.activeBranchId);
   const [
@@ -65,7 +67,9 @@ export default async function Dashboard() {
       ? prisma.inventoryStock.count({
           where: {
             tenantId,
-            ...(context.activeBranchId && context.activeBranchId > 0 ? { branchId: context.activeBranchId } : {}),
+            ...(context.activeBranchId && context.activeBranchId > 0
+              ? { branchId: context.activeBranchId }
+              : {}),
             tracked: true,
             current: { lte: prisma.inventoryStock.fields.minimum },
           },
@@ -102,7 +106,11 @@ export default async function Dashboard() {
     ...visibleStats,
     { label: "Usuarios activos", value: users, href: "/admin/usuarios" },
     { label: "Sucursales activas", value: branches, href: "/admin/sucursales" },
-    { label: "Almacenamiento", value: `${(Number(files._sum.sizeBytes ?? 0) / 1_000_000).toFixed(1)} MB`, href: "/admin/archivos" },
+    {
+      label: "Almacenamiento",
+      value: `${(Number(files._sum.sizeBytes ?? 0) / 1_000_000).toFixed(1)} MB`,
+      href: "/admin/archivos",
+    },
   ];
   const operationAlerts = [
     context.permissions.includes("order.manage") && {
@@ -147,10 +155,10 @@ export default async function Dashboard() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-         {overviewStats.map((stat, index) => (
+        {overviewStats.map((stat, index) => (
           <Link
             className={`group rounded-3xl border border-white/10 bg-gradient-to-br p-5 transition hover:-translate-y-1 hover:border-white/20 ${statStyles[index]}`}
-             href={adminHref(stat.href)}
+            href={adminHref(stat.href)}
             key={stat.label}
           >
             <div className="flex items-start justify-between gap-3">
@@ -190,7 +198,10 @@ export default async function Dashboard() {
         </section>
       )}
       {subscription && subscription.status !== "ACTIVE" && (
-        <Link className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-amber-100" href={adminHref("/admin/soporte")}>
+        <Link
+          className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-amber-100"
+          href={adminHref("/admin/soporte")}
+        >
           <strong>Estado de suscripción: {subscription.status}</strong>
           <span className="ml-2 text-sm text-amber-200">Revisá la información de tu cuenta.</span>
         </Link>
@@ -203,7 +214,10 @@ export default async function Dashboard() {
               <p className="text-xs font-black uppercase tracking-widest text-violet-300">Agenda</p>
               <h2 className="mt-1 text-2xl font-black">Eventos recientes</h2>
             </div>
-            <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href={adminHref("/admin/eventos")}>
+            <Link
+              className="text-sm font-bold text-pink-300 hover:text-pink-200"
+              href={adminHref("/admin/eventos")}
+            >
               Ver todos
             </Link>
           </div>
@@ -228,7 +242,10 @@ export default async function Dashboard() {
               <p className="text-xs font-black uppercase tracking-widest text-emerald-300">Comunidad</p>
               <h2 className="mt-1 text-2xl font-black">Últimas opiniones</h2>
             </div>
-            <Link className="text-sm font-bold text-pink-300 hover:text-pink-200" href={adminHref("/admin/testimonios")}>
+            <Link
+              className="text-sm font-bold text-pink-300 hover:text-pink-200"
+              href={adminHref("/admin/testimonios")}
+            >
               Moderar
             </Link>
           </div>

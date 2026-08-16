@@ -8,7 +8,19 @@ import { scopedFetch } from "@/lib/client-routing";
 type BranchOption = { id: number; name: string; slug: string; isPrimary: boolean };
 
 /** @summary Gestiona el formulario de acceso y redirige al panel correcto con credenciales válidas. */
-export function LoginForm({ context, redirectTo = "", initialTenantId, initialTenantSlug, recoveryHref = "/recuperar-acceso" }: { context?: "platform" | "tenant"; redirectTo?: string; initialTenantId?: string; initialTenantSlug?: string; recoveryHref?: string }) {
+export function LoginForm({
+  context,
+  redirectTo = "",
+  initialTenantId,
+  initialTenantSlug,
+  recoveryHref = "/recuperar-acceso",
+}: {
+  context?: "platform" | "tenant";
+  redirectTo?: string;
+  initialTenantId?: string;
+  initialTenantSlug?: string;
+  recoveryHref?: string;
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [tenantOptions, setTenantOptions] = useState<Array<{ id: number; name: string; slug: string }>>([]);
@@ -20,6 +32,9 @@ export function LoginForm({ context, redirectTo = "", initialTenantId, initialTe
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  /**
+   * @summary Autentica las credenciales y prepara la navegación al contexto autorizado.
+   */
   async function doLogin(extra?: Record<string, unknown>) {
     setPending(true);
     setError("");
@@ -27,7 +42,11 @@ export function LoginForm({ context, redirectTo = "", initialTenantId, initialTe
       email,
       password,
       ...(context ? { context } : {}),
-      ...(selectedTenantId ? { tenantId: Number(selectedTenantId) } : initialTenantSlug ? { tenantSlug: initialTenantSlug } : {}),
+      ...(selectedTenantId
+        ? { tenantId: Number(selectedTenantId) }
+        : initialTenantSlug
+          ? { tenantSlug: initialTenantSlug }
+          : {}),
       ...(selectedBranchId ? { branchId: Number(selectedBranchId) } : {}),
       ...extra,
     };
@@ -62,7 +81,10 @@ export function LoginForm({ context, redirectTo = "", initialTenantId, initialTe
       setError(data.error ?? "No se pudo ingresar");
       return;
     }
-    const success = (await response.clone().json().catch(() => ({}))) as { handoffUrl?: string; adminUrl?: string };
+    const success = (await response
+      .clone()
+      .json()
+      .catch(() => ({}))) as { handoffUrl?: string; adminUrl?: string };
     if (success.handoffUrl) {
       window.location.assign(success.handoffUrl);
       return;
@@ -80,15 +102,24 @@ export function LoginForm({ context, redirectTo = "", initialTenantId, initialTe
     router.refresh();
   }
 
+  /**
+   * @summary Valida las credenciales y envía el formulario de acceso.
+   */
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await doLogin();
   }
 
+  /**
+   * @summary Continúa el acceso dentro de la sucursal seleccionada.
+   */
   function selectBranch(branchId: number) {
     void doLogin({ branchId });
   }
 
+  /**
+   * @summary Continúa el acceso en la vista consolidada del tenant.
+   */
   function selectConsolidated() {
     void doLogin({ branchId: 0 });
   }

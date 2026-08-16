@@ -108,10 +108,7 @@ export function CheckoutForm({
     () => branches.find((branch) => branch.slug === fixedBranchSlug),
     [branches, fixedBranchSlug],
   );
-  const selectableBranches = useMemo(
-    () => (fixedBranch ? [fixedBranch] : branches),
-    [branches, fixedBranch],
-  );
+  const selectableBranches = useMemo(() => (fixedBranch ? [fixedBranch] : branches), [branches, fixedBranch]);
   const [items, setItems] = useState<StoredCartItem[]>([]);
   const [ready, setReady] = useState(false);
   const [scheduleNow, setScheduleNow] = useState<Date | null>(null);
@@ -133,6 +130,9 @@ export function CheckoutForm({
   const [tip, setTip] = useState(0);
   const idempotencyKeyRef = useRef<string | null>(null);
 
+  /**
+   * @summary Obtiene o crea la clave que evita confirmar dos veces el mismo pedido.
+   */
   function idempotencyKey() {
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current =
@@ -171,11 +171,7 @@ export function CheckoutForm({
     [branchId, selectableBranches],
   );
   const leadMinutes = useMemo(
-    () =>
-      Math.max(
-        ORDER_MINIMUM_LEAD_MINUTES,
-        ...items.map((item) => Number(item.preparationMinutes ?? 0)),
-      ),
+    () => Math.max(ORDER_MINIMUM_LEAD_MINUTES, ...items.map((item) => Number(item.preparationMinutes ?? 0))),
     [items],
   );
   const scheduleSlots = useMemo(
@@ -192,7 +188,7 @@ export function CheckoutForm({
   );
   const effectiveRequestedTime = scheduleSlots.some((slot) => slot.value === requestedTime)
     ? requestedTime
-    : scheduleSlots[0]?.value ?? "";
+    : (scheduleSlots[0]?.value ?? "");
   const selectedSlot = scheduleSlots.find((slot) => slot.value === effectiveRequestedTime);
   const slotsByDate = useMemo(() => {
     const groups = new Map<string, typeof scheduleSlots>();
@@ -212,6 +208,9 @@ export function CheckoutForm({
     });
   }
 
+  /**
+   * @summary Valida los datos del cliente y la modalidad antes de continuar.
+   */
   function validateDetails() {
     if (!items.length) return "Tu pedido está vacío.";
     if (!selectedBranch) return "Elegí una sucursal disponible.";
@@ -226,6 +225,9 @@ export function CheckoutForm({
     return null;
   }
 
+  /**
+   * @summary Valida la disponibilidad del pedido y avanza al paso de pago.
+   */
   function continueToPayment() {
     const problem = validateDetails();
     if (problem) {
@@ -248,9 +250,10 @@ export function CheckoutForm({
     }
     setSubmitting(true);
     setError("");
-    const deliveryAddress = orderType === "delivery"
-      ? `${address.trim()}${deliveryReference.trim() ? ` · Referencia: ${deliveryReference.trim()}` : ""}`
-      : undefined;
+    const deliveryAddress =
+      orderType === "delivery"
+        ? `${address.trim()}${deliveryReference.trim() ? ` · Referencia: ${deliveryReference.trim()}` : ""}`
+        : undefined;
     const payload = {
       customerName: customerName.trim(),
       phone: phone.trim(),
@@ -310,7 +313,9 @@ export function CheckoutForm({
       <ol className="mb-6 grid grid-cols-3 gap-2" aria-label="Pasos del checkout">
         {checkoutSteps.map((entry, index) => (
           <li className={index <= stepIndex ? "text-pink-300" : "text-zinc-600"} key={entry.id}>
-            <span className={`mb-2 block h-1.5 rounded-full ${index <= stepIndex ? "bg-pink-500" : "bg-white/10"}`} />
+            <span
+              className={`mb-2 block h-1.5 rounded-full ${index <= stepIndex ? "bg-pink-500" : "bg-white/10"}`}
+            />
             <span className="text-[10px] font-black uppercase sm:text-xs">{entry.label}</span>
           </li>
         ))}
@@ -344,9 +349,15 @@ export function CheckoutForm({
               {!fixedBranch && selectableBranches.length > 1 && orderType !== "dine_in" && (
                 <label className="mt-5 block">
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Sucursal</span>
-                  <select className="input" value={selectedBranch?.id ?? 0} onChange={(event) => setBranchId(Number(event.target.value))}>
+                  <select
+                    className="input"
+                    value={selectedBranch?.id ?? 0}
+                    onChange={(event) => setBranchId(Number(event.target.value))}
+                  >
                     {selectableBranches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>{branch.name} · {branch.address}</option>
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name} · {branch.address}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -355,22 +366,44 @@ export function CheckoutForm({
               {orderType === "dine_in" && (
                 <label className="mt-5 block">
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Código de mesa</span>
-                  <input className="input" onChange={(event) => setTableCode(event.target.value)} placeholder="Ejemplo: MESA-01" value={tableCode} />
+                  <input
+                    className="input"
+                    onChange={(event) => setTableCode(event.target.value)}
+                    placeholder="Ejemplo: MESA-01"
+                    value={tableCode}
+                  />
                 </label>
               )}
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <label>
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Nombre</span>
-                  <input className="input" value={customerName} onChange={(event) => setCustomerName(event.target.value)} autoComplete="name" />
+                  <input
+                    className="input"
+                    value={customerName}
+                    onChange={(event) => setCustomerName(event.target.value)}
+                    autoComplete="name"
+                  />
                 </label>
                 <label>
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Teléfono / WhatsApp</span>
-                  <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" inputMode="tel" />
+                  <input
+                    className="input"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    autoComplete="tel"
+                    inputMode="tel"
+                  />
                 </label>
                 <label className="sm:col-span-2">
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Email opcional</span>
-                  <input className="input" value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" />
+                  <input
+                    className="input"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                  />
                 </label>
               </div>
 
@@ -378,11 +411,22 @@ export function CheckoutForm({
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label>
                     <span className="mb-2 block text-sm font-bold text-zinc-400">Dirección</span>
-                    <input className="input" value={address} onChange={(event) => setAddress(event.target.value)} autoComplete="street-address" placeholder="Calle y número" />
+                    <input
+                      className="input"
+                      value={address}
+                      onChange={(event) => setAddress(event.target.value)}
+                      autoComplete="street-address"
+                      placeholder="Calle y número"
+                    />
                   </label>
                   <label>
                     <span className="mb-2 block text-sm font-bold text-zinc-400">Referencia</span>
-                    <input className="input" value={deliveryReference} onChange={(event) => setDeliveryReference(event.target.value)} placeholder="Piso, timbre, entre calles…" />
+                    <input
+                      className="input"
+                      value={deliveryReference}
+                      onChange={(event) => setDeliveryReference(event.target.value)}
+                      placeholder="Piso, timbre, entre calles…"
+                    />
                   </label>
                 </div>
               )}
@@ -390,7 +434,9 @@ export function CheckoutForm({
               {orderType !== "dine_in" && (
                 <section className="mt-6 rounded-2xl border border-white/10 bg-white/[.03] p-4">
                   <h3 className="font-black">Horario</h3>
-                  <p className="mt-1 text-xs text-zinc-500">Franjas de la sucursal · anticipación mínima {leadMinutes} min.</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Franjas de la sucursal · anticipación mínima {leadMinutes} min.
+                  </p>
                   {scheduleSlots.length ? (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <label>
@@ -398,21 +444,34 @@ export function CheckoutForm({
                         <select
                           className="input"
                           value={selectedSlot?.date ?? ""}
-                          onChange={(event) => setRequestedTime(slotsByDate.get(event.target.value)?.[0]?.value ?? "")}
+                          onChange={(event) =>
+                            setRequestedTime(slotsByDate.get(event.target.value)?.[0]?.value ?? "")
+                          }
                         >
                           {[...slotsByDate.keys()].map((date) => (
                             <option value={date} key={date}>
                               {date === scheduleSlots[0]?.date ? "Próxima disponibilidad · " : ""}
-                              {new Date(`${date}T12:00:00Z`).toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}
+                              {new Date(`${date}T12:00:00Z`).toLocaleDateString(locale, {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                                timeZone: "UTC",
+                              })}
                             </option>
                           ))}
                         </select>
                       </label>
                       <label>
                         <span className="mb-2 block text-xs font-bold text-zinc-400">Hora</span>
-                        <select className="input" value={effectiveRequestedTime} onChange={(event) => setRequestedTime(event.target.value)}>
+                        <select
+                          className="input"
+                          value={effectiveRequestedTime}
+                          onChange={(event) => setRequestedTime(event.target.value)}
+                        >
                           {(slotsByDate.get(selectedSlot?.date ?? "") ?? []).map((slot) => (
-                            <option value={slot.value} key={slot.value}>{slot.time}</option>
+                            <option value={slot.value} key={slot.value}>
+                              {slot.time}
+                            </option>
                           ))}
                         </select>
                       </label>
@@ -427,10 +486,21 @@ export function CheckoutForm({
 
               <label className="mt-5 block">
                 <span className="mb-2 block text-sm font-bold text-zinc-400">Observaciones</span>
-                <textarea className="input min-h-24" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={1500} />
+                <textarea
+                  className="input min-h-24"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  maxLength={1500}
+                />
               </label>
-              {error && <p className="mt-4 rounded-xl bg-red-500/10 p-3 text-sm text-red-300" role="alert">{error}</p>}
-              <button className="btn mt-6 w-full sm:w-auto" onClick={continueToPayment} type="button">Continuar →</button>
+              {error && (
+                <p className="mt-4 rounded-xl bg-red-500/10 p-3 text-sm text-red-300" role="alert">
+                  {error}
+                </p>
+              )}
+              <button className="btn mt-6 w-full sm:w-auto" onClick={continueToPayment} type="button">
+                Continuar →
+              </button>
             </section>
           )}
 
@@ -445,8 +515,17 @@ export function CheckoutForm({
                   ["card_on_delivery", "Tarjeta al retirar/recibir"],
                   ["on_delivery", "A coordinar con el local"],
                 ].map(([value, label]) => (
-                  <label className={`flex min-h-14 items-center gap-3 rounded-2xl border p-4 font-bold ${paymentMethod === value ? "border-pink-500 bg-pink-500/15" : "border-white/10 bg-white/5"}`} key={value}>
-                    <input type="radio" name="payment" value={value} checked={paymentMethod === value} onChange={(event) => setPaymentMethod(event.target.value)} />
+                  <label
+                    className={`flex min-h-14 items-center gap-3 rounded-2xl border p-4 font-bold ${paymentMethod === value ? "border-pink-500 bg-pink-500/15" : "border-white/10 bg-white/5"}`}
+                    key={value}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={value}
+                      checked={paymentMethod === value}
+                      onChange={(event) => setPaymentMethod(event.target.value)}
+                    />
                     {label}
                   </label>
                 ))}
@@ -454,16 +533,33 @@ export function CheckoutForm({
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <label>
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Código promocional</span>
-                  <input className="input" value={promotionCode} onChange={(event) => setPromotionCode(event.target.value)} placeholder="Si tenés uno" />
+                  <input
+                    className="input"
+                    value={promotionCode}
+                    onChange={(event) => setPromotionCode(event.target.value)}
+                    placeholder="Si tenés uno"
+                  />
                 </label>
                 <label>
                   <span className="mb-2 block text-sm font-bold text-zinc-400">Propina opcional</span>
-                  <input className="input" value={tip || ""} onChange={(event) => setTip(Math.max(0, Number(event.target.value) || 0))} type="number" min={0} step={100} placeholder="0" />
+                  <input
+                    className="input"
+                    value={tip || ""}
+                    onChange={(event) => setTip(Math.max(0, Number(event.target.value) || 0))}
+                    type="number"
+                    min={0}
+                    step={100}
+                    placeholder="0"
+                  />
                 </label>
               </div>
               <div className="mt-6 flex flex-wrap justify-between gap-3">
-                <button className="btn btn-secondary" onClick={() => setStep("details")} type="button">← Volver</button>
-                <button className="btn" onClick={() => setStep("review")} type="button">Revisar pedido →</button>
+                <button className="btn btn-secondary" onClick={() => setStep("details")} type="button">
+                  ← Volver
+                </button>
+                <button className="btn" onClick={() => setStep("review")} type="button">
+                  Revisar pedido →
+                </button>
               </div>
             </section>
           )}
@@ -478,7 +574,14 @@ export function CheckoutForm({
                   ["Cliente", customerName],
                   ["Teléfono", phone],
                   ["Sucursal", selectedBranch?.name ?? "—"],
-                  ["Horario", orderType === "dine_in" ? `Mesa ${tableCode}` : selectedSlot ? `${selectedSlot.date} · ${selectedSlot.time}` : "—"],
+                  [
+                    "Horario",
+                    orderType === "dine_in"
+                      ? `Mesa ${tableCode}`
+                      : selectedSlot
+                        ? `${selectedSlot.date} · ${selectedSlot.time}`
+                        : "—",
+                  ],
                   ["Forma de pago", paymentLabels[paymentMethod] ?? paymentMethod],
                   ...(orderType === "delivery" ? [["Dirección", address]] : []),
                 ].map(([label, value]) => (
@@ -488,60 +591,127 @@ export function CheckoutForm({
                   </div>
                 ))}
               </dl>
-              {notes && <p className="mt-4 rounded-xl border border-white/10 p-4 text-sm text-zinc-400"><strong className="text-white">Observaciones:</strong> {notes}</p>}
-              <button className="btn btn-secondary mt-6" onClick={() => setStep("payment")} type="button">← Volver</button>
+              {notes && (
+                <p className="mt-4 rounded-xl border border-white/10 p-4 text-sm text-zinc-400">
+                  <strong className="text-white">Observaciones:</strong> {notes}
+                </p>
+              )}
+              <button className="btn btn-secondary mt-6" onClick={() => setStep("payment")} type="button">
+                ← Volver
+              </button>
             </section>
           )}
         </div>
 
-        <aside className={`${step === "review" ? "block" : "hidden lg:block"} card h-fit overflow-hidden lg:sticky lg:top-24`}>
+        <aside
+          className={`${step === "review" ? "block" : "hidden lg:block"} card h-fit overflow-hidden lg:sticky lg:top-24`}
+        >
           <header className="border-b border-white/10 p-5">
             <p className="section-eyebrow">Tu pedido</p>
-            <h2 className="mt-2 text-2xl font-black">{items.reduce((sum, item) => sum + item.quantity, 0)} productos</h2>
+            <h2 className="mt-2 text-2xl font-black">
+              {items.reduce((sum, item) => sum + item.quantity, 0)} productos
+            </h2>
           </header>
           <div className="max-h-[42vh] space-y-3 overflow-y-auto p-4">
-            {items.length ? items.map((item, index) => {
-              const unitPrice = item.price + Number(item.variantPrice ?? 0) + (item.extrasSelected?.reduce((sum, extra) => sum + extra.price, 0) ?? 0);
-              return (
-                <article className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-3" key={`${item.id}-${index}`}>
-                  <div className="relative h-16 w-16 shrink-0 rounded-xl bg-white/5">
-                    <Image src={item.image || PRODUCT_IMAGE_FALLBACK} alt="" fill className="object-contain p-1" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex justify-between gap-2">
-                      <h3 className="break-words font-black">{item.quantity} × {item.name}</h3>
-                      {step !== "review" && (
-                        <button className="text-zinc-500 hover:text-red-300" onClick={() => removeItem(index)} type="button" aria-label={`Quitar ${item.name}`}>×</button>
+            {items.length ? (
+              items.map((item, index) => {
+                const unitPrice =
+                  item.price +
+                  Number(item.variantPrice ?? 0) +
+                  (item.extrasSelected?.reduce((sum, extra) => sum + extra.price, 0) ?? 0);
+                return (
+                  <article
+                    className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-3"
+                    key={`${item.id}-${index}`}
+                  >
+                    <div className="relative h-16 w-16 shrink-0 rounded-xl bg-white/5">
+                      <Image
+                        src={item.image || PRODUCT_IMAGE_FALLBACK}
+                        alt=""
+                        fill
+                        className="object-contain p-1"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between gap-2">
+                        <h3 className="break-words font-black">
+                          {item.quantity} × {item.name}
+                        </h3>
+                        {step !== "review" && (
+                          <button
+                            className="text-zinc-500 hover:text-red-300"
+                            onClick={() => removeItem(index)}
+                            type="button"
+                            aria-label={`Quitar ${item.name}`}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      {item.variantName && <p className="text-xs text-zinc-400">{item.variantName}</p>}
+                      {!!item.extrasSelected?.length && (
+                        <p className="text-xs text-zinc-500">
+                          + {item.extrasSelected.map((extra) => extra.name).join(", ")}
+                        </p>
                       )}
+                      <div className="mt-2 flex justify-between gap-2 text-xs text-zinc-500">
+                        <span>{formatPrice(unitPrice, currency, locale)} c/u</span>
+                        <strong className="text-pink-300">
+                          {formatPrice(unitPrice * item.quantity, currency, locale)}
+                        </strong>
+                      </div>
                     </div>
-                    {item.variantName && <p className="text-xs text-zinc-400">{item.variantName}</p>}
-                    {!!item.extrasSelected?.length && <p className="text-xs text-zinc-500">+ {item.extrasSelected.map((extra) => extra.name).join(", ")}</p>}
-                    <div className="mt-2 flex justify-between gap-2 text-xs text-zinc-500">
-                      <span>{formatPrice(unitPrice, currency, locale)} c/u</span>
-                      <strong className="text-pink-300">{formatPrice(unitPrice * item.quantity, currency, locale)}</strong>
-                    </div>
-                  </div>
-                </article>
-              );
-            }) : <div className="p-8 text-center text-zinc-500">Tu pedido está vacío.</div>}
+                  </article>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-zinc-500">Tu pedido está vacío.</div>
+            )}
           </div>
           <div className="space-y-2 border-t border-white/10 p-5 text-sm">
-            <div className="flex justify-between text-zinc-400"><span>Subtotal</span><span>{formatPrice(subtotal, currency, locale)}</span></div>
-            <div className="flex justify-between text-zinc-400"><span>Delivery</span><span>{formatPrice(deliveryFee, currency, locale)}</span></div>
-            <div className="flex justify-between text-zinc-400"><span>Descuento</span><span>Se valida al confirmar</span></div>
-            {tip > 0 && <div className="flex justify-between text-zinc-400"><span>Propina</span><span>{formatPrice(tip, currency, locale)}</span></div>}
+            <div className="flex justify-between text-zinc-400">
+              <span>Subtotal</span>
+              <span>{formatPrice(subtotal, currency, locale)}</span>
+            </div>
+            <div className="flex justify-between text-zinc-400">
+              <span>Delivery</span>
+              <span>{formatPrice(deliveryFee, currency, locale)}</span>
+            </div>
+            <div className="flex justify-between text-zinc-400">
+              <span>Descuento</span>
+              <span>Se valida al confirmar</span>
+            </div>
+            {tip > 0 && (
+              <div className="flex justify-between text-zinc-400">
+                <span>Propina</span>
+                <span>{formatPrice(tip, currency, locale)}</span>
+              </div>
+            )}
             <div className="mt-3 flex items-end justify-between border-t border-white/10 pt-4">
               <span className="font-black">Total estimado</span>
               <strong className="text-2xl">{formatPrice(estimatedTotal, currency, locale)}</strong>
             </div>
             {orderType === "delivery" && Number(selectedBranch?.minimumOrder ?? 0) > 0 && (
-              <p className="pt-1 text-xs text-zinc-500">Pedido mínimo: {formatPrice(selectedBranch?.minimumOrder ?? 0, currency, locale)}</p>
+              <p className="pt-1 text-xs text-zinc-500">
+                Pedido mínimo: {formatPrice(selectedBranch?.minimumOrder ?? 0, currency, locale)}
+              </p>
             )}
             {step === "review" && (
               <>
-                {error && <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300" role="alert">{error}</p>}
-                <p className="pt-2 text-xs leading-relaxed text-zinc-500">El pedido real se crea recién ahora. El servidor recalcula productos, precios, promociones, stock, horario y total.</p>
-                <button className="btn mt-3 min-h-12 w-full disabled:cursor-not-allowed disabled:opacity-40" disabled={!items.length || submitting} type="submit">
+                {error && (
+                  <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300" role="alert">
+                    {error}
+                  </p>
+                )}
+                <p className="pt-2 text-xs leading-relaxed text-zinc-500">
+                  El pedido real se crea recién ahora. El servidor recalcula productos, precios, promociones,
+                  stock, horario y total.
+                </p>
+                <button
+                  className="btn mt-3 min-h-12 w-full disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!items.length || submitting}
+                  type="submit"
+                >
                   {submitting ? "Enviando…" : "CONFIRMAR PEDIDO"}
                 </button>
               </>
@@ -549,7 +719,12 @@ export function CheckoutForm({
           </div>
         </aside>
       </div>
-      <Link className="mt-6 inline-block text-sm font-bold text-zinc-500 hover:text-pink-300" href={publicHrefForVisiblePath(pathname, tenantSlug, "/carta", fixedBranchSlug)}>← Volver a la carta</Link>
+      <Link
+        className="mt-6 inline-block text-sm font-bold text-zinc-500 hover:text-pink-300"
+        href={publicHrefForVisiblePath(pathname, tenantSlug, "/carta", fixedBranchSlug)}
+      >
+        ← Volver a la carta
+      </Link>
     </form>
   );
 }

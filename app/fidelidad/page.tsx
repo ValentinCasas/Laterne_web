@@ -1,4 +1,4 @@
-import { LoyaltyPortal } from "@/components/loyalty/loyalty-portal";
+import { LoyaltyPortal } from "@/components/loyalty-portal";
 import { managedPageMetadata } from "@/lib/seo";
 
 /** @summary Recupera la configuración SEO administrable del programa de fidelización. */

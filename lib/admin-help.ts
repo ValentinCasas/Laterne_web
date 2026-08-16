@@ -43,7 +43,8 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
       "Si el producto tiene control de stock activo, los pedidos verifican existencias antes de confirmarse.",
       "La experiencia 3D y realidad aumentada (modelos, medidas, escala y superficie) se configura en la sección avanzada del formulario del producto.",
     ],
-    warning: "El precio que ve el cliente siempre es el precio promocional si existe; revisalo antes de publicar.",
+    warning:
+      "El precio que ve el cliente siempre es el precio promocional si existe; revisalo antes de publicar.",
     related: ["opciones-producto", "categorias", "inventario"],
   },
   "opciones-producto": {
@@ -109,7 +110,8 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
   },
   pedidos: {
     title: "Pedidos",
-    intro: "Un pedido es una compra de tus clientes. Mesa, retiro y delivery son solo la forma en que lo reciben.",
+    intro:
+      "Un pedido es una compra de tus clientes. Mesa, retiro y delivery son solo la forma en que lo reciben.",
     points: [
       "Cada pedido guarda productos, precios verificados e historial de estados.",
       "El movimiento de estados (Recibido → Confirmado → En preparación → Listo → Entregado/Cancelado) lo hacés desde las tarjetas.",
@@ -229,7 +231,7 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     points: [
       "Solo se editan los textos: el fondo, los colores y el diseño dependen de tu marca.",
       "El nombre del negocio, la sucursal y la cantidad del pedido se completan solos.",
-      "El preview usa los mismos componentes y estilos que la carta pública.",
+      "La vista previa usa los mismos componentes y estilos que la carta pública.",
     ],
     related: ["marca", "landing", "categorias"],
   },
@@ -263,7 +265,8 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
   },
   integraciones: {
     title: "Integraciones",
-    intro: "Conexiones con servicios externos para avisos y pagos. Las claves se guardan solo en el servidor.",
+    intro:
+      "Conexiones con servicios externos para avisos y pagos. Las claves se guardan solo en el servidor.",
     points: [
       "Las claves privadas nunca se muestran ni se guardan en el panel.",
       "Email, WhatsApp, Web Push, Mercado Pago y almacenamiento externo están en “Próximamente”.",

@@ -5,6 +5,9 @@ import { authorize } from "@/lib/auth";
 import { integrationProviders, integrationSecretConfigured } from "@/lib/integrations";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las integraciones.
+ */
 const integrationInput = z.object({
   provider: z.enum(integrationProviders),
   enabled: z.boolean(),

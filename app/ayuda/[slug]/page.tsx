@@ -24,7 +24,10 @@ export default async function HelpArticlePage({ params }: { params: Promise<{ sl
       <article className="card mt-8 max-w-3xl whitespace-pre-wrap p-6 leading-relaxed text-zinc-300 sm:p-8">
         {article.content}
       </article>
-      <Link className="btn btn-secondary mt-8" href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/ayuda", route.branchSlug)}>
+      <Link
+        className="btn btn-secondary mt-8"
+        href={publicHrefForVisiblePath(route.originalPath, tenant.slug, "/ayuda", route.branchSlug)}
+      >
         Volver al centro de ayuda
       </Link>
     </main>

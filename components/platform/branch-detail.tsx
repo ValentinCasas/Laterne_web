@@ -39,7 +39,12 @@ export type BranchDetailData = {
     }>;
     membershipAccess: Array<{
       id: number;
-      membership: { id: number; status: string; user: { name: string; email: string }; role: { name: string; key: string } };
+      membership: {
+        id: number;
+        status: string;
+        user: { name: string; email: string };
+        role: { name: string; key: string };
+      };
     }>;
     _count: { orders: number; inventoryStocks: number; reservations: number };
     auditLogs: Array<{ id: string; action: string; entityType: string; createdAt: string; result: string }>;
@@ -56,13 +61,25 @@ const statusLabels: Record<string, string> = {
   CANCELLED: "Cancelada",
 };
 
+/**
+ * @summary Formatea un valor para mostrarlo en el detalle de sucursal de plataforma.
+ */
 function money(value: number | string | null) {
   if (value === null || value === undefined || value === "") return "—";
   const numeric = Number(value);
   return Number.isFinite(numeric) ? `$ ${numeric.toLocaleString("es-AR")}` : String(value);
 }
 
-export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: Array<{ id: number; name: string }> }) {
+/**
+ * @summary Gestiona el estado, la licencia y las métricas de una sucursal de plataforma.
+ */
+export function BranchDetail({
+  data,
+  plans,
+}: {
+  data: BranchDetailData;
+  plans: Array<{ id: number; name: string }>;
+}) {
   const [branch, setBranch] = useState(data.branch);
   const tenant = data.tenant;
   const license = branch.licenses[0];
@@ -70,6 +87,9 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
   const adminUrl = `/t/${tenant.slug}/admin/s/${branch.slug}`;
   const tenantAdminUrl = `/t/${tenant.slug}/admin`;
 
+  /**
+   * @summary Aplica la selección solicitada en el detalle de sucursal de plataforma.
+   */
   async function toggleActive() {
     const nextActive = !branch.active;
     const result = await Swal.fire({
@@ -95,20 +115,59 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
       });
       const body = (await response.json().catch(() => ({}))) as { active?: boolean; error?: string };
       if (!response.ok || body.active === undefined) {
-        return Swal.fire({ title: "No se pudo cambiar el estado", text: body.error ?? "Intentá nuevamente.", icon: "error", confirmButtonColor: "#ec4899", background: "#18181b", color: "#fafafa" });
+        return Swal.fire({
+          title: "No se pudo cambiar el estado",
+          text: body.error ?? "Intentá nuevamente.",
+          icon: "error",
+          confirmButtonColor: "#ec4899",
+          background: "#18181b",
+          color: "#fafafa",
+        });
       }
       setBranch((current) => ({ ...current, active: body.active === true }));
-      await Swal.fire({ title: body.active ? "Sucursal reactivada" : "Sucursal suspendida", text: `${branch.name} quedó ${body.active ? "operativa" : "fuera de operación"}.`, icon: "success", timer: 1400, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: body.active ? "Sucursal reactivada" : "Sucursal suspendida",
+        text: `${branch.name} quedó ${body.active ? "operativa" : "fuera de operación"}.`,
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } catch {
-      await Swal.fire({ title: "No se pudo cambiar el estado", text: "Ocurrió un error inesperado. Intentá nuevamente.", icon: "error", confirmButtonColor: "#ec4899", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "No se pudo cambiar el estado",
+        text: "Ocurrió un error inesperado. Intentá nuevamente.",
+        icon: "error",
+        confirmButtonColor: "#ec4899",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     }
   }
 
+  /**
+   * @summary Actualiza el estado del detalle de sucursal de plataforma y conserva su consistencia.
+   */
   async function editLicense() {
-    const statusOptions = ["DRAFT", "TRIAL", "ACTIVE", "PAYMENT_PENDING", "GRACE_PERIOD", "SUSPENDED", "CANCELLED"];
+    const statusOptions = [
+      "DRAFT",
+      "TRIAL",
+      "ACTIVE",
+      "PAYMENT_PENDING",
+      "GRACE_PERIOD",
+      "SUSPENDED",
+      "CANCELLED",
+    ];
     const planOptions = `<option value="">Sin plan</option>${plans.map((plan) => `<option value="${plan.id}" ${license?.planId === plan.id ? "selected" : ""}>${plan.name}</option>`).join("")}`;
     const datetime = (value: string | null | undefined) => value?.slice(0, 16) ?? "";
-    const { value: values, isConfirmed } = await Swal.fire<{ status: string; planId: string; currentPeriodEnd: string; graceUntil: string; notes: string }>({
+    const { value: values, isConfirmed } = await Swal.fire<{
+      status: string;
+      planId: string;
+      currentPeriodEnd: string;
+      graceUntil: string;
+      notes: string;
+    }>({
       title: `Licencia de ${branch.name}`,
       html: `<div style="text-align:left">
         <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Estado</label>
@@ -132,7 +191,8 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
       width: 560,
       focusConfirm: false,
       preConfirm: () => {
-        const status = (document.getElementById("branch-license-status") as HTMLSelectElement | null)?.value ?? "";
+        const status =
+          (document.getElementById("branch-license-status") as HTMLSelectElement | null)?.value ?? "";
         if (!status) {
           Swal.showValidationMessage("Elegí un estado para la licencia");
           return false;
@@ -140,8 +200,10 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
         return {
           status,
           planId: (document.getElementById("branch-license-plan") as HTMLSelectElement | null)?.value ?? "",
-          currentPeriodEnd: (document.getElementById("branch-license-period") as HTMLInputElement | null)?.value ?? "",
-          graceUntil: (document.getElementById("branch-license-grace") as HTMLInputElement | null)?.value ?? "",
+          currentPeriodEnd:
+            (document.getElementById("branch-license-period") as HTMLInputElement | null)?.value ?? "",
+          graceUntil:
+            (document.getElementById("branch-license-grace") as HTMLInputElement | null)?.value ?? "",
           notes: (document.getElementById("branch-license-notes") as HTMLTextAreaElement | null)?.value ?? "",
         };
       },
@@ -160,26 +222,66 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
-        license?: { id: number; status: string; planId: number | null; startsAt: string; currentPeriodEnd: string | null; graceUntil: string | null; priceOverride: number | string | null; notes: string | null };
+        license?: {
+          id: number;
+          status: string;
+          planId: number | null;
+          startsAt: string;
+          currentPeriodEnd: string | null;
+          graceUntil: string | null;
+          priceOverride: number | string | null;
+          notes: string | null;
+        };
         error?: string;
       };
       if (!response.ok || !result.license) {
-        return Swal.fire({ title: "No se pudo actualizar", text: result.error ?? "Revisá los datos e intentá nuevamente.", icon: "error", confirmButtonColor: "#ec4899", background: "#18181b", color: "#fafafa" });
+        return Swal.fire({
+          title: "No se pudo actualizar",
+          text: result.error ?? "Revisá los datos e intentá nuevamente.",
+          icon: "error",
+          confirmButtonColor: "#ec4899",
+          background: "#18181b",
+          color: "#fafafa",
+        });
       }
       const plan = plans.find((item) => item.id === result.license?.planId) ?? null;
-      setBranch((current) => ({ ...current, licenses: [{ ...result.license!, plan: plan ? { id: plan.id, name: plan.name, slug: plan.name } : null }] }));
-      await Swal.fire({ title: "Licencia actualizada", text: `La licencia de ${branch.name} quedó en ${result.license.status}.`, icon: "success", timer: 1400, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      setBranch((current) => ({
+        ...current,
+        licenses: [
+          { ...result.license!, plan: plan ? { id: plan.id, name: plan.name, slug: plan.name } : null },
+        ],
+      }));
+      await Swal.fire({
+        title: "Licencia actualizada",
+        text: `La licencia de ${branch.name} quedó en ${result.license.status}.`,
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } catch {
-      await Swal.fire({ title: "No se pudo actualizar", text: "Ocurrió un error inesperado. Intentá nuevamente.", icon: "error", confirmButtonColor: "#ec4899", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "No se pudo actualizar",
+        text: "Ocurrió un error inesperado. Intentá nuevamente.",
+        icon: "error",
+        confirmButtonColor: "#ec4899",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     }
   }
 
   return (
     <section className="mx-auto w-full max-w-[1440px] px-5 pb-10 pt-6">
       <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-400">
-        <Link className="font-bold text-amber-300" href="/platform/clientes">← Clientes</Link>
+        <Link className="font-bold text-amber-300" href="/platform/clientes">
+          ← Clientes
+        </Link>
         <span>·</span>
-        <Link className="font-bold text-amber-300" href={`/platform/clientes/${tenant.slug}`}>{tenant.name}</Link>
+        <Link className="font-bold text-amber-300" href={`/platform/clientes/${tenant.slug}`}>
+          {tenant.name}
+        </Link>
         <span>·</span>
         <span className="font-black text-white">{branch.name}</span>
       </nav>
@@ -187,19 +289,52 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
       <header className="mt-4 rounded-2xl border border-white/10 bg-[#151a24] p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <p className="text-xs font-black uppercase tracking-[.25em] text-amber-300">Sucursal / ficha de plataforma</p>
+            <p className="text-xs font-black uppercase tracking-[.25em] text-amber-300">
+              Sucursal / ficha de plataforma
+            </p>
             <h1 className="mt-2 text-4xl font-black">{branch.name}</h1>
-            <p className="mt-2 text-slate-400">{tenant.slug} / {branch.slug} · {branch.address}</p>
+            <p className="mt-2 text-slate-400">
+              {tenant.slug} / {branch.slug} · {branch.address}
+            </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {branch.isPrimary && <span className="rounded-full bg-pink-500/15 px-2.5 py-1 text-[10px] font-black uppercase text-pink-300">Principal</span>}
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${branch.active ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-500/15 text-slate-400"}`}>{branch.active ? "Activa" : "Inactiva"}</span>
-              <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-black uppercase text-amber-200">{statusLabels[license?.status ?? ""] ?? (license?.status ?? "Sin licencia")}</span>
+              {branch.isPrimary && (
+                <span className="rounded-full bg-pink-500/15 px-2.5 py-1 text-[10px] font-black uppercase text-pink-300">
+                  Principal
+                </span>
+              )}
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${branch.active ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-500/15 text-slate-400"}`}
+              >
+                {branch.active ? "Activa" : "Inactiva"}
+              </span>
+              <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-black uppercase text-amber-200">
+                {statusLabels[license?.status ?? ""] ?? license?.status ?? "Sin licencia"}
+              </span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-black text-slate-950 hover:bg-amber-300" onClick={() => void editLicense()} type="button">Administrar licencia</button>
-            <button className={`rounded-xl px-4 py-2.5 text-sm font-black ${branch.active ? "bg-rose-500 text-white hover:bg-rose-400" : "bg-emerald-500 text-white hover:bg-emerald-400"}`} onClick={() => void toggleActive()} type="button">{branch.active ? "Suspender sucursal" : "Reactivar sucursal"}</button>
-            <a className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-black text-slate-200 hover:border-amber-300/40" href={tenantAdminUrl} target="_blank" rel="noreferrer">Abrir admin del cliente ↗</a>
+            <button
+              className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-black text-slate-950 hover:bg-amber-300"
+              onClick={() => void editLicense()}
+              type="button"
+            >
+              Administrar licencia
+            </button>
+            <button
+              className={`rounded-xl px-4 py-2.5 text-sm font-black ${branch.active ? "bg-rose-500 text-white hover:bg-rose-400" : "bg-emerald-500 text-white hover:bg-emerald-400"}`}
+              onClick={() => void toggleActive()}
+              type="button"
+            >
+              {branch.active ? "Suspender sucursal" : "Reactivar sucursal"}
+            </button>
+            <a
+              className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-black text-slate-200 hover:border-amber-300/40"
+              href={tenantAdminUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Abrir admin del cliente ↗
+            </a>
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -213,14 +348,32 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         <Panel title="Licencia">
           <dl className="grid gap-3 sm:grid-cols-2">
-            <Metric label="Estado" value={statusLabels[license?.status ?? ""] ?? (license?.status ?? "Sin licencia")} />
+            <Metric
+              label="Estado"
+              value={statusLabels[license?.status ?? ""] ?? license?.status ?? "Sin licencia"}
+            />
             <Metric label="Plan" value={license?.plan?.name ?? "Sin plan"} />
-            <Metric label="Inicio" value={license?.startsAt ? new Date(license.startsAt).toLocaleDateString("es-AR") : "—"} />
-            <Metric label="Vencimiento del período" value={license?.currentPeriodEnd ? new Date(license.currentPeriodEnd).toLocaleString("es-AR") : "—"} />
-            <Metric label="Fin de gracia" value={license?.graceUntil ? new Date(license.graceUntil).toLocaleString("es-AR") : "—"} />
+            <Metric
+              label="Inicio"
+              value={license?.startsAt ? new Date(license.startsAt).toLocaleDateString("es-AR") : "—"}
+            />
+            <Metric
+              label="Vencimiento del período"
+              value={
+                license?.currentPeriodEnd ? new Date(license.currentPeriodEnd).toLocaleString("es-AR") : "—"
+              }
+            />
+            <Metric
+              label="Fin de gracia"
+              value={license?.graceUntil ? new Date(license.graceUntil).toLocaleString("es-AR") : "—"}
+            />
             <Metric label="Monto" value={money(license?.priceOverride ?? null)} />
           </dl>
-          {license?.notes && <p className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3 text-sm text-slate-400">{license.notes}</p>}
+          {license?.notes && (
+            <p className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3 text-sm text-slate-400">
+              {license.notes}
+            </p>
+          )}
           <p className="mt-4 text-xs leading-relaxed text-slate-500">
             La licencia es por sucursal. Suspenderla no afecta al negocio ni a las otras sucursales.
           </p>
@@ -237,18 +390,43 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
             <Metric label="Prefijo de pedido" value={branch.orderPrefix} />
             <Metric label="Costo de entrega" value={money(branch.deliveryFee)} />
             <Metric label="Pedido mínimo" value={money(branch.minimumOrder)} />
-            <Metric label="Coordenadas" value={branch.latitude && branch.longitude ? `${branch.latitude}, ${branch.longitude}` : "—"} />
+            <Metric
+              label="Coordenadas"
+              value={branch.latitude && branch.longitude ? `${branch.latitude}, ${branch.longitude}` : "—"}
+            />
           </dl>
         </Panel>
 
         <Panel title="URLs">
           <div className="space-y-3">
-            <a className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-sm text-slate-300 hover:border-amber-300/40" href={publicUrl} target="_blank" rel="noreferrer"><span className="font-bold">Sitio público</span><span className="truncate text-amber-200">{publicUrl}</span></a>
-            <a className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-sm text-slate-300 hover:border-amber-300/40" href={adminUrl} target="_blank" rel="noreferrer"><span className="font-bold">Administración</span><span className="truncate text-amber-200">{adminUrl}</span></a>
+            <a
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-sm text-slate-300 hover:border-amber-300/40"
+              href={publicUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="font-bold">Sitio público</span>
+              <span className="truncate text-amber-200">{publicUrl}</span>
+            </a>
+            <a
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-sm text-slate-300 hover:border-amber-300/40"
+              href={adminUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="font-bold">Administración</span>
+              <span className="truncate text-amber-200">{adminUrl}</span>
+            </a>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
-            <span><strong className="block text-lg">{branch.inheritLanding ? "Sí" : "No"}</strong>hereda landing principal</span>
-            <span><strong className="block text-lg">{branch.inheritBrand ? "Sí" : "No"}</strong>hereda identidad del negocio</span>
+            <span>
+              <strong className="block text-lg">{branch.inheritLanding ? "Sí" : "No"}</strong>hereda landing
+              principal
+            </span>
+            <span>
+              <strong className="block text-lg">{branch.inheritBrand ? "Sí" : "No"}</strong>hereda identidad
+              del negocio
+            </span>
           </div>
         </Panel>
 
@@ -258,12 +436,20 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
               <div className="flex flex-wrap items-center justify-between gap-3 py-3" key={access.id}>
                 <div>
                   <strong>{access.membership.user.name}</strong>
-                  <p className="text-sm text-slate-400">{access.membership.user.email} · {access.membership.role.name}</p>
+                  <p className="text-sm text-slate-400">
+                    {access.membership.user.email} · {access.membership.role.name}
+                  </p>
                 </div>
-                <span className={`text-xs font-black uppercase ${access.membership.status === "active" ? "text-emerald-300" : "text-rose-300"}`}>{access.membership.status}</span>
+                <span
+                  className={`text-xs font-black uppercase ${access.membership.status === "active" ? "text-emerald-300" : "text-rose-300"}`}
+                >
+                  {access.membership.status}
+                </span>
               </div>
             ))}
-            {!branch.membershipAccess.length && <p className="py-4 text-sm text-slate-400">No hay usuarios con acceso a esta sucursal.</p>}
+            {!branch.membershipAccess.length && (
+              <p className="py-4 text-sm text-slate-400">No hay usuarios con acceso a esta sucursal.</p>
+            )}
           </div>
         </Panel>
       </div>
@@ -272,21 +458,59 @@ export function BranchDetail({ data, plans }: { data: BranchDetailData; plans: A
         <div className="divide-y divide-white/10">
           {branch.auditLogs.map((log) => (
             <div className="flex flex-wrap items-center justify-between gap-3 py-3" key={log.id}>
-              <div><strong>{log.action}</strong><span className="ml-2 text-sm text-slate-400">{log.entityType}</span></div>
-              <div className="flex items-center gap-3"><time className="text-sm text-slate-400">{new Date(log.createdAt).toLocaleString("es-AR")}</time><span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${log.result === "success" ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>{log.result}</span></div>
+              <div>
+                <strong>{log.action}</strong>
+                <span className="ml-2 text-sm text-slate-400">{log.entityType}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <time className="text-sm text-slate-400">
+                  {new Date(log.createdAt).toLocaleString("es-AR")}
+                </time>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${log.result === "success" ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}
+                >
+                  {log.result}
+                </span>
+              </div>
             </div>
           ))}
-          {!branch.auditLogs.length && <p className="py-4 text-sm text-slate-400">Sin actividad registrada en esta sucursal.</p>}
+          {!branch.auditLogs.length && (
+            <p className="py-4 text-sm text-slate-400">Sin actividad registrada en esta sucursal.</p>
+          )}
         </div>
       </Panel>
     </section>
   );
 }
 
+/**
+ * @summary Renderiza una métrica resumida dentro del panel de plataforma.
+ */
 function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl bg-white/[.04] p-3"><span className="block text-xs text-slate-500">{label}</span><strong className="mt-1 block truncate text-sm">{value}</strong></div>;
+  return (
+    <div className="rounded-xl bg-white/[.04] p-3">
+      <span className="block text-xs text-slate-500">{label}</span>
+      <strong className="mt-1 block truncate text-sm">{value}</strong>
+    </div>
+  );
 }
 
-function Panel({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-white/10 bg-[#151a24] p-5 sm:p-6 ${className}`}><h2 className="mb-5 text-2xl font-black">{title}</h2>{children}</section>;
+/**
+ * @summary Renderiza una sección visual reutilizable del detalle de plataforma.
+ */
+function Panel({
+  title,
+  children,
+  className = "",
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`rounded-2xl border border-white/10 bg-[#151a24] p-5 sm:p-6 ${className}`}>
+      <h2 className="mb-5 text-2xl font-black">{title}</h2>
+      {children}
+    </section>
+  );
 }

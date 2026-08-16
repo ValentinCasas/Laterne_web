@@ -10,7 +10,5 @@ export default async function SuperAdminPage() {
     platformTenants(),
     prisma.salesLead.count({ where: { status: "new" } }),
   ]);
-  return (
-    <PlatformDashboard tenants={tenants as never} newLeads={newLeads} />
-  );
+  return <PlatformDashboard tenants={tenants as never} newLeads={newLeads} />;
 }

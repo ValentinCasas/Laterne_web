@@ -39,7 +39,8 @@ export default async function OrderTrackingPage({ params, searchParams }: OrderT
   const currentIndex = flow.indexOf(order.status as OrderStatus);
   const message = `Hola, consulto por el pedido ${order.reference}.`;
   const trackingHref = `${publicHref(`/pedido/${order.reference}`)}?token=${encodeURIComponent(token)}`;
-  const modality = order.orderType === "dine_in" ? "Mesa" : order.orderType === "delivery" ? "Delivery" : "Retiro";
+  const modality =
+    order.orderType === "dine_in" ? "Mesa" : order.orderType === "delivery" ? "Delivery" : "Retiro";
 
   return (
     <main className="shell py-10 sm:py-16">

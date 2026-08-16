@@ -25,6 +25,9 @@ export function NotificationCenter() {
 
   useEffect(() => {
     let active = true;
+    /**
+     * @summary Recarga las notificaciones y conserva el estado de la interfaz.
+     */
     async function refresh() {
       try {
         const response = await scopedFetch("/api/admin/notifications");

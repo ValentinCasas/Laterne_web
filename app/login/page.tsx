@@ -52,7 +52,13 @@ export default async function LoginPage({
   return (
     <main className="mc-login-shell grid min-h-[calc(100vh-4rem)] place-items-center py-12">
       <section className="mc-login-card w-full max-w-md p-8">
-        <p className="mc-eyebrow">{platform ? "Plataforma MenuClick" : requestedTenantSlug ? `Acceso · ${requestedTenantSlug}` : "Acceso MenuClick"}</p>
+        <p className="mc-eyebrow">
+          {platform
+            ? "Plataforma MenuClick"
+            : requestedTenantSlug
+              ? `Acceso · ${requestedTenantSlug}`
+              : "Acceso MenuClick"}
+        </p>
         <h1 className="mt-2 text-3xl font-black">Ingresar</h1>
         <LoginForm
           context={loginContext ? (loginContext as "platform" | "tenant") : undefined}

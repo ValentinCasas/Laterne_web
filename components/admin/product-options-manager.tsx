@@ -28,6 +28,9 @@ type OptionGroup = {
 };
 type ProductChoice = { id: number; name: string };
 
+/**
+ * @summary Formatea un valor para mostrarlo en el administrador de variantes y agregados.
+ */
 function price(option: ProductOption) {
   return Number(option.priceAdjustment ?? option.price ?? 0);
 }
@@ -68,6 +71,9 @@ export function ProductOptionsManager({
   const ungrouped = options.filter((option) => !option.groupId);
   const optionCount = options.length;
 
+  /**
+   * @summary Restablece el asistente de creación de grupos a su primer paso.
+   */
   function resetWizard() {
     setStep(1);
     setChoiceMode("single");
@@ -310,7 +316,11 @@ export function ProductOptionsManager({
         </div>
       ) : (
         <>
-          <div className="mb-5 flex gap-2 border-b border-[var(--admin-border)]" role="tablist" aria-label="Tipo de opciones">
+          <div
+            className="mb-5 flex gap-2 border-b border-[var(--admin-border)]"
+            role="tablist"
+            aria-label="Tipo de opciones"
+          >
             {(["variant", "extra"] as const).map((candidate) => (
               <button
                 className={`border-b-2 px-4 py-3 text-sm font-black ${
@@ -362,12 +372,18 @@ export function ProductOptionsManager({
                       <p className="text-sm text-[var(--admin-muted)]">
                         ¿Cómo elige el cliente dentro de este grupo?
                       </p>
-                      {(
-                        [
-                          { mode: "single" as const, title: "Elegir una opción", hint: "Variantes: tamaños, presentaciones o combinaciones. El cliente elige una." },
-                          { mode: "multiple" as const, title: "Elegir varias", hint: "Agregados: extras o ingredientes. El cliente puede marcar varias." },
-                        ]
-                      ).map((option) => (
+                      {[
+                        {
+                          mode: "single" as const,
+                          title: "Elegir una opción",
+                          hint: "Variantes: tamaños, presentaciones o combinaciones. El cliente elige una.",
+                        },
+                        {
+                          mode: "multiple" as const,
+                          title: "Elegir varias",
+                          hint: "Agregados: extras o ingredientes. El cliente puede marcar varias.",
+                        },
+                      ].map((option) => (
                         <button
                           className={`rounded-2xl border p-4 text-left transition ${
                             choiceMode === option.mode
@@ -427,8 +443,14 @@ export function ProductOptionsManager({
                           Configurando el grupo <strong className="text-white">{groupName}</strong>.
                         </p>
                         <label className="flex items-center gap-3 rounded-xl border border-[var(--admin-border)] p-3 text-sm">
-                          <input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} />{" "}
-                          {choiceMode === "single" ? "Elección obligatoria" : "Al menos una opción obligatoria"}
+                          <input
+                            type="checkbox"
+                            checked={required}
+                            onChange={(event) => setRequired(event.target.checked)}
+                          />{" "}
+                          {choiceMode === "single"
+                            ? "Elección obligatoria"
+                            : "Al menos una opción obligatoria"}
                         </label>
                         <button
                           className="flex w-full items-center justify-between rounded-xl border border-[var(--admin-border)] p-3 text-sm font-bold"
@@ -463,7 +485,11 @@ export function ProductOptionsManager({
                               />
                             </label>
                             <p className="col-span-2 text-xs text-[var(--admin-muted)]">
-                              Si no definís límites, {choiceMode === "single" ? "se elige una sola opción" : "se podrán elegir varias (hasta 3)"}.
+                              Si no definís límites,{" "}
+                              {choiceMode === "single"
+                                ? "se elige una sola opción"
+                                : "se podrán elegir varias (hasta 3)"}
+                              .
                             </p>
                           </div>
                         )}
@@ -530,8 +556,14 @@ export function ProductOptionsManager({
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-[var(--admin-muted)]">{group.options.length} opciones</span>
-                      <button className="btn btn-secondary px-3 py-2 text-sm" onClick={() => void editGroup(group)} type="button">
+                      <span className="text-sm text-[var(--admin-muted)]">
+                        {group.options.length} opciones
+                      </span>
+                      <button
+                        className="btn btn-secondary px-3 py-2 text-sm"
+                        onClick={() => void editGroup(group)}
+                        type="button"
+                      >
                         Editar
                       </button>
                       <button
@@ -545,10 +577,17 @@ export function ProductOptionsManager({
                   </header>
                   <div className="divide-y divide-white/10">
                     {group.options.map((option) => (
-                      <OptionRow key={option.id} option={option} onEdit={() => void editOption(option)} onRemove={() => void removeOption(option)} />
+                      <OptionRow
+                        key={option.id}
+                        option={option}
+                        onEdit={() => void editOption(option)}
+                        onRemove={() => void removeOption(option)}
+                      />
                     ))}
                     {!group.options.length && (
-                      <p className="p-6 text-sm text-[var(--admin-muted)]">No hay opciones todavía. Agregá la primera desde el panel.</p>
+                      <p className="p-6 text-sm text-[var(--admin-muted)]">
+                        No hay opciones todavía. Agregá la primera desde el panel.
+                      </p>
                     )}
                   </div>
                 </article>
@@ -556,14 +595,23 @@ export function ProductOptionsManager({
               <article className="card overflow-hidden">
                 <header className="border-b border-[var(--admin-border)] p-5">
                   <h2 className="text-lg font-black">Sin grupo</h2>
-                  <p className="text-sm text-[var(--admin-muted)]">Opciones existentes que todavía no fueron organizadas.</p>
+                  <p className="text-sm text-[var(--admin-muted)]">
+                    Opciones existentes que todavía no fueron organizadas.
+                  </p>
                 </header>
                 <div className="divide-y divide-white/10">
                   {ungrouped.map((option) => (
-                    <OptionRow key={option.id} option={option} onEdit={() => void editOption(option)} onRemove={() => void removeOption(option)} />
+                    <OptionRow
+                      key={option.id}
+                      option={option}
+                      onEdit={() => void editOption(option)}
+                      onRemove={() => void removeOption(option)}
+                    />
                   ))}
                   {!ungrouped.length && (
-                    <p className="p-6 text-sm text-[var(--admin-muted)]">Todas las opciones están organizadas.</p>
+                    <p className="p-6 text-sm text-[var(--admin-muted)]">
+                      Todas las opciones están organizadas.
+                    </p>
                   )}
                 </div>
               </article>
@@ -575,6 +623,9 @@ export function ProductOptionsManager({
   );
 }
 
+/**
+ * @summary Renderiza una opción de producto editable con sus acciones.
+ */
 function OptionRow({
   option,
   onEdit,
@@ -597,7 +648,11 @@ function OptionRow({
         <button className="btn btn-secondary px-3 py-2 text-sm" onClick={onEdit} type="button">
           Editar
         </button>
-        <button className="rounded-xl border border-red-500/20 px-3 py-2 text-sm text-red-300" onClick={onRemove} type="button">
+        <button
+          className="rounded-xl border border-red-500/20 px-3 py-2 text-sm text-red-300"
+          onClick={onRemove}
+          type="button"
+        >
           Eliminar
         </button>
       </div>

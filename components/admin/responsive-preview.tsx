@@ -74,7 +74,7 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
       if (nextStyle) Object.assign(target.body.style, nextStyle);
     }, []);
 
-    /** @summary Copia estilos del documento padre al iframe para que el preview luzca como la web real. */
+    /** @summary Copia estilos del documento padre al iframe para que la vista previa luzca como la web real. */
     const prepareDocument = useCallback(() => {
       const iframe = iframeRef.current;
       const doc = iframe?.contentDocument;
@@ -117,7 +117,10 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
       const frame = frameRef.current;
       if (!frame) return;
       const observer = new ResizeObserver(([entry]) => {
-        setFrameSize({ width: Math.round(entry.contentRect.width), height: Math.round(entry.contentRect.height) });
+        setFrameSize({
+          width: Math.round(entry.contentRect.width),
+          height: Math.round(entry.contentRect.height),
+        });
       });
       observer.observe(frame);
       return () => observer.disconnect();
@@ -126,6 +129,9 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
     useImperativeHandle(
       ref,
       () => ({
+        /**
+         * @summary Desplaza la vista previa hasta el elemento seleccionado.
+         */
         scrollToId(id) {
           docRef.current?.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
         },
@@ -133,6 +139,9 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
       [],
     );
 
+    /**
+     * @summary Aplica la selección solicitada en la vista previa adaptable.
+     */
     function selectPreset(key: string) {
       const next = PRESETS.find((candidate) => candidate.key === key) ?? PRESETS[0];
       setPreset(next);
@@ -148,6 +157,9 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
       setWidth(currentHeight);
     }
 
+    /**
+     * @summary Inicia el ajuste manual del ancho de la vista previa.
+     */
     function startResize(axis: "width" | "height") {
       return (event: React.PointerEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -188,7 +200,9 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
               return (
                 <button
                   className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
-                    active ? "bg-pink-500/20 text-pink-200 ring-1 ring-pink-500/40" : "text-zinc-500 hover:bg-white/5"
+                    active
+                      ? "bg-pink-500/20 text-pink-200 ring-1 ring-pink-500/40"
+                      : "text-zinc-500 hover:bg-white/5"
                   }`}
                   key={candidate.key}
                   onClick={() => selectPreset(candidate.key)}
@@ -273,6 +287,9 @@ export const ResponsivePreview = forwardRef<ResponsivePreviewHandle, ResponsiveP
   },
 );
 
+/**
+ * @summary Limita un valor al intervalo permitido para el ancho de vista previa.
+ */
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }

@@ -5,6 +5,9 @@ import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las recompensas de fidelización.
+ */
 const rewardInput = z.object({
   name: z.string().trim().min(2).max(140),
   pointsNeeded: z.coerce.number().int().min(1).max(1_000_000),

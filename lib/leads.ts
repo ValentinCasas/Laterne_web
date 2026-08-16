@@ -4,6 +4,9 @@ import type { AuthorizationContext } from "@/lib/auth";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con el recurso solicitado.
+ */
 export const leadStatusSchema = z.object({
   status: z.enum(["new", "contacted", "demo_scheduled", "quote_sent", "negotiation", "won", "lost"]),
   note: z.string().trim().max(500).optional(),

@@ -23,6 +23,9 @@ export function AdminPageHelp({ section }: { section: string }) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
+    /**
+     * @summary Inicia el arrastre del panel de ayuda sin interferir con controles interactivos.
+     */
     function handlePointerDown(event: MouseEvent) {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     }
@@ -89,7 +92,11 @@ export function AdminPageHelp({ section }: { section: string }) {
           {entry.guideSlug && (
             <Link
               className="mt-4 inline-block text-sm font-bold text-pink-300 hover:text-pink-200"
-              href={route.tenantSlug ? publicHrefForContext(route.tenantSlug, `/ayuda/${entry.guideSlug}`) : `/ayuda/${entry.guideSlug}`}
+              href={
+                route.tenantSlug
+                  ? publicHrefForContext(route.tenantSlug, `/ayuda/${entry.guideSlug}`)
+                  : `/ayuda/${entry.guideSlug}`
+              }
               onClick={() => setOpen(false)}
             >
               Ver guía completa →

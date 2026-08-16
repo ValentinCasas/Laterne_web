@@ -6,14 +6,20 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export async function generateMetadata(): Promise<Metadata> { const context = await requirePermission("brand.manage"); return { title: `${context.tenant.name} | Landing` }; }
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const context = await requirePermission("brand.manage");
+  return { title: `${context.tenant.name} | Landing` };
+}
 
 type LandingSectionsStored = {
   beerImages?: unknown;
   stories?: unknown;
 };
 
-/** @summary Carga la identidad, los textos y las secciones visuales del inicio para editarlas con preview en vivo. */
+/** @summary Carga la identidad, los textos y las secciones visuales del inicio para editarlas con vista previa en vivo. */
 export default async function LandingPage() {
   const context = await requirePermission("brand.manage");
   const [brand, data, eventCount, testimonialCount] = await Promise.all([

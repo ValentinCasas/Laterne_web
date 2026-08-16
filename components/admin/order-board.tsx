@@ -191,7 +191,14 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
     );
     setSelected((current) =>
       current?.id === order.id
-        ? { ...current, status, history: [...current.history, { id: Date.now(), fromStatus: current.status, toStatus: status, note: null, createdAt: now }] }
+        ? {
+            ...current,
+            status,
+            history: [
+              ...current.history,
+              { id: Date.now(), fromStatus: current.status, toStatus: status, note: null, createdAt: now },
+            ],
+          }
         : current,
     );
   }
@@ -203,7 +210,10 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId: order.id }),
     });
-    const body = (await response.json().catch(() => ({}))) as { invoice?: { id: number; number: string | null; status: string }; error?: string };
+    const body = (await response.json().catch(() => ({}))) as {
+      invoice?: { id: number; number: string | null; status: string };
+      error?: string;
+    };
     if (!response.ok || !body.invoice) {
       await Swal.fire({
         title: "No se pudo crear el comprobante",
@@ -288,10 +298,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         section="pedidos"
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              className="btn btn-secondary"
-              href={adminHrefFromPathname(pathname, "/admin/cocina")}
-            >
+            <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/cocina")}>
               Cocina
             </Link>
             <label className="block w-full min-w-[240px]">
@@ -339,8 +346,8 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         <div className="rounded-3xl border border-white/10 bg-white/[.02] p-10 text-center">
           <p className="text-xl font-black">Todavía no recibiste pedidos</p>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-500">
-            Los pedidos que hagan tus clientes desde la carta aparecerán acá. También podés
-            probar con una orden de prueba usando el enlace público de tu carta.
+            Los pedidos que hagan tus clientes desde la carta aparecerán acá. También podés probar con una
+            orden de prueba usando el enlace público de tu carta.
           </p>
           <Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin")}>
             Ir al resumen
@@ -394,9 +401,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                           <span className="text-xs text-zinc-500">
                             {order.items.reduce((sum, item) => sum + item.quantity, 0)} productos
                           </span>
-                          {order.phone && (
-                            <span className="text-xs text-zinc-500">{order.phone}</span>
-                          )}
+                          {order.phone && <span className="text-xs text-zinc-500">{order.phone}</span>}
                         </div>
                         {order.status === "received" || order.status === "preparing" ? (
                           <p
@@ -499,9 +504,10 @@ function OrderDetail({
     (status) => status !== "cancelled",
   );
   const route = parseCanonicalPath(pathname);
-  const trackingHref = route.tenantSlug && order.trackingToken
-    ? `${publicHrefForContext(route.tenantSlug, `/pedido/${order.reference}`, order.branch?.slug ?? route.branchSlug)}?token=${encodeURIComponent(order.trackingToken)}`
-    : "";
+  const trackingHref =
+    route.tenantSlug && order.trackingToken
+      ? `${publicHrefForContext(route.tenantSlug, `/pedido/${order.reference}`, order.branch?.slug ?? route.branchSlug)}?token=${encodeURIComponent(order.trackingToken)}`
+      : "";
   const trackingUrl = trackingHref && origin ? new URL(trackingHref, origin).toString() : trackingHref;
 
   return (
@@ -520,10 +526,14 @@ function OrderDetail({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="section-eyebrow">{order.reference}</p>
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusBadge[order.status]}`}>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusBadge[order.status]}`}
+              >
                 {orderStatusLabel(order.status)}
               </span>
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${modalityStyle[order.orderType]}`}>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${modalityStyle[order.orderType]}`}
+              >
                 {orderTypeLabel(order.orderType)}
               </span>
             </div>
@@ -587,7 +597,9 @@ function OrderDetail({
               {order.requestedAt && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Para</dt>
-                  <dd className="text-right font-bold">{new Date(order.requestedAt).toLocaleString("es-AR")}</dd>
+                  <dd className="text-right font-bold">
+                    {new Date(order.requestedAt).toLocaleString("es-AR")}
+                  </dd>
                 </div>
               )}
             </dl>
@@ -605,7 +617,10 @@ function OrderDetail({
                   <div className="min-w-0">
                     <p className="text-sm font-bold">{entry.label}</p>
                     <p className="text-xs text-zinc-500">
-                      {new Date(entry.time).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(entry.time).toLocaleTimeString("es-AR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                       {entry.note ? ` · ${entry.note}` : ""}
                     </p>
                   </div>

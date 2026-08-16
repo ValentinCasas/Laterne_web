@@ -395,7 +395,11 @@ function TableActions({
             {actions.map((action) => (
               <button
                 className={`block w-full border-b border-white/5 px-4 py-3 text-left text-sm font-bold transition last:border-0 ${
-                  action.danger ? "text-red-300" : action.warn ? "text-amber-300" : "text-zinc-200 hover:bg-white/5"
+                  action.danger
+                    ? "text-red-300"
+                    : action.warn
+                      ? "text-amber-300"
+                      : "text-zinc-200 hover:bg-white/5"
                 }`}
                 key={action.label}
                 onClick={() => {

@@ -15,7 +15,8 @@ export async function generateMetadata() {
 export default async function OrderPage() {
   const tenant = await getDefaultTenant();
   const requestHeaders = await headers();
-  const requestedBranch = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
+  const requestedBranch =
+    requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const branches = await prisma.branch.findMany({
     where: { tenantId: tenant.id, active: true },
     select: {

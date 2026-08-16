@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { trackEvent } from "@/components/analytics/tracker";
+import { trackEvent } from "@/components/analytics-tracker";
 import { scopedFetch } from "@/lib/client-routing";
 
 type SlotStatus = "available" | "pending" | "full";
@@ -28,21 +28,30 @@ const REASON_OPTIONS = ["Encuentro general", "Cumpleaños", "Reunión", "Cena es
 
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 
+/**
+ * @summary Completa un número de fecha con cero a la izquierda.
+ */
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
+/**
+ * @summary Convierte una fecha local a la clave calendario utilizada por la API.
+ */
 function toDateKey(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/**
+ * @summary Obtiene una fecha desplazada la cantidad indicada de días.
+ */
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
 }
 
-/** @summary Flujo en tres pasos: datos → día y horario → confirmar, con disponibilidad server-side. */
+/** @summary Flujo en tres pasos: datos → día y horario → confirmar, con disponibilidad validada por el servidor. */
 export function ReservationForm({
   minimumDate,
   initialSectors,
@@ -101,7 +110,8 @@ export function ReservationForm({
         if (active) setAvailability(body);
       })
       .catch((reason: unknown) => {
-        if (active) setSlotsError(reason instanceof Error ? reason.message : "No se pudo consultar disponibilidad");
+        if (active)
+          setSlotsError(reason instanceof Error ? reason.message : "No se pudo consultar disponibilidad");
       })
       .finally(() => {
         if (active) setLoadingSlots(false);
@@ -113,6 +123,9 @@ export function ReservationForm({
 
   const stepIndex = STEPS.findIndex((entry) => entry.id === step);
 
+  /**
+   * @summary Valida los datos personales antes de elegir un horario de reserva.
+   */
   function validateData(): string | null {
     if (!partySize || partySize < 1 || partySize > maximumPartySize) {
       return `Indicá cuántas personas serán (máx. ${maximumPartySize}).`;
@@ -124,6 +137,9 @@ export function ReservationForm({
     return null;
   }
 
+  /**
+   * @summary Avanza desde los datos personales hacia la selección de horario.
+   */
   function continueToHorario() {
     const problem = validateData();
     if (problem) {
@@ -137,6 +153,9 @@ export function ReservationForm({
     setStep("horario");
   }
 
+  /**
+   * @summary Regresa a la edición de datos personales de la reserva.
+   */
   function backToDatos() {
     setError("");
     setStep("datos");
@@ -182,7 +201,10 @@ export function ReservationForm({
 
   if (confirmation) {
     return (
-      <section className="rounded-[2rem] border border-emerald-500/25 bg-emerald-500/10 p-7 sm:p-10" role="status">
+      <section
+        className="rounded-[2rem] border border-emerald-500/25 bg-emerald-500/10 p-7 sm:p-10"
+        role="status"
+      >
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-2xl text-emerald-300">
           ✓
         </div>
@@ -225,7 +247,9 @@ export function ReservationForm({
               >
                 {index + 1}
               </span>
-              <span className={`text-sm font-bold ${reached ? "text-white" : "text-zinc-500"}`}>{entry.label}</span>
+              <span className={`text-sm font-bold ${reached ? "text-white" : "text-zinc-500"}`}>
+                {entry.label}
+              </span>
             </li>
           );
         })}
@@ -243,13 +267,19 @@ export function ReservationForm({
                 min={1}
                 max={maximumPartySize}
                 value={partySize || ""}
-                onChange={(event) => setPartySize(Math.max(1, Math.min(maximumPartySize, Number(event.target.value) || 1)))}
+                onChange={(event) =>
+                  setPartySize(Math.max(1, Math.min(maximumPartySize, Number(event.target.value) || 1)))
+                }
                 required
               />
             </label>
             <label className="text-sm font-bold">
               Sector o preferencia
-              <select className="input mt-2" value={sector} onChange={(event) => setSector(event.target.value)}>
+              <select
+                className="input mt-2"
+                value={sector}
+                onChange={(event) => setSector(event.target.value)}
+              >
                 <option value="">Sin preferencia</option>
                 {availability.sectors.map((option) => (
                   <option value={option} key={option}>
@@ -292,7 +322,11 @@ export function ReservationForm({
             </label>
             <label className="text-sm font-bold sm:col-span-2">
               Motivo
-              <select className="input mt-2" value={reason} onChange={(event) => setReason(event.target.value)}>
+              <select
+                className="input mt-2"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+              >
                 {REASON_OPTIONS.map((option) => (
                   <option key={option}>{option}</option>
                 ))}
@@ -377,13 +411,18 @@ export function ReservationForm({
                       slot.status === "full"
                         ? { label: "Completo", className: "border-white/5 bg-white/[.01] text-zinc-600" }
                         : slot.status === "pending"
-                          ? { label: "Solicitudes pendientes", className: "border-amber-400/35 bg-amber-400/10 text-amber-200" }
+                          ? {
+                              label: "Solicitudes pendientes",
+                              className: "border-amber-400/35 bg-amber-400/10 text-amber-200",
+                            }
                           : { label: "Disponible", className: "border-white/15 bg-white/[.03] text-white" };
                     const selected = time === slot.time;
                     return (
                       <button
                         className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${
-                          selected ? "border-pink-500 bg-pink-500/15 text-white ring-1 ring-pink-500/40" : meta.className
+                          selected
+                            ? "border-pink-500 bg-pink-500/15 text-white ring-1 ring-pink-500/40"
+                            : meta.className
                         } ${slot.status === "full" ? "cursor-not-allowed" : "hover:border-pink-500/50"}`}
                         disabled={slot.status === "full"}
                         key={slot.time}
@@ -415,7 +454,12 @@ export function ReservationForm({
             <button className="btn btn-secondary" onClick={backToDatos} type="button">
               ← Volver
             </button>
-            <button className="btn" disabled={!date || !time} onClick={() => setStep("confirmar")} type="button">
+            <button
+              className="btn"
+              disabled={!date || !time}
+              onClick={() => setStep("confirmar")}
+              type="button"
+            >
               Continuar →
             </button>
           </div>
@@ -476,7 +520,12 @@ export function ReservationForm({
             <button className="btn btn-secondary" onClick={() => setStep("horario")} type="button">
               ← Volver
             </button>
-            <button className="btn" disabled={submitting} onClick={() => void submitReservation()} type="button">
+            <button
+              className="btn"
+              disabled={submitting}
+              onClick={() => void submitReservation()}
+              type="button"
+            >
               {submitting ? "Enviando…" : "Solicitar reserva"}
             </button>
           </div>
@@ -581,11 +630,21 @@ function PublicDateCalendar({
   });
 
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[.02] p-4" role="group" aria-label="Fecha" aria-busy={loadingDates}>
+    <div
+      className="min-w-0 rounded-2xl border border-white/10 bg-white/[.02] p-4"
+      role="group"
+      aria-label="Fecha"
+      aria-busy={loadingDates}
+    >
       <div className="flex items-center justify-between gap-2">
         <button
           className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-sm disabled:opacity-30"
-          onClick={() => setView((current) => ({ year: current.month === 0 ? current.year - 1 : current.year, month: current.month === 0 ? 11 : current.month - 1 }))}
+          onClick={() =>
+            setView((current) => ({
+              year: current.month === 0 ? current.year - 1 : current.year,
+              month: current.month === 0 ? 11 : current.month - 1,
+            }))
+          }
           disabled={!canGoPrev}
           type="button"
           aria-label="Mes anterior"
@@ -595,7 +654,12 @@ function PublicDateCalendar({
         <strong className="text-base capitalize">{monthLabel}</strong>
         <button
           className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-sm disabled:opacity-30"
-          onClick={() => setView((current) => ({ year: current.month === 11 ? current.year + 1 : current.year, month: current.month === 11 ? 0 : current.month + 1 }))}
+          onClick={() =>
+            setView((current) => ({
+              year: current.month === 11 ? current.year + 1 : current.year,
+              month: current.month === 11 ? 0 : current.month + 1,
+            }))
+          }
           disabled={!canGoNext}
           type="button"
           aria-label="Mes siguiente"
@@ -603,7 +667,10 @@ function PublicDateCalendar({
           →
         </button>
       </div>
-      <p className={`mt-3 min-h-5 text-xs ${datesError ? "text-amber-300" : "text-zinc-500"}`} role={datesError ? "alert" : "status"}>
+      <p
+        className={`mt-3 min-h-5 text-xs ${datesError ? "text-amber-300" : "text-zinc-500"}`}
+        role={datesError ? "alert" : "status"}
+      >
         {datesError
           ? "No pudimos anticipar los días; podés elegir uno y consultar sus horarios."
           : loadingDates
@@ -620,9 +687,7 @@ function PublicDateCalendar({
           const key = toDateKey(cell);
           const inView = cell.getMonth() === view.month;
           const disabled =
-            key < minimumDate ||
-            key > maximumDate ||
-            (availableDates !== null && !availableDates.has(key));
+            key < minimumDate || key > maximumDate || (availableDates !== null && !availableDates.has(key));
           const selected = key === value;
           const today = key === todayKey;
           return (

@@ -177,7 +177,10 @@ export function RewardsManager({
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => (
-          <article className="card flex min-w-0 flex-wrap items-baseline justify-between gap-3 p-5" key={kpi.label}>
+          <article
+            className="card flex min-w-0 flex-wrap items-baseline justify-between gap-3 p-5"
+            key={kpi.label}
+          >
             <span className="text-sm font-bold text-[var(--admin-muted)]">{kpi.label}</span>
             <strong className={`shrink-0 text-3xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</strong>
           </article>
@@ -188,7 +191,9 @@ export function RewardsManager({
         {rewards.map((reward) => (
           <article className={`card p-5 ${reward.active ? "" : "opacity-60"}`} key={reward.id}>
             <div className="flex items-start justify-between gap-3">
-              <p className={`rounded-full px-2.5 py-1 text-xs font-black ${benefitColors[reward.benefitType] ?? benefitColors.other}`}>
+              <p
+                className={`rounded-full px-2.5 py-1 text-xs font-black ${benefitColors[reward.benefitType] ?? benefitColors.other}`}
+              >
                 {benefitLabels[reward.benefitType] ?? reward.benefitType}
               </p>
               <span className="text-xs text-zinc-600">#{reward.sortOrder}</span>
@@ -262,15 +267,35 @@ export function RewardsManager({
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-2">
                 <span className="label">Nombre</span>
-                <input className="input" name="name" required minLength={2} maxLength={140} defaultValue={editing?.name} placeholder="Ej. Café gratis" />
+                <input
+                  className="input"
+                  name="name"
+                  required
+                  minLength={2}
+                  maxLength={140}
+                  defaultValue={editing?.name}
+                  placeholder="Ej. Café gratis"
+                />
               </label>
               <label>
                 <span className="label">Puntos necesarios</span>
-                <input className="input" name="pointsNeeded" type="number" min={1} required defaultValue={editing?.pointsNeeded} placeholder="Ej. 1500" />
+                <input
+                  className="input"
+                  name="pointsNeeded"
+                  type="number"
+                  min={1}
+                  required
+                  defaultValue={editing?.pointsNeeded}
+                  placeholder="Ej. 1500"
+                />
               </label>
               <label>
                 <span className="label">Tipo de beneficio</span>
-                <select className="input" name="benefitType" defaultValue={editing?.benefitType ?? "discount"}>
+                <select
+                  className="input"
+                  name="benefitType"
+                  defaultValue={editing?.benefitType ?? "discount"}
+                >
                   {benefitOptions.map((option) => (
                     <option value={option.value} key={option.value}>
                       {option.label}
@@ -280,18 +305,38 @@ export function RewardsManager({
               </label>
               <label>
                 <span className="label">Valor visible</span>
-                <input className="input" name="value" maxLength={120} defaultValue={editing?.value ?? ""} placeholder="Ej. 1 café o 15% off" />
+                <input
+                  className="input"
+                  name="value"
+                  maxLength={120}
+                  defaultValue={editing?.value ?? ""}
+                  placeholder="Ej. 1 café o 15% off"
+                />
               </label>
               <label>
                 <span className="label">Orden</span>
-                <input className="input" name="sortOrder" type="number" min={0} max={10000} defaultValue={editing?.sortOrder ?? 0} />
+                <input
+                  className="input"
+                  name="sortOrder"
+                  type="number"
+                  min={0}
+                  max={10000}
+                  defaultValue={editing?.sortOrder ?? 0}
+                />
               </label>
               <label className="sm:col-span-2">
                 <span className="label">Descripción</span>
-                <textarea className="input min-h-20" name="description" maxLength={500} defaultValue={editing?.description ?? ""} placeholder="Explicá en qué consiste el beneficio." />
+                <textarea
+                  className="input min-h-20"
+                  name="description"
+                  maxLength={500}
+                  defaultValue={editing?.description ?? ""}
+                  placeholder="Explicá en qué consiste el beneficio."
+                />
               </label>
               <label className="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" name="active" defaultChecked={editing?.active ?? true} /> Visible para los clientes
+                <input type="checkbox" name="active" defaultChecked={editing?.active ?? true} /> Visible para
+                los clientes
               </label>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">

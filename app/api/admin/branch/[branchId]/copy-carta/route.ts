@@ -5,15 +5,15 @@ import { authorize } from "@/lib/auth";
 import { ensureBranchCategory, ensureBranchProduct } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con la copia de carta entre sucursales.
+ */
 const copyInput = z.object({
   sourceBranchId: z.coerce.number().int().positive().optional(),
 });
 
 /** @summary Copia categorías, publicaciones y existencias de la carta de una sucursal a otra. */
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ branchId: string }> },
-) {
+export async function POST(request: Request, context: { params: Promise<{ branchId: string }> }) {
   const { branchId } = await context.params;
   const targetBranchId = Number(branchId);
   if (!Number.isInteger(targetBranchId) || targetBranchId <= 0) {
@@ -40,7 +40,10 @@ export async function POST(
     return NextResponse.json({ error: "No hay sucursal de origen disponible" }, { status: 409 });
   }
   if (sourceBranchId === targetBranchId) {
-    return NextResponse.json({ error: "La sucursal de origen y destino deben ser distintas" }, { status: 400 });
+    return NextResponse.json(
+      { error: "La sucursal de origen y destino deben ser distintas" },
+      { status: 400 },
+    );
   }
 
   const [categories, assignments, stocks] = await Promise.all([

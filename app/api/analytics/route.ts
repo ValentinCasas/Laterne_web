@@ -4,6 +4,9 @@ import { analyticsHash, publicAnalyticsEvents, sanitizeAnalyticsMetadata } from 
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
+/**
+ * @summary Valida la entrada relacionada con la analítica.
+ */
 const eventInput = z.object({
   eventType: z.enum(publicAnalyticsEvents),
   sessionId: z.string().min(8).max(100),

@@ -173,11 +173,19 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
       ) : (
         <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[.02]">
           <div className="hidden grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] gap-4 border-b border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-500 lg:grid">
-            <span>Cliente</span><span>Nivel</span><span>Puntos</span><span>Actividad</span><span /><span />
+            <span>Cliente</span>
+            <span>Nivel</span>
+            <span>Puntos</span>
+            <span>Actividad</span>
+            <span />
+            <span />
           </div>
           <div className="divide-y divide-white/10">
             {visible.map((customer) => (
-              <div className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] lg:items-center" key={customer.id}>
+              <div
+                className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] lg:items-center"
+                key={customer.id}
+              >
                 <div className="min-w-0">
                   <strong className="block truncate">{customer.name}</strong>
                   <p className="truncate text-sm text-zinc-500">{customer.email || customer.phone}</p>
@@ -190,10 +198,18 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
                   {customer._count.orders} pedidos · {customer._count.transactions} mov.
                 </span>
                 <div className="flex gap-2">
-                  <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => void openDetail(customer)} type="button">
+                  <button
+                    className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10"
+                    onClick={() => void openDetail(customer)}
+                    type="button"
+                  >
                     Ficha 360
                   </button>
-                  <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => adjust(customer)} type="button">
+                  <button
+                    className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10"
+                    onClick={() => adjust(customer)}
+                    type="button"
+                  >
                     Ajustar puntos
                   </button>
                 </div>
@@ -296,7 +312,9 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
                     </span>
                   </div>
                 ))}
-                {!detail.transactions.length && <p className="text-sm text-zinc-500">Sin movimientos todavía.</p>}
+                {!detail.transactions.length && (
+                  <p className="text-sm text-zinc-500">Sin movimientos todavía.</p>
+                )}
               </div>
             </section>
 

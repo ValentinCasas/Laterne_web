@@ -14,12 +14,25 @@ export default async function BrandPage() {
   });
   const [tenant, palettes] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({
-    where: { id: context.tenant.id },
-    select: { defaultCurrency: true, locale: true, timeZone: true },
+      where: { id: context.tenant.id },
+      select: { defaultCurrency: true, locale: true, timeZone: true },
     }),
-    prisma.themePalette.findMany({ where: { tenantId: context.tenant.id }, orderBy: [{ isSystem: "desc" }, { name: "asc" }] }),
+    prisma.themePalette.findMany({
+      where: { tenantId: context.tenant.id },
+      orderBy: [{ isSystem: "desc" }, { name: "asc" }],
+    }),
   ]);
-  const activeTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: context.tenant.id }, select: { activePaletteId: true } });
+  const activeTenant = await prisma.tenant.findUniqueOrThrow({
+    where: { id: context.tenant.id },
+    select: { activePaletteId: true },
+  });
 
-  return <BrandManager initialBrand={serialize({ ...brand, ...tenant }) as unknown as BrandData} palettes={serialize(palettes) as unknown as Parameters<typeof BrandManager>[0]["palettes"]} activePaletteId={activeTenant.activePaletteId} presets={palettePresets} />;
+  return (
+    <BrandManager
+      initialBrand={serialize({ ...brand, ...tenant }) as unknown as BrandData}
+      palettes={serialize(palettes) as unknown as Parameters<typeof BrandManager>[0]["palettes"]}
+      activePaletteId={activeTenant.activePaletteId}
+      presets={palettePresets}
+    />
+  );
 }

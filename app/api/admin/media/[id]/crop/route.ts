@@ -10,6 +10,9 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
+/**
+ * @summary Valida la entrada relacionada con los archivos multimedia.
+ */
 const cropInput = z.object({ preset: z.enum(["square", "landscape", "portrait"]) });
 const dimensions = {
   square: { width: 1200, height: 1200 },

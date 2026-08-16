@@ -9,10 +9,16 @@ import { isReservedSlug } from "@/lib/domains";
 import { slugify } from "@/lib/slug";
 import { defaultPalette } from "@/lib/theme-palettes";
 
+/**
+ * @summary Valida la entrada relacionada con los tenants.
+ */
 const tenantDeleteInput = z.object({
   tenantIds: z.array(z.coerce.number().int().positive()).min(1).max(100),
 });
 
+/**
+ * @summary Valida la entrada relacionada con los tenants.
+ */
 const tenantInput = z.object({
   name: z.string().trim().min(2).max(160),
   slug: z.string().trim().max(120).optional(),

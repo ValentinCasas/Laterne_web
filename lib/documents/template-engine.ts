@@ -18,7 +18,14 @@ export type InvoiceTemplateData = {
     notes: string;
   };
   document: { number: string; date: string; type: string; fiscalStatus: string };
-  totals: { subtotal: string; discount: string; delivery: string; tip: string; total: string; currency: string };
+  totals: {
+    subtotal: string;
+    discount: string;
+    delivery: string;
+    tip: string;
+    total: string;
+    currency: string;
+  };
   items: Array<{
     name: string;
     qty: string;
@@ -34,10 +41,16 @@ const textFields = new Set<string>(textDocumentFields);
 const itemFields = new Set<string>(itemDocumentFields);
 const imageCommands = new Set(["businessLogo()", "documentQr()"]);
 
+/**
+ * @summary Normaliza un comando de plantilla sin alterar su intención.
+ */
 function normalizeCommand(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * @summary Convierte bytes de documento al ArrayBuffer requerido por el motor.
+ */
 function arrayBuffer(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }

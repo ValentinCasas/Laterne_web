@@ -11,6 +11,9 @@ import {
 } from "@/lib/documents/template-engine";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Construye los metadatos públicos de una plantilla documental.
+ */
 function templateMetadata(template: {
   id: number;
   documentType: string;
@@ -24,9 +27,16 @@ function templateMetadata(template: {
   createdAt: Date;
   deletedAt: Date | null;
 }) {
-  return { ...template, createdAt: template.createdAt.toISOString(), deletedAt: template.deletedAt?.toISOString() ?? null };
+  return {
+    ...template,
+    createdAt: template.createdAt.toISOString(),
+    deletedAt: template.deletedAt?.toISOString() ?? null,
+  };
 }
 
+/**
+ * @summary Devuelve datos de las plantillas documentales visibles para el contexto autorizado.
+ */
 export async function GET() {
   const auth = await authorize("order.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -65,7 +75,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "La extensión permitida es .docx" }, { status: 400 });
   }
   if (file.type !== DOCX_MIME) {
-    return NextResponse.json({ error: "El tipo MIME no corresponde a un documento Word .docx" }, { status: 400 });
+    return NextResponse.json(
+      { error: "El tipo MIME no corresponde a un documento Word .docx" },
+      { status: 400 },
+    );
   }
   if (file.size <= 0 || file.size > MAX_DOCX_TEMPLATE_BYTES) {
     return NextResponse.json({ error: "La plantilla DOCX no puede superar 5 MB" }, { status: 400 });
@@ -101,10 +114,18 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (duplicate) {
-    return NextResponse.json({ error: "Esta misma versión ya fue cargada para ese tipo de documento" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Esta misma versión ya fue cargada para ese tipo de documento" },
+      { status: 409 },
+    );
   }
 
-  const name = String(form.get("name") ?? "").trim().slice(0, 160) || replaced?.name || documentTypeLabels[documentType];
+  const name =
+    String(form.get("name") ?? "")
+      .trim()
+      .slice(0, 160) ||
+    replaced?.name ||
+    documentTypeLabels[documentType];
   const makeDefault = replaced?.isDefault || form.get("isDefault") === "true";
   const template = await prisma.$transaction(async (transaction) => {
     await transaction.$queryRaw`SELECT id FROM tenant WHERE id = ${auth.tenant.id} FOR UPDATE`;
@@ -157,7 +178,12 @@ export async function POST(request: Request) {
     action: replaced ? "document-template.replace" : "document-template.create",
     entityType: "document-template",
     entityId: template.id,
-    newValues: { documentType, filename: file.name, version: template.version, replacedId: replaced?.id ?? null },
+    newValues: {
+      documentType,
+      filename: file.name,
+      version: template.version,
+      replacedId: replaced?.id ?? null,
+    },
     request,
   });
   return NextResponse.json({ template: templateMetadata(template) }, { status: 201 });

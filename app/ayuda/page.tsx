@@ -1,4 +1,4 @@
-import { HelpCenter } from "@/components/help/help-center";
+import { HelpCenter } from "@/components/help-center";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { managedPageMetadata } from "@/lib/seo";

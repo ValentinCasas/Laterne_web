@@ -184,10 +184,25 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
         />
       </div>
 
-       <div className="mt-6 flex gap-2 overflow-x-auto border-b border-[var(--admin-border)] pb-2 lg:hidden" role="tablist" aria-label="Moderación de testimonios">
-         {columns.map((column) => <button className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-black ${activeColumn === column.status ? "bg-[var(--admin-primary-strong)] text-white" : "bg-white/5 text-[var(--admin-muted)]"}`} key={column.status} onClick={() => setActiveColumn(column.status)} type="button" role="tab" aria-selected={activeColumn === column.status}>{column.title} · {items.filter((item) => testimonialStatus(item) === column.status).length}</button>)}
-       </div>
-       <div className="mt-4 grid min-w-0 gap-6 lg:grid-cols-3">
+      <div
+        className="mt-6 flex gap-2 overflow-x-auto border-b border-[var(--admin-border)] pb-2 lg:hidden"
+        role="tablist"
+        aria-label="Moderación de testimonios"
+      >
+        {columns.map((column) => (
+          <button
+            className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-black ${activeColumn === column.status ? "bg-[var(--admin-primary-strong)] text-white" : "bg-white/5 text-[var(--admin-muted)]"}`}
+            key={column.status}
+            onClick={() => setActiveColumn(column.status)}
+            type="button"
+            role="tab"
+            aria-selected={activeColumn === column.status}
+          >
+            {column.title} · {items.filter((item) => testimonialStatus(item) === column.status).length}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 grid min-w-0 gap-6 lg:grid-cols-3">
         {columns.map((column) => {
           const normalizedQuery = query.trim().toLocaleLowerCase("es");
           const columnItems = items.filter(
@@ -195,7 +210,7 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
           );
           return (
             <section
-               className={`${column.status === activeColumn ? "block" : "hidden"} min-w-0 rounded-3xl border p-4 transition lg:block ${column.color} ${
+              className={`${column.status === activeColumn ? "block" : "hidden"} min-w-0 rounded-3xl border p-4 transition lg:block ${column.color} ${
                 dropTarget === column.status ? "ring-2 ring-current" : ""
               }`}
               key={column.status}
@@ -243,8 +258,27 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
                         {new Date(item.date).toLocaleDateString("es-AR", { timeZone: "UTC" })}
                       </time>
                     </div>
-                    <p className={`${expanded.has(item.id) ? "" : "line-clamp-4"} mt-3 text-base leading-relaxed text-zinc-300`}>“{item.description}”</p>
-                    {item.description.length > 220 && <button className="mt-2 text-xs font-black text-[var(--admin-primary)]" onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} type="button">{expanded.has(item.id) ? "Ver menos" : "Ver completo"}</button>}
+                    <p
+                      className={`${expanded.has(item.id) ? "" : "line-clamp-4"} mt-3 text-base leading-relaxed text-zinc-300`}
+                    >
+                      “{item.description}”
+                    </p>
+                    {item.description.length > 220 && (
+                      <button
+                        className="mt-2 text-xs font-black text-[var(--admin-primary)]"
+                        onClick={() =>
+                          setExpanded((current) => {
+                            const next = new Set(current);
+                            if (next.has(item.id)) next.delete(item.id);
+                            else next.add(item.id);
+                            return next;
+                          })
+                        }
+                        type="button"
+                      >
+                        {expanded.has(item.id) ? "Ver menos" : "Ver completo"}
+                      </button>
+                    )}
 
                     <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-3">
                       {column.status !== "approved" && (
@@ -294,7 +328,7 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
 
                 {!columnItems.length && (
                   <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-current/20 p-6 text-center text-sm opacity-50">
-                     No hay testimonios en esta sección.
+                    No hay testimonios en esta sección.
                   </div>
                 )}
               </div>

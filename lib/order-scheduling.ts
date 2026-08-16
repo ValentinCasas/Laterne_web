@@ -99,22 +99,34 @@ export function orderLocalDateTime(date: string, time: string, timeZone: string)
   return candidate;
 }
 
+/**
+ * @summary Indica si una regla horaria corresponde al día solicitado.
+ */
 function dayMatches(dayOfWeek: string, date: string) {
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
   const label = normalized(dayOfWeek);
   return dayAliases[weekday].some((alias) => label.includes(alias));
 }
 
+/**
+ * @summary Convierte una hora textual a minutos desde medianoche.
+ */
 function minutes(value: string) {
   const [hour, minute] = value.split(":").map(Number);
   return hour * 60 + minute;
 }
 
+/**
+ * @summary Construye una fecha local para una hora determinada.
+ */
 function timeAt(totalMinutes: number) {
   const value = ((totalMinutes % 1_440) + 1_440) % 1_440;
   return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
 
+/**
+ * @summary Convierte horarios de apertura en intervalos operativos.
+ */
 function ranges(opening: OrderOpeningHourInput) {
   const values: Array<[string | null, string | null]> = [
     [opening.morningStartTime, opening.morningEndTime],

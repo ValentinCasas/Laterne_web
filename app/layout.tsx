@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import { SiteHeader } from "@/components/site-header";
-import { AnalyticsTracker } from "@/components/analytics/tracker";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { PwaRegister } from "@/components/pwa-register";
 import { CookieBanner } from "@/components/cookie-banner";
 import { SiteFooter } from "@/components/site-footer";
@@ -12,8 +12,18 @@ import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant, UnknownHostError } from "@/lib/tenant";
 import { classifyHost, requestOrigin } from "@/lib/domains";
-import { defaultPalette, paletteCssVariables, paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
-import { defaultMenuClickTheme, menuClickCssVariables, menuClickThemeFromRecord, type MenuClickTheme } from "@/lib/menuclick-theme";
+import {
+  defaultPalette,
+  paletteCssVariables,
+  paletteFromLegacy,
+  type PaletteColors,
+} from "@/lib/theme-palettes";
+import {
+  defaultMenuClickTheme,
+  menuClickCssVariables,
+  menuClickThemeFromRecord,
+  type MenuClickTheme,
+} from "@/lib/menuclick-theme";
 import { MenuClickThemeProvider } from "@/components/platform/menuclick-theme-provider";
 
 /** @summary Resuelve la experiencia y el negocio del host para el render de la solicitud. */
@@ -22,21 +32,29 @@ async function resolveRequestContext() {
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   const hostKind = classifyHost(host).kind;
-  const kind = routeKind === "tenant-public"
-    ? "tenant"
-    : routeKind === "tenant-admin" || routeKind === "tenant-auth"
-      ? "app"
-      : routeKind.startsWith("platform")
-        ? "platform"
-        : hostKind;
+  const kind =
+    routeKind === "tenant-public"
+      ? "tenant"
+      : routeKind === "tenant-admin" || routeKind === "tenant-auth"
+        ? "app"
+        : routeKind.startsWith("platform")
+          ? "platform"
+          : hostKind;
 
   let tenant: Awaited<ReturnType<typeof getDefaultTenant>> | null = null;
   let brand: Awaited<ReturnType<typeof prisma.brandSettings.findUnique>> | null = null;
   let palette: PaletteColors = defaultPalette;
   let menuTheme: MenuClickTheme = defaultMenuClickTheme;
-  let platformSettings: Awaited<ReturnType<typeof prisma.platformSettings.findUnique>> & { activePalette?: Awaited<ReturnType<typeof prisma.platformPalette.findUnique>> | null } | null = null;
+  let platformSettings:
+    | (Awaited<ReturnType<typeof prisma.platformSettings.findUnique>> & {
+        activePalette?: Awaited<ReturnType<typeof prisma.platformPalette.findUnique>> | null;
+      })
+    | null = null;
   if (kind === "platform") {
-    platformSettings = await prisma.platformSettings.findUnique({ where: { id: 1 }, include: { activePalette: true } });
+    platformSettings = await prisma.platformSettings.findUnique({
+      where: { id: 1 },
+      include: { activePalette: true },
+    });
     if (platformSettings?.activePalette) {
       menuTheme = menuClickThemeFromRecord(platformSettings.activePalette);
     }
@@ -47,7 +65,9 @@ async function resolveRequestContext() {
       if (tenant) {
         brand = await prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } });
         const activePalette = tenant.activePaletteId
-          ? await prisma.themePalette.findFirst({ where: { id: tenant.activePaletteId, tenantId: tenant.id } })
+          ? await prisma.themePalette.findFirst({
+              where: { id: tenant.activePaletteId, tenantId: tenant.id },
+            })
           : null;
         palette = activePalette
           ? { ...activePalette, baseMode: activePalette.baseMode === "light" ? "light" : "dark" }
@@ -59,7 +79,8 @@ async function resolveRequestContext() {
       if (!(error instanceof UnknownHostError)) throw error;
     }
   }
-  const branchSlug = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
+  const branchSlug =
+    requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const originalPath = requestHeaders.get("x-menuclick-original-path") || "/";
   return { kind, tenant, brand, palette, menuTheme, platformSettings, branchSlug, originalPath };
 }
@@ -131,7 +152,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">
-      <body className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined} style={style}>
+      <body
+        className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined}
+        style={style}
+      >
         {tenant && (
           <SiteHeader
             brandName={name}
@@ -143,7 +167,11 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         {tenant && <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />}
         <PwaRegister />
         {tenant && <CookieBanner />}
-        {kind === "platform" ? <MenuClickThemeProvider initialTheme={menuTheme}>{children}</MenuClickThemeProvider> : children}
+        {kind === "platform" ? (
+          <MenuClickThemeProvider initialTheme={menuTheme}>{children}</MenuClickThemeProvider>
+        ) : (
+          children
+        )}
         {tenant && (
           <SiteFooter
             businessName={name}

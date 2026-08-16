@@ -6,6 +6,9 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { tableCode } from "@/lib/tables";
 
+/**
+ * @summary Valida la entrada relacionada con las mesas.
+ */
 const tableInput = z.object({
   name: z.string().trim().min(1).max(100),
   sector: z.string().trim().max(100).optional(),

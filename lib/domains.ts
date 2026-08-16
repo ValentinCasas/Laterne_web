@@ -77,14 +77,14 @@ export function tenantHost(slug: string) {
 
 /** @summary Origen público principal de MenuClick para el entorno activo. */
 export function publicRootUrl() {
-  const host = isDevelopmentEnvironment ? "localhost" : (ROOT_DOMAIN_NAME || "localhost");
+  const host = isDevelopmentEnvironment ? "localhost" : ROOT_DOMAIN_NAME || "localhost";
   const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
   return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}`;
 }
 
 /** @summary Origen administrativo fijo de MenuClick. El tenant vive en el path, no en el host. */
 export function adminRootUrl() {
-  const host = isDevelopmentEnvironment ? "localhost" : (APP_HOST || ROOT_DOMAIN_NAME);
+  const host = isDevelopmentEnvironment ? "localhost" : APP_HOST || ROOT_DOMAIN_NAME;
   const port = isDevelopmentEnvironment && DEVELOPMENT_PORT ? `:${DEVELOPMENT_PORT}` : "";
   return `${isDevelopmentEnvironment ? "http" : "https"}://${host}${port}`;
 }

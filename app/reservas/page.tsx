@@ -8,7 +8,7 @@ export function generateMetadata() {
   return managedPageMetadata("/reservas", "Reservas", "Consultá disponibilidad y solicitá una mesa.");
 }
 
-/** @summary Presenta reservas tenant-level. */
+/** @summary Presenta las reservas consolidadas del tenant. */
 export default async function ReservationsPage() {
   return <ReservationsPageContent />;
 }

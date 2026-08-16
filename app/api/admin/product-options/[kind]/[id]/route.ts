@@ -31,10 +31,32 @@ export async function PATCH(request: Request, context: { params: Promise<{ kind:
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   const current = await currentOption(kind, id, auth.tenant.id);
   if (!current) return NextResponse.json({ error: "Opción no encontrada" }, { status: 404 });
-  if (auth.activeBranchId && auth.activeBranchId > 0 && !(await prisma.branchProduct.findFirst({ where: { tenantId: auth.tenant.id, branchId: auth.activeBranchId, productId: current.productId, active: true } }))) return NextResponse.json({ error: "El producto no está asignado a esta sucursal" }, { status: 403 });
-  const group = parsed.data.groupId ? await prisma.productOptionGroup.findFirst({ where: { id: parsed.data.groupId, tenantId: auth.tenant.id, productId: current.productId, kind } }) : null;
-  if (parsed.data.groupId && !group) return NextResponse.json({ error: "Grupo de opciones inválido" }, { status: 400 });
-  const common = { name: parsed.data.name, active: parsed.data.active, sortOrder: parsed.data.sortOrder, groupId: parsed.data.groupId ?? null };
+  if (
+    auth.activeBranchId &&
+    auth.activeBranchId > 0 &&
+    !(await prisma.branchProduct.findFirst({
+      where: {
+        tenantId: auth.tenant.id,
+        branchId: auth.activeBranchId,
+        productId: current.productId,
+        active: true,
+      },
+    }))
+  )
+    return NextResponse.json({ error: "El producto no está asignado a esta sucursal" }, { status: 403 });
+  const group = parsed.data.groupId
+    ? await prisma.productOptionGroup.findFirst({
+        where: { id: parsed.data.groupId, tenantId: auth.tenant.id, productId: current.productId, kind },
+      })
+    : null;
+  if (parsed.data.groupId && !group)
+    return NextResponse.json({ error: "Grupo de opciones inválido" }, { status: 400 });
+  const common = {
+    name: parsed.data.name,
+    active: parsed.data.active,
+    sortOrder: parsed.data.sortOrder,
+    groupId: parsed.data.groupId ?? null,
+  };
   const item =
     kind === "variant"
       ? await prisma.productVariant.update({
@@ -67,7 +89,19 @@ export async function DELETE(request: Request, context: { params: Promise<{ kind
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   const current = await currentOption(kind, id, auth.tenant.id);
   if (!current) return NextResponse.json({ error: "Opción no encontrada" }, { status: 404 });
-  if (auth.activeBranchId && auth.activeBranchId > 0 && !(await prisma.branchProduct.findFirst({ where: { tenantId: auth.tenant.id, branchId: auth.activeBranchId, productId: current.productId, active: true } }))) return NextResponse.json({ error: "El producto no está asignado a esta sucursal" }, { status: 403 });
+  if (
+    auth.activeBranchId &&
+    auth.activeBranchId > 0 &&
+    !(await prisma.branchProduct.findFirst({
+      where: {
+        tenantId: auth.tenant.id,
+        branchId: auth.activeBranchId,
+        productId: current.productId,
+        active: true,
+      },
+    }))
+  )
+    return NextResponse.json({ error: "El producto no está asignado a esta sucursal" }, { status: 403 });
   if (kind === "variant") await prisma.productVariant.delete({ where: { id } });
   else await prisma.productExtra.delete({ where: { id } });
   await recordAudit({

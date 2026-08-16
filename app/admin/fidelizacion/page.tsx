@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const context = await requirePermission("customer.manage");
   return { title: `${context.tenant.name} | Fidelización` };

@@ -5,11 +5,17 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { passwordResetHash } from "@/lib/password-reset";
 
+/**
+ * @summary Valida la entrada relacionada con la autenticación.
+ */
 const passwordInput = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(10).max(100).regex(/[a-z]/).regex(/[A-Z]/).regex(/\d/),
 });
 
+/**
+ * @summary Obtiene una representación estable de la dirección de origen de la solicitud.
+ */
 function requestAddress(request: Request) {
   return (
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -62,7 +68,12 @@ export async function PATCH(request: Request) {
       data: { revokedAt: new Date() },
     }),
     prisma.passwordResetRequest.create({
-      data: { userId: user.id, emailHash: passwordResetHash("email", user.email), requestedIp: ipHash, status: "success" },
+      data: {
+        userId: user.id,
+        emailHash: passwordResetHash("email", user.email),
+        requestedIp: ipHash,
+        status: "success",
+      },
     }),
   ]);
   return NextResponse.json({ ok: true });

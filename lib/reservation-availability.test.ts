@@ -54,9 +54,7 @@ describe("disponibilidad centralizada de reservas", () => {
   });
 
   it("una pending sólo marca su horario y conserva capacidad parcial", () => {
-    const result = availability([
-      { date: "2026-08-14", time: "20:00", partySize: 3, status: "pending" },
-    ]);
+    const result = availability([{ date: "2026-08-14", time: "20:00", partySize: 3, status: "pending" }]);
     expect(result.slots.find((slot) => slot.time === "20:00")).toMatchObject({
       status: "pending",
       remaining: 7,
@@ -66,9 +64,7 @@ describe("disponibilidad centralizada de reservas", () => {
   });
 
   it("una confirmed consume sólo la capacidad de su franja", () => {
-    const result = availability([
-      { date: "2026-08-14", time: "20:00", partySize: 9, status: "confirmed" },
-    ]);
+    const result = availability([{ date: "2026-08-14", time: "20:00", partySize: 9, status: "confirmed" }]);
     expect(result.slots.find((slot) => slot.time === "20:00")).toMatchObject({
       status: "full",
       remaining: 1,

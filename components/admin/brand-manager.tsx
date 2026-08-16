@@ -43,7 +43,17 @@ function socialValue(value: unknown, key: string) {
 }
 
 /** @summary Administra identidad, textos, estilos, redes y configuración de presencia digital. */
-export function BrandManager({ initialBrand, palettes, activePaletteId, presets }: { initialBrand: BrandData; palettes: PaletteRecord[]; activePaletteId: number | null; presets: PalettePreset[] }) {
+export function BrandManager({
+  initialBrand,
+  palettes,
+  activePaletteId,
+  presets,
+}: {
+  initialBrand: BrandData;
+  palettes: PaletteRecord[];
+  activePaletteId: number | null;
+  presets: PalettePreset[];
+}) {
   const [brand, setBrand] = useState(initialBrand);
   const [uploading, setUploading] = useState<BrandAsset | null>(null);
   const [deleting, setDeleting] = useState<BrandAsset | null>(null);
@@ -156,7 +166,7 @@ export function BrandManager({ initialBrand, palettes, activePaletteId, presets 
         description="Una sola configuración controla colores, tipografía, recursos, textos y perfiles sociales."
         section="marca"
       />
-       <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Recursos visuales</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -204,7 +214,7 @@ export function BrandManager({ initialBrand, palettes, activePaletteId, presets 
               </label>
             ))}
           </div>
-           <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <label>
               <span className="label">Tipografía</span>
               <select className="input" name="fontFamily" defaultValue={brand.fontFamily}>

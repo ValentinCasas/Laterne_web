@@ -5,6 +5,9 @@ import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las reservas.
+ */
 const settingsInput = z.object({
   enabled: z.boolean(),
   capacityPerSlot: z.coerce.number().int().min(1).max(1000),

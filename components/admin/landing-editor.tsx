@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { LandingRenderer } from "@/components/landing/landing-renderer";
+import { LandingRenderer } from "@/components/landing-renderer";
 import { ResponsivePreview, type ResponsivePreviewHandle } from "@/components/admin/responsive-preview";
 import type { PublicEvent } from "@/components/home/event-grid";
 import {
@@ -75,6 +75,9 @@ function validateImageFile(file: File): string | null {
   return null;
 }
 
+/**
+ * @summary Muestra de forma consistente un error de validación de imagen.
+ */
 function imageAlert(error: string) {
   void Swal.fire({
     title: "Imagen no válida",
@@ -120,7 +123,7 @@ async function uploadImage(file: File): Promise<string> {
   return result.url;
 }
 
-/** @summary Editor visual de la landing completa con preview vertical en vivo. */
+/** @summary Editor visual del inicio completo con una vista previa vertical en vivo. */
 export function LandingEditor({
   initialBrand,
   initialSections,
@@ -166,6 +169,9 @@ export function LandingEditor({
     return url;
   }
 
+  /**
+   * @summary Reemplaza la imagen principal y libera la vista previa temporal anterior.
+   */
   function replaceHeroImage(file: File) {
     const url = stageImage(file);
     setBrand((current) => {
@@ -174,6 +180,9 @@ export function LandingEditor({
     });
   }
 
+  /**
+   * @summary Reemplaza una imagen dentro de una colección editable.
+   */
   function replaceInList(kind: "beerImages" | "stories", index: number, file: File) {
     const url = stageImage(file);
     setSections((current) => {
@@ -193,11 +202,16 @@ export function LandingEditor({
     });
   }
 
+  /**
+   * @summary Agrega una imagen validada a una colección de la portada.
+   */
   function appendImage(kind: "beerImages" | "stories", file: File) {
     if (kind === "beerImages") {
       const alreadyStaged = [...pendingFiles.current.values()].some(
         (pending) =>
-          pending.name === file.name && pending.size === file.size && pending.lastModified === file.lastModified,
+          pending.name === file.name &&
+          pending.size === file.size &&
+          pending.lastModified === file.lastModified,
       );
       if (alreadyStaged) {
         void Swal.fire({
@@ -226,6 +240,9 @@ export function LandingEditor({
     );
   }
 
+  /**
+   * @summary Elimina un elemento del editor de portada tras las comprobaciones necesarias.
+   */
   function removeFrom(kind: "beerImages" | "stories", index: number) {
     setSections((current) => {
       if (kind === "beerImages") {
@@ -239,6 +256,9 @@ export function LandingEditor({
     });
   }
 
+  /**
+   * @summary Reordena una imagen dentro de la sección editable.
+   */
   function move(kind: "beerImages" | "stories", index: number, direction: -1 | 1) {
     setSections((current) => {
       const list = kind === "beerImages" ? [...current.beerImages] : [...current.stories];
@@ -251,6 +271,9 @@ export function LandingEditor({
     });
   }
 
+  /**
+   * @summary Actualiza un texto de la historia sin modificar el resto de la sección.
+   */
   function updateStoryText(index: number, field: "title" | "subtitle", value: string) {
     setSections((current) => ({
       ...current,
@@ -271,6 +294,9 @@ export function LandingEditor({
     return url;
   }
 
+  /**
+   * @summary Elimina un elemento del editor de portada tras las comprobaciones necesarias.
+   */
   async function removeHero() {
     if (!pendingHeroImage) return;
     const confirmed = await Swal.fire({
@@ -301,6 +327,9 @@ export function LandingEditor({
     setBrand((current) => ({ ...current, heroImageUrl: result.brand!.heroImageUrl ?? null }));
   }
 
+  /**
+   * @summary Actualiza el estado del editor de portada y conserva su consistencia.
+   */
   async function save() {
     if (saving) return;
     setSaving(true);
@@ -400,7 +429,8 @@ export function LandingEditor({
     ),
   ];
   const previewStories = sections.stories.length ? sections.stories : LANDING_STORY_DEFAULTS;
-  const previewHasMap = initialBrand.hasMap && initialBrand.latitude !== null && initialBrand.longitude !== null;
+  const previewHasMap =
+    initialBrand.hasMap && initialBrand.latitude !== null && initialBrand.longitude !== null;
   const previewData: TenantLandingData = {
     displayName: brand.tenantName,
     hero: previewHero,
@@ -443,6 +473,9 @@ export function LandingEditor({
     contact: "redes",
   };
 
+  /**
+   * @summary Selecciona una sección del editor y desplaza la vista previa hasta ella.
+   */
   function selectSection(key: SectionKey) {
     setSelected(key);
     previewRef.current?.scrollToId(sectionIdByKey[key]);
@@ -519,14 +552,16 @@ export function LandingEditor({
           value={pendingHeroImage}
         />
         <p className="text-xs leading-relaxed text-zinc-500">
-          Sin imagen se muestra un fondo con los colores del negocio. Si una imagen no carga, se usa el mismo fondo.
+          Sin imagen se muestra un fondo con los colores del negocio. Si una imagen no carga, se usa el mismo
+          fondo.
         </p>
       </div>
     ),
     beers: (
       <div className="space-y-3">
         <p className="text-sm text-zinc-500">
-          Imágenes del carrusel «Nuestros productos». Podés subir varias, arrastrarlas al recuadro y ordenarlas.
+          Imágenes del carrusel «Nuestros productos». Podés subir varias, arrastrarlas al recuadro y
+          ordenarlas.
         </p>
         {sections.beerImages.map((image, index) => (
           <ImageRow
@@ -540,24 +575,40 @@ export function LandingEditor({
             }
           />
         ))}
-        <DropAddButton label="Agregar imagen" onPick={() => pickFile((file) => appendImage("beerImages", file))} />
+        <DropAddButton
+          label="Agregar imagen"
+          onPick={() => pickFile((file) => appendImage("beerImages", file))}
+        />
       </div>
     ),
     stories: (
       <div className="space-y-4">
         <p className="text-sm text-zinc-500">Tarjetas de la sección «Historia»: imagen, título y texto.</p>
         {sections.stories.map((slide, index) => (
-          <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4" key={`${index}-${slide.image}`}>
+          <div
+            className="rounded-2xl border border-white/10 bg-white/[.03] p-4"
+            key={`${index}-${slide.image}`}
+          >
             <div className="flex items-start justify-between gap-2">
-              <p className="text-xs font-black uppercase tracking-widest text-pink-300">Tarjeta {index + 1}</p>
+              <p className="text-xs font-black uppercase tracking-widest text-pink-300">
+                Tarjeta {index + 1}
+              </p>
               <div className="flex gap-1">
                 {index > 0 && (
-                  <button className="rounded-lg bg-white/5 px-2 py-1 text-xs" onClick={() => move("stories", index, -1)} type="button">
+                  <button
+                    className="rounded-lg bg-white/5 px-2 py-1 text-xs"
+                    onClick={() => move("stories", index, -1)}
+                    type="button"
+                  >
                     ↑
                   </button>
                 )}
                 {index < sections.stories.length - 1 && (
-                  <button className="rounded-lg bg-white/5 px-2 py-1 text-xs" onClick={() => move("stories", index, 1)} type="button">
+                  <button
+                    className="rounded-lg bg-white/5 px-2 py-1 text-xs"
+                    onClick={() => move("stories", index, 1)}
+                    type="button"
+                  >
                     ↓
                   </button>
                 )}
@@ -606,14 +657,17 @@ export function LandingEditor({
             </div>
           </div>
         ))}
-        <DropAddButton label="Agregar tarjeta" onPick={() => pickFile((file) => appendImage("stories", file))} />
+        <DropAddButton
+          label="Agregar tarjeta"
+          onPick={() => pickFile((file) => appendImage("stories", file))}
+        />
       </div>
     ),
     events: (
       <div className="rounded-2xl border border-white/10 bg-white/[.03] p-5 text-sm leading-relaxed text-zinc-400">
         <p>
-          La sección <strong className="text-white">Eventos</strong> muestra los flyers publicados en el recurso
-          Eventos.
+          La sección <strong className="text-white">Eventos</strong> muestra los flyers publicados en el
+          recurso Eventos.
         </p>
         <p className="mt-2">
           Actualmente hay <strong className="text-pink-300">{eventCount}</strong>{" "}
@@ -624,8 +678,8 @@ export function LandingEditor({
     testimonials: (
       <div className="rounded-2xl border border-white/10 bg-white/[.03] p-5 text-sm leading-relaxed text-zinc-400">
         <p>
-          La sección <strong className="text-white">Testimonios</strong> muestra las opiniones aprobadas que moderás
-          en el recurso Testimonios.
+          La sección <strong className="text-white">Testimonios</strong> muestra las opiniones aprobadas que
+          moderás en el recurso Testimonios.
         </p>
         <p className="mt-2">
           Hay <strong className="text-pink-300">{testimonialCount}</strong>{" "}
@@ -637,10 +691,12 @@ export function LandingEditor({
       <div className="space-y-4">
         <div className="rounded-2xl border border-white/10 bg-white/[.03] p-5 text-sm leading-relaxed text-zinc-400">
           <p>
-            La sección <strong className="text-white">Mapa</strong> muestra la ubicación del negocio sobre un mapa
-            interactivo.
+            La sección <strong className="text-white">Mapa</strong> muestra la ubicación del negocio sobre un
+            mapa interactivo.
           </p>
-          <p className="mt-2">La dirección y las coordenadas se administran en el recurso Información del negocio.</p>
+          <p className="mt-2">
+            La dirección y las coordenadas se administran en el recurso Información del negocio.
+          </p>
           {!previewHasMap && (
             <p className="mt-2 font-semibold text-amber-300">
               El mapa no se muestra porque el negocio todavía no tiene coordenadas cargadas.
@@ -651,7 +707,9 @@ export function LandingEditor({
     ),
     contact: (
       <div className="space-y-4">
-        <p className="text-sm text-zinc-500">Datos que aparecen en el pie de la página pública y en la sección de contacto.</p>
+        <p className="text-sm text-zinc-500">
+          Datos que aparecen en el pie de la página pública y en la sección de contacto.
+        </p>
         <label>
           <span className="label">Teléfono (WhatsApp)</span>
           <input
@@ -766,7 +824,8 @@ export function LandingEditor({
             </ResponsivePreview>
           </div>
           <p className="mt-3 text-center text-xs text-zinc-600">
-            La vista usa exactamente los mismos componentes y datos que la landing pública de {brand.tenantName}.
+            La vista usa exactamente los mismos componentes y datos que la landing pública de{" "}
+            {brand.tenantName}.
           </p>
         </div>
       </div>
@@ -821,7 +880,7 @@ function ButtonConfigEditor({
   );
 }
 
-/** @summary Zona de arrastre y selección para una imagen con estado visual de drag y validación de formato/tamaño. */
+/** @summary Zona para arrastrar y seleccionar una imagen con validación visual de formato y tamaño. */
 function ImageDropzone({
   label,
   hint,
@@ -872,7 +931,11 @@ function ImageDropzone({
           <div className="relative aspect-[16/7] w-full">
             <Image src={value} alt={label} fill unoptimized className="object-cover" />
             <div className="absolute inset-x-0 bottom-0 flex justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent p-2">
-              <button className="rounded-lg bg-black/70 px-3 py-1 text-xs font-bold" onClick={onPick} type="button">
+              <button
+                className="rounded-lg bg-black/70 px-3 py-1 text-xs font-bold"
+                onClick={onPick}
+                type="button"
+              >
                 Reemplazar
               </button>
               {onRemove && (
@@ -922,12 +985,22 @@ function ImageRow({
       </div>
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
         {onMoveUp && (
-          <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs" onClick={onMoveUp} type="button" aria-label="Subir">
+          <button
+            className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs"
+            onClick={onMoveUp}
+            type="button"
+            aria-label="Subir"
+          >
             ↑
           </button>
         )}
         {onMoveDown && (
-          <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs" onClick={onMoveDown} type="button" aria-label="Bajar">
+          <button
+            className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs"
+            onClick={onMoveDown}
+            type="button"
+            aria-label="Bajar"
+          >
             ↓
           </button>
         )}
@@ -938,7 +1011,11 @@ function ImageRow({
         >
           Reemplazar
         </button>
-        <button className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300" onClick={onRemove} type="button">
+        <button
+          className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300"
+          onClick={onRemove}
+          type="button"
+        >
           Quitar
         </button>
       </div>

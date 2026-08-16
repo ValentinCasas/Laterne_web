@@ -33,9 +33,10 @@ export function OnboardingWizard({
 }) {
   const pathname = usePathname();
   const route = parseCanonicalPath(pathname);
-  const stepHref = (href: string) => href === "/carta" && route.tenantSlug
-    ? publicHrefForContext(route.tenantSlug, href, route.branchSlug)
-    : adminHrefFromPathname(pathname, href);
+  const stepHref = (href: string) =>
+    href === "/carta" && route.tenantSlug
+      ? publicHrefForContext(route.tenantSlug, href, route.branchSlug)
+      : adminHrefFromPathname(pathname, href);
   const [completed, setCompleted] = useState([...new Set([...initialCompleted, ...automaticCompleted])]);
   const percentage = completed.length * 10;
 

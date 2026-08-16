@@ -6,6 +6,9 @@ import { serialize } from "@/lib/format";
 import { loyaltyTier } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con los clientes frecuentes.
+ */
 const pointsInput = z.object({
   points: z.coerce
     .number()

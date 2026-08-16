@@ -123,7 +123,8 @@ export function AnalyticsTracker({
       pathname.startsWith("/admin") ||
       pathname.startsWith("/superadmin") ||
       pathname.startsWith("/api")
-    ) return;
+    )
+      return;
     const eventType = /\/carta$/.test(pathname) ? "menu.open" : "page.view";
     trackEvent(eventType, { entityType: "page" });
     loadExternalAnalytics(analyticsId, metaPixelId);

@@ -16,7 +16,10 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   let background = defaultMenuClickTheme.background;
   let icon = "/favicon.ico";
   if (kind === "platform") {
-    const settings = await prisma.platformSettings.findUnique({ where: { id: 1 }, include: { activePalette: true } });
+    const settings = await prisma.platformSettings.findUnique({
+      where: { id: 1 },
+      include: { activePalette: true },
+    });
     name = settings?.name || name;
     primary = settings?.activePalette?.primary || primary;
     background = settings?.activePalette?.background || background;
@@ -24,7 +27,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   } else if (kind === "tenant") {
     try {
       const tenant = await getDefaultTenant();
-      const [brand, palette] = await Promise.all([prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }), tenant.activePaletteId ? prisma.themePalette.findUnique({ where: { id: tenant.activePaletteId } }) : null]);
+      const [brand, palette] = await Promise.all([
+        prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }),
+        tenant.activePaletteId
+          ? prisma.themePalette.findUnique({ where: { id: tenant.activePaletteId } })
+          : null,
+      ]);
       name = tenant.name;
       primary = palette?.primary || brand?.primaryColor || defaultPalette.primary;
       background = palette?.background || brand?.backgroundColor || defaultPalette.background;

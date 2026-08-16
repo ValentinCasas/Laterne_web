@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, forwardRef, useEffect, useRef, useState } from "react";
-import { trackEvent } from "@/components/analytics/tracker";
+import { trackEvent } from "@/components/analytics-tracker";
 import { PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 
 type ViewerElement = HTMLElement & {

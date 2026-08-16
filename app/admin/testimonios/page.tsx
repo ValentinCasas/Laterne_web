@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const context = await requirePermission("testimonial.moderate");
   return { title: `${context.tenant.name} | Testimonios` };
@@ -19,5 +22,9 @@ export default async function TestimonialsPage() {
     where: activeBranchWhere(context.tenant.id, context.activeBranchId),
     orderBy: { id: "desc" },
   });
-  return <TestimonialBoard initialItems={serialize(items) as unknown as Parameters<typeof TestimonialBoard>[0]["initialItems"]} />;
+  return (
+    <TestimonialBoard
+      initialItems={serialize(items) as unknown as Parameters<typeof TestimonialBoard>[0]["initialItems"]}
+    />
+  );
 }

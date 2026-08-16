@@ -5,7 +5,12 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isLocalDevelopmentHost } from "@/lib/domains";
-import { adminHrefForContext, isBranchAdminLogicalPath, tenantBranchAdminPath, tenantPublicPath } from "@/lib/routes";
+import {
+  adminHrefForContext,
+  isBranchAdminLogicalPath,
+  tenantBranchAdminPath,
+  tenantPublicPath,
+} from "@/lib/routes";
 import { resolveHostKind } from "@/lib/host-gate";
 import { publicTenantWhere } from "@/lib/subscription-access";
 import { paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
@@ -25,10 +30,27 @@ export type Session = {
 
 export type AuthorizationContext = {
   session: Session;
-  tenant: { id: number; name: string; slug: string; timeZone: string; customDomain?: string | null; adminTheme: string; adminAccent: string; palette: PaletteColors | null };
+  tenant: {
+    id: number;
+    name: string;
+    slug: string;
+    timeZone: string;
+    customDomain?: string | null;
+    adminTheme: string;
+    adminAccent: string;
+    palette: PaletteColors | null;
+  };
   membership: { id: number; role: { key: string; name: string } };
   permissions: string[];
-  branches: Array<{ id: number; name: string; slug: string; active: boolean; isPrimary: boolean; licenseStatus: string | null; status: BranchEffectiveStatus }>;
+  branches: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    active: boolean;
+    isPrimary: boolean;
+    licenseStatus: string | null;
+    status: BranchEffectiveStatus;
+  }>;
   allBranches: boolean;
   activeBranchId?: number;
 };
@@ -37,11 +59,14 @@ export const PLATFORM_SESSION_COOKIE = "menuclick_platform_session";
 
 /** @summary Nombre de cookie aislado por tenant para permitir sesiones simultáneas en un único host admin. */
 export function tenantSessionCookieName(tenantSlug: string) {
-  const safe = tenantSlug.trim().toLocaleLowerCase("es").replace(/[^a-z0-9_-]/g, "-");
+  const safe = tenantSlug
+    .trim()
+    .toLocaleLowerCase("es")
+    .replace(/[^a-z0-9_-]/g, "-");
   return `menuclick_t_${safe}`;
 }
 
-/** @summary Cookie correspondiente a la ruta visible. Conserva `laterne_session` solo como fallback legacy. */
+/** @summary Cookie correspondiente a la ruta visible. Conserva `laterne_session` solo como alternativa heredada. */
 async function sessionCookieToken() {
   const requestHeaders = await headers();
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
@@ -156,8 +181,12 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     .toLocaleLowerCase("es");
   const hostContext = await resolveHostKind(host);
 
-  // Las rutas canónicas llevan tenant en el path. El host solo se usa para compatibilidad legacy.
-  if (!routeTenantSlug && hostContext.kind !== "app" && !(isLocalDevelopmentHost(host) && process.env.NODE_ENV === "development")) {
+  // Las rutas canónicas llevan el tenant en la URL. El host solo se usa por compatibilidad heredada.
+  if (
+    !routeTenantSlug &&
+    hostContext.kind !== "app" &&
+    !(isLocalDevelopmentHost(host) && process.env.NODE_ENV === "development")
+  ) {
     return null;
   }
   if (routeTenantSlug && routeKind !== "tenant-admin" && routeKind !== "tenant-auth") return null;
@@ -180,10 +209,37 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           name: true,
           slug: true,
           status: true,
-          subscription: { select: { status: true, currentPeriodEnd: true, trialEndsAt: true, gracePeriodEndsAt: true } },
+          subscription: {
+            select: { status: true, currentPeriodEnd: true, trialEndsAt: true, gracePeriodEndsAt: true },
+          },
           timeZone: true,
-          brandSettings: { select: { customDomain: true, adminTheme: true, adminAccent: true, primaryColor: true, secondaryColor: true, backgroundColor: true } },
-          activePalette: { select: { primary: true, secondary: true, accent: true, background: true, surface: true, surfaceElevated: true, text: true, textMuted: true, border: true, success: true, warning: true, danger: true, baseMode: true } },
+          brandSettings: {
+            select: {
+              customDomain: true,
+              adminTheme: true,
+              adminAccent: true,
+              primaryColor: true,
+              secondaryColor: true,
+              backgroundColor: true,
+            },
+          },
+          activePalette: {
+            select: {
+              primary: true,
+              secondary: true,
+              accent: true,
+              background: true,
+              surface: true,
+              surfaceElevated: true,
+              text: true,
+              textMuted: true,
+              border: true,
+              success: true,
+              warning: true,
+              danger: true,
+              baseMode: true,
+            },
+          },
         },
       },
       role: {
@@ -202,7 +258,11 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
               slug: true,
               active: true,
               isPrimary: true,
-              licenses: { select: { status: true, currentPeriodEnd: true, graceUntil: true }, orderBy: { id: "asc" }, take: 1 },
+              licenses: {
+                select: { status: true, currentPeriodEnd: true, graceUntil: true },
+                orderBy: { id: "asc" },
+                take: 1,
+              },
             },
           },
         },
@@ -251,10 +311,13 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     // `0` representa una vista consolidada autorizada; undefined = tenant-level.
     activeBranchId = adminScope === "consolidated" && allBranches ? 0 : undefined;
   } else {
-    // Compatibilidad legacy mientras desaparecen /admin y los subdominios por tenant.
+    // Compatibilidad heredada mientras desaparecen /admin y los subdominios por tenant.
     const requested = session.branchId;
     if (requested === 0 && allBranches) activeBranchId = 0;
-    else if (requested && branches.some((item) => item.id === requested && item.active && item.status === "active")) {
+    else if (
+      requested &&
+      branches.some((item) => item.id === requested && item.active && item.status === "active")
+    ) {
       activeBranchId = requested;
     }
   }
@@ -267,9 +330,16 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       adminTheme: membership.tenant.brandSettings?.adminTheme ?? "menuclick-dark",
       adminAccent: membership.tenant.brandSettings?.adminAccent ?? "#ec4899",
       palette: membership.tenant.activePalette
-        ? { ...membership.tenant.activePalette, baseMode: membership.tenant.activePalette.baseMode === "light" ? "light" : "dark" }
+        ? {
+            ...membership.tenant.activePalette,
+            baseMode: membership.tenant.activePalette.baseMode === "light" ? "light" : "dark",
+          }
         : membership.tenant.brandSettings
-          ? paletteFromLegacy(membership.tenant.brandSettings.primaryColor, membership.tenant.brandSettings.secondaryColor, membership.tenant.brandSettings.backgroundColor)
+          ? paletteFromLegacy(
+              membership.tenant.brandSettings.primaryColor,
+              membership.tenant.brandSettings.secondaryColor,
+              membership.tenant.brandSettings.backgroundColor,
+            )
           : null,
     },
     membership: { id: membership.id, role: { key: membership.role.key, name: membership.role.name } },
@@ -289,14 +359,18 @@ export async function requireBranch(
   // La URL es la fuente de verdad: si la sucursal explícita no es accesible se
   // rechaza con 403. Nunca se redirige silenciosamente a otra sucursal.
   if (branchId === undefined || branchId === null) redirect("/403");
-  const branch = context.branches.find((item) => item.id === branchId && item.active && item.status === "active");
+  const branch = context.branches.find(
+    (item) => item.id === branchId && item.active && item.status === "active",
+  );
   if (!branch) redirect("/403");
   return { ...context, branch };
 }
 
 /** @summary Comprueba en servidor que la membresía pueda operar sobre la sucursal solicitada. */
 export function canAccessBranch(context: AuthorizationContext, branchId: number) {
-  return context.branches.some((branch) => branch.id === branchId && branch.active && branch.status === "active");
+  return context.branches.some(
+    (branch) => branch.id === branchId && branch.active && branch.status === "active",
+  );
 }
 
 /** @summary Exige una sesión válida y, opcionalmente, permisos de administración. */
@@ -307,7 +381,7 @@ export async function requireSession(admin = false) {
   return session;
 }
 
-/** @summary Exige una membresía activa y normaliza cualquier acceso legacy a la ruta canónica. */
+/** @summary Exige una membresía activa y normaliza cualquier acceso heredado a la ruta canónica. */
 export async function requirePermission(permission: string) {
   const requestHeaders = await headers();
   const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
@@ -324,7 +398,9 @@ export async function requirePermission(permission: string) {
     // nunca volvemos a login (evita el loop login -> returnTo -> login).
     const session = await getSession();
     if (!session || session.context !== "tenant" || !session.membershipId) {
-      redirect((safeReturnTo ? `${loginPath}?returnTo=${encodeURIComponent(safeReturnTo)}` : loginPath) as Route);
+      redirect(
+        (safeReturnTo ? `${loginPath}?returnTo=${encodeURIComponent(safeReturnTo)}` : loginPath) as Route,
+      );
     }
 
     // Sucursal explícita de la URL: inexistente en el tenant → 404; existente
@@ -359,15 +435,17 @@ export async function requirePermission(permission: string) {
     !context.allBranches
   ) {
     const firstBranch = context.branches.find((branch) => branch.active && branch.status === "active");
-    if (firstBranch) redirect(tenantBranchAdminPath(context.tenant.slug, firstBranch.slug, logicalPath) as Route);
+    if (firstBranch)
+      redirect(tenantBranchAdminPath(context.tenant.slug, firstBranch.slug, logicalPath) as Route);
   }
 
   // Compatibilidad con bookmarks/enlaces antiguos: /admin/... nunca queda como
   // URL visible después de resolver la membresía.
   if (!routeTenantSlug && originalPath.startsWith("/admin")) {
-    const branch = context.activeBranchId && context.activeBranchId > 0
-      ? context.branches.find((item) => item.id === context.activeBranchId)
-      : undefined;
+    const branch =
+      context.activeBranchId && context.activeBranchId > 0
+        ? context.branches.find((item) => item.id === context.activeBranchId)
+        : undefined;
     redirect(adminHrefForContext(context.tenant.slug, logicalPath, branch?.slug) as Route);
   }
 
@@ -404,7 +482,9 @@ export async function requireSuperAdmin() {
     const requestHeaders = await headers();
     const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
     const safeReturnTo = originalPath.startsWith("/platform") ? originalPath : undefined;
-    redirect(safeReturnTo ? `/platform/login?returnTo=${encodeURIComponent(safeReturnTo)}` : "/platform/login");
+    redirect(
+      safeReturnTo ? `/platform/login?returnTo=${encodeURIComponent(safeReturnTo)}` : "/platform/login",
+    );
   }
   const context = await authorizeSuperAdmin();
   if (!context) redirect("/403");

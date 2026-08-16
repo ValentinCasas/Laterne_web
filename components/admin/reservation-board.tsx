@@ -114,8 +114,18 @@ function shortDate(date: string) {
 }
 
 const monthNames = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ];
 
 type BoardView = "list" | "calendar";
@@ -331,7 +341,7 @@ export function ReservationBoard({
     );
   }
 
-  /** @summary Persiste fecha y/o hora de una reserva tras un drag & drop o edición. */
+  /** @summary Persiste fecha y/o hora de una reserva después de arrastrarla, soltarla o editarla. */
   async function moveReservation(
     reservation: ReservationItem,
     next: { reservationDate?: string; reservationTime?: string },
@@ -383,13 +393,16 @@ export function ReservationBoard({
   }
 
   /** @summary Guarda los datos editables de una reserva desde el detalle. */
-  async function updateDetails(reservation: ReservationItem, next: {
-    reservationDate: string;
-    reservationTime: string;
-    partySize: number;
-    sector: string;
-    notes: string;
-  }) {
+  async function updateDetails(
+    reservation: ReservationItem,
+    next: {
+      reservationDate: string;
+      reservationTime: string;
+      partySize: number;
+      sector: string;
+      notes: string;
+    },
+  ) {
     const response = await scopedFetch(`/api/admin/reservations/${reservation.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -888,7 +901,9 @@ export function ReservationBoard({
                         <select
                           className="rounded-lg border border-white/10 bg-zinc-900 px-2 text-xs"
                           value={reservation.status}
-                          onChange={(event) => changeStatus(reservation, event.target.value as ReservationStatus)}
+                          onChange={(event) =>
+                            changeStatus(reservation, event.target.value as ReservationStatus)
+                          }
                           aria-label={`Cambiar estado de ${reservation.reference}`}
                         >
                           {reservationStatuses.map((option) => (
@@ -907,7 +922,9 @@ export function ReservationBoard({
               <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
                 {hasRefinements ? (
                   <>
-                    <p className="font-bold text-zinc-400">No hay reservas que coincidan con estos filtros.</p>
+                    <p className="font-bold text-zinc-400">
+                      No hay reservas que coincidan con estos filtros.
+                    </p>
                     <button className="btn btn-secondary mt-4" onClick={clearFilters} type="button">
                       Limpiar filtros
                     </button>
@@ -940,7 +957,9 @@ export function ReservationBoard({
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="section-eyebrow">{selected.reference}</p>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusColors[selected.status]}`}>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusColors[selected.status]}`}
+                  >
                     ● {reservationStatusLabel(selected.status)}
                   </span>
                 </div>
@@ -1258,6 +1277,9 @@ function ReservationEditForm({
   const [notes, setNotes] = useState(reservation.notes ?? "");
   const [saving, setSaving] = useState(false);
 
+  /**
+   * @summary Valida y envía el formulario del tablero de reservas.
+   */
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -1266,19 +1288,28 @@ function ReservationEditForm({
   }
 
   return (
-    <form
-      className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-4"
-      onSubmit={submit}
-    >
+    <form className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-4" onSubmit={submit}>
       <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Editar reserva</h3>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-bold">
           Fecha
-          <input className="input mt-1" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+          <input
+            className="input mt-1"
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            required
+          />
         </label>
         <label className="text-sm font-bold">
           Hora
-          <input className="input mt-1" type="time" value={time} onChange={(event) => setTime(event.target.value)} required />
+          <input
+            className="input mt-1"
+            type="time"
+            value={time}
+            onChange={(event) => setTime(event.target.value)}
+            required
+          />
         </label>
         <label className="text-sm font-bold">
           Personas
@@ -1294,11 +1325,21 @@ function ReservationEditForm({
         </label>
         <label className="text-sm font-bold">
           Sector
-          <input className="input mt-1" value={sector} maxLength={100} onChange={(event) => setSector(event.target.value)} />
+          <input
+            className="input mt-1"
+            value={sector}
+            maxLength={100}
+            onChange={(event) => setSector(event.target.value)}
+          />
         </label>
         <label className="text-sm font-bold sm:col-span-2">
           Notas
-          <textarea className="input mt-1 min-h-16" value={notes} maxLength={5000} onChange={(event) => setNotes(event.target.value)} />
+          <textarea
+            className="input mt-1 min-h-16"
+            value={notes}
+            maxLength={5000}
+            onChange={(event) => setNotes(event.target.value)}
+          />
         </label>
       </div>
       <button className="btn mt-4" disabled={saving} type="submit">
@@ -1322,7 +1363,10 @@ function DayCalendar({
   items: ReservationItem[];
   today: string;
   onSelect: (reservation: ReservationItem) => void;
-  onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  onMove: (
+    reservation: ReservationItem,
+    next: { reservationDate?: string; reservationTime?: string },
+  ) => Promise<void>;
   dragId: number | null;
   setDragId: (value: number | null) => void;
 }) {
@@ -1361,7 +1405,10 @@ function DayCalendar({
                 event.preventDefault();
                 if (!dragged) return;
                 setDragId(null);
-                void onMove(dragged, { reservationDate: date, reservationTime: `${hour}:${hourText(dragged.reservationTime).slice(3, 5)}` });
+                void onMove(dragged, {
+                  reservationDate: date,
+                  reservationTime: `${hour}:${hourText(dragged.reservationTime).slice(3, 5)}`,
+                });
               }}
             >
               <span className="text-sm font-black tabular-nums text-zinc-500">{hour}:00</span>
@@ -1427,7 +1474,10 @@ function WeekCalendar({
   byDay: Map<string, ReservationItem[]>;
   today: string;
   onSelect: (reservation: ReservationItem) => void;
-  onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  onMove: (
+    reservation: ReservationItem,
+    next: { reservationDate?: string; reservationTime?: string },
+  ) => Promise<void>;
   onOpenDay: (date: string) => void;
   dragId: number | null;
   setDragId: (value: number | null) => void;
@@ -1460,7 +1510,9 @@ function WeekCalendar({
               type="button"
               title="Ver todas las reservas del día"
             >
-              <p className={`text-[10px] font-black uppercase ${isToday ? "text-pink-300" : "text-zinc-500"}`}>
+              <p
+                className={`text-[10px] font-black uppercase ${isToday ? "text-pink-300" : "text-zinc-500"}`}
+              >
                 {weekdayShort(date)}
               </p>
               <p className={`text-xl font-black ${isToday ? "text-white" : "text-zinc-300"}`}>
@@ -1516,7 +1568,10 @@ function MonthCalendar({
   byDay: Map<string, ReservationItem[]>;
   today: string;
   onSelect: (reservation: ReservationItem) => void;
-  onMove: (reservation: ReservationItem, next: { reservationDate?: string; reservationTime?: string }) => Promise<void>;
+  onMove: (
+    reservation: ReservationItem,
+    next: { reservationDate?: string; reservationTime?: string },
+  ) => Promise<void>;
   onOpenDay: (date: string) => void;
   dragId: number | null;
   setDragId: (value: number | null) => void;

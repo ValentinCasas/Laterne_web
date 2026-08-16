@@ -32,14 +32,14 @@ export type CartaEditorData = {
 };
 
 type SaveStatus =
-  | { kind: "idle" }
-  | { kind: "saving" }
-  | { kind: "saved" }
-  | { kind: "error"; message: string };
+  { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };
 
-/** @summary Editor de los textos de la cabecera de la carta virtual con preview real en vivo. */
+/** @summary Editor de los textos de la cabecera de la carta virtual con una vista previa real en vivo. */
 export function CartaEditor({ data }: { data: CartaEditorData }) {
-  const [config, setConfig] = useState<CartaHeaderConfig>({ ...CARTA_HEADER_DEFAULTS, ...data.initialConfig });
+  const [config, setConfig] = useState<CartaHeaderConfig>({
+    ...CARTA_HEADER_DEFAULTS,
+    ...data.initialConfig,
+  });
   const [status, setStatus] = useState<SaveStatus>({ kind: "idle" });
 
   const previewPalette = paletteFromLegacy(data.primaryColor, data.secondaryColor, data.backgroundColor);
@@ -50,11 +50,17 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
     colorScheme: "dark",
   };
 
+  /**
+   * @summary Actualiza el estado del editor de carta y conserva su consistencia.
+   */
   function update(field: keyof CartaHeaderConfig) {
     return (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setConfig((current) => ({ ...current, [field]: event.target.value }));
   }
 
+  /**
+   * @summary Actualiza el estado del editor de carta y conserva su consistencia.
+   */
   async function save() {
     if (status.kind === "saving") return;
     setStatus({ kind: "saving" });
@@ -91,7 +97,12 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
         description="Configurá los textos de la cabecera de la carta virtual. El fondo, los colores y el diseño dependen de tu marca."
         section="carta"
         actions={
-          <button className="btn" disabled={status.kind === "saving"} onClick={() => void save()} type="button">
+          <button
+            className="btn"
+            disabled={status.kind === "saving"}
+            onClick={() => void save()}
+            type="button"
+          >
             {status.kind === "saving" ? "Guardando…" : "Guardar carta"}
           </button>
         }
@@ -174,16 +185,27 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
             </p>
           </div>
 
-          <button className="btn w-full" disabled={status.kind === "saving"} onClick={() => void save()} type="button">
+          <button
+            className="btn w-full"
+            disabled={status.kind === "saving"}
+            onClick={() => void save()}
+            type="button"
+          >
             {status.kind === "saving" ? "Guardando…" : "Guardar carta"}
           </button>
           {status.kind === "saved" && (
-            <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status">
+            <p
+              className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
+              role="status"
+            >
               Guardado ✓ Los cambios ya se ven en la carta pública.
             </p>
           )}
           {status.kind === "error" && (
-            <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300" role="alert">
+            <p
+              className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+              role="alert"
+            >
               {status.message}
             </p>
           )}
@@ -289,7 +311,8 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
                     ))
                   ) : (
                     <section className="rounded-2xl border border-white/10 bg-white/[.03] p-10 text-center text-sm text-zinc-400">
-                      Publicá categorías con productos para verlos acá. Mientras tanto la cabecera ya muestra tus textos.
+                      Publicá categorías con productos para verlos acá. Mientras tanto la cabecera ya muestra
+                      tus textos.
                     </section>
                   )}
                 </div>

@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 import { menuClickCssVariables, type MenuClickTheme } from "@/lib/menuclick-theme";
 
+/**
+ * @summary Aplica las variables CSS del tema de MenuClick al documento.
+ */
 function applyTheme(theme: MenuClickTheme) {
   const variables = menuClickCssVariables(theme) as Record<string, string>;
   for (const target of [document.documentElement, document.body]) {
@@ -13,9 +16,18 @@ function applyTheme(theme: MenuClickTheme) {
 }
 
 /** @summary Mantiene la identidad de MenuClick sincronizada sin recargar ni tocar temas de tenants. */
-export function MenuClickThemeProvider({ initialTheme, children }: { initialTheme: MenuClickTheme; children: React.ReactNode }) {
+export function MenuClickThemeProvider({
+  initialTheme,
+  children,
+}: {
+  initialTheme: MenuClickTheme;
+  children: React.ReactNode;
+}) {
   useEffect(() => {
     applyTheme(initialTheme);
+    /**
+     * @summary Sincroniza cambios de tema emitidos por otras pantallas.
+     */
     function handleTheme(event: Event) {
       const theme = (event as CustomEvent<MenuClickTheme>).detail;
       if (theme?.primary && theme?.background) applyTheme(theme);

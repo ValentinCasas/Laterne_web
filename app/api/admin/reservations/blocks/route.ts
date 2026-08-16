@@ -7,6 +7,9 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { defaultReservationTimeZone, zoneOffset } from "@/lib/reservations";
 
+/**
+ * @summary Valida la entrada relacionada con las reservas.
+ */
 const blockInput = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

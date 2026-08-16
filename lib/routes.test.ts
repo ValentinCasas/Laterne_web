@@ -16,9 +16,7 @@ import {
 describe("routing canónico de MenuClick", () => {
   it("hace explícitos tenant y branch en URLs públicas", () => {
     expect(tenantPublicPath("Laterne", "/carta")).toBe("/t/laterne/carta");
-    expect(tenantBranchPublicPath("Laterne", "Laterne-2", "/carta")).toBe(
-      "/t/laterne/s/laterne-2/carta",
-    );
+    expect(tenantBranchPublicPath("Laterne", "Laterne-2", "/carta")).toBe("/t/laterne/s/laterne-2/carta");
   });
 
   it("hace explícitos tenant y branch en URLs administrativas", () => {
@@ -47,9 +45,7 @@ describe("routing canónico de MenuClick", () => {
     expect(adminHrefForContext("laterne", "/admin/pedidos", "laterne-2")).toBe(
       "/t/laterne/admin/s/laterne-2/pedidos",
     );
-    expect(adminHrefForContext("laterne", "/admin/usuarios", "laterne-2")).toBe(
-      "/t/laterne/admin/usuarios",
-    );
+    expect(adminHrefForContext("laterne", "/admin/usuarios", "laterne-2")).toBe("/t/laterne/admin/usuarios");
   });
 
   it("preserva query/hash sin perder branch", () => {
@@ -61,17 +57,12 @@ describe("routing canónico de MenuClick", () => {
     );
   });
 
-
   it("mantiene dominios personalizados planos y conserva branch donde corresponde", () => {
-    expect(publicHrefForVisiblePath("/carta", "laterne", "/pedido", "principal")).toBe(
-      "/s/principal/pedido",
+    expect(publicHrefForVisiblePath("/carta", "laterne", "/pedido", "principal")).toBe("/s/principal/pedido");
+    expect(publicHrefForVisiblePath("/t/laterne/s/principal/carta", "laterne", "/pedido", "principal")).toBe(
+      "/t/laterne/s/principal/pedido",
     );
-    expect(
-      publicHrefForVisiblePath("/t/laterne/s/principal/carta", "laterne", "/pedido", "principal"),
-    ).toBe("/t/laterne/s/principal/pedido");
-    expect(publicHrefForVisiblePath("/s/principal/carta", "laterne", "/ayuda", "principal")).toBe(
-      "/ayuda",
-    );
+    expect(publicHrefForVisiblePath("/s/principal/carta", "laterne", "/ayuda", "principal")).toBe("/ayuda");
   });
 
   it("scopea APIs al contexto visible", () => {
@@ -81,12 +72,8 @@ describe("routing canónico de MenuClick", () => {
     expect(scopedApiPath("/t/laterne/s/laterne-2/carta", "/api/orders")).toBe(
       "/api/t/laterne/s/laterne-2/orders",
     );
-    expect(scopedApiPath("/platform/clientes", "/api/superadmin/clients")).toBe(
-      "/api/platform/clients",
-    );
-    expect(scopedApiPath("/platform/oportunidades", "/api/admin/leads/12")).toBe(
-      "/api/platform/leads/12",
-    );
+    expect(scopedApiPath("/platform/clientes", "/api/superadmin/clients")).toBe("/api/platform/clients");
+    expect(scopedApiPath("/platform/oportunidades", "/api/admin/leads/12")).toBe("/api/platform/leads/12");
     expect(scopedApiPath("/t/laterne/admin/oportunidades", "/api/admin/leads/12")).toBe(
       "/api/t/laterne/admin/leads/12",
     );
@@ -96,8 +83,6 @@ describe("routing canónico de MenuClick", () => {
     expect(switchAdminBranchPath("/t/laterne/admin/s/principal/pedidos", "laterne-2")).toBe(
       "/t/laterne/admin/s/laterne-2/pedidos",
     );
-    expect(switchAdminBranchPath("/t/laterne/admin/s/principal/pedidos")).toBe(
-      "/t/laterne/admin/pedidos",
-    );
+    expect(switchAdminBranchPath("/t/laterne/admin/s/principal/pedidos")).toBe("/t/laterne/admin/pedidos");
   });
 });

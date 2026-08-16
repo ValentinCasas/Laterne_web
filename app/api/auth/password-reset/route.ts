@@ -7,10 +7,16 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { tenantPublicPath } from "@/lib/routes";
 
+/**
+ * @summary Valida la entrada relacionada con la recuperación de acceso.
+ */
 const requestInput = z.object({
   email: z.string().trim().email().max(255),
   website: z.string().max(0).optional(),
 });
+/**
+ * @summary Valida la entrada relacionada con la recuperación de acceso.
+ */
 const resetInput = z.object({
   token: z.string().min(32).max(100),
   password: z.string().min(10).max(128).regex(/[a-z]/).regex(/[A-Z]/).regex(/\d/),
@@ -46,11 +52,18 @@ export async function POST(request: Request) {
   const email = parsed.data.email.toLocaleLowerCase("es");
 
   // Rate limiting por IP (igual que login: 8 intentos / 15 min)
-  const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const ipAddress =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
   const ipHash = passwordResetHash("ip", ipAddress);
   const attemptWindow = new Date(Date.now() - 15 * 60 * 1000);
   const failedByIp = await prisma.passwordResetRequest.count({
-    where: { requestedIp: passwordResetHash("ip", ipAddress), status: "failed", createdAt: { gte: attemptWindow } },
+    where: {
+      requestedIp: passwordResetHash("ip", ipAddress),
+      status: "failed",
+      createdAt: { gte: attemptWindow },
+    },
   });
   if (failedByIp >= 8) {
     return NextResponse.json(

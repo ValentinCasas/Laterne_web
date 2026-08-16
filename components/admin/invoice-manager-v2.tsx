@@ -48,13 +48,20 @@ export type InvoiceSettingsData = {
   terms: string | null;
 };
 
+/**
+ * @summary Formatea un valor para mostrarlo en el panel de comprobantes.
+ */
 function money(value: string | number, currency: string) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(Number(value));
 }
 
+/**
+ * @summary Resume la disponibilidad de DOCX y PDF de un comprobante.
+ */
 function documentStatus(document: InvoiceDocumentSummary) {
   if (!document) return { label: "Legacy HTML", className: "text-zinc-400 bg-white/5" };
-  if (document.pdfStatus === "ready") return { label: "PDF + DOCX", className: "text-emerald-200 bg-emerald-500/10" };
+  if (document.pdfStatus === "ready")
+    return { label: "PDF + DOCX", className: "text-emerald-200 bg-emerald-500/10" };
   return { label: "DOCX disponible", className: "text-amber-200 bg-amber-500/10" };
 }
 
@@ -77,6 +84,9 @@ export function InvoiceManagerV2({
   const [busyOrder, setBusyOrder] = useState<number | null>(null);
   const [busyDocument, setBusyDocument] = useState<number | null>(null);
 
+  /**
+   * @summary Genera y guarda el documento asociado a un comprobante.
+   */
   async function generateDocument(invoice: InvoiceListItem) {
     setBusyDocument(invoice.id);
     const response = await scopedFetch(`/api/admin/invoices/${invoice.id}/document`, { method: "POST" });
@@ -95,10 +105,15 @@ export function InvoiceManagerV2({
       });
       return;
     }
-    setInvoices((current) => current.map((item) => (item.id === invoice.id ? { ...item, document: body.document! } : item)));
+    setInvoices((current) =>
+      current.map((item) => (item.id === invoice.id ? { ...item, document: body.document! } : item)),
+    );
     await Swal.fire({
       title: "Documento generado",
-      text: body.document.pdfStatus === "ready" ? "El DOCX y el PDF quedaron listos." : "El DOCX quedó disponible; el PDF depende del conversor configurado.",
+      text:
+        body.document.pdfStatus === "ready"
+          ? "El DOCX y el PDF quedaron listos."
+          : "El DOCX quedó disponible; el PDF depende del conversor configurado.",
       icon: "success",
       timer: 1500,
       showConfirmButton: false,
@@ -107,6 +122,9 @@ export function InvoiceManagerV2({
     });
   }
 
+  /**
+   * @summary Guarda los datos del emisor utilizados por las plantillas documentales.
+   */
   async function saveIssuerSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (savingSettings) return;
@@ -125,8 +143,12 @@ export function InvoiceManagerV2({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const body = (await response.json().catch(() => ({}))) as { settings?: InvoiceSettingsData; error?: string };
-      if (!response.ok || !body.settings) throw new Error(body.error ?? "No se pudo guardar la configuración");
+      const body = (await response.json().catch(() => ({}))) as {
+        settings?: InvoiceSettingsData;
+        error?: string;
+      };
+      if (!response.ok || !body.settings)
+        throw new Error(body.error ?? "No se pudo guardar la configuración");
       setSettings(body.settings);
       await Swal.fire({
         title: "Emisor guardado",
@@ -150,6 +172,9 @@ export function InvoiceManagerV2({
     }
   }
 
+  /**
+   * @summary Crea un comprobante interno a partir de un pedido disponible.
+   */
   async function createInvoice(orderId: number) {
     setBusyOrder(orderId);
     const response = await scopedFetch("/api/admin/invoices", {
@@ -182,6 +207,9 @@ export function InvoiceManagerV2({
     });
   }
 
+  /**
+   * @summary Actualiza un comprobante y regenera su documento cuando corresponde.
+   */
   async function editInvoice(invoice: InvoiceListItem) {
     const result = await Swal.fire({
       title: "Editar registro interno",
@@ -208,7 +236,11 @@ export function InvoiceManagerV2({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(result.value),
     });
-    const body = (await response.json().catch(() => ({}))) as { invoice?: InvoiceListItem; document?: InvoiceDocumentSummary; error?: string };
+    const body = (await response.json().catch(() => ({}))) as {
+      invoice?: InvoiceListItem;
+      document?: InvoiceDocumentSummary;
+      error?: string;
+    };
     if (!response.ok || !body.invoice) {
       await Swal.fire({
         title: "No se pudo actualizar",
@@ -219,10 +251,18 @@ export function InvoiceManagerV2({
       });
       return;
     }
-    setInvoices((current) => current.map((item) => item.id === invoice.id ? { ...item, ...body.invoice!, document: body.document ?? item.document } : item));
+    setInvoices((current) =>
+      current.map((item) =>
+        item.id === invoice.id
+          ? { ...item, ...body.invoice!, document: body.document ?? item.document }
+          : item,
+      ),
+    );
     await Swal.fire({
       title: "Registro actualizado",
-      text: body.document ? "El DOCX/PDF se regeneró con los datos corregidos." : "Los documentos emitidos conservan su versión histórica.",
+      text: body.document
+        ? "El DOCX/PDF se regeneró con los datos corregidos."
+        : "Los documentos emitidos conservan su versión histórica.",
       icon: "success",
       timer: 1600,
       showConfirmButton: false,
@@ -239,33 +279,93 @@ export function InvoiceManagerV2({
         description="Generá documentos trazables desde pedidos y conservá el DOCX/PDF exacto de cada emisión."
         section="facturacion"
         actions={
-          <Link className="btn" href={adminHrefFromPathname(pathname, "/admin/configuracion/comprobantes/plantillas")}>
+          <Link
+            className="btn"
+            href={adminHrefFromPathname(pathname, "/admin/configuracion/comprobantes/plantillas")}
+          >
             Configurar plantillas Word
           </Link>
         }
       />
 
       <div className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
-        Estos documentos son internos. Los tipos Factura A/B son diseños visuales y no representan emisión fiscal, CAE ni integración con un proveedor autorizado.
+        Estos documentos son internos. Los tipos Factura A/B son diseños visuales y no representan emisión
+        fiscal, CAE ni integración con un proveedor autorizado.
       </div>
 
       <section className="card mb-6 min-w-0 p-5 sm:p-7">
         <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-xl font-black">Emisor del comprobante</h2>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">Estos datos completan los campos business.* de las plantillas Word (nombre, CUIT, domicilio y teléfono).</p>
+            <p className="mt-1 text-sm text-[var(--admin-muted)]">
+              Estos datos completan los campos business.* de las plantillas Word (nombre, CUIT, domicilio y
+              teléfono).
+            </p>
           </div>
-          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">Configuración</span>
+          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">
+            Configuración
+          </span>
         </div>
         <form className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2" onSubmit={saveIssuerSettings}>
-          <label className="text-sm font-bold">Nombre del negocio<input className="input mt-2" name="issuerName" maxLength={180} defaultValue={settings?.issuerName ?? ""} placeholder="Nombre que se estampa en el comprobante" /></label>
-          <label className="text-sm font-bold">CUIT / documento<input className="input mt-2" name="taxId" maxLength={40} defaultValue={settings?.taxId ?? ""} placeholder="Ej. 30-12345678-9" /></label>
-          <label className="text-sm font-bold">Domicilio<input className="input mt-2" name="address" maxLength={300} defaultValue={settings?.address ?? ""} placeholder="Calle y número" /></label>
-          <label className="text-sm font-bold">Localidad<input className="input mt-2" name="city" maxLength={120} defaultValue={settings?.city ?? ""} placeholder="Ciudad" /></label>
-          <label className="text-sm font-bold sm:col-span-2">Condiciones o pie de comprobante<textarea className="input mt-2 min-h-24" name="terms" maxLength={3000} defaultValue={settings?.terms ?? ""} placeholder="Ej. Gracias por tu compra. Este documento es interno y no fiscal." /></label>
+          <label className="text-sm font-bold">
+            Nombre del negocio
+            <input
+              className="input mt-2"
+              name="issuerName"
+              maxLength={180}
+              defaultValue={settings?.issuerName ?? ""}
+              placeholder="Nombre que se estampa en el comprobante"
+            />
+          </label>
+          <label className="text-sm font-bold">
+            CUIT / documento
+            <input
+              className="input mt-2"
+              name="taxId"
+              maxLength={40}
+              defaultValue={settings?.taxId ?? ""}
+              placeholder="Ej. 30-12345678-9"
+            />
+          </label>
+          <label className="text-sm font-bold">
+            Domicilio
+            <input
+              className="input mt-2"
+              name="address"
+              maxLength={300}
+              defaultValue={settings?.address ?? ""}
+              placeholder="Calle y número"
+            />
+          </label>
+          <label className="text-sm font-bold">
+            Localidad
+            <input
+              className="input mt-2"
+              name="city"
+              maxLength={120}
+              defaultValue={settings?.city ?? ""}
+              placeholder="Ciudad"
+            />
+          </label>
+          <label className="text-sm font-bold sm:col-span-2">
+            Condiciones o pie de comprobante
+            <textarea
+              className="input mt-2 min-h-24"
+              name="terms"
+              maxLength={3000}
+              defaultValue={settings?.terms ?? ""}
+              placeholder="Ej. Gracias por tu compra. Este documento es interno y no fiscal."
+            />
+          </label>
           <div className="flex min-w-0 flex-wrap items-center gap-3 sm:col-span-2">
-            <button className="btn" disabled={savingSettings} type="submit">{savingSettings ? "Guardando…" : "Guardar emisor"}</button>
-            {!settings?.issuerName && !settings?.taxId && !settings?.address && !settings?.city && <p className="text-xs text-[var(--admin-muted)]">Sin datos cargados: se usa el nombre del negocio y el monograma por defecto.</p>}
+            <button className="btn" disabled={savingSettings} type="submit">
+              {savingSettings ? "Guardando…" : "Guardar emisor"}
+            </button>
+            {!settings?.issuerName && !settings?.taxId && !settings?.address && !settings?.city && (
+              <p className="text-xs text-[var(--admin-muted)]">
+                Sin datos cargados: se usa el nombre del negocio y el monograma por defecto.
+              </p>
+            )}
           </div>
         </form>
       </section>
@@ -274,12 +374,22 @@ export function InvoiceManagerV2({
         <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-xl font-black">Pedidos sin comprobante</h2>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">La plantilla activa se completa con los datos y queda congelada en el historial.</p>
+            <p className="mt-1 text-sm text-[var(--admin-muted)]">
+              La plantilla activa se completa con los datos y queda congelada en el historial.
+            </p>
           </div>
           <label className="w-full text-sm font-bold sm:w-auto sm:min-w-72">
             Tipo visual/documental
-            <select className="input mt-2" value={documentType} onChange={(event) => setDocumentType(event.target.value as DocumentType)}>
-              {documentTypes.map((type) => <option value={type} key={type}>{documentTypeLabels[type]}</option>)}
+            <select
+              className="input mt-2"
+              value={documentType}
+              onChange={(event) => setDocumentType(event.target.value as DocumentType)}
+            >
+              {documentTypes.map((type) => (
+                <option value={type} key={type}>
+                  {documentTypeLabels[type]}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -289,42 +399,78 @@ export function InvoiceManagerV2({
               <strong className="break-words">{order.reference}</strong>
               <p className="mt-1 break-words text-sm text-[var(--admin-muted)]">{order.customerName}</p>
               <p className="mt-3 text-xl font-black">{money(order.total, order.currency)}</p>
-              <button className="btn mt-4 w-full" disabled={busyOrder === order.id} onClick={() => void createInvoice(order.id)} type="button">
+              <button
+                className="btn mt-4 w-full"
+                disabled={busyOrder === order.id}
+                onClick={() => void createInvoice(order.id)}
+                type="button"
+              >
                 {busyOrder === order.id ? "Generando…" : "Crear comprobante"}
               </button>
             </article>
           ))}
-          {!orders.length && <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-[var(--admin-muted)] sm:col-span-2 xl:col-span-3">Todos los pedidos visibles ya tienen comprobante.</p>}
+          {!orders.length && (
+            <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-[var(--admin-muted)] sm:col-span-2 xl:col-span-3">
+              Todos los pedidos visibles ya tienen comprobante.
+            </p>
+          )}
         </div>
       </section>
 
       <section className="mt-6 grid min-w-0 gap-4 lg:grid-cols-2">
         {invoices.map((invoice) => {
           const fileStatus = documentStatus(invoice.document);
-          const type = documentTypes.includes(invoice.documentType as DocumentType) ? invoice.documentType as DocumentType : "internal_receipt";
+          const type = documentTypes.includes(invoice.documentType as DocumentType)
+            ? (invoice.documentType as DocumentType)
+            : "internal_receipt";
           return (
             <article className="card min-w-0 p-5" key={invoice.id}>
               <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <strong className="block break-words text-lg">{invoice.number}</strong>
-                  <p className="mt-1 break-words text-sm text-[var(--admin-muted)]">Pedido {invoice.order.reference} · {invoice.customerName}</p>
-                  <p className="mt-1 text-xs text-[var(--admin-muted)]">{documentTypeLabels[type]}{invoice.branch ? ` · ${invoice.branch.name}` : ""}</p>
+                  <p className="mt-1 break-words text-sm text-[var(--admin-muted)]">
+                    Pedido {invoice.order.reference} · {invoice.customerName}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--admin-muted)]">
+                    {documentTypeLabels[type]}
+                    {invoice.branch ? ` · ${invoice.branch.name}` : ""}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">{invoice.status}</span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-black ${fileStatus.className}`}>{fileStatus.label}</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">
+                    {invoice.status}
+                  </span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black ${fileStatus.className}`}>
+                    {fileStatus.label}
+                  </span>
                 </div>
               </div>
               <p className="mt-4 text-2xl font-black">{money(invoice.total, invoice.currency)}</p>
-              {invoice.document?.conversionMessage && invoice.document.pdfStatus !== "ready" && <p className="mt-3 rounded-xl bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200">{invoice.document.conversionMessage}</p>}
+              {invoice.document?.conversionMessage && invoice.document.pdfStatus !== "ready" && (
+                <p className="mt-3 rounded-xl bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200">
+                  {invoice.document.conversionMessage}
+                </p>
+              )}
               <div className="mt-5 flex flex-wrap gap-2">
-                <button className="btn btn-secondary" onClick={() => void editInvoice(invoice)} type="button">Editar registro</button>
+                <button className="btn btn-secondary" onClick={() => void editInvoice(invoice)} type="button">
+                  Editar registro
+                </button>
                 {!invoice.document && (
-                  <button className="btn btn-secondary" disabled={busyDocument === invoice.id} onClick={() => void generateDocument(invoice)} type="button">
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busyDocument === invoice.id}
+                    onClick={() => void generateDocument(invoice)}
+                    type="button"
+                  >
                     {busyDocument === invoice.id ? "Generando…" : "Generar documento"}
                   </button>
                 )}
-                <Link className="btn" href={adminHrefFromPathname(pathname, `/admin/facturacion/${invoice.id}`)}>Abrir documento</Link>
+                <Link
+                  className="btn"
+                  href={adminHrefFromPathname(pathname, `/admin/facturacion/${invoice.id}`)}
+                >
+                  Abrir documento
+                </Link>
               </div>
             </article>
           );

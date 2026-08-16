@@ -5,7 +5,7 @@
  * tarjetas y los íconos dependen del tema/marca del negocio y no se tocan acá.
  *
  * Este módulo NO importa node:fs, node:path ni prisma: puede importarse desde
- * componentes client (preview del editor) y server (páginas públicas).
+ * componentes del cliente (vista previa del editor) y del servidor (páginas públicas).
  */
 
 export type CartaHeaderConfig = {

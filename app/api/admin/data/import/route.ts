@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
-import { ensureBranchCategory, ensureBranchProduct, ensureBranchStock, resolveEffectiveBranchId } from "@/lib/branch";
+import {
+  ensureBranchCategory,
+  ensureBranchProduct,
+  ensureBranchStock,
+  resolveEffectiveBranchId,
+} from "@/lib/branch";
 import { parseCsv } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 
+/**
+ * @summary Valida la entrada relacionada con el recurso solicitado.
+ */
 const importInput = z.object({
   csv: z.string().min(1).max(2_000_000),
   apply: z.boolean().default(false),
@@ -53,14 +61,13 @@ export async function POST(request: Request) {
   }
   const targetBranchId = await resolveEffectiveBranchId(auth.tenant.id, auth.activeBranchId);
   if (!targetBranchId) {
-    return NextResponse.json({ error: "Elegí una sucursal en la URL antes de importar productos" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Elegí una sucursal en la URL antes de importar productos" },
+      { status: 409 },
+    );
   }
   for (const row of valid) {
-    const category = await ensureBranchCategory(
-      auth.tenant.id,
-      targetBranchId,
-      row.categoria || "General",
-    );
+    const category = await ensureBranchCategory(auth.tenant.id, targetBranchId, row.categoria || "General");
     const productSlug = slugify(row.slug || row.nombre) || `producto-${Date.now()}`;
     const data = {
       name: row.nombre,

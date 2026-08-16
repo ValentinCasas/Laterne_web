@@ -7,10 +7,19 @@ import { prisma } from "@/lib/prisma";
 import { getReservationAvailability, reservationDateValue } from "@/lib/reservation-availability";
 import { reservationStatuses, reservationTime, timeText } from "@/lib/reservations";
 
+/**
+ * @summary Valida la entrada relacionada con las reservas.
+ */
 const updateInput = z.object({
   status: z.enum(reservationStatuses).optional(),
-  reservationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  reservationTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  reservationDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  reservationTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
   partySize: z.number().int().min(1).max(500).optional(),
   sector: z.string().trim().max(100).optional().nullable(),
   notes: z.string().trim().max(5000).optional().nullable(),
@@ -26,7 +35,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!Number.isInteger(id) || !parsed.success) {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
-  const current = await prisma.reservation.findFirst({ where: { id, tenantId: auth.tenant.id, deletedAt: null } });
+  const current = await prisma.reservation.findFirst({
+    where: { id, tenantId: auth.tenant.id, deletedAt: null },
+  });
   if (!current) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
   if (current.branchId && !auth.branches.some((branch) => branch.id === current.branchId)) {
     return NextResponse.json({ error: "No tenés acceso a la sucursal de esta reserva" }, { status: 403 });
@@ -115,7 +126,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   return NextResponse.json({ reservation: serialize(updated) });
 }
 
-/** @summary Retira una reserva de la operación mediante soft-delete y conserva auditoría e historial. */
+/** @summary Retira una reserva mediante borrado lógico y conserva auditoría e historial. */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await authorize("reservation.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });

@@ -6,6 +6,9 @@ import { documentTypes } from "@/lib/documents/document-fields";
 import { generateInvoiceDocumentArtifact } from "@/lib/documents/invoice-document";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con los comprobantes.
+ */
 const invoiceInput = z.object({
   orderId: z.coerce.number().int().positive(),
   documentType: z.enum(documentTypes).default("internal_receipt"),

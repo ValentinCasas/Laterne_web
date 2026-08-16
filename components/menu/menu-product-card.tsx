@@ -16,8 +16,9 @@ export function formatMenuPrice(value: number, currency: string, locale: string)
 }
 
 /**
- * Tarjeta real de un producto de la carta.
- * La usan la carta pública y el preview del editor para mantener el mismo
+ * @summary Renderiza un producto de la carta con precio, imagen y acceso al detalle.
+ *
+ * La usan la carta pública y la vista previa del editor para mantener el mismo
  * diseño, tipografías y comportamiento responsive.
  */
 export function MenuProductCard({

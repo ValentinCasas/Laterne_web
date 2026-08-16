@@ -50,7 +50,7 @@ const pickAvatar = (avatars: string[], seed: number) =>
   avatars[(seed * 37) % avatars.length] ?? "avatar_profile_default.png";
 
 /**
- * @summary Fuente única de verdad del contenido de la landing pública del negocio.
+ * @summary Fuente única de verdad del contenido del inicio público del negocio.
  * Todo lo que edita el Editor de landing (BrandSettings) se resuelve acá y tanto
  * la página pública como la vista previa del editor consumen exactamente los
  * mismos valores y defaults.
@@ -68,35 +68,34 @@ export async function loadTenantLandingData(tenant: {
   const branchId = primaryBranch?.id;
   const branchWhere = branchId ? { branchId } : {};
 
-  const [business, brand, events, testimonials, avatarFiles, eventImageFiles, hours] =
-    await Promise.all([
-      prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
-      prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }),
-      prisma.event.findMany({
-        where: {
-          tenantId: tenant.id,
-          ...branchWhere,
-          OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
-        },
-        orderBy: [{ date: "desc" }, { id: "desc" }],
-      }),
-      prisma.testimonial.findMany({
-        where: {
-          tenantId: tenant.id,
-          ...branchWhere,
-          state: true,
-          moderationStatus: "approved",
-        },
-        orderBy: { date: "desc" },
-        take: 12,
-      }),
-      readdir(path.join(process.cwd(), "public", "images", "avatars_defect")),
-      readdir(path.join(process.cwd(), "public", "images", "images_event")),
-      prisma.openingHour.findMany({
-        where: { tenantId: tenant.id, ...branchWhere },
-        orderBy: { id: "asc" },
-      }),
-    ]);
+  const [business, brand, events, testimonials, avatarFiles, eventImageFiles, hours] = await Promise.all([
+    prisma.businessInfo.findUnique({ where: { tenantId: tenant.id } }),
+    prisma.brandSettings.findUnique({ where: { tenantId: tenant.id } }),
+    prisma.event.findMany({
+      where: {
+        tenantId: tenant.id,
+        ...branchWhere,
+        OR: [{ status: "published" }, { status: "scheduled", publishAt: { lte: now } }],
+      },
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+    }),
+    prisma.testimonial.findMany({
+      where: {
+        tenantId: tenant.id,
+        ...branchWhere,
+        state: true,
+        moderationStatus: "approved",
+      },
+      orderBy: { date: "desc" },
+      take: 12,
+    }),
+    readdir(path.join(process.cwd(), "public", "images", "avatars_defect")),
+    readdir(path.join(process.cwd(), "public", "images", "images_event")),
+    prisma.openingHour.findMany({
+      where: { tenantId: tenant.id, ...branchWhere },
+      orderBy: { id: "asc" },
+    }),
+  ]);
 
   const stored =
     brand?.landingSections &&
@@ -112,9 +111,7 @@ export async function loadTenantLandingData(tenant: {
     : [];
 
   const heroTitle =
-    typeof brand?.heroTitle === "string" && brand.heroTitle.trim()
-      ? brand.heroTitle
-      : `${tenant.name} es`;
+    typeof brand?.heroTitle === "string" && brand.heroTitle.trim() ? brand.heroTitle : `${tenant.name} es`;
   const heroSubtitle =
     typeof brand?.heroSubtitle === "string" && brand.heroSubtitle.trim()
       ? brand.heroSubtitle
@@ -129,9 +126,7 @@ export async function loadTenantLandingData(tenant: {
           ? slide.subtitle
           : "Hecho para disfrutar.",
       image:
-        typeof slide.image === "string" && slide.image.trim()
-          ? slide.image
-          : LANDING_STORY_DEFAULTS[0].image,
+        typeof slide.image === "string" && slide.image.trim() ? slide.image : LANDING_STORY_DEFAULTS[0].image,
     }),
   );
 
@@ -157,9 +152,7 @@ export async function loadTenantLandingData(tenant: {
     imageUrl: event.imageUrl && eventImages.has(event.imageUrl) ? event.imageUrl : null,
   }));
 
-  const availableAvatars = avatarFiles
-    .filter((file) => /\.(?:avif|jpe?g|png|webp)$/i.test(file))
-    .sort();
+  const availableAvatars = avatarFiles.filter((file) => /\.(?:avif|jpe?g|png|webp)$/i.test(file)).sort();
   const testimonialSlides: LandingTestimonialSlide[] = testimonials.map((item) => ({
     id: item.id,
     description: item.description,

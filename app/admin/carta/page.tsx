@@ -10,12 +10,15 @@ import path from "node:path";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const context = await requirePermission("brand.manage");
   return { title: `${context.tenant.name} | Carta` };
 }
 
-/** @summary Carga la configuración de textos de la cabecera de la carta y un preview real de datos limitado. */
+/** @summary Carga la configuración de la cabecera de la carta y una vista previa real con datos limitados. */
 export default async function CartaPage() {
   const context = await requirePermission("brand.manage");
   const [brand, tenant, categories, productImageFiles, categoryImageFiles] = await Promise.all([
@@ -99,9 +102,7 @@ export default async function CartaPage() {
 
   const primaryBranch = context.branches.find((branch) => branch.isPrimary) ?? context.branches[0];
   const data: CartaEditorData = serialize({
-    initialConfig: resolveCartaHeaderConfig(
-      (brand?.landingSections as { carta?: unknown } | null)?.carta,
-    ),
+    initialConfig: resolveCartaHeaderConfig((brand?.landingSections as { carta?: unknown } | null)?.carta),
     businessName: context.tenant.name,
     branchName: primaryBranch?.name ?? "",
     tenantSlug: context.tenant.slug,

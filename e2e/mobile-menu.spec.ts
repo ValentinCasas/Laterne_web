@@ -2,12 +2,18 @@ import { expect, test } from "@playwright/test";
 
 const mobileWidths = [320, 375, 390, 430] as const;
 
+/**
+ * @summary Acepta el aviso de privacidad cuando aparece en una prueba E2E.
+ */
 async function acceptPrivacy(page: import("@playwright/test").Page) {
   const button = page.getByRole("button", { name: "Aceptar analítica" });
   await button.waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
   if (await button.isVisible().catch(() => false)) await button.click();
 }
 
+/**
+ * @summary Comprueba que una página móvil no tenga desbordamiento horizontal global.
+ */
 async function expectNoGlobalOverflow(page: import("@playwright/test").Page) {
   await expect
     .poll(() =>
@@ -42,9 +48,7 @@ test.describe("carta pública responsive", () => {
       expect(categoryBox?.height ?? 0).toBeGreaterThanOrEqual(44);
 
       const rail = categories.first().locator("..");
-      expect(
-        await rail.evaluate((element) => element.scrollWidth > element.clientWidth),
-      ).toBeTruthy();
+      expect(await rail.evaluate((element) => element.scrollWidth > element.clientWidth)).toBeTruthy();
       await rail.evaluate((element) => element.scrollTo({ left: element.scrollWidth, behavior: "instant" }));
       await expect(categories.last()).toBeInViewport();
       await expectNoGlobalOverflow(page);

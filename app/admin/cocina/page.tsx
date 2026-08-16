@@ -5,9 +5,15 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export async function generateMetadata(): Promise<Metadata> { const context = await requirePermission("order.manage"); return { title: `${context.tenant.name} | Cocina` }; }
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const context = await requirePermission("order.manage");
+  return { title: `${context.tenant.name} | Cocina` };
+}
 
-/** @summary Carga los pedidos activos que necesita preparar la cocina en el scope actual. */
+/** @summary Carga los pedidos activos que necesita preparar la cocina en el contexto actual. */
 export default async function AdminKitchenPage() {
   const context = await requirePermission("order.manage");
   const branchIds = context.branches.map((branch) => branch.id);

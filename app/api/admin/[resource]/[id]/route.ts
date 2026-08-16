@@ -11,6 +11,9 @@ import { productAdminData } from "@/lib/product-admin";
 import { promotionData } from "@/lib/promotion-admin";
 import { slugify, uniqueCategorySlug } from "@/lib/slug";
 
+/**
+ * @summary Valida la entrada relacionada con el recurso solicitado.
+ */
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
 type Delegate = {
   findFirst(args: { where: Record<string, unknown> }): Promise<unknown>;
@@ -19,7 +22,10 @@ type Delegate = {
 };
 
 /** @summary Filtro de pertenencia tenant + branch activa según la clasificación de cada recurso. */
-function itemBranchWhere(auth: NonNullable<Awaited<ReturnType<typeof authorize>>>, model: string): Record<string, unknown> {
+function itemBranchWhere(
+  auth: NonNullable<Awaited<ReturnType<typeof authorize>>>,
+  model: string,
+): Record<string, unknown> {
   return resourceScopedWhere(model, auth?.tenant.id, auth?.activeBranchId);
 }
 
@@ -34,7 +40,13 @@ function selectFields(input: Record<string, string>, fields: string[]) {
 }
 
 /** @summary Convierte los campos editados a los tipos esperados por cada modelo de Prisma. */
-async function values(resource: string, input: Record<string, string>, tenantId: number, id: number, branchId?: number) {
+async function values(
+  resource: string,
+  input: Record<string, string>,
+  tenantId: number,
+  id: number,
+  branchId?: number,
+) {
   if (resource === "productos") {
     const { data } = await productAdminData(input, tenantId, branchId, { excludeId: id });
     return { ...data, categories: { deleteMany: {}, ...data.categories } };
@@ -165,7 +177,10 @@ async function values(resource: string, input: Record<string, string>, tenantId:
       active: booleanValue(input.active),
       inheritLanding: input.inheritLanding === "" ? true : booleanValue(input.inheritLanding),
       inheritBrand: input.inheritBrand === "" ? true : booleanValue(input.inheritBrand),
-      landingContent: { heroTitle: input.landingHeroTitle?.trim() || "", heroSubtitle: input.landingHeroSubtitle?.trim() || "" },
+      landingContent: {
+        heroTitle: input.landingHeroTitle?.trim() || "",
+        heroSubtitle: input.landingHeroSubtitle?.trim() || "",
+      },
     };
   }
 
@@ -214,12 +229,18 @@ async function updateMember(input: Record<string, string>, tenantId: number, use
   const role = await prisma.role.findFirst({ where: { id: roleId, tenantId } });
   if (!role) throw new Error("Seleccioná un rol válido");
   const branchIds = (input.branchIds ?? "").split(",").map(Number).filter(Number.isInteger);
-  const branches = await prisma.branch.findMany({ where: { tenantId, id: { in: branchIds } }, select: { id: true } });
+  const branches = await prisma.branch.findMany({
+    where: { tenantId, id: { in: branchIds } },
+    select: { id: true },
+  });
   const allBranches = input.allBranches === "true";
 
   return prisma.$transaction(async (transaction) => {
-    await transaction.tenantMembership.update({ where: { id: membership.id }, data: { roleId, allBranches } });
-      const user = await transaction.user.update({
+    await transaction.tenantMembership.update({
+      where: { id: membership.id },
+      data: { roleId, allBranches },
+    });
+    const user = await transaction.user.update({
       where: { id: userId },
       data: {
         name: input.name.trim(),
@@ -230,10 +251,13 @@ async function updateMember(input: Record<string, string>, tenantId: number, use
           ? { password: await bcrypt.hash(z.string().min(8).parse(input.password), 12) }
           : {}),
       },
+    });
+    await transaction.branchMembership.deleteMany({ where: { membershipId: membership.id } });
+    if (branches.length)
+      await transaction.branchMembership.createMany({
+        data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
       });
-      await transaction.branchMembership.deleteMany({ where: { membershipId: membership.id } });
-      if (branches.length) await transaction.branchMembership.createMany({ data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })) });
-      return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
+    return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
   });
 }
 
@@ -292,7 +316,9 @@ export async function PUT(request: Request, context: { params: Promise<{ resourc
             const wasPrimary = Boolean((oldItem as { isPrimary?: boolean }).isPrimary);
             const becomesPrimary = Boolean((data as { isPrimary: boolean }).isPrimary);
             if (wasPrimary && !becomesPrimary) {
-              const others = await transaction.branch.count({ where: { tenantId: auth.tenant.id, id: { not: id } } });
+              const others = await transaction.branch.count({
+                where: { tenantId: auth.tenant.id, id: { not: id } },
+              });
               if (!others) (data as Record<string, unknown>).isPrimary = true;
               else throw new Error("Asigná otra sucursal principal antes de desmarcar esta");
             }
@@ -388,8 +414,12 @@ export async function DELETE(
           prisma.productCategory.deleteMany({
             where: { productId: id, tenantId: auth.tenant.id, category: { branchId: auth.activeBranchId } },
           }),
-          prisma.branchProduct.deleteMany({ where: { productId: id, branchId: auth.activeBranchId, tenantId: auth.tenant.id } }),
-          prisma.inventoryStock.deleteMany({ where: { productId: id, branchId: auth.activeBranchId, tenantId: auth.tenant.id } }),
+          prisma.branchProduct.deleteMany({
+            where: { productId: id, branchId: auth.activeBranchId, tenantId: auth.tenant.id },
+          }),
+          prisma.inventoryStock.deleteMany({
+            where: { productId: id, branchId: auth.activeBranchId, tenantId: auth.tenant.id },
+          }),
         ]);
       } else {
         await prisma.$transaction([

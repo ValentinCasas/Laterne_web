@@ -4,26 +4,28 @@ import type { ImagePars } from "docx-templates/lib/types";
 import QRCode from "qrcode";
 import sharp from "sharp";
 import { getDocumentConverter } from "@/lib/documents/converter";
-import {
-  documentTypeLabels,
-  isDocumentType,
-  type DocumentType,
-} from "@/lib/documents/document-fields";
+import { documentTypeLabels, isDocumentType, type DocumentType } from "@/lib/documents/document-fields";
 import { buildExampleDocumentTemplate } from "@/lib/documents/example-templates";
-import {
-  renderDocumentTemplate,
-  type InvoiceTemplateData,
-} from "@/lib/documents/template-engine";
+import { renderDocumentTemplate, type InvoiceTemplateData } from "@/lib/documents/template-engine";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Obtiene un ArrayBuffer exacto a partir de bytes almacenados.
+ */
 function bytesArrayBuffer(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
+/**
+ * @summary Formatea un importe con la moneda y configuración regional del comprobante.
+ */
 function money(value: number, currency: string) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(value);
 }
 
+/**
+ * @summary Devuelve la etiqueta legible de una modalidad de pedido.
+ */
 function orderTypeLabel(value: string) {
   const labels: Record<string, string> = {
     dine_in: "Mesa",
@@ -33,6 +35,9 @@ function orderTypeLabel(value: string) {
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
+/**
+ * @summary Devuelve la etiqueta legible de un medio de pago.
+ */
 function paymentLabel(value: string) {
   const labels: Record<string, string> = {
     cash: "Efectivo",
@@ -43,6 +48,9 @@ function paymentLabel(value: string) {
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
+/**
+ * @summary Resume variantes y agregados de un ítem del pedido.
+ */
 function extrasText(value: unknown) {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -59,6 +67,9 @@ function extrasText(value: unknown) {
     .join(", ");
 }
 
+/**
+ * @summary Resuelve el logotipo que se insertará en el documento.
+ */
 async function logoSource(logoUrl: string | null | undefined, businessName: string) {
   if (logoUrl?.startsWith("data:image/")) {
     const match = logoUrl.match(/^data:image\/(?:png|jpeg|jpg|webp);base64,(.+)$/i);
@@ -75,17 +86,21 @@ async function logoSource(logoUrl: string | null | undefined, businessName: stri
       }
     }
   }
-  const initials = businessName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join("") || "MC";
+  const initials =
+    businessName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word[0]?.toUpperCase())
+      .join("") || "MC";
   return Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" rx="48" fill="#18181b"/><text x="300" y="185" text-anchor="middle" font-family="Arial,sans-serif" font-size="128" font-weight="700" fill="#ffffff">${initials.replace(/[<>&]/g, "")}</text></svg>`,
   );
 }
 
+/**
+ * @summary Carga y prepara las imágenes utilizadas por una plantilla documental.
+ */
 async function documentImages(businessName: string, logoUrl: string | null | undefined, qrText: string) {
   const [logo, qr] = await Promise.all([
     sharp(await logoSource(logoUrl, businessName))
@@ -140,23 +155,29 @@ export async function generateInvoiceDocumentArtifact(
     },
     orderBy: { version: "desc" },
   });
-  const selectedTemplate = typeTemplate ?? await prisma.documentTemplate.findFirst({
-    where: { tenantId, deletedAt: null, active: true, isDefault: true },
-    orderBy: { version: "desc" },
-  });
+  const selectedTemplate =
+    typeTemplate ??
+    (await prisma.documentTemplate.findFirst({
+      where: { tenantId, deletedAt: null, active: true, isDefault: true },
+      orderBy: { version: "desc" },
+    }));
   const settings = invoice.tenant.invoiceSettings;
   const businessName = settings?.issuerName?.trim() || invoice.tenant.name;
-  const address = settings?.address?.trim() || invoice.branch?.address || invoice.tenant.businessInfo?.address || "";
-  const phone = invoice.branch?.phone || (invoice.tenant.businessInfo?.phoneNumber ? String(invoice.tenant.businessInfo.phoneNumber) : "");
+  const address =
+    settings?.address?.trim() || invoice.branch?.address || invoice.tenant.businessInfo?.address || "";
+  const phone =
+    invoice.branch?.phone ||
+    (invoice.tenant.businessInfo?.phoneNumber ? String(invoice.tenant.businessInfo.phoneNumber) : "");
   const currency = invoice.currency;
   const dateFormat = new Intl.DateTimeFormat("es-AR", {
     timeZone: invoice.tenant.timeZone,
     dateStyle: "short",
     timeStyle: "short",
   });
-  const fiscalStatus = documentType === "internal_receipt"
-    ? "Documento interno no fiscal. No constituye una factura fiscal emitida."
-    : `${documentTypeLabels[documentType]}: plantilla visual sin emisión fiscal ni CAE.`;
+  const fiscalStatus =
+    documentType === "internal_receipt"
+      ? "Documento interno no fiscal. No constituye una factura fiscal emitida."
+      : `${documentTypeLabels[documentType]}: plantilla visual sin emisión fiscal ni CAE.`;
   const data: InvoiceTemplateData = {
     business: {
       name: businessName,
@@ -208,7 +229,9 @@ export async function generateInvoiceDocumentArtifact(
     invoice.number || `INT-${invoice.order.reference}`,
   );
 
-  let template = selectedTemplate ? new Uint8Array(selectedTemplate.content) : await buildExampleDocumentTemplate("classic");
+  let template = selectedTemplate
+    ? new Uint8Array(selectedTemplate.content)
+    : await buildExampleDocumentTemplate("classic");
   let templateId = selectedTemplate?.id ?? null;
   let templateVersion = selectedTemplate?.version ?? null;
   let templateWarning = "";

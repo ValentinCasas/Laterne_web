@@ -3,7 +3,7 @@ import type { PublicEvent } from "@/components/home/event-grid";
 /**
  * Constantes, defaults y tipos compartidos del contenido de landing.
  * Este módulo NO importa node:fs, node:path ni prisma: puede importarse
- * desde componentes client (preview del editor) y server (páginas públicas).
+ * desde componentes del cliente (vista previa del editor) y del servidor (páginas públicas).
  */
 /** @summary Cervezas por defecto del carrusel (imágenes reales existentes en `public/images/banners`). */
 export const LANDING_BEER_DEFAULTS = [
@@ -64,14 +64,16 @@ export function resolveLandingHeroConfig(
 ): LandingHeroConfig {
   const source =
     raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-  const text = (value: unknown, max: number) =>
-    typeof value === "string" ? value.trim().slice(0, max) : "";
+  const text = (value: unknown, max: number) => (typeof value === "string" ? value.trim().slice(0, max) : "");
   const button = (value: unknown, fallback: LandingHeroButtonConfig): LandingHeroButtonConfig => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const entry = value as Record<string, unknown>;
       return {
         label: text(entry.label, 60) || fallback.label,
-        href: typeof entry.href === "string" && entry.href.trim() ? entry.href.trim().slice(0, 300) : fallback.href,
+        href:
+          typeof entry.href === "string" && entry.href.trim()
+            ? entry.href.trim().slice(0, 300)
+            : fallback.href,
         visible: typeof entry.visible === "boolean" ? entry.visible : fallback.visible,
       };
     }
@@ -80,7 +82,8 @@ export function resolveLandingHeroConfig(
   return {
     eyebrow: text(source.eyebrow, 120) || fallbacks.tenantName,
     title: text(source.title, 220) || fallbacks.legacyTitle,
-    highlight: typeof source.highlight === "string" ? text(source.highlight, 80) : LANDING_HERO_DEFAULTS.highlight,
+    highlight:
+      typeof source.highlight === "string" ? text(source.highlight, 80) : LANDING_HERO_DEFAULTS.highlight,
     description: text(source.description, 500) || fallbacks.legacySubtitle,
     imageUrl:
       typeof source.imageUrl === "string" && source.imageUrl.trim()
@@ -123,12 +126,5 @@ export type TenantLandingData = {
   hasMap: boolean;
 };
 
-/** @summary Secciones editables de la landing, compartidas entre el editor y el renderer público. */
-export type LandingSectionKey =
-  | "hero"
-  | "events"
-  | "beers"
-  | "stories"
-  | "testimonials"
-  | "map"
-  | "contact";
+/** @summary Secciones editables del inicio, compartidas entre el editor y el renderizador público. */
+export type LandingSectionKey = "hero" | "events" | "beers" | "stories" | "testimonials" | "map" | "contact";

@@ -7,6 +7,9 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 
+/**
+ * @summary Valida la entrada relacionada con el recurso solicitado.
+ */
 const backupInput = z.object({
   version: z.literal(1),
   tenantSlug: z.string().min(1),

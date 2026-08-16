@@ -9,6 +9,9 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+/**
+ * @summary Valida la entrada relacionada con la marca del negocio.
+ */
 const brandInput = z.object({
   logoUrl: z.string().trim().max(500).optional(),
   isotypeUrl: z.string().trim().max(500).optional(),
@@ -95,14 +98,16 @@ const brandInput = z.object({
   searchConsoleId: z.string().trim().max(255).optional(),
   defaultCurrency: z.enum(["ARS", "USD", "UYU", "BRL", "CLP", "EUR"]).optional(),
   locale: z.enum(["es-AR", "es-UY", "es-CL", "en-US", "pt-BR"]).optional(),
-  timeZone: z.enum([
-    "America/Argentina/Buenos_Aires",
-    "America/Montevideo",
-    "America/Santiago",
-    "America/Sao_Paulo",
-    "America/New_York",
-    "Europe/Madrid",
-  ]).optional(),
+  timeZone: z
+    .enum([
+      "America/Argentina/Buenos_Aires",
+      "America/Montevideo",
+      "America/Santiago",
+      "America/Sao_Paulo",
+      "America/New_York",
+      "Europe/Madrid",
+    ])
+    .optional(),
 });
 
 /** @summary Valida una imagen de marca para impedir referencias a esquemas inseguros. */
@@ -126,7 +131,7 @@ export async function PATCH(request: Request) {
     ]);
     const p = parsed.data;
     const customDomain =
-      p.customDomain === undefined ? undefined : (p.customDomain.toLocaleLowerCase("en") || null);
+      p.customDomain === undefined ? undefined : p.customDomain.toLocaleLowerCase("en") || null;
     if (customDomain) {
       const domainConflict = await prisma.brandSettings.findFirst({
         where: { customDomain, tenantId: { not: auth.tenant.id } },

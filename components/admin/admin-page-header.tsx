@@ -22,11 +22,15 @@ export function AdminPageHeader({
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0 max-w-2xl">
           {eyebrow && <p className="section-eyebrow">{eyebrow}</p>}
-           <div className="mt-2 flex items-center gap-3">
-             <h1 className="text-3xl font-black tracking-tight sm:text-5xl">{title}</h1>
+          <div className="mt-2 flex items-center gap-3">
+            <h1 className="text-3xl font-black tracking-tight sm:text-5xl">{title}</h1>
             <AdminPageHelp section={section} />
           </div>
-           {description && <p className="mt-4 max-w-3xl text-base leading-relaxed text-[var(--admin-muted)]">{description}</p>}
+          {description && (
+            <p className="mt-4 max-w-3xl text-base leading-relaxed text-[var(--admin-muted)]">
+              {description}
+            </p>
+          )}
           {children}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}

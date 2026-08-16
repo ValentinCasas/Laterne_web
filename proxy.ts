@@ -47,7 +47,9 @@ function startsWithAny(pathname: string, prefixes: string[]) {
 }
 
 function requestHost(request: NextRequest) {
-  return normalizeHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.hostname);
+  return normalizeHost(
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.hostname,
+  );
 }
 
 function baseHost(url: string) {
@@ -66,20 +68,18 @@ function contextHeaders(
   const headers = new Headers(request.headers);
   headers.set("x-menuclick-original-path", request.nextUrl.pathname + request.nextUrl.search);
   headers.set("x-menuclick-route-kind", values.routeKind);
-  if (values.tenantSlug) headers.set("x-menuclick-tenant-slug", values.tenantSlug.trim().toLocaleLowerCase("es"));
+  if (values.tenantSlug)
+    headers.set("x-menuclick-tenant-slug", values.tenantSlug.trim().toLocaleLowerCase("es"));
   else headers.delete("x-menuclick-tenant-slug");
-  if (values.branchSlug) headers.set("x-menuclick-branch-slug", values.branchSlug.trim().toLocaleLowerCase("es"));
+  if (values.branchSlug)
+    headers.set("x-menuclick-branch-slug", values.branchSlug.trim().toLocaleLowerCase("es"));
   else headers.delete("x-menuclick-branch-slug");
   if (values.adminScope) headers.set("x-menuclick-admin-scope", values.adminScope);
   else headers.delete("x-menuclick-admin-scope");
   return headers;
 }
 
-function rewrite(
-  request: NextRequest,
-  pathname: string,
-  values: Parameters<typeof contextHeaders>[1],
-) {
+function rewrite(request: NextRequest, pathname: string, values: Parameters<typeof contextHeaders>[1]) {
   const target = request.nextUrl.clone();
   target.pathname = pathname;
   return NextResponse.rewrite(target, { request: { headers: contextHeaders(request, values) } });
@@ -156,7 +156,7 @@ function apiRewrite(request: NextRequest): NextResponse | null {
  * - admin branch: /t/{tenant}/admin/s/{branch}/...
  * - platform: /platform/...
  *
- * Los rewrites internos mantienen las páginas legacy mientras el navegador ve
+ * Las reescrituras internas mantienen las páginas heredadas mientras el navegador ve
  * siempre rutas legibles. Tenant y branch se extraen exclusivamente de la URL.
  */
 export async function proxy(request: NextRequest) {
@@ -170,7 +170,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // Auth de plataforma usa una URL explícita, pero reutiliza la pantalla interna existente.
-  if (pathname === "/platform/login" || pathname === "/platform/recuperar-acceso" || pathname === "/platform/restablecer-acceso") {
+  if (
+    pathname === "/platform/login" ||
+    pathname === "/platform/recuperar-acceso" ||
+    pathname === "/platform/restablecer-acceso"
+  ) {
     if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
     return rewrite(request, pathname.replace(/^\/platform/, ""), { routeKind: "platform-admin" });
   }
@@ -187,7 +191,11 @@ export async function proxy(request: NextRequest) {
     // Las secciones tenant-level (usuarios, marca, negocio, etc.) no aceptan un
     // branch decorativo en la URL: se normalizan a una única ruta canónica.
     if (canonical.branchSlug && !isBranchAdminLogicalPath(canonical.logicalPath)) {
-      return redirectTo(request, adminRootUrl(), tenantAdminPath(canonical.tenantSlug, canonical.logicalPath));
+      return redirectTo(
+        request,
+        adminRootUrl(),
+        tenantAdminPath(canonical.tenantSlug, canonical.logicalPath),
+      );
     }
     return rewrite(request, canonical.logicalPath, {
       routeKind: "tenant-admin",
@@ -221,10 +229,13 @@ export async function proxy(request: NextRequest) {
       const rest = canonical.logicalPath.startsWith(branchPrefix)
         ? canonical.logicalPath.slice(branchPrefix.length) || "/"
         : canonical.logicalPath;
-      const dedicatedBranchPage = rest === "/" || rest === "/carta" || rest.startsWith("/carta/") || rest === "/reservas" || rest.startsWith("/reservas/");
-      internalPath = dedicatedBranchPage
-        ? `${branchPrefix}${rest === "/" ? "" : rest}`
-        : rest;
+      const dedicatedBranchPage =
+        rest === "/" ||
+        rest === "/carta" ||
+        rest.startsWith("/carta/") ||
+        rest === "/reservas" ||
+        rest.startsWith("/reservas/");
+      internalPath = dedicatedBranchPage ? `${branchPrefix}${rest === "/" ? "" : rest}` : rest;
     }
 
     return rewrite(request, internalPath, {
@@ -248,14 +259,18 @@ export async function proxy(request: NextRequest) {
   const classified = classifyHost(host);
   const resolvedHost = await resolveHostKind(host);
 
-  // Subdominios administrativos legacy: tenant.app.dominio -> app.dominio/t/tenant/admin/...
+  // Subdominios administrativos heredados: tenant.app.dominio -> app.dominio/t/tenant/admin/...
   if (classified.kind === "app" && classified.slug) {
     const branchLegacy = pathname.match(/^\/admin\/s\/([^/]+)(\/.*)?$/);
     if (branchLegacy) {
       return redirectTo(
         request,
         adminRootUrl(),
-        tenantBranchAdminPath(classified.slug, decodeURIComponent(branchLegacy[1]), `/admin${branchLegacy[2] || ""}`),
+        tenantBranchAdminPath(
+          classified.slug,
+          decodeURIComponent(branchLegacy[1]),
+          `/admin${branchLegacy[2] || ""}`,
+        ),
       );
     }
     if (pathname === "/login" || pathname === "/recuperar-acceso" || pathname === "/restablecer-acceso") {
@@ -266,7 +281,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Subdominio público legacy -> path canónico. Los dominios personalizados se conservan.
+  // Subdominio público heredado -> ruta canónica. Los dominios personalizados se conservan.
   if (classified.kind === "tenant" && classified.slug && !isLocalDevelopmentHost(host)) {
     const branchLegacy = pathname.match(/^\/s\/([^/]+)(\/.*)?$/);
     const canonicalPath = branchLegacy
@@ -286,7 +301,11 @@ export async function proxy(request: NextRequest) {
       return redirectTo(
         request,
         adminRootUrl(),
-        tenantBranchAdminPath(resolvedHost.slug, decodeURIComponent(customAdminBranch[1]), `/admin${customAdminBranch[2] || ""}`),
+        tenantBranchAdminPath(
+          resolvedHost.slug,
+          decodeURIComponent(customAdminBranch[1]),
+          `/admin${customAdminBranch[2] || ""}`,
+        ),
       );
     }
     if (pathname === "/admin" || pathname.startsWith("/admin/")) {
@@ -325,7 +344,7 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  // Desarrollo: las rutas legacy públicas se redirigen al tenant configurado solo para facilitar transición.
+  // Desarrollo: las rutas públicas heredadas se redirigen al tenant configurado solo para facilitar la transición.
   if (
     process.env.NODE_ENV === "development" &&
     isLocalDevelopmentHost(host) &&
@@ -340,7 +359,7 @@ export async function proxy(request: NextRequest) {
     return redirectTo(request, publicRootUrl(), canonicalPath);
   }
 
-  // Legacy /admin sobre host fijo/local: auth hará el redirect canónico una vez resuelta la membresía.
+  // El /admin heredado sobre host fijo/local se normaliza después de resolver la membresía.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     return NextResponse.next({
       request: { headers: contextHeaders(request, { routeKind: "tenant-admin" }) },

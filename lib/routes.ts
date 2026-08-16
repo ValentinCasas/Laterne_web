@@ -7,13 +7,14 @@
 
 import type { Route } from "next";
 
-export type RouteSurface = "platform-public" | "platform-admin" | "tenant-public" | "tenant-admin" | "unknown";
+export type RouteSurface =
+  "platform-public" | "platform-admin" | "tenant-public" | "tenant-admin" | "unknown";
 
 export type CanonicalRouteContext = {
   surface: RouteSurface;
   tenantSlug?: string;
   branchSlug?: string;
-  /** Ruta lógica que entiende el árbol legacy interno (solo durante la transición). */
+  /** Ruta lógica que entiende el árbol interno heredado durante la transición. */
   logicalPath: string;
 };
 
@@ -51,62 +52,89 @@ export const BRANCH_PUBLIC_SECTIONS = new Set([
   "mesa",
 ]);
 
+/**
+ * @summary Limpia un slug antes de incorporarlo a una ruta.
+ */
 function cleanSlug(value: string) {
   return value.trim().toLocaleLowerCase("es");
 }
 
+/**
+ * @summary Codifica un slug limpio para utilizarlo en una URL.
+ */
 function encodedSlug(value: string) {
   return encodeURIComponent(cleanSlug(value));
 }
 
+/**
+ * @summary Normaliza un sufijo de ruta evitando barras duplicadas.
+ */
 function normalizedSuffix(path = "") {
   const value = path.trim();
   if (!value || value === "/") return "";
   return value.startsWith("/") ? value : `/${value}`;
 }
 
-/** Construye la URL pública canónica de un tenant. */
+/**
+ * @summary Construye una ruta pública canónica para un tenant.
+ */
 export function tenantPublicPath(tenantSlug: string, path = ""): Route {
   return `/t/${encodedSlug(tenantSlug)}${normalizedSuffix(path)}` as Route;
 }
 
-/** Construye la URL pública canónica de una sucursal. */
+/**
+ * @summary Construye una ruta pública canónica para una sucursal.
+ */
 export function tenantBranchPublicPath(tenantSlug: string, branchSlug: string, path = ""): Route {
   return `/t/${encodedSlug(tenantSlug)}/s/${encodedSlug(branchSlug)}${normalizedSuffix(path)}` as Route;
 }
 
-/** Construye una URL administrativa tenant-level. `path` puede ser `/admin/foo` o `/foo`. */
+/**
+ * @summary Construye una ruta administrativa canónica para un tenant.
+ * @param path Ruta como `/admin/foo` o `/foo`.
+ */
 export function tenantAdminPath(tenantSlug: string, path = ""): Route {
   const suffix = normalizedSuffix(path).replace(/^\/admin(?=\/|$)/, "");
   return `/t/${encodedSlug(tenantSlug)}/admin${suffix}` as Route;
 }
 
-/** Construye una URL administrativa branch-level. `path` puede ser `/admin/foo` o `/foo`. */
+/**
+ * @summary Construye una ruta administrativa canónica para una sucursal.
+ * @param path Ruta como `/admin/foo` o `/foo`.
+ */
 export function tenantBranchAdminPath(tenantSlug: string, branchSlug: string, path = ""): Route {
   const suffix = normalizedSuffix(path).replace(/^\/admin(?=\/|$)/, "");
   return `/t/${encodedSlug(tenantSlug)}/admin/s/${encodedSlug(branchSlug)}${suffix}` as Route;
 }
 
-/** Convierte rutas internas `/superadmin/...` a la superficie pública `/platform/...`. */
+/**
+ * @summary Convierte una ruta interna `/superadmin/...` en la ruta pública `/platform/...`.
+ */
 export function platformAdminPath(path = ""): Route {
   const suffix = normalizedSuffix(path).replace(/^\/superadmin(?=\/|$)/, "");
   return `/platform${suffix}` as Route;
 }
 
-/** Devuelve el primer segmento administrativo lógico (`pedidos`, `usuarios`, etc.). */
+/**
+ * @summary Obtiene el primer segmento administrativo lógico (`pedidos`, `usuarios`, etc.).
+ */
 export function adminSectionFromLogicalPath(path: string) {
   const pathOnly = path.split(/[?#]/, 1)[0];
   const normalized = pathOnly.replace(/^\/admin\/?/, "");
   return normalized.split("/")[0] || "";
 }
 
-/** Indica si una ruta administrativa lógica soporta scope de sucursal. */
+/**
+ * @summary Indica si una ruta administrativa requiere contexto de sucursal.
+ */
 export function isBranchAdminLogicalPath(path: string) {
   const section = adminSectionFromLogicalPath(path);
   return section === "" || BRANCH_ADMIN_SECTIONS.has(section);
 }
 
-/** Interpreta una URL canónica sin depender del host, cookies ni estado React. */
+/**
+ * @summary Clasifica una URL canónica y extrae su contexto sin depender del host, cookies ni estado React.
+ */
 export function parseCanonicalPath(pathname: string): CanonicalRouteContext {
   const path = pathname.split("?")[0] || "/";
 
@@ -162,28 +190,27 @@ export function parseCanonicalPath(pathname: string): CanonicalRouteContext {
   return { surface: "platform-public", logicalPath: path };
 }
 
-/** Ruta admin canónica para un enlace lógico `/admin/...`, preservando branch solo cuando corresponde. */
-export function adminHrefForContext(
-  tenantSlug: string,
-  logicalHref: string,
-  branchSlug?: string,
-): Route {
-  return (branchSlug && isBranchAdminLogicalPath(logicalHref)
-    ? tenantBranchAdminPath(tenantSlug, branchSlug, logicalHref)
-    : tenantAdminPath(tenantSlug, logicalHref)) as Route;
+/**
+ * @summary Construye un enlace administrativo y conserva la sucursal solo cuando corresponde.
+ */
+export function adminHrefForContext(tenantSlug: string, logicalHref: string, branchSlug?: string): Route {
+  return (
+    branchSlug && isBranchAdminLogicalPath(logicalHref)
+      ? tenantBranchAdminPath(tenantSlug, branchSlug, logicalHref)
+      : tenantAdminPath(tenantSlug, logicalHref)
+  ) as Route;
 }
 
-/** Convierte un href público legacy (`/carta`) al path tenant/branch canónico. */
-export function publicHrefForContext(
-  tenantSlug: string,
-  logicalHref: string,
-  branchSlug?: string,
-): Route {
+/**
+ * @summary Convierte un enlace público heredado, como `/carta`, en una ruta canónica para el contexto resuelto.
+ */
+export function publicHrefForContext(tenantSlug: string, logicalHref: string, branchSlug?: string): Route {
   if (/^(?:https?:|mailto:|tel:|#)/i.test(logicalHref)) return logicalHref as Route;
   const match = logicalHref.match(/^([^?#]*)(\?[^#]*)?(#.*)?$/);
   const path = match?.[1] || "/";
   const suffix = `${match?.[2] || ""}${match?.[3] || ""}`;
-  if ((path === "" || path === "/") && branchSlug) return `${tenantBranchPublicPath(tenantSlug, branchSlug)}${suffix}` as Route;
+  if ((path === "" || path === "/") && branchSlug)
+    return `${tenantBranchPublicPath(tenantSlug, branchSlug)}${suffix}` as Route;
   if (branchSlug) {
     const section = path.replace(/^\//, "").split("/")[0];
     if (BRANCH_PUBLIC_SECTIONS.has(section)) {
@@ -193,7 +220,9 @@ export function publicHrefForContext(
   return `${tenantPublicPath(tenantSlug, path)}${suffix}` as Route;
 }
 
-/** Construye links públicos respetando dominios personalizados (paths planos) y rutas canónicas `/t/...`. */
+/**
+ * @summary Construye un enlace público que respeta dominios personalizados y preserva el contexto visible.
+ */
 export function publicHrefForVisiblePath(
   visiblePathname: string,
   tenantSlug: string,
@@ -206,7 +235,7 @@ export function publicHrefForVisiblePath(
     return publicHrefForContext(canonical.tenantSlug, logicalHref, canonical.branchSlug ?? branchSlug);
   }
 
-  // Dominio personalizado/legacy: el host ya identifica al tenant, por eso no
+  // Dominio personalizado o heredado: el host ya identifica al tenant, por eso no
   // agregamos `/t/{slug}`. Solo preservamos `/s/{branch}` cuando la vista lo requiere.
   const match = logicalHref.match(/^([^?#]*)(\?[^#]*)?(#.*)?$/);
   const path = match?.[1] || "/";
@@ -214,27 +243,32 @@ export function publicHrefForVisiblePath(
   if (!branchSlug) return `${path}${suffix}` as Route;
   if (path === "" || path === "/") return `/s/${encodedSlug(branchSlug)}${suffix}` as Route;
   const section = path.replace(/^\//, "").split("/")[0];
-  return (BRANCH_PUBLIC_SECTIONS.has(section)
-    ? `/s/${encodedSlug(branchSlug)}${path}${suffix}`
-    : `${path}${suffix}`) as Route;
+  return (
+    BRANCH_PUBLIC_SECTIONS.has(section) ? `/s/${encodedSlug(branchSlug)}${path}${suffix}` : `${path}${suffix}`
+  ) as Route;
 }
 
-
-/** Construye un href admin canónico a partir de la URL visible de la pestaña. */
+/**
+ * @summary Construye un enlace administrativo canónico a partir de la ruta visible actual.
+ */
 export function adminHrefFromPathname(pathname: string, logicalHref: string): Route {
   const context = parseCanonicalPath(pathname);
   if (context.surface !== "tenant-admin" || !context.tenantSlug) return logicalHref as Route;
   return adminHrefForContext(context.tenantSlug, logicalHref, context.branchSlug);
 }
 
-/** Construye un href público canónico a partir de la URL visible de la pestaña. */
+/**
+ * @summary Construye un enlace público canónico a partir de la ruta visible actual.
+ */
 export function publicHrefFromPathname(pathname: string, logicalHref: string): Route {
   const context = parseCanonicalPath(pathname);
   if (context.surface !== "tenant-public" || !context.tenantSlug) return logicalHref as Route;
   return publicHrefForContext(context.tenantSlug, logicalHref, context.branchSlug);
 }
 
-/** Extrae tenant/branch de la URL visible y scopea un endpoint API legacy. */
+/**
+ * @summary Construye una ruta de API heredada limitada al tenant y la sucursal de la URL visible.
+ */
 export function scopedApiPath(pathname: string, apiPath: string): Route {
   if (!apiPath.startsWith("/api/")) return apiPath as Route;
   if (apiPath.startsWith("/api/platform/") || apiPath.startsWith("/api/t/")) return apiPath as Route;
@@ -269,12 +303,16 @@ export function scopedApiPath(pathname: string, apiPath: string): Route {
   return `/api/t/${tenant}${branch}/${publicRest}` as Route;
 }
 
-/** Convierte una ruta admin visible en su equivalente consolidado o branch específico. */
+/**
+ * @summary Cambia la sucursal de una ruta administrativa sin perder su sección ni su contexto consolidado.
+ */
 export function switchAdminBranchPath(pathname: string, branchSlug?: string): Route {
   const context = parseCanonicalPath(pathname);
   if (context.surface !== "tenant-admin" || !context.tenantSlug) return pathname as Route;
   const logical = context.logicalPath;
-  return (branchSlug && isBranchAdminLogicalPath(logical)
-    ? tenantBranchAdminPath(context.tenantSlug, branchSlug, logical)
-    : tenantAdminPath(context.tenantSlug, logical)) as Route;
+  return (
+    branchSlug && isBranchAdminLogicalPath(logical)
+      ? tenantBranchAdminPath(context.tenantSlug, branchSlug, logical)
+      : tenantAdminPath(context.tenantSlug, logical)
+  ) as Route;
 }

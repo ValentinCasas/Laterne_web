@@ -16,6 +16,9 @@ export function CopyTrackingLink({ href, compact = false }: { href: string; comp
     return () => window.clearTimeout(timer);
   }, [href]);
 
+  /**
+   * @summary Copia el valor solicitado desde la copia del enlace de seguimiento.
+   */
   async function copy() {
     const success = await copyBrowserText(absoluteHref);
     setCopied(success);

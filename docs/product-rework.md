@@ -1,4 +1,6 @@
-# PRODUCT_REWORK.md
+# Plan histórico de mejoras de producto
+
+> Registro histórico de trabajo completado. No define la arquitectura vigente ni reemplaza al `README.md` o a `docs/routing.md`; algunos nombres de archivo pueden haber cambiado durante la limpieza posterior.
 
 Estado del plan de rework de MenuClick (Laterne). Leyenda: `[x]` terminado · `[ ]` pendiente · `[!]` bloqueado/limitado.
 
@@ -66,7 +68,7 @@ Estado del plan de rework de MenuClick (Laterne). Leyenda: `[x]` terminado · `[
 
 ## FASE 9 — Validaciones
 
-- [x] `PRODUCT_REWORK.md` actualizado.
+- [x] El plan de mejoras quedó actualizado.
 - [x] `prisma validate` — schema válido.
 - [x] `tsc --noEmit` — sin errores. Incluye tipar los builders de href de `lib/routes.ts` como `Route` para typed routes.
 - [x] `npm run lint` — 0 errores / 0 warnings.

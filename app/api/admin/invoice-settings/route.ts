@@ -6,6 +6,9 @@ import { serialize } from "@/lib/format";
 import { defaultInvoiceDesign, resolveInvoiceDesign } from "@/lib/invoice-design";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con la configuración de comprobantes.
+ */
 const blockInput = z.object({
   id: z.string().optional(),
   type: z.string().optional(),
@@ -15,8 +18,16 @@ const blockInput = z.object({
   fontSize: z.number().min(6).max(48).optional(),
   bold: z.boolean().optional(),
   align: z.enum(["left", "center", "right"]).optional(),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
-  background: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional()
+    .nullable(),
+  background: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional()
+    .nullable(),
   tableColumns: z
     .object({
       product: z.boolean().optional(),
@@ -30,6 +41,9 @@ const blockInput = z.object({
   tableStyle: z.enum(["compact", "normal", "wide"]).optional(),
 });
 
+/**
+ * @summary Valida la entrada relacionada con la configuración de comprobantes.
+ */
 const settingsInput = z.object({
   issuerName: z.string().trim().max(180).optional().nullable(),
   taxId: z.string().trim().max(40).optional().nullable(),
@@ -40,7 +54,10 @@ const settingsInput = z.object({
   design: z
     .object({
       preset: z.enum(["compact", "classic", "modern"]).optional(),
-      accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+      accent: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .optional(),
       font: z.enum(["sans", "serif", "mono"]).optional(),
       footerText: z.string().trim().max(600).optional(),
       blocks: z.array(blockInput).max(40).optional(),

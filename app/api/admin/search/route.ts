@@ -3,7 +3,7 @@ import { authorize } from "@/lib/auth";
 import { activeBranchWhere, branchProductWhere } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
 
-/** @summary Busca de forma consolidada y server-side dentro del scope tenant/sucursal del panel. */
+/** @summary Busca en el servidor de forma consolidada dentro del alcance del tenant y la sucursal. */
 export async function GET(request: Request) {
   const auth = await authorize("admin.access");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -108,9 +108,7 @@ export async function GET(request: Request) {
                 item.reservationDate instanceof Date
                   ? item.reservationDate.toISOString().slice(0, 10)
                   : String(item.reservationDate).slice(0, 10),
-              reservationTime: item.reservationTime
-                ? String(item.reservationTime)
-                : null,
+              reservationTime: item.reservationTime ? String(item.reservationTime) : null,
             })),
           )
       : Promise.resolve([]),

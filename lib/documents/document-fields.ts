@@ -92,6 +92,9 @@ export const imageDocumentFields = [
   { label: "QR del comprobante", placeholder: "{{IMAGE documentQr()}}" },
 ] as const;
 
+/**
+ * @summary Indica si un valor corresponde a un tipo documental permitido.
+ */
 export function isDocumentType(value: string): value is DocumentType {
   return documentTypes.includes(value as DocumentType);
 }

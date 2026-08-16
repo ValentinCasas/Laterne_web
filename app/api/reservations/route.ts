@@ -13,10 +13,18 @@ import { getDefaultTenant } from "@/lib/tenant";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * @summary Valida la entrada relacionada con las reservas.
+ */
 const reservationInput = z.object({
   customerName: z.string().trim().min(2).max(160),
   phone: z.string().trim().min(6).max(60),
-  email: z.string().trim().email().max(190).transform((value) => value.toLowerCase()),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(190)
+    .transform((value) => value.toLowerCase()),
   date: z.string().regex(datePattern),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   partySize: z.coerce.number().int().min(1).max(100),
@@ -28,10 +36,20 @@ const reservationInput = z.object({
   branchSlug: z.string().trim().max(120).optional(),
 });
 
+/**
+ * @summary Obtiene una representación estable de la dirección de origen de la solicitud.
+ */
 function requestAddress(request: Request) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown"
+  );
 }
 
+/**
+ * @summary Obtiene el origen identificable de una solicitud pública.
+ */
 function requestSource(request: Request) {
   const referer = request.headers.get("referer");
   if (!referer) return "website";
@@ -42,8 +60,14 @@ function requestSource(request: Request) {
   }
 }
 
+/**
+ * @summary Representa un rechazo de reserva por falta de capacidad disponible.
+ */
 class ReservationCapacityError extends Error {}
 
+/**
+ * @summary Genera una referencia pública que no colisiona con reservas existentes.
+ */
 async function uniqueReference() {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const reference = reservationReference();
@@ -53,6 +77,9 @@ async function uniqueReference() {
   throw new Error("No se pudo generar la referencia de reserva");
 }
 
+/**
+ * @summary Resuelve la sucursal explícita en la que se solicita la reserva.
+ */
 async function resolveReservationBranch(tenantId: number, requestedSlug: string) {
   return prisma.branch.findFirst({
     where: { tenantId, active: true, ...(requestedSlug ? { slug: requestedSlug } : {}) },
@@ -61,6 +88,9 @@ async function resolveReservationBranch(tenantId: number, requestedSlug: string)
   });
 }
 
+/**
+ * @summary Construye el detalle de disponibilidad que acompaña una respuesta de reservas.
+ */
 function availabilityMetadata(result: Awaited<ReturnType<typeof getReservationAvailability>>) {
   return {
     sectors: result.settings.sectors,
@@ -71,13 +101,14 @@ function availabilityMetadata(result: Awaited<ReturnType<typeof getReservationAv
   };
 }
 
-/** @summary Publica días o franjas usando la misma fuente server-side que valida el alta final. */
+/** @summary Publica días o franjas usando la misma fuente del servidor que valida el alta final. */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const rawPartySize = Number(params.get("partySize") ?? "1");
   const partySize = Number.isInteger(rawPartySize) && rawPartySize > 0 ? Math.min(rawPartySize, 100) : 1;
   const tenant = await getDefaultTenant();
-  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") ?? "";
+  const routeBranchSlug =
+    request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") ?? "";
   const branch = await resolveReservationBranch(tenant.id, routeBranchSlug || params.get("branch") || "");
   if (!branch || !(await isBranchOperational(tenant.id, branch.id))) {
     return NextResponse.json({ slots: [], availableDates: [], sectors: [], policy: null, disabled: true });
@@ -90,7 +121,9 @@ export async function GET(request: Request) {
     if (!datePattern.test(from) || !datePattern.test(to) || from > to) {
       return NextResponse.json({ error: "Indicá un rango de fechas válido" }, { status: 400 });
     }
-    const rangeDays = Math.round((reservationDateValue(to).getTime() - reservationDateValue(from).getTime()) / 86_400_000);
+    const rangeDays = Math.round(
+      (reservationDateValue(to).getTime() - reservationDateValue(from).getTime()) / 86_400_000,
+    );
     if (rangeDays > 62) {
       return NextResponse.json({ error: "El rango de disponibilidad es demasiado amplio" }, { status: 400 });
     }
@@ -125,7 +158,11 @@ export async function GET(request: Request) {
     sector: params.get("sector"),
     timeZone,
   });
-  return NextResponse.json({ slots: result.slots, hasAvailability: result.hasAvailability, ...availabilityMetadata(result) });
+  return NextResponse.json({
+    slots: result.slots,
+    hasAvailability: result.hasAvailability,
+    ...availabilityMetadata(result),
+  });
 }
 
 /** @summary Valida y crea una reserva bajo bloqueo, recalculando exactamente la misma disponibilidad. */
@@ -137,8 +174,13 @@ export async function POST(request: Request) {
   if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
 
   const tenant = await getDefaultTenant();
-  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || "";
-  if (routeBranchSlug && parsed.data.branchSlug && parsed.data.branchSlug.toLocaleLowerCase("es") !== routeBranchSlug) {
+  const routeBranchSlug =
+    request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || "";
+  if (
+    routeBranchSlug &&
+    parsed.data.branchSlug &&
+    parsed.data.branchSlug.toLocaleLowerCase("es") !== routeBranchSlug
+  ) {
     return NextResponse.json({ error: "La sucursal de la reserva no coincide con la URL" }, { status: 409 });
   }
   const branch = await resolveReservationBranch(tenant.id, routeBranchSlug || parsed.data.branchSlug || "");
@@ -157,11 +199,16 @@ export async function POST(request: Request) {
     timeZone,
   });
   if (!initialAvailability.settings.enabled) {
-    return NextResponse.json({ error: "Las reservas online no están disponibles temporalmente" }, { status: 503 });
+    return NextResponse.json(
+      { error: "Las reservas online no están disponibles temporalmente" },
+      { status: 503 },
+    );
   }
   if (parsed.data.partySize > initialAvailability.settings.maximumPartySize) {
     return NextResponse.json(
-      { error: `Para grupos de más de ${initialAvailability.settings.maximumPartySize} personas, contactanos directamente.` },
+      {
+        error: `Para grupos de más de ${initialAvailability.settings.maximumPartySize} personas, contactanos directamente.`,
+      },
       { status: 400 },
     );
   }
@@ -242,7 +289,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof ReservationCapacityError) {
-      return NextResponse.json({ error: "La franja seleccionada ya no tiene capacidad suficiente" }, { status: 409 });
+      return NextResponse.json(
+        { error: "La franja seleccionada ya no tiene capacidad suficiente" },
+        { status: 409 },
+      );
     }
     return NextResponse.json({ error: "No se pudo concretar la reserva" }, { status: 409 });
   }

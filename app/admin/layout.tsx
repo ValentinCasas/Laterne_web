@@ -3,6 +3,9 @@ import { requirePermission } from "@/lib/auth";
 import { publicTenantUrl } from "@/lib/domains";
 import type { Metadata } from "next";
 
+/**
+ * @summary Genera los metadatos de la vista para el tenant autorizado.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const context = await requirePermission("admin.access");
   return {

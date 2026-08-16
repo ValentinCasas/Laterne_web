@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminTablesPage() {
   const context = await requirePermission("table.manage");
   const activeId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
-  const branchScope = activeId ? { branchId: activeId } : { branchId: { in: context.branches.map((branch) => branch.id) } };
+  const branchScope = activeId
+    ? { branchId: activeId }
+    : { branchId: { in: context.branches.map((branch) => branch.id) } };
   const [tables, branches] = await Promise.all([
     prisma.diningTable.findMany({
       where: { tenantId: context.tenant.id, ...branchScope },
@@ -24,7 +26,11 @@ export default async function AdminTablesPage() {
       orderBy: [{ sector: "asc" }, { name: "asc" }],
     }),
     prisma.branch.findMany({
-      where: { tenantId: context.tenant.id, active: true, id: { in: context.branches.map((branch) => branch.id) } },
+      where: {
+        tenantId: context.tenant.id,
+        active: true,
+        id: { in: context.branches.map((branch) => branch.id) },
+      },
       select: { id: true, name: true },
       orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
     }),

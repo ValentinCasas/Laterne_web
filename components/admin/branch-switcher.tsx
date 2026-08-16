@@ -29,10 +29,13 @@ export function BranchSwitcher({
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
 
+  /**
+   * @summary Navega a la misma sección con la sucursal seleccionada.
+   */
   function navigate(branchSlug?: string) {
     const destination = switchAdminBranchPath(pathname, branchSlug);
     const query = new URLSearchParams(searchParams.toString());
-    // branchId era la identidad legacy de la sucursal; ya no debe sobrevivir en la URL.
+    // branchId era la identidad heredada de la sucursal; ya no debe sobrevivir en la URL.
     query.delete("branchId");
     const suffix = query.size ? `?${query.toString()}` : "";
     setOpen(false);
@@ -54,7 +57,7 @@ export function BranchSwitcher({
             ? consolidatedAvailable
               ? "Todas las sucursales"
               : "Elegí sucursal"
-            : activeBranchName ?? branches.find((b) => b.id === activeBranchId)?.name ?? "Elegí sucursal"}
+            : (activeBranchName ?? branches.find((b) => b.id === activeBranchId)?.name ?? "Elegí sucursal")}
         </span>
         <span className="shrink-0 text-[10px] text-zinc-500">▼</span>
       </button>

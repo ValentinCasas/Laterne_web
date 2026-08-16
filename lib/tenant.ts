@@ -68,7 +68,7 @@ export const getDefaultTenant = cache(async () => {
   const resolved = await resolveTenantByHost(host);
   if (resolved) return resolved;
 
-  // Compatibilidad temporal para rutas legacy durante desarrollo. Las rutas nuevas
+  // Compatibilidad temporal para rutas heredadas durante desarrollo. Las rutas nuevas
   // siempre llevan /t/{tenant} y no dependen de DEV_TENANT_SLUG.
   if (process.env.NODE_ENV === "development" && isLocalDevelopmentHost(host) && DEV_TENANT_SLUG) {
     const originalPath = requestHeaders.get("x-menuclick-original-path") ?? "";
@@ -81,9 +81,4 @@ export const getDefaultTenant = cache(async () => {
   }
 
   throw new UnknownHostError(host);
-});
-
-/** @summary Busca un negocio activo mediante su identificador público legible. */
-export const getTenantBySlug = cache(async (slug: string) => {
-  return prisma.tenant.findFirst({ where: { slug, ...publicTenantWhere() } });
 });

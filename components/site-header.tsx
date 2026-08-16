@@ -36,6 +36,9 @@ const mobileLinks: ReadonlyArray<readonly [string, string]> = [
   ...directLinks,
 ];
 
+/**
+ * @summary Obtiene un identificador estable para un grupo de navegación.
+ */
 function getGroupId(pathname: string | null) {
   if (!pathname) return null;
   for (const group of navGroups) {
@@ -60,9 +63,10 @@ export function SiteHeader({
 }) {
   const pathname = usePathname();
   const routeContext = parseCanonicalPath(pathname);
-  const logicalPath = routeContext.surface === "tenant-public"
-    ? routeContext.logicalPath.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/"
-    : pathname.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/";
+  const logicalPath =
+    routeContext.surface === "tenant-public"
+      ? routeContext.logicalPath.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/"
+      : pathname.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/";
   const tenantHref = (href: string) =>
     publicHrefForVisiblePath(pathname, tenantSlug, href, routeContext.branchSlug ?? branchSlug);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -81,12 +85,18 @@ export function SiteHeader({
   }, [mobileOpen]);
 
   useEffect(() => {
+    /**
+     * @summary Cierra la navegación móvil cuando el usuario interactúa fuera de ella.
+     */
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (!headerRef.current?.contains(event.target as Node)) {
         setOpenGroup(null);
       }
     }
 
+    /**
+     * @summary Cierra la navegación móvil al presionar Escape.
+     */
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpenGroup(null);
@@ -117,7 +127,13 @@ export function SiteHeader({
           className="flex items-center gap-2 text-2xl font-black tracking-tight text-pink-400 transition hover:text-white"
         >
           {logoUrl && (
-            <Image src={logoUrl} alt={`Logo de ${brandName}`} width={36} height={36} className="h-9 w-auto object-contain" />
+            <Image
+              src={logoUrl}
+              alt={`Logo de ${brandName}`}
+              width={36}
+              height={36}
+              className="h-9 w-auto object-contain"
+            />
           )}
           <span>
             {brandName}
@@ -132,7 +148,9 @@ export function SiteHeader({
                 <button
                   type="button"
                   className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold transition ${
-                    activeGroup === group.id ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"
+                    activeGroup === group.id
+                      ? "bg-white/10 text-white"
+                      : "text-white/70 hover:bg-white/5 hover:text-white"
                   }`}
                   onClick={() => setOpenGroup(openGroup === group.id ? null : group.id)}
                   aria-expanded={openGroup === group.id}
@@ -194,63 +212,85 @@ export function SiteHeader({
         </button>
       </nav>
 
-      {mobileOpen && createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[190] bg-black/70 backdrop-blur-sm lg:hidden"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            id="mobile-navigation"
-            className="fixed inset-y-0 right-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-l border-white/10 bg-[#09090b] shadow-2xl shadow-black/50 lg:hidden"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menú de navegación"
-          >
-            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 pt-[env(safe-area-inset-top)]">
-              <Link href={tenantHref("/")} className="flex items-center gap-2 text-xl font-black tracking-tight text-pink-400 transition hover:text-white">
-                {logoUrl && (
-                  <Image src={logoUrl} alt={`Logo de ${brandName}`} width={30} height={30} className="h-8 w-auto object-contain" />
-                )}
-                <span>
-                  {brandName}
-                  <span className="text-white">&.</span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-lg text-white transition hover:bg-white/10"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Cerrar navegación"
-              >
-                ×
-              </button>
-            </div>
+      {mobileOpen &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[190] bg-black/70 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              id="mobile-navigation"
+              className="fixed inset-y-0 right-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-l border-white/10 bg-[#09090b] shadow-2xl shadow-black/50 lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menú de navegación"
+            >
+              <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 pt-[env(safe-area-inset-top)]">
+                <Link
+                  href={tenantHref("/")}
+                  className="flex items-center gap-2 text-xl font-black tracking-tight text-pink-400 transition hover:text-white"
+                >
+                  {logoUrl && (
+                    <Image
+                      src={logoUrl}
+                      alt={`Logo de ${brandName}`}
+                      width={30}
+                      height={30}
+                      className="h-8 w-auto object-contain"
+                    />
+                  )}
+                  <span>
+                    {brandName}
+                    <span className="text-white">&.</span>
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-lg text-white transition hover:bg-white/10"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Cerrar navegación"
+                >
+                  ×
+                </button>
+              </div>
 
-            <div className="flex flex-1 flex-col overflow-y-auto p-4">
-              <nav className="grid gap-1" aria-label="Secciones del sitio">
-                {mobileLinks.map(([href, label]) => (
+              <div className="flex flex-1 flex-col overflow-y-auto p-4">
+                <nav className="grid gap-1" aria-label="Secciones del sitio">
+                  {mobileLinks.map(([href, label]) => (
+                    <Link
+                      key={`${href}-${label}`}
+                      href={tenantHref(href)}
+                      onClick={() => setMobileOpen(false)}
+                      className="block rounded-2xl px-4 py-3 text-base font-semibold text-white/90 transition hover:bg-white/10 hover:text-white"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </nav>
+
+                <div className="mt-auto grid grid-cols-2 gap-2 border-t border-white/10 pt-5">
                   <Link
-                    key={`${href}-${label}`}
-                    href={tenantHref(href)}
+                    href={tenantHref("/carta")}
                     onClick={() => setMobileOpen(false)}
-                    className="block rounded-2xl px-4 py-3 text-base font-semibold text-white/90 transition hover:bg-white/10 hover:text-white"
+                    className="btn !px-3 !py-3 text-center text-sm"
                   >
-                    {label}
+                    Ver carta
                   </Link>
-                ))}
-              </nav>
-
-              <div className="mt-auto grid grid-cols-2 gap-2 border-t border-white/10 pt-5">
-                <Link href={tenantHref("/carta")} onClick={() => setMobileOpen(false)} className="btn !px-3 !py-3 text-center text-sm">Ver carta</Link>
-                <Link href={tenantHref("/reservas")} onClick={() => setMobileOpen(false)} className="btn btn-secondary !px-3 !py-3 text-center text-sm">Reservar</Link>
+                  <Link
+                    href={tenantHref("/reservas")}
+                    onClick={() => setMobileOpen(false)}
+                    className="btn btn-secondary !px-3 !py-3 text-center text-sm"
+                  >
+                    Reservar
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        </>,
-        document.body,
-      )}
+          </>,
+          document.body,
+        )}
     </header>
   );
 }

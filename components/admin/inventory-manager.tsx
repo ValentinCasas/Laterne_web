@@ -98,13 +98,11 @@ export function InventoryManager({
           .toLocaleLowerCase("es")
           .includes(query.trim().toLocaleLowerCase("es"));
         const matchesCategory =
-          categoryId === "all" ||
-          product.categories.some((entry) => entry.category.id === categoryId);
+          categoryId === "all" || product.categories.some((entry) => entry.category.id === categoryId);
         const matchesStatus = status === "all" || state === status;
         const low = state === "low" || state === "out";
         const tracked = stock?.tracked ?? false;
-        const matchesControl =
-          control === "all" || (control === "active" ? tracked : !tracked);
+        const matchesControl = control === "all" || (control === "active" ? tracked : !tracked);
         return matchesQuery && matchesCategory && matchesStatus && (!onlyLow || low) && matchesControl;
       }),
     [categoryId, control, onlyLow, products, query, status, stockState],
@@ -161,12 +159,18 @@ export function InventoryManager({
     });
   }
 
+  /**
+   * @summary Expande o contrae todos los grupos de productos del inventario.
+   */
   function setAllGroups(collapse: boolean) {
     setCollapsed(collapse ? new Set(groups.map(([name]) => name)) : new Set());
   }
 
   /** @summary Guarda el nivel indicado y solicita un motivo para conservar trazabilidad del ajuste. */
-  async function save(product: Product, values: { tracked: boolean; current: string; minimum: string; unit: string }) {
+  async function save(
+    product: Product,
+    values: { tracked: boolean; current: string; minimum: string; unit: string },
+  ) {
     const reason = await Swal.fire({
       title: "Motivo del ajuste",
       input: "text",
@@ -227,7 +231,12 @@ export function InventoryManager({
   const productMovements = (product: Product) =>
     movements.filter((movement) => movement.stock.productId === product.id);
 
-  const kpis: Array<{ kind: "total" | "withControl" | "low" | "out"; label: string; value: number; color: string }> = [
+  const kpis: Array<{
+    kind: "total" | "withControl" | "low" | "out";
+    label: string;
+    value: number;
+    color: string;
+  }> = [
     { kind: "total", label: "Productos", value: stats.total, color: "text-zinc-100" },
     { kind: "withControl", label: "Con control", value: stats.withControl, color: "text-sky-300" },
     { kind: "low", label: "Bajo mínimo", value: stats.low, color: "text-amber-300" },
@@ -334,10 +343,18 @@ export function InventoryManager({
 
       {groups.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-          <button className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:border-pink-500/40" onClick={() => setAllGroups(false)} type="button">
+          <button
+            className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:border-pink-500/40"
+            onClick={() => setAllGroups(false)}
+            type="button"
+          >
             Expandir todas
           </button>
-          <button className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:border-pink-500/40" onClick={() => setAllGroups(true)} type="button">
+          <button
+            className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:border-pink-500/40"
+            onClick={() => setAllGroups(true)}
+            type="button"
+          >
             Contraer todas
           </button>
         </div>
@@ -347,22 +364,27 @@ export function InventoryManager({
         {groups.map(([groupName, groupProducts]) => {
           const isCollapsed = collapsed.has(groupName);
           return (
-            <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]" key={groupName}>
+            <section
+              className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]"
+              key={groupName}
+            >
               <button
                 className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left"
                 onClick={() => toggleGroup(groupName)}
                 type="button"
               >
                 <span className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-[var(--admin-muted)]">
-                  <span className={`inline-block transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>▾</span>
+                  <span className={`inline-block transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>
+                    ▾
+                  </span>
                   {groupName}
                 </span>
                 <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] tabular-nums text-zinc-400">
                   {groupProducts.length}
                 </span>
               </button>
-              {!isCollapsed && (
-                view === "list" ? (
+              {!isCollapsed &&
+                (view === "list" ? (
                   <div className="divide-y divide-white/10">
                     {groupProducts.map((product) => {
                       const { stock, state } = stockState(product);
@@ -397,20 +419,47 @@ export function InventoryManager({
                                 )}
                               </div>
                               <div className="flex items-center gap-4 text-sm tabular-nums">
-                                <span className="text-zinc-400">Stock <strong className="text-white">{Number(stock?.current ?? 0)}</strong></span>
-                                <span className="text-zinc-500">Mín <strong className="text-zinc-300">{Number(stock?.minimum ?? 0)}</strong></span>
+                                <span className="text-zinc-400">
+                                  Stock <strong className="text-white">{Number(stock?.current ?? 0)}</strong>
+                                </span>
+                                <span className="text-zinc-500">
+                                  Mín <strong className="text-zinc-300">{Number(stock?.minimum ?? 0)}</strong>
+                                </span>
                               </div>
                               <span className="text-xs text-zinc-500">{stock?.unit ?? "unidad"}</span>
-                              <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusColor(stock?.tracked ? state : "all")}`}>{label}</span>
-                              <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => setMovementsFor(product)} type="button">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-black ${statusColor(stock?.tracked ? state : "all")}`}
+                              >
+                                {label}
+                              </span>
+                              <button
+                                className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-white/10"
+                                onClick={() => setMovementsFor(product)}
+                                type="button"
+                              >
                                 Ver movimientos
                               </button>
                               <div className="flex gap-1.5">
-                                <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-pink-500/20" onClick={() => setEditingId(product.id)} type="button">
+                                <button
+                                  className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-pink-500/20"
+                                  onClick={() => setEditingId(product.id)}
+                                  type="button"
+                                >
                                   Ajustar
                                 </button>
                                 <label className="flex items-center gap-1.5 text-xs text-zinc-400">
-                                  <input type="checkbox" checked={stock?.tracked ?? false} onChange={(event) => void save(product, { tracked: event.target.checked, current: String(stock?.current ?? 0), minimum: String(stock?.minimum ?? 0), unit: stock?.unit ?? "unidad" })} />
+                                  <input
+                                    type="checkbox"
+                                    checked={stock?.tracked ?? false}
+                                    onChange={(event) =>
+                                      void save(product, {
+                                        tracked: event.target.checked,
+                                        current: String(stock?.current ?? 0),
+                                        minimum: String(stock?.minimum ?? 0),
+                                        unit: stock?.unit ?? "unidad",
+                                      })
+                                    }
+                                  />
                                   Auto
                                 </label>
                               </div>
@@ -432,7 +481,10 @@ export function InventoryManager({
                             ? "Bajo mínimo"
                             : "Normal";
                       return (
-                        <article className={`rounded-2xl border p-4 ${state === "low" ? "border-amber-500/30 bg-amber-500/[.06]" : state === "out" ? "border-red-500/30 bg-red-500/[.05]" : "border-white/10 bg-white/[.02]"}`} key={product.id}>
+                        <article
+                          className={`rounded-2xl border p-4 ${state === "low" ? "border-amber-500/30 bg-amber-500/[.06]" : state === "out" ? "border-red-500/30 bg-red-500/[.05]" : "border-white/10 bg-white/[.02]"}`}
+                          key={product.id}
+                        >
                           <h3 className="truncate font-black">{product.name}</h3>
                           <p className="mt-0.5 truncate text-xs text-zinc-500">
                             {product.categories[0]?.category.name ?? "Sin categoría"}
@@ -440,23 +492,39 @@ export function InventoryManager({
                           <dl className="mt-4 grid grid-cols-3 gap-2">
                             <div>
                               <dt className="text-[10px] uppercase text-zinc-600">Stock</dt>
-                              <dd className="text-lg font-black tabular-nums">{Number(stock?.current ?? 0)}</dd>
+                              <dd className="text-lg font-black tabular-nums">
+                                {Number(stock?.current ?? 0)}
+                              </dd>
                             </div>
                             <div>
                               <dt className="text-[10px] uppercase text-zinc-600">Mínimo</dt>
-                              <dd className="text-lg font-black tabular-nums">{Number(stock?.minimum ?? 0)}</dd>
+                              <dd className="text-lg font-black tabular-nums">
+                                {Number(stock?.minimum ?? 0)}
+                              </dd>
                             </div>
                             <div>
                               <dt className="text-[10px] uppercase text-zinc-600">Unidad</dt>
                               <dd className="truncate text-lg font-black">{stock?.unit ?? "unidad"}</dd>
                             </div>
                           </dl>
-                          <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-black ${statusColor(stock?.tracked ? state : "all")}`}>{label}</span>
+                          <span
+                            className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-black ${statusColor(stock?.tracked ? state : "all")}`}
+                          >
+                            {label}
+                          </span>
                           <div className="mt-4 flex gap-2">
-                            <button className="btn btn-secondary flex-1 py-2 text-xs" onClick={() => setEditingId(product.id)} type="button">
+                            <button
+                              className="btn btn-secondary flex-1 py-2 text-xs"
+                              onClick={() => setEditingId(product.id)}
+                              type="button"
+                            >
                               Ajustar
                             </button>
-                            <button className="btn btn-secondary flex-1 py-2 text-xs" onClick={() => setMovementsFor(product)} type="button">
+                            <button
+                              className="btn btn-secondary flex-1 py-2 text-xs"
+                              onClick={() => setMovementsFor(product)}
+                              type="button"
+                            >
                               Movimientos
                             </button>
                           </div>
@@ -464,8 +532,7 @@ export function InventoryManager({
                       );
                     })}
                   </div>
-                )
-              )}
+                ))}
             </section>
           );
         })}
@@ -477,14 +544,25 @@ export function InventoryManager({
       </div>
 
       {movementsFor && (
-        <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4" onClick={() => setMovementsFor(null)}>
-          <article className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950 p-6" onClick={(event) => event.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4"
+          onClick={() => setMovementsFor(null)}
+        >
+          <article
+            className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950 p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="section-eyebrow">Historial de stock</p>
                 <h2 className="mt-1 text-2xl font-black">{movementsFor.name}</h2>
               </div>
-              <button className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl" onClick={() => setMovementsFor(null)} type="button" aria-label="Cerrar">
+              <button
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+                onClick={() => setMovementsFor(null)}
+                type="button"
+                aria-label="Cerrar"
+              >
                 ×
               </button>
             </div>
@@ -495,7 +573,9 @@ export function InventoryManager({
                     <p className="text-sm font-bold">
                       {stockMovementTypeLabels[movement.type] ?? "Movimiento"}
                     </p>
-                    <p className={`text-sm font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    <p
+                      className={`text-sm font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}
+                    >
                       {Number(movement.quantity) > 0 ? "+" : ""}
                       {Number(movement.quantity)}
                     </p>
@@ -550,21 +630,40 @@ function ProductEditRow({
       </div>
       <label className="text-xs font-bold text-zinc-400">
         Actual
-        <input className="input mt-1 py-2" type="number" min="0" step="0.001" value={current} onChange={(event) => setCurrent(event.target.value)} />
+        <input
+          className="input mt-1 py-2"
+          type="number"
+          min="0"
+          step="0.001"
+          value={current}
+          onChange={(event) => setCurrent(event.target.value)}
+        />
       </label>
       <label className="text-xs font-bold text-zinc-400">
         Mínimo
-        <input className="input mt-1 py-2" type="number" min="0" step="0.001" value={minimum} onChange={(event) => setMinimum(event.target.value)} />
+        <input
+          className="input mt-1 py-2"
+          type="number"
+          min="0"
+          step="0.001"
+          value={minimum}
+          onChange={(event) => setMinimum(event.target.value)}
+        />
       </label>
       <label className="text-xs font-bold text-zinc-400">
         Unidad
         <input className="input mt-1 py-2" value={unit} onChange={(event) => setUnit(event.target.value)} />
       </label>
       <label className="flex items-center gap-2 text-xs font-bold text-zinc-400">
-        <input type="checkbox" checked={tracked} onChange={(event) => setTracked(event.target.checked)} /> Control automático
+        <input type="checkbox" checked={tracked} onChange={(event) => setTracked(event.target.checked)} />{" "}
+        Control automático
       </label>
       <div className="flex gap-2">
-        <button className="btn py-2 text-sm" onClick={() => onSave({ tracked, current, minimum, unit })} type="button">
+        <button
+          className="btn py-2 text-sm"
+          onClick={() => onSave({ tracked, current, minimum, unit })}
+          type="button"
+        >
           Guardar
         </button>
         <button className="btn btn-secondary py-2 text-sm" onClick={onCancel} type="button">

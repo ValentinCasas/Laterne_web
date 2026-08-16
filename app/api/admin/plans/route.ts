@@ -6,6 +6,9 @@ import { authorizeSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 
+/**
+ * @summary Valida la entrada relacionada con los planes.
+ */
 const planSchema = z.object({
   name: z.string().trim().min(3).max(140),
   slug: z.string().trim().max(100).optional(),

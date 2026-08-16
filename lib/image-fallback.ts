@@ -17,10 +17,12 @@ export const DEFAULT_IMAGE_PLACEHOLDERS = new Set([
 ]);
 
 /**
- * Maneja el error de carga de una imagen con un único reintento hacia un fallback.
+ * @summary Sustituye una imagen fallida por el recurso de respaldo apropiado.
  *
- * - Primera vez: reemplaza `src` por `data-fallback-src` (o el fallback de producto).
- * - Si el fallback también falla: no se vuelve a intentar (flag `data-image-error-handled`).
+ * Maneja el error de carga de una imagen con un único reintento hacia un recurso de respaldo.
+ *
+ * - Primera vez: reemplaza `src` por `data-fallback-src` (o el respaldo de producto).
+ * - Si el respaldo también falla: no se vuelve a intentar (marca `data-image-error-handled`).
  *
  * No usa estado ni dispara renders, así que nunca puede provocar un loop
  * `onError → setState → render → misma src rota`. Usado con `<Image onError={handleImageError}>`.

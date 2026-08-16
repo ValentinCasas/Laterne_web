@@ -4,6 +4,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
+/**
+ * @summary Valida la entrada relacionada con el soporte.
+ */
 const ticketInput = z.object({
   customerName: z.string().trim().min(2).max(160),
   email: z

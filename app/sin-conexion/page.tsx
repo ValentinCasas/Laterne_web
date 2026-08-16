@@ -15,11 +15,16 @@ export default async function OfflinePage() {
         <p className="section-eyebrow mt-5">Sin conexión</p>
         <h1 className="mt-2 text-4xl font-black">La red se tomó una pausa.</h1>
         <p className="mt-4 text-zinc-400">
-          Podés intentar volver a la carta disponible en este dispositivo o reintentar cuando regrese internet.
+          Podés intentar volver a la carta disponible en este dispositivo o reintentar cuando regrese
+          internet.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Link className="btn" href={href("/carta")}>Abrir carta</Link>
-          <Link className="btn btn-secondary" href={href("/")}>Reintentar</Link>
+          <Link className="btn" href={href("/carta")}>
+            Abrir carta
+          </Link>
+          <Link className="btn btn-secondary" href={href("/")}>
+            Reintentar
+          </Link>
         </div>
       </section>
     </main>

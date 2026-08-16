@@ -16,14 +16,30 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
   const adminHref = (href: string) =>
-    adminHrefForContext(context.tenant.slug, href, context.activeBranchId != null && context.activeBranchId > 0
-      ? context.branches.find((branch) => branch.id === context.activeBranchId)?.slug
-      : undefined) as Route;
+    adminHrefForContext(
+      context.tenant.slug,
+      href,
+      context.activeBranchId != null && context.activeBranchId > 0
+        ? context.branches.find((branch) => branch.id === context.activeBranchId)?.slug
+        : undefined,
+    ) as Route;
 
   let products: Array<{ id: number; name: string; price: string | null; status: string }> = [];
   let categories: Array<{ id: number; name: string }> = [];
-  let customers: Array<{ id: number; name: string; email: string | null; phone: string | null; points: number }> = [];
-  let orders: Array<{ id: number; reference: string; customerName: string; status: string; orderType: string }> = [];
+  let customers: Array<{
+    id: number;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    points: number;
+  }> = [];
+  let orders: Array<{
+    id: number;
+    reference: string;
+    customerName: string;
+    status: string;
+    orderType: string;
+  }> = [];
   let reservations: Array<{ id: number; reference: string; customerName: string; status: string }> = [];
 
   if (query) {
@@ -32,14 +48,27 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     const [foundProducts, foundCategories, foundCustomers, foundOrders, foundReservations] =
       await Promise.all([
         context.permissions.includes("product.manage")
-          ? prisma.product.findMany({
-              where: { ...branchProductWhere(tenantId, context.activeBranchId), name: contains },
-              select: { id: true, name: true, price: true, status: true },
-              take: 12,
-            }).then((items) => items.map((item) => ({ id: item.id, name: item.name, price: item.price === null ? null : item.price.toString(), status: item.status })))
+          ? prisma.product
+              .findMany({
+                where: { ...branchProductWhere(tenantId, context.activeBranchId), name: contains },
+                select: { id: true, name: true, price: true, status: true },
+                take: 12,
+              })
+              .then((items) =>
+                items.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  price: item.price === null ? null : item.price.toString(),
+                  status: item.status,
+                })),
+              )
           : Promise.resolve([]),
         context.permissions.includes("product.manage")
-          ? prisma.category.findMany({ where: { tenantId, name: contains }, select: { id: true, name: true }, take: 8 })
+          ? prisma.category.findMany({
+              where: { tenantId, name: contains },
+              select: { id: true, name: true },
+              take: 8,
+            })
           : Promise.resolve([]),
         context.permissions.includes("customer.manage")
           ? prisma.loyaltyCustomer.findMany({
@@ -113,7 +142,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <>
                   <strong className="block truncate">{item.name}</strong>
                   <span className="mt-0.5 block text-xs text-zinc-500">
-                    {item.price ? `$${Number(item.price).toLocaleString("es-AR")}` : "Sin precio"} · {item.status}
+                    {item.price ? `$${Number(item.price).toLocaleString("es-AR")}` : "Sin precio"} ·{" "}
+                    {item.status}
                   </span>
                 </>
               ),
@@ -163,7 +193,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   <strong className="block truncate">
                     {item.reference} · {item.customerName}
                   </strong>
-                  <span className="mt-0.5 block text-xs text-zinc-500">{item.status.replaceAll("_", " ")}</span>
+                  <span className="mt-0.5 block text-xs text-zinc-500">
+                    {item.status.replaceAll("_", " ")}
+                  </span>
                 </>
               ),
             },

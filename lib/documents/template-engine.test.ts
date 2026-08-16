@@ -50,22 +50,25 @@ const data: InvoiceTemplateData = {
 };
 
 describe("motor seguro de plantillas DOCX", () => {
-  it.each(["classic", "modern"] as const)("valida y rellena la plantilla %s con 30 productos e imágenes", async (variant) => {
-    const template = await buildExampleDocumentTemplate(variant);
-    const commands = await validateDocumentTemplate(template);
-    expect(commands.some((command) => command.type === "FOR")).toBe(true);
-    expect(commands.filter((command) => command.type === "IMAGE")).toHaveLength(2);
+  it.each(["classic", "modern"] as const)(
+    "valida y rellena la plantilla %s con 30 productos e imágenes",
+    async (variant) => {
+      const template = await buildExampleDocumentTemplate(variant);
+      const commands = await validateDocumentTemplate(template);
+      expect(commands.some((command) => command.type === "FOR")).toBe(true);
+      expect(commands.filter((command) => command.type === "IMAGE")).toHaveLength(2);
 
-    const rendered = await renderDocumentTemplate({
-      template,
-      data,
-      businessLogo: { width: 1.8, height: 1.8, data: pixelData, extension: ".png", alt: "Logo" },
-      documentQr: { width: 2.4, height: 2.4, data: pixelData, extension: ".png", alt: "QR" },
-    });
-    expect(rendered[0]).toBe(0x50);
-    expect(rendered[1]).toBe(0x4b);
-    expect(rendered.byteLength).toBeGreaterThan(template.byteLength / 2);
-  });
+      const rendered = await renderDocumentTemplate({
+        template,
+        data,
+        businessLogo: { width: 1.8, height: 1.8, data: pixelData, extension: ".png", alt: "Logo" },
+        documentQr: { width: 2.4, height: 2.4, data: pixelData, extension: ".png", alt: "QR" },
+      });
+      expect(rendered[0]).toBe(0x50);
+      expect(rendered[1]).toBe(0x4b);
+      expect(rendered.byteLength).toBeGreaterThan(template.byteLength / 2);
+    },
+  );
 
   it("rellena un comprobante de un solo producto", async () => {
     const template = await buildExampleDocumentTemplate("classic");
@@ -85,7 +88,7 @@ describe("motor seguro de plantillas DOCX", () => {
 
   it("rechaza comandos arbitrarios aunque el archivo sea un DOCX legítimo", async () => {
     const document = new Document({
-      sections: [{ children: [new Paragraph({ children: [new TextRun("{{EXEC process.exit()}}") ] })] }],
+      sections: [{ children: [new Paragraph({ children: [new TextRun("{{EXEC process.exit()}}")] })] }],
     });
     const bytes = await Packer.toBuffer(document);
     await expect(validateDocumentTemplate(bytes)).rejects.toThrow(/no admitidos/i);

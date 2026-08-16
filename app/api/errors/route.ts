@@ -4,6 +4,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
+/**
+ * @summary Valida la entrada relacionada con los errores registrados.
+ */
 const errorInput = z.object({
   source: z.enum(["client-boundary", "global-boundary", "service-worker"]),
   message: z.string().trim().min(1).max(500),

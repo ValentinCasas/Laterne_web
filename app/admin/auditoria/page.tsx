@@ -14,18 +14,15 @@ function formatAuditValue(value: unknown) {
 }
 
 /** @summary Presenta las operaciones administrativas del negocio paginadas para su revisión. */
-export default async function AuditPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
+export default async function AuditPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const context = await requirePermission("audit.read");
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const auditFilter = activeBranchWhere(context.tenant.id, context.activeBranchId);
-  const activeBranch = context.activeBranchId && context.activeBranchId > 0
-    ? context.branches.find((branch) => branch.id === context.activeBranchId)
-    : undefined;
+  const activeBranch =
+    context.activeBranchId && context.activeBranchId > 0
+      ? context.branches.find((branch) => branch.id === context.activeBranchId)
+      : undefined;
   const auditHref = (targetPage: number): Route =>
     `${adminHrefForContext(context.tenant.slug, "/admin/auditoria", activeBranch?.slug)}?page=${targetPage}` as Route;
   const [logs, total] = await Promise.all([

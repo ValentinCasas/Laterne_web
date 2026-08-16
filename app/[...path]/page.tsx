@@ -6,9 +6,13 @@ import { headers } from "next/headers";
 import { classifyHost } from "@/lib/domains";
 
 /** @summary Pide al servidor tratar los recursos estáticos antes que esta página. */
-const STATIC_PATH_PATTERN = /\.(?:avif|css|gif|ico|jpe?g|js|json|map|pdf|png|svg|txt|webp|woff2?|mp4|webm|usdz|glb|gltf)(?:\?.*)?$/i;
+const STATIC_PATH_PATTERN =
+  /\.(?:avif|css|gif|ico|jpe?g|js|json|map|pdf|png|svg|txt|webp|woff2?|mp4|webm|usdz|glb|gltf)(?:\?.*)?$/i;
 const STATIC_DIRECTORY_PREFIXES = ["/_next/", "/images/", "/icons/", "/models/", "/favicon", "/manifest"];
 
+/**
+ * @summary Detecta recursos estáticos para evitar tratarlos como redirecciones administrables.
+ */
 function looksLikeStaticAsset(pathname: string) {
   if (STATIC_PATH_PATTERN.test(pathname)) return true;
   return STATIC_DIRECTORY_PREFIXES.some((prefix) => pathname.startsWith(prefix));

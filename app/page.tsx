@@ -1,5 +1,5 @@
 import { MenuClickHome } from "@/components/commercial/menuclick-home";
-import { LandingRenderer } from "@/components/landing/landing-renderer";
+import { LandingRenderer } from "@/components/landing-renderer";
 import { classifyHost } from "@/lib/domains";
 import { loadTenantLandingData } from "@/lib/landing-data";
 import { prisma } from "@/lib/prisma";
@@ -16,10 +16,46 @@ export default async function LandingPage() {
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   if (routeKind.startsWith("platform") || (!routeKind && classifyHost(host).kind === "platform")) {
     const [plans, cases] = await Promise.all([
-      prisma.plan.findMany({ where: { active: true }, include: { prices: { where: { active: true }, orderBy: { validFrom: "desc" }, take: 1 } }, orderBy: [{ type: "asc" }, { displayOrder: "asc" }], take: 4 }),
-      prisma.successCase.findMany({ where: { isPublicCaseStudy: true, status: "published" }, include: { tenant: { select: { name: true } } }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] }),
+      prisma.plan.findMany({
+        where: { active: true },
+        include: { prices: { where: { active: true }, orderBy: { validFrom: "desc" }, take: 1 } },
+        orderBy: [{ type: "asc" }, { displayOrder: "asc" }],
+        take: 4,
+      }),
+      prisma.successCase.findMany({
+        where: { isPublicCaseStudy: true, status: "published" },
+        include: { tenant: { select: { name: true } } },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      }),
     ]);
-    return <MenuClickHome plans={plans.map((plan) => ({ id: plan.id, slug: plan.slug, name: plan.name, summary: plan.summary, highlighted: plan.highlighted, price: plan.prices[0] ? { amount: plan.prices[0].amount ? Number(plan.prices[0].amount) : null, currency: plan.prices[0].currency, billingPeriod: plan.prices[0].billingPeriod } : null }))} cases={cases.map((item) => ({ id: item.id, slug: item.slug, businessName: item.businessName, businessType: item.businessType, location: item.location, coverUrl: item.coverUrl, results: item.results, tenantName: item.tenant.name }))} />;
+    return (
+      <MenuClickHome
+        plans={plans.map((plan) => ({
+          id: plan.id,
+          slug: plan.slug,
+          name: plan.name,
+          summary: plan.summary,
+          highlighted: plan.highlighted,
+          price: plan.prices[0]
+            ? {
+                amount: plan.prices[0].amount ? Number(plan.prices[0].amount) : null,
+                currency: plan.prices[0].currency,
+                billingPeriod: plan.prices[0].billingPeriod,
+              }
+            : null,
+        }))}
+        cases={cases.map((item) => ({
+          id: item.id,
+          slug: item.slug,
+          businessName: item.businessName,
+          businessType: item.businessType,
+          location: item.location,
+          coverUrl: item.coverUrl,
+          results: item.results,
+          tenantName: item.tenant.name,
+        }))}
+      />
+    );
   }
   const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
   const data = await loadTenantLandingData(tenant);

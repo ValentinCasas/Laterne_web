@@ -155,7 +155,11 @@ export function DataPortability() {
               ["reservations", "Reservas"],
               ["customers", "Clientes frecuentes"],
             ].map(([type, label]) => (
-              <a className="btn btn-secondary" href={scopedApiPath(pathname, `/api/admin/data/export?type=${type}`)} key={type}>
+              <a
+                className="btn btn-secondary"
+                href={scopedApiPath(pathname, `/api/admin/data/export?type=${type}`)}
+                key={type}
+              >
                 {label}
               </a>
             ))}
@@ -166,7 +170,10 @@ export function DataPortability() {
         </section>
         <section className="card p-5 sm:p-7">
           <h2 className="text-2xl font-black">Importar productos</h2>
-          <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href={scopedApiPath(pathname, "/api/admin/data/template")}>
+          <Link
+            className="mt-3 inline-block text-sm font-bold text-pink-300"
+            href={scopedApiPath(pathname, "/api/admin/data/template")}
+          >
             Descargar plantilla
           </Link>
           <label className="mt-5 grid min-h-32 cursor-pointer place-items-center rounded-2xl border border-dashed border-white/15 p-5 text-center">

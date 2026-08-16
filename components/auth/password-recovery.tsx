@@ -10,11 +10,12 @@ import { parseCanonicalPath, tenantPublicPath } from "@/lib/routes";
 export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
   const pathname = usePathname();
   const route = parseCanonicalPath(pathname);
-  const loginHref = route.surface === "platform-admin"
-    ? "/platform/login"
-    : route.tenantSlug
-      ? tenantPublicPath(route.tenantSlug, "/login")
-      : "/login";
+  const loginHref =
+    route.surface === "platform-admin"
+      ? "/platform/login"
+      : route.tenantSlug
+        ? tenantPublicPath(route.tenantSlug, "/login")
+        : "/login";
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [message, setMessage] = useState("");

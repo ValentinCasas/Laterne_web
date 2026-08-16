@@ -3,6 +3,9 @@ import { authorize } from "@/lib/auth";
 import { buildExampleDocumentTemplate } from "@/lib/documents/example-templates";
 import { DOCX_MIME } from "@/lib/documents/template-engine";
 
+/**
+ * @summary Devuelve datos de las plantillas documentales visibles para el contexto autorizado.
+ */
 export async function GET(request: Request) {
   const auth = await authorize("order.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });

@@ -14,7 +14,9 @@ export const dynamic = "force-dynamic";
 export default async function InvoicesPage() {
   const context = await requirePermission("order.manage");
   const activeId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
-  const branchScope = activeId ? { branchId: activeId } : { branchId: { in: context.branches.map((branch) => branch.id) } };
+  const branchScope = activeId
+    ? { branchId: activeId }
+    : { branchId: { in: context.branches.map((branch) => branch.id) } };
   const [invoices, orders, issuerSettings] = await Promise.all([
     prisma.invoiceRecord.findMany({
       where: { tenantId: context.tenant.id, ...branchScope },

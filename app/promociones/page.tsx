@@ -29,7 +29,10 @@ export function generateMetadata() {
 export default async function PromotionsPage() {
   const [tenant, route] = await Promise.all([getDefaultTenant(), requestRouteContext()]);
   const branch = route.branchSlug
-    ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: route.branchSlug, active: true }, select: { id: true } })
+    ? await prisma.branch.findFirst({
+        where: { tenantId: tenant.id, slug: route.branchSlug, active: true },
+        select: { id: true },
+      })
     : null;
   const now = new Date();
   const publicHref = (href: string) =>

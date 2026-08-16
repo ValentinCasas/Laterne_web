@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { ProductActions } from "@/components/menu/product-actions";
-import { ModelExperience } from "@/components/products/model-experience";
+import { ModelExperience } from "@/components/product-model-experience";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
@@ -55,7 +55,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 /** @summary Muestra información completa, etiquetas, precio y acciones de un producto individual. */
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const [product, tenant, route] = await Promise.all([getProduct(slug), getDefaultTenant(), requestRouteContext()]);
+  const [product, tenant, route] = await Promise.all([
+    getProduct(slug),
+    getDefaultTenant(),
+    requestRouteContext(),
+  ]);
   if (!product) notFound();
   const publicHref = (href: string) =>
     publicHrefForVisiblePath(route.originalPath, tenant.slug, href, route.branchSlug);

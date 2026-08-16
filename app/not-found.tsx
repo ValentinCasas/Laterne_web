@@ -9,7 +9,8 @@ export default async function NotFoundPage() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
-  const branchSlug = requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
+  const branchSlug =
+    requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const originalPath = requestHeaders.get("x-menuclick-original-path") || "/";
   const hostKind = classifyHost(host).kind;
   const tenantRequest = routeKind === "tenant-public" || hostKind === "tenant";
@@ -30,7 +31,9 @@ export default async function NotFoundPage() {
           <p className="text-8xl font-black text-zinc-800">404</p>
           <h1 className="mt-3 text-2xl font-bold text-zinc-100">Página no encontrada</h1>
           <p className="mt-3 text-sm text-zinc-500">El sitio o contenido solicitado no está disponible.</p>
-          <Link className="btn mt-6" href="/">Volver a MenuClick</Link>
+          <Link className="btn mt-6" href="/">
+            Volver a MenuClick
+          </Link>
         </section>
       </main>
     );

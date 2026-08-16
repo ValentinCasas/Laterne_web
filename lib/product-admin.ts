@@ -3,15 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { localModelUrl, modelOrientation, optionalMeasurement } from "@/lib/product-model";
 import { uniqueProductSlug } from "@/lib/slug";
 
+/**
+ * @summary Interpreta valores de formulario como booleanos consistentes.
+ */
 function booleanValue(value: string) {
   return value === "true" || value === "1" || value === "on";
 }
 
+/**
+ * @summary Extrae los campos permitidos de un formulario administrativo.
+ */
 function selectFields(input: Record<string, string>, fields: string[]) {
   return Object.fromEntries(fields.map((field) => [field, input[field] ?? ""]));
 }
 
 /**
+ * @summary Normaliza los datos de un producto antes de persistirlos.
+ *
  * Datos admin para crear/actualizar un Product.
  *
  * Product es el catálogo maestro del Tenant: no lleva branchId directo. Su

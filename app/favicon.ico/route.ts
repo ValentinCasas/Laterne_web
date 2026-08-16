@@ -11,7 +11,10 @@ export async function GET(request: Request) {
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
   const kind = classifyHost(host).kind;
   if (kind === "platform") {
-    const settings = await prisma.platformSettings.findUnique({ where: { id: 1 }, select: { faviconUrl: true } });
+    const settings = await prisma.platformSettings.findUnique({
+      where: { id: 1 },
+      select: { faviconUrl: true },
+    });
     if (settings?.faviconUrl) return NextResponse.redirect(new URL(settings.faviconUrl, request.url));
   }
   return new Response(fallbackIcon, {

@@ -4,6 +4,9 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize, canAccessBranch } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con el inventario.
+ */
 const inventoryInput = z.object({
   branchId: z.coerce.number().int().positive(),
   productId: z.coerce.number().int().positive(),

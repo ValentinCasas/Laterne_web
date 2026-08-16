@@ -5,7 +5,14 @@ import { z } from "zod";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
-import { BRANCH_DIRECT_MODELS, assertBranchCapacity, ensureBranchProduct, ensureBranchStock, ensureDraftLicense, resolveEffectiveBranchId } from "@/lib/branch";
+import {
+  BRANCH_DIRECT_MODELS,
+  assertBranchCapacity,
+  ensureBranchProduct,
+  ensureBranchStock,
+  ensureDraftLicense,
+  resolveEffectiveBranchId,
+} from "@/lib/branch";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { productAdminData } from "@/lib/product-admin";
@@ -13,6 +20,9 @@ import { promotionData } from "@/lib/promotion-admin";
 import { slugify, uniqueBranchSlug, uniqueCategorySlug } from "@/lib/slug";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
+/**
+ * @summary Valida la entrada relacionada con el recurso solicitado.
+ */
 const inputSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]));
 type Delegate = { create(args: { data: Record<string, unknown> }): Promise<unknown> };
 
@@ -27,7 +37,12 @@ function booleanValue(value: string) {
 }
 
 /** @summary Normaliza y valida los campos de un recurso antes de guardarlo por primera vez. */
-async function normalize(resource: string, input: Record<string, string>, tenantId: number, branchId?: number) {
+async function normalize(
+  resource: string,
+  input: Record<string, string>,
+  tenantId: number,
+  branchId?: number,
+) {
   if (resource === "productos") {
     const { data } = await productAdminData(input, tenantId, branchId);
     return data;
@@ -61,7 +76,11 @@ async function normalize(resource: string, input: Record<string, string>, tenant
   }
 
   if (resource === "horarios") {
-    const data: Record<string, unknown> = { tenantId, branchId: branchId ?? null, dayOfWeek: input.dayOfWeek };
+    const data: Record<string, unknown> = {
+      tenantId,
+      branchId: branchId ?? null,
+      dayOfWeek: input.dayOfWeek,
+    };
     for (const key of ["morningStartTime", "morningEndTime", "eveningStartTime", "eveningEndTime"]) {
       data[key] = input[key] ? new Date(`1970-01-01T${input[key]}:00Z`) : null;
     }
@@ -180,7 +199,10 @@ async function normalize(resource: string, input: Record<string, string>, tenant
       active: booleanValue(input.active),
       inheritLanding: input.inheritLanding === "" ? true : booleanValue(input.inheritLanding),
       inheritBrand: input.inheritBrand === "" ? true : booleanValue(input.inheritBrand),
-      landingContent: { heroTitle: input.landingHeroTitle?.trim() || "", heroSubtitle: input.landingHeroSubtitle?.trim() || "" },
+      landingContent: {
+        heroTitle: input.landingHeroTitle?.trim() || "",
+        heroSubtitle: input.landingHeroSubtitle?.trim() || "",
+      },
     };
   }
 
@@ -225,7 +247,10 @@ async function createMember(input: Record<string, string>, tenantId: number) {
   const role = await prisma.role.findFirst({ where: { id: roleId, tenantId } });
   if (!role) throw new Error("Seleccioná un rol válido");
   const branchIds = (input.branchIds ?? "").split(",").map(Number).filter(Number.isInteger);
-  const branches = await prisma.branch.findMany({ where: { tenantId, id: { in: branchIds } }, select: { id: true } });
+  const branches = await prisma.branch.findMany({
+    where: { tenantId, id: { in: branchIds } },
+    select: { id: true },
+  });
   const allBranches = input.allBranches === "true";
 
   return prisma.$transaction(async (transaction) => {
@@ -238,7 +263,9 @@ async function createMember(input: Record<string, string>, tenantId: number) {
         imageUrl: input.imageUrl || "avatar_profile_default.png",
       },
     });
-    const membership = await transaction.tenantMembership.create({ data: { tenantId, userId: user.id, roleId, allBranches } });
+    const membership = await transaction.tenantMembership.create({
+      data: { tenantId, userId: user.id, roleId, allBranches },
+    });
     if (branches.length) {
       await transaction.branchMembership.createMany({
         data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
@@ -296,7 +323,10 @@ export async function POST(request: Request, context: { params: Promise<{ resour
             data: { isPrimary: false },
           });
         }
-        const memberships = await transaction.tenantMembership.findMany({ where: { tenantId: auth.tenant.id }, select: { id: true } });
+        const memberships = await transaction.tenantMembership.findMany({
+          where: { tenantId: auth.tenant.id },
+          select: { id: true },
+        });
         if (memberships.length) {
           await transaction.branchMembership.createMany({
             data: memberships.map((membership) => ({ membershipId: membership.id, branchId: created.id })),

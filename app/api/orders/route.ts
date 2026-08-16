@@ -13,6 +13,9 @@ import {
   orderTimeText,
 } from "@/lib/order-scheduling";
 
+/**
+ * @summary Valida la entrada relacionada con los pedidos.
+ */
 const orderInput = z.object({
   customerName: z.string().trim().min(2).max(160),
   phone: z.string().trim().min(6).max(60),
@@ -104,18 +107,20 @@ export async function POST(request: Request) {
         include: { branch: true },
       })
     : null;
-  const routeBranchSlug = request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || null;
+  const routeBranchSlug =
+    request.headers.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || null;
   const routeBranch = routeBranchSlug
     ? await prisma.branch.findFirst({ where: { tenantId: tenant.id, slug: routeBranchSlug, active: true } })
     : null;
   if (routeBranchSlug && !routeBranch) {
     return NextResponse.json({ error: "La sucursal indicada en la URL no está disponible" }, { status: 404 });
   }
-  const selectedBranch = !routeBranchSlug && parsed.data.branchId
-    ? await prisma.branch.findFirst({
-        where: { id: parsed.data.branchId, tenantId: tenant.id, active: true },
-      })
-    : null;
+  const selectedBranch =
+    !routeBranchSlug && parsed.data.branchId
+      ? await prisma.branch.findFirst({
+          where: { id: parsed.data.branchId, tenantId: tenant.id, active: true },
+        })
+      : null;
   if (!routeBranchSlug && parsed.data.branchId && !selectedBranch) {
     return NextResponse.json({ error: "La sucursal seleccionada ya no está disponible" }, { status: 409 });
   }
@@ -136,7 +141,15 @@ export async function POST(request: Request) {
     }));
   if (!branch)
     return NextResponse.json({ error: "No hay una sucursal activa para recibir pedidos" }, { status: 409 });
-  if (!(await prisma.branchLicense.findFirst({ where: { tenantId: tenant.id, branchId: branch.id, status: { in: ["ACTIVE", "TRIAL", "PAYMENT_PENDING", "GRACE_PERIOD"] } } }))) {
+  if (
+    !(await prisma.branchLicense.findFirst({
+      where: {
+        tenantId: tenant.id,
+        branchId: branch.id,
+        status: { in: ["ACTIVE", "TRIAL", "PAYMENT_PENDING", "GRACE_PERIOD"] },
+      },
+    }))
+  ) {
     return NextResponse.json({ error: "La sucursal no está operativa" }, { status: 409 });
   }
   if (parsed.data.orderType === "dine_in" && parsed.data.tableCode && !table) {
@@ -292,7 +305,8 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   }
-  const appliedPromotion = promotion.promotionId !== null ? promotions.find((item) => item.id === promotion.promotionId) : null;
+  const appliedPromotion =
+    promotion.promotionId !== null ? promotions.find((item) => item.id === promotion.promotionId) : null;
   const couponEmailKey = (parsed.data.email ?? "").trim().toLowerCase();
   if (appliedPromotion?.code) {
     if (appliedPromotion.usageLimit !== null && appliedPromotion.usedCount >= appliedPromotion.usageLimit) {
@@ -338,7 +352,10 @@ export async function POST(request: Request) {
     leadMinutes,
   });
   if (parsed.data.orderType !== "dine_in" && !requestedAt) {
-    return NextResponse.json({ error: "Elegí un horario disponible para recibir el pedido" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Elegí un horario disponible para recibir el pedido" },
+      { status: 400 },
+    );
   }
   if (requestedAt && !isAvailableOrderSlot(requestedAt, validSlots)) {
     const next = validSlots[0];

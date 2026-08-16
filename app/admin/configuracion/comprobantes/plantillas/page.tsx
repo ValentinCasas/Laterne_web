@@ -1,10 +1,16 @@
-import { DocumentTemplateManager, type DocumentTemplateItem } from "@/components/admin/document-template-manager";
+import {
+  DocumentTemplateManager,
+  type DocumentTemplateItem,
+} from "@/components/admin/document-template-manager";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * @summary Carga la gestión de plantillas documentales del tenant autorizado.
+ */
 export default async function DocumentTemplatesPage() {
   const context = await requirePermission("order.manage");
   const templates = await prisma.documentTemplate.findMany({
@@ -23,5 +29,7 @@ export default async function DocumentTemplatesPage() {
     },
     orderBy: [{ documentType: "asc" }, { version: "desc" }],
   });
-  return <DocumentTemplateManager initialTemplates={serialize(templates) as unknown as DocumentTemplateItem[]} />;
+  return (
+    <DocumentTemplateManager initialTemplates={serialize(templates) as unknown as DocumentTemplateItem[]} />
+  );
 }

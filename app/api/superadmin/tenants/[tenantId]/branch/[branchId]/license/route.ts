@@ -4,6 +4,9 @@ import { authorizeSuperAdmin } from "@/lib/auth";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las sucursales.
+ */
 const branchLicenseInput = z.object({
   status: z.enum(["DRAFT", "TRIAL", "ACTIVE", "PAYMENT_PENDING", "GRACE_PERIOD", "SUSPENDED", "CANCELLED"]),
   planId: z.coerce.number().int().positive().optional().nullable(),
@@ -57,7 +60,13 @@ export async function POST(
     action: "branch-license-assigned",
     entityType: "branch-license",
     entityId: license.id,
-    newValues: toAuditValue({ branchId, status: license.status, planId: license.planId, currentPeriodEnd: license.currentPeriodEnd, graceUntil: license.graceUntil }),
+    newValues: toAuditValue({
+      branchId,
+      status: license.status,
+      planId: license.planId,
+      currentPeriodEnd: license.currentPeriodEnd,
+      graceUntil: license.graceUntil,
+    }),
     request,
   });
 

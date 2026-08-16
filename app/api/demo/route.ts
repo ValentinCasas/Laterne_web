@@ -4,6 +4,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 
+/**
+ * @summary Valida la entrada relacionada con las solicitudes de demostración.
+ */
 const demoSchema = z.object({
   fullName: z.string().trim().min(3).max(160),
   businessName: z.string().trim().min(2).max(180),

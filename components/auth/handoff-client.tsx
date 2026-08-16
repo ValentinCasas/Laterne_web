@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { scopedFetch } from "@/lib/client-routing";
 
-/** @summary Consume una transferencia legacy usando el tenant explícito de la URL visible. */
+/** @summary Consume una transferencia heredada usando el tenant explícito de la URL visible. */
 export function HandoffClient({ token }: { token: string }) {
   const [error, setError] = useState("");
   useEffect(() => {
@@ -14,10 +14,13 @@ export function HandoffClient({ token }: { token: string }) {
     })
       .then(async (response) => {
         const body = (await response.json().catch(() => ({}))) as { redirect?: string; error?: string };
-        if (!response.ok || !body.redirect) throw new Error(body.error ?? "No se pudo abrir el administrador");
+        if (!response.ok || !body.redirect)
+          throw new Error(body.error ?? "No se pudo abrir el administrador");
         window.location.replace(body.redirect);
       })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo abrir el administrador"));
+      .catch((reason) =>
+        setError(reason instanceof Error ? reason.message : "No se pudo abrir el administrador"),
+      );
   }, [token]);
 
   return (

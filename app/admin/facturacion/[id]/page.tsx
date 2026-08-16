@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { PrintButton } from "@/components/admin/print-button";
 import { InvoiceDocumentPreview } from "@/components/admin/invoice-document-preview";
-import { InvoiceRenderer, type InvoiceRenderData } from "@/components/invoice/invoice-renderer";
+import { InvoiceRenderer, type InvoiceRenderData } from "@/components/invoice-renderer";
 import { requirePermission } from "@/lib/auth";
 import { resolveInvoiceDesign } from "@/lib/invoice-design";
 import { prisma } from "@/lib/prisma";
@@ -35,9 +35,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       where: {
         id,
         tenantId: context.tenant.id,
-        ...(context.activeBranchId && context.activeBranchId > 0
-          ? { branchId: context.activeBranchId }
-          : {}),
+        ...(context.activeBranchId && context.activeBranchId > 0 ? { branchId: context.activeBranchId } : {}),
       },
       include: { branch: true, order: { include: { items: true } }, document: true },
     }),

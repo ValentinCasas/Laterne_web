@@ -53,7 +53,12 @@ function optionalTime(value: string) {
 }
 
 /** @summary Valida relaciones, vigencia y contenido de una promoción antes de persistirla. */
-export async function promotionData(input: Record<string, string>, tenantId: number, excludeId?: number, branchId?: number) {
+export async function promotionData(
+  input: Record<string, string>,
+  tenantId: number,
+  excludeId?: number,
+  branchId?: number,
+) {
   const name = input.name.trim();
   const description = input.description.trim();
   if (!name || !description) throw new Error("Completá el nombre y la descripción");

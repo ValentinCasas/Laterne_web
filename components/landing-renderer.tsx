@@ -31,11 +31,17 @@ const sectionIds: Record<LandingSectionKey, string> = {
   contact: "redes",
 };
 
+/**
+ * @summary Convierte una fecha persistida en un valor válido para ordenar eventos.
+ */
 function toDate(value: Date | string | null): Date | null {
   if (!value) return null;
   return value instanceof Date ? value : new Date(value);
 }
 
+/**
+ * @summary Formatea un valor para mostrarlo en la portada pública del negocio.
+ */
 function formatOpeningHours(group: {
   days: string[];
   morningStartTime: Date | string | null;
@@ -48,12 +54,14 @@ function formatOpeningHours(group: {
   const eveningStart = time(toDate(group.eveningStartTime));
   const eveningEnd = time(toDate(group.eveningEndTime));
   const parts: string[] = [];
-  if (morningStart !== "—" || morningEnd !== "—") parts.push(`${morningStart === "—" ? "—" : morningStart} a ${morningEnd === "—" ? "—" : morningEnd}`);
-  if (eveningStart !== "—" || eveningEnd !== "—") parts.push(`${eveningStart === "—" ? "—" : eveningStart} a ${eveningEnd === "—" ? "—" : eveningEnd}`);
+  if (morningStart !== "—" || morningEnd !== "—")
+    parts.push(`${morningStart === "—" ? "—" : morningStart} a ${morningEnd === "—" ? "—" : morningEnd}`);
+  if (eveningStart !== "—" || eveningEnd !== "—")
+    parts.push(`${eveningStart === "—" ? "—" : eveningStart} a ${eveningEnd === "—" ? "—" : eveningEnd}`);
   return parts.join(" · ") || "Consultar horarios";
 }
 
-/** @summary Sección editable de la landing con identificación, anillo de selección y etiqueta en el preview. */
+/** @summary Sección editable del inicio con identificación, anillo de selección y etiqueta en la vista previa. */
 function EditableSection({
   section,
   className,
@@ -87,7 +95,7 @@ function EditableSection({
   );
 }
 
-/** @summary Renderiza la landing pública completa y el preview del editor con los mismos componentes y datos. */
+/** @summary Renderiza el inicio público completo y la vista previa del editor con los mismos componentes y datos. */
 export function LandingRenderer({
   data,
   originalPath,
@@ -165,7 +173,10 @@ export function LandingRenderer({
         <Carousel slides={storySlides} label={`Conocé ${data.displayName}`} interval={6500} />
       </EditableSection>
 
-      <EditableSection {...sectionProps("testimonials")} className="bg-[radial-gradient(circle_at_20%_20%,rgba(236,72,153,.16),transparent_32%),linear-gradient(#09090b,#050505)] py-24">
+      <EditableSection
+        {...sectionProps("testimonials")}
+        className="bg-[radial-gradient(circle_at_20%_20%,rgba(236,72,153,.16),transparent_32%),linear-gradient(#09090b,#050505)] py-24"
+      >
         <div className="shell">
           <p className="section-eyebrow text-center">Comunidad</p>
           <h2 className="section-title mt-2 text-center">Lo que dice la gente</h2>
@@ -236,7 +247,8 @@ export function LandingRenderer({
         <div className="shell grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <h2 className="text-3xl font-black text-pink-500">
-              {data.displayName}<span className="text-white">&.</span>
+              {data.displayName}
+              <span className="text-white">&.</span>
             </h2>
             <p className="mt-3 text-zinc-500">Cerveza artesanal y cocina.</p>
           </div>

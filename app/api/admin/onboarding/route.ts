@@ -5,6 +5,9 @@ import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con el onboarding.
+ */
 const progressInput = z.object({
   completedSteps: z.array(z.number().int().min(1).max(10)).max(10),
   currentStep: z.number().int().min(1).max(10),

@@ -3,7 +3,7 @@
  *
  * Un comprobante es una lista ordenada de bloques. Dos bloques consecutivos en
  * modo "half" se agrupan en una fila de dos columnas (grid). El renderizado del
- * editor (preview) y el de impresión usan exactamente el mismo modelo.
+ * editor (vista previa) y el de impresión usan exactamente el mismo modelo.
  */
 
 export type InvoicePreset = "compact" | "classic" | "modern";
@@ -153,12 +153,24 @@ export function createBlock(type: InvoiceBlockType, id: string): InvoiceBlock {
 function sanitizeBlock(value: unknown, index: number): InvoiceBlock {
   const raw = (value ?? {}) as Partial<InvoiceBlock>;
   const knownTypes = new Set<InvoiceBlockType>([
-    "logo", "issuerName", "title", "number", "customerData", "orderData", "table",
-    "subtotal", "discount", "delivery", "total", "qr", "notes", "customText", "separator", "footer",
+    "logo",
+    "issuerName",
+    "title",
+    "number",
+    "customerData",
+    "orderData",
+    "table",
+    "subtotal",
+    "discount",
+    "delivery",
+    "total",
+    "qr",
+    "notes",
+    "customText",
+    "separator",
+    "footer",
   ]);
-  const type = knownTypes.has(raw.type as InvoiceBlockType)
-    ? (raw.type as InvoiceBlockType)
-    : "customText";
+  const type = knownTypes.has(raw.type as InvoiceBlockType) ? (raw.type as InvoiceBlockType) : "customText";
   const appearance = defaultBlockAppearance(type);
   const color = hexColor(raw.color);
   const background = hexColor(raw.background);
@@ -279,9 +291,7 @@ export function resolveInvoiceDesign(value: unknown): InvoiceDesign {
     : defaultInvoiceDesign.font;
   const footerText = typeof raw.footerText === "string" ? raw.footerText.slice(0, 600) : "";
   const blocks = Array.isArray(raw.blocks)
-    ? raw.blocks
-        .map((block, index) => sanitizeBlock(block, index))
-        .filter((block) => block.visible)
+    ? raw.blocks.map((block, index) => sanitizeBlock(block, index)).filter((block) => block.visible)
     : presetBlocks(preset, accent);
   return { preset, accent, font, footerText, blocks: blocks.length ? blocks : presetBlocks(preset, accent) };
 }
@@ -290,7 +300,12 @@ export function resolveInvoiceDesign(value: unknown): InvoiceDesign {
 export function groupBlockRows(blocks: InvoiceBlock[]): InvoiceBlock[][] {
   const rows: InvoiceBlock[][] = [];
   for (const block of blocks) {
-    if (block.columns === "half" && rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0].columns === "half") {
+    if (
+      block.columns === "half" &&
+      rows.length > 0 &&
+      rows[rows.length - 1].length === 1 &&
+      rows[rows.length - 1][0].columns === "half"
+    ) {
       rows[rows.length - 1].push(block);
     } else {
       rows.push([block]);

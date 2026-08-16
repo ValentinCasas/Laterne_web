@@ -138,7 +138,9 @@ export async function POST(request: Request) {
   let membership: (typeof user.memberships)[number] | undefined = platformContext
     ? undefined
     : user.memberships[0];
-  const requestedTenantSlug = routeTenantSlug || (hostContext.kind === "app" && hostContext.slug ? hostContext.slug : parsed.data.tenantSlug);
+  const requestedTenantSlug =
+    routeTenantSlug ||
+    (hostContext.kind === "app" && hostContext.slug ? hostContext.slug : parsed.data.tenantSlug);
   if (!platformContext && (parsed.data.tenantId || requestedTenantSlug)) {
     membership = parsed.data.tenantId
       ? user.memberships.find(
@@ -241,5 +243,4 @@ export async function POST(request: Request) {
     path: "/",
   });
   return response;
-
 }

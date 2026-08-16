@@ -1,6 +1,6 @@
-# Laterne Web
+# MenuClick
 
-Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS y Prisma. Conserva la base MySQL del sistema original y suma una base multiempresa para evolucionar el producto sin mezclar información entre clientes.
+Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS y Prisma. Conserva la base MySQL del sistema original de Laterne y suma una base multiempresa sin mezclar información entre clientes.
 
 ## Funcionalidades actuales
 
@@ -71,12 +71,13 @@ Plataforma gastronómica construida con Next.js, React, TypeScript, Tailwind CSS
 
 ## Configuración local
 
-1. Importar `laterne.sql` en una base MySQL llamada `laterne` si se parte de una instalación limpia.
-2. Copiar `.env.example` como `.env`.
-3. Ajustar `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `ROOT_DOMAIN` y generar un valor seguro para `AUTH_SECRET`. `DEV_ROOT_DOMAIN` y `DEV_TENANT_SLUG` solo se conservan para compatibilidad con URLs locales antiguas; las rutas canónicas nuevas no los necesitan.
-4. Ejecutar `npm install`.
-5. Ejecutar `npx prisma migrate deploy` para aplicar las migraciones pendientes.
-6. Ejecutar `npm run dev`.
+1. Crear una base MySQL vacía llamada `laterne`.
+2. Solo en una instalación nueva, importar `prisma/bootstrap.sql`. Ese bootstrap contiene el esquema heredado sobre el que actúa la primera migración; no se vuelve a importar en bases existentes.
+3. Copiar `.env.example` como `.env`.
+4. Ajustar `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `ROOT_DOMAIN` y generar un valor seguro para `AUTH_SECRET`. `DEV_ROOT_DOMAIN` y `DEV_TENANT_SLUG` solo se conservan para compatibilidad con URLs locales antiguas; las rutas canónicas nuevas no los necesitan.
+5. Ejecutar `npm install`.
+6. Ejecutar `npm run db:migrate` para aplicar las migraciones pendientes.
+7. Ejecutar `npm run dev`.
 
 En producción, `AUTH_SECRET` es obligatorio. Debe ser largo, aleatorio y mantenerse fuera del repositorio. `ROOT_DOMAIN` debe contener únicamente el dominio base real, sin protocolo. En desarrollo, la navegación canónica funciona directamente sobre `http://localhost:3000` con tenant y sucursal explícitos en el path, por ejemplo `/t/laterne/admin/s/principal/pedidos`; no hace falta `lvh.me`, wildcard DNS ni editar `hosts`. `DEV_ROOT_DOMAIN` y `DEV_TENANT_SLUG` quedan únicamente como compatibilidad transicional para enlaces antiguos. Los dominios personalizados deben apuntar al mismo despliegue.
 
@@ -96,6 +97,7 @@ La realidad aumentada requiere HTTPS fuera de `localhost`. Android utiliza WebXR
 - `npm run test`: ejecuta las pruebas unitarias.
 - `npm run test:e2e`: ejecuta los flujos públicos en escritorio y celular.
 - `npm run db:generate`: regenera Prisma Client.
+- `npm run db:migrate`: aplica en orden el historial versionado con `prisma migrate deploy`.
 - `npm run db:pull`: inspecciona la estructura de la base desde Prisma.
 - `npm run db:studio`: abre el administrador visual de Prisma.
 
@@ -104,10 +106,13 @@ La realidad aumentada requiere HTTPS fuera de `localhost`. Android utiliza WebXR
 ```text
 app/          Páginas, layouts y endpoints de Next.js
 components/   Componentes React reutilizables
+docs/         Decisiones técnicas y auditorías históricas
 e2e/          Pruebas funcionales con navegador
+examples/     Plantillas de documentos listas para probar
 lib/          Autenticación, tenant, auditoría, Prisma y utilidades
 prisma/       Esquema y migraciones seguras de MySQL
 public/       Imágenes y recursos estáticos
+scripts/      Automatizaciones actuales de pruebas y documentos
 ```
 
 ## Modelo multiempresa
@@ -118,20 +123,9 @@ La instalación existente se migra a un tenant inicial llamado `Laterne`, preser
 
 ## Migraciones
 
-- `20250809000000_baseline`: punto de partida compatible con la base histórica.
-- `20260810003000_phase_one_foundations`: tenants, roles, permisos, sesiones, auditoría, planes, oportunidades y mejoras de productos.
-- `20260810010000_backfill_friendly_slugs`: genera direcciones amigables para productos y categorías existentes.
-- `20260810020000_login_attempt_protection`: limita intentos de acceso mediante identificadores anónimos y temporales.
-- `20260810030000_product_spatial_experience`: modelos 3D y configuración de realidad aumentada por producto.
-- `20260810040000_promotions_and_reservations`: promociones, disponibilidad y reservas persistentes.
-- `20260810050000_orders_tables_analytics`: pedidos, opciones, mesas QR, fidelización y analítica propia.
-- `20260810060000_product_platform_modules`: marca, archivos, notificaciones, soporte, onboarding y plataforma multiempresa.
-- `20260810070000_success_cases`: casos de éxito administrables para la landing comercial.
-- `20260810080000_scheduled_publication`: publicación programada para el contenido público.
-- `20260810100000_operations_expansion`: sucursales, inventario, comprobantes, integraciones, SEO, redirecciones, recuperación de acceso y errores técnicos.
-- `20260810101000_tenant_timezone`: zona horaria por negocio para disponibilidad y reportes coherentes en cualquier servidor.
+`prisma/bootstrap.sql` es el punto de partida histórico para instalaciones completamente vacías. Las 34 migraciones de `prisma/migrations/` evolucionan ese esquema y ya están aplicadas en la base de desarrollo actual, por lo que se conserva el historial completo: no es seguro compactarlo mientras existan bases desplegadas que dependan de esos nombres.
 
-Antes de aplicar migraciones en un entorno real se recomienda crear un respaldo de MySQL. En despliegues se debe usar `npx prisma migrate deploy`; `prisma db push` no reemplaza el historial de migraciones.
+Antes de aplicar migraciones en un entorno real se recomienda crear un respaldo fuera del repositorio. En despliegues se debe usar `npm run db:migrate`; `prisma db push` no reemplaza el historial de migraciones.
 
 ## Migración tecnológica
 

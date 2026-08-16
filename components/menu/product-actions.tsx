@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
-import { trackEvent } from "@/components/analytics/tracker";
+import { trackEvent } from "@/components/analytics-tracker";
 import { copyBrowserText, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
 
 type ProductActionData = {

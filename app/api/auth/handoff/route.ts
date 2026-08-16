@@ -6,7 +6,7 @@ import { tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 
-/** @summary Canjea una transferencia legacy y termina siempre en la ruta tenant/branch canónica. */
+/** @summary Canjea una transferencia heredada y termina siempre en la ruta canónica del tenant y la sucursal. */
 export async function POST(request: Request) {
   const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
     .split(",")[0]
@@ -31,13 +31,18 @@ export async function POST(request: Request) {
     },
     include: { user: { select: { role: true } }, membership: { include: { role: true, tenant: true } } },
   });
-  if (!handoff) return NextResponse.json({ error: "La transferencia expiró o no corresponde a este tenant" }, { status: 401 });
+  if (!handoff)
+    return NextResponse.json(
+      { error: "La transferencia expiró o no corresponde a este tenant" },
+      { status: 401 },
+    );
 
   const consumed = await prisma.authHandoff.updateMany({
     where: { id: handoff.id, usedAt: null },
     data: { usedAt: new Date() },
   });
-  if (consumed.count !== 1) return NextResponse.json({ error: "La transferencia ya fue utilizada" }, { status: 409 });
+  if (consumed.count !== 1)
+    return NextResponse.json({ error: "La transferencia ya fue utilizada" }, { status: 409 });
 
   let branchSlug: string | undefined;
   if (handoff.branchId && handoff.branchId > 0) {
@@ -75,7 +80,11 @@ export async function POST(request: Request) {
     action: "auth.handoff",
     entityType: "auth-handoff",
     entityId: handoff.id,
-    newValues: { tenantId: handoff.membership.tenantId, userId: handoff.userId, branchId: handoff.branchId ?? null },
+    newValues: {
+      tenantId: handoff.membership.tenantId,
+      userId: handoff.userId,
+      branchId: handoff.branchId ?? null,
+    },
     request,
   });
 

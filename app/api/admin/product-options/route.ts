@@ -5,6 +5,9 @@ import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las opciones de producto.
+ */
 const optionInput = z.object({
   kind: z.enum(["variant", "extra"]),
   productId: z.coerce.number().int().positive(),
@@ -22,12 +25,25 @@ export async function POST(request: Request) {
   const parsed = optionInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá los datos de la opción" }, { status: 400 });
   const product = await prisma.product.findFirst({
-    where: { id: parsed.data.productId, tenantId: auth.tenant.id, ...(auth.activeBranchId && auth.activeBranchId > 0 ? { branchAssignments: { some: { branchId: auth.activeBranchId, active: true } } } : {}) },
+    where: {
+      id: parsed.data.productId,
+      tenantId: auth.tenant.id,
+      ...(auth.activeBranchId && auth.activeBranchId > 0
+        ? { branchAssignments: { some: { branchId: auth.activeBranchId, active: true } } }
+        : {}),
+    },
     select: { id: true },
   });
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
   if (parsed.data.groupId) {
-    const group = await prisma.productOptionGroup.findFirst({ where: { id: parsed.data.groupId, tenantId: auth.tenant.id, productId: product.id, kind: parsed.data.kind } });
+    const group = await prisma.productOptionGroup.findFirst({
+      where: {
+        id: parsed.data.groupId,
+        tenantId: auth.tenant.id,
+        productId: product.id,
+        kind: parsed.data.kind,
+      },
+    });
     if (!group) return NextResponse.json({ error: "Grupo de opciones inválido" }, { status: 400 });
   }
   const common = {
@@ -39,8 +55,12 @@ export async function POST(request: Request) {
   };
   const item =
     parsed.data.kind === "variant"
-     ? await prisma.productVariant.create({ data: { ...common, groupId: parsed.data.groupId ?? null, priceAdjustment: parsed.data.price } })
-       : await prisma.productExtra.create({ data: { ...common, groupId: parsed.data.groupId ?? null, price: Math.max(0, parsed.data.price) } });
+      ? await prisma.productVariant.create({
+          data: { ...common, groupId: parsed.data.groupId ?? null, priceAdjustment: parsed.data.price },
+        })
+      : await prisma.productExtra.create({
+          data: { ...common, groupId: parsed.data.groupId ?? null, price: Math.max(0, parsed.data.price) },
+        });
   await recordAudit({
     context: auth,
     action: "create",

@@ -18,8 +18,8 @@ export function BusinessMap({
   useEffect(() => {
     if (!container.current) return;
 
-    // Next.js cannot infer MapLibre's module-worker URL after bundling. Keep the
-    // worker self-hosted so the map never falls back to requesting the page URL.
+    // Next.js no puede inferir la URL del worker de MapLibre después de empaquetar.
+    // Se sirve localmente para impedir que el mapa solicite por error la URL de la página.
     maplibregl.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
 
     const map = new maplibregl.Map({

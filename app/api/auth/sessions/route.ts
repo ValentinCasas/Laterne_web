@@ -4,6 +4,9 @@ import { getSession } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @summary Valida la entrada relacionada con las sesiones de acceso.
+ */
 const revokeInput = z.object({ id: z.coerce.number().int().positive() });
 
 /** @summary Lista únicamente las sesiones vigentes pertenecientes al usuario autenticado. */

@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  PLATFORM_SESSION_COOKIE,
-  revokeCurrentSession,
-  tenantSessionCookieName,
-} from "@/lib/auth";
+import { PLATFORM_SESSION_COOKIE, revokeCurrentSession, tenantSessionCookieName } from "@/lib/auth";
 import { tenantPublicPath } from "@/lib/routes";
 
 /** @summary Cookie de sesión correspondiente a la ruta canónica que solicitó el logout. */

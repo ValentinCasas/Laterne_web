@@ -12,7 +12,31 @@ export default async function LegalIndexPage() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
   if (classifyHost(host).kind === "platform") {
-    return <MarketingShell><main className="mx-auto max-w-[900px] px-5 py-20"><p className="marketing-eyebrow">MenuClick</p><h1 className="mt-3 text-5xl font-black">Privacidad y términos</h1><div className="mt-10 grid gap-5"><section className="rounded-2xl border border-white/10 bg-white/[.035] p-6"><h2 className="text-2xl font-black">Uso de datos</h2><p className="mt-3 leading-relaxed text-slate-400">Los datos enviados para solicitar una demo se utilizan para responder la consulta y coordinar una conversación comercial. MenuClick no mezcla esos datos con los clientes finales de ningún tenant.</p></section><section className="rounded-2xl border border-white/10 bg-white/[.035] p-6"><h2 className="text-2xl font-black">Uso de la plataforma</h2><p className="mt-3 leading-relaxed text-slate-400">Cada negocio administra su contenido dentro de un espacio aislado. Las condiciones comerciales y el alcance se definen durante la contratación.</p></section></div></main></MarketingShell>;
+    return (
+      <MarketingShell>
+        <main className="mx-auto max-w-[900px] px-5 py-20">
+          <p className="marketing-eyebrow">MenuClick</p>
+          <h1 className="mt-3 text-5xl font-black">Privacidad y términos</h1>
+          <div className="mt-10 grid gap-5">
+            <section className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+              <h2 className="text-2xl font-black">Uso de datos</h2>
+              <p className="mt-3 leading-relaxed text-slate-400">
+                Los datos enviados para solicitar una demo se utilizan para responder la consulta y coordinar
+                una conversación comercial. MenuClick no mezcla esos datos con los clientes finales de ningún
+                tenant.
+              </p>
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+              <h2 className="text-2xl font-black">Uso de la plataforma</h2>
+              <p className="mt-3 leading-relaxed text-slate-400">
+                Cada negocio administra su contenido dentro de un espacio aislado. Las condiciones comerciales
+                y el alcance se definen durante la contratación.
+              </p>
+            </section>
+          </div>
+        </main>
+      </MarketingShell>
+    );
   }
   const tenant = await getDefaultTenant();
   const pages = await prisma.legalPage.findMany({

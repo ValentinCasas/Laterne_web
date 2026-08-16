@@ -23,8 +23,29 @@ export type PublicBranchContext = {
   status: BranchEffectiveStatus;
   licenseStatus: string | null;
   operative: boolean;
-  branch: { id: number; name: string; slug: string; active: boolean; isPrimary: boolean; inheritLanding: boolean; inheritBrand: boolean; landingContent: unknown; brandContent: unknown; licenses: Array<{ status: string; currentPeriodEnd: Date | null; graceUntil: Date | null; planId: number | null }> };
-  license: { status: string; currentPeriodEnd: Date | null; graceUntil: Date | null; planId: number | null } | null;
+  branch: {
+    id: number;
+    name: string;
+    slug: string;
+    active: boolean;
+    isPrimary: boolean;
+    inheritLanding: boolean;
+    inheritBrand: boolean;
+    landingContent: unknown;
+    brandContent: unknown;
+    licenses: Array<{
+      status: string;
+      currentPeriodEnd: Date | null;
+      graceUntil: Date | null;
+      planId: number | null;
+    }>;
+  };
+  license: {
+    status: string;
+    currentPeriodEnd: Date | null;
+    graceUntil: Date | null;
+    planId: number | null;
+  } | null;
 };
 
 /** @summary Estados de licencia de sucursal que habilitan operación pública dentro de su período. */
@@ -74,13 +95,31 @@ export function effectiveBranchStatus(input: EffectiveBranchInput): BranchEffect
   if (input.tenantStatus !== "active") return "suspended";
 
   const sub = input.tenantSubscription;
-  if (sub?.status && sub.status !== "ACTIVE" && sub.status !== "PAYMENT_PENDING" && sub.status !== "TRIAL" && sub.status !== "GRACE_PERIOD") {
+  if (
+    sub?.status &&
+    sub.status !== "ACTIVE" &&
+    sub.status !== "PAYMENT_PENDING" &&
+    sub.status !== "TRIAL" &&
+    sub.status !== "GRACE_PERIOD"
+  ) {
     return "suspended";
   }
-  if (sub?.status === "ACTIVE" && sub.currentPeriodEnd && sub.currentPeriodEnd.getTime() <= now.getTime()) return "suspended";
-  if (sub?.status === "PAYMENT_PENDING" && sub.currentPeriodEnd && sub.currentPeriodEnd.getTime() <= now.getTime()) return "suspended";
-  if (sub?.status === "TRIAL" && sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime()) return "suspended";
-  if (sub?.status === "GRACE_PERIOD" && sub.gracePeriodEndsAt && sub.gracePeriodEndsAt.getTime() <= now.getTime()) return "suspended";
+  if (sub?.status === "ACTIVE" && sub.currentPeriodEnd && sub.currentPeriodEnd.getTime() <= now.getTime())
+    return "suspended";
+  if (
+    sub?.status === "PAYMENT_PENDING" &&
+    sub.currentPeriodEnd &&
+    sub.currentPeriodEnd.getTime() <= now.getTime()
+  )
+    return "suspended";
+  if (sub?.status === "TRIAL" && sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime())
+    return "suspended";
+  if (
+    sub?.status === "GRACE_PERIOD" &&
+    sub.gracePeriodEndsAt &&
+    sub.gracePeriodEndsAt.getTime() <= now.getTime()
+  )
+    return "suspended";
 
   if (!input.branchActive) return "inactive";
 
@@ -225,7 +264,9 @@ export async function resolveBranchLimit(tenantId: number): Promise<number | nul
 }
 
 /** @summary Valida que el tenant tenga capacidad de sucursales y devuelve error legible si no. */
-export async function assertBranchCapacity(tenantId: number): Promise<{ ok: true; limit: number | null } | { ok: false; reason: string }> {
+export async function assertBranchCapacity(
+  tenantId: number,
+): Promise<{ ok: true; limit: number | null } | { ok: false; reason: string }> {
   const limit = await resolveBranchLimit(tenantId);
   if (limit === null || limit <= 0) {
     return { ok: false, reason: "No tenés licencias disponibles para nuevas sucursales." };
@@ -272,12 +313,13 @@ export async function ensureDraftLicense(tenantId: number, branchId: number) {
       tenantId,
       branchId,
       status: "DRAFT",
-      planId: (
-        await prisma.tenantSubscription.findUnique({
-          where: { tenantId },
-          select: { planId: true },
-        })
-      )?.planId ?? undefined,
+      planId:
+        (
+          await prisma.tenantSubscription.findUnique({
+            where: { tenantId },
+            select: { planId: true },
+          })
+        )?.planId ?? undefined,
     },
     update: {},
   });
@@ -317,7 +359,7 @@ export const BRANCH_DIRECT_MODELS = new Set([
 ]);
 
 /**
- * Where de Product para una sucursal activa.
+ * @summary Construye el filtro de productos disponible para una sucursal activa.
  *
  * Product es el catálogo maestro del Tenant; la publicación por sucursal se resuelve
  * mediante BranchProduct (branchAssignments). 0 o null devuelve todas las asignaciones
@@ -335,11 +377,13 @@ export function branchProductWhere(
 }
 
 /** @summary Filtro de publicación por sucursal para usar dentro de relaciones anidadas de Product. */
-export function branchAssignmentFilter(activeBranchId: number | undefined | null): Prisma.BranchProductWhereInput {
+export function branchAssignmentFilter(
+  activeBranchId: number | undefined | null,
+): Prisma.BranchProductWhereInput {
   return activeBranchId && activeBranchId > 0 ? { branchId: activeBranchId } : {};
 }
 
-/** @summary Where de un recurso admin según su clasificación: master, branch-directo o tenant-level. */
+/** @summary Construye el filtro de un recurso administrativo según su alcance maestro, de sucursal o de tenant. */
 export function resourceScopedWhere(
   model: string,
   tenantId: number,

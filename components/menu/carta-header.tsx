@@ -4,11 +4,12 @@ import type { CartaHeaderConfig } from "@/lib/carta-content";
 
 /**
  * Renderer único de la cabecera de la carta virtual.
- * Lo usan la carta pública y el preview del editor para garantizar que el
+ * Lo usan la carta pública y la vista previa del editor para garantizar que el
  * resultado sea idéntico (una sola fuente de verdad).
  *
  * Solo los TEXTOS vienen de `config`; el nombre del negocio, la sucursal y la
  * cantidad del pedido son datos dinámicos que el editor no persiste.
+ * @summary Renderiza el encabezado configurable de la carta pública.
  */
 export function CartaHeader({
   config,

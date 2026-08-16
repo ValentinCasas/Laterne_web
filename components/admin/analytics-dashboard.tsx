@@ -92,7 +92,10 @@ export function AnalyticsDashboard({
                 {value} días
               </Link>
             ))}
-            <a className="btn btn-secondary" href={scopedApiPath(pathname, `/api/admin/analytics/export?days=${days}`)}>
+            <a
+              className="btn btn-secondary"
+              href={scopedApiPath(pathname, `/api/admin/analytics/export?days=${days}`)}
+            >
               Exportar CSV
             </a>
           </div>

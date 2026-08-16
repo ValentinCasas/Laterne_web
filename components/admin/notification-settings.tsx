@@ -79,7 +79,9 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
             <label className="flex justify-between rounded-2xl border border-white/10 p-4 opacity-70">
               <span>
                 <strong>Email</strong>
-                <small className="block text-zinc-500">Próximamente · requiere proveedor de correo transaccional</small>
+                <small className="block text-zinc-500">
+                  Próximamente · requiere proveedor de correo transaccional
+                </small>
               </span>
               <span className="flex items-center gap-3">
                 <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">

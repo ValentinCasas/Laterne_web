@@ -1,7 +1,7 @@
 /**
  * Renderizador único del comprobante.
  *
- * Tanto el preview del diseñador como la impresión/PDF usan este componente:
+ * Tanto la vista previa del diseñador como la impresión/PDF usan este componente:
  * un diseño guardado produce exactamente el mismo documento en ambos contextos.
  */
 
@@ -63,6 +63,9 @@ const rowSpacing: Record<"compact" | "normal" | "wide", string> = {
   wide: "py-3.5",
 };
 
+/**
+ * @summary Renderiza un bloque de texto respetando el diseño del comprobante.
+ */
 function BlockText({
   block,
   text,
@@ -90,13 +93,7 @@ function BlockText({
 }
 
 /** @summary Renderiza un bloque individual del comprobante. */
-function RenderBlock({
-  block,
-  data,
-}: {
-  block: InvoiceBlock;
-  data: InvoiceRenderData;
-}) {
+function RenderBlock({ block, data }: { block: InvoiceBlock; data: InvoiceRenderData }) {
   const addressLine = [data.address, data.city].filter(Boolean).join(", ");
 
   switch (block.type) {
@@ -116,8 +113,16 @@ function RenderBlock({
           <p className="font-black" style={{ fontSize: block.fontSize ?? 14 }}>
             {data.issuerName}
           </p>
-          {addressLine && <p className="mt-0.5 text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>{addressLine}</p>}
-          {data.taxId && <p className="text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>CUIT {data.taxId}</p>}
+          {addressLine && (
+            <p className="mt-0.5 text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>
+              {addressLine}
+            </p>
+          )}
+          {data.taxId && (
+            <p className="text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>
+              CUIT {data.taxId}
+            </p>
+          )}
         </div>
       );
     case "title":
@@ -140,7 +145,9 @@ function RenderBlock({
             {data.customerName}
           </p>
           {data.customerTaxId && (
-            <p className="text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>{data.customerTaxId}</p>
+            <p className="text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>
+              {data.customerTaxId}
+            </p>
           )}
         </div>
       );
@@ -151,17 +158,16 @@ function RenderBlock({
           <p className="font-black" style={{ fontSize: block.fontSize }}>
             {data.orderReference}
           </p>
-          <p className="text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>{data.orderDate}</p>
+          <p className="text-zinc-500" style={{ fontSize: (block.fontSize ?? 12) - 2 }}>
+            {data.orderDate}
+          </p>
         </div>
       );
     case "table":
       return (
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr
-              className="text-white"
-              style={{ backgroundColor: block.color ?? "#18181b", fontWeight: 800 }}
-            >
+            <tr className="text-white" style={{ backgroundColor: block.color ?? "#18181b", fontWeight: 800 }}>
               {block.tableColumns?.product && <th className="px-2 py-2">Producto</th>}
               {block.tableColumns?.quantity && <th className="px-2 py-2 text-center">Cant.</th>}
               {block.tableColumns?.unitPrice && <th className="px-2 py-2 text-right">Precio unit.</th>}
@@ -170,20 +176,29 @@ function RenderBlock({
           </thead>
           <tbody>
             {data.items.map((item, index) => (
-              <tr className="break-inside-avoid border-b border-zinc-100 align-top" key={`${item.productName}-${index}`}>
+              <tr
+                className="break-inside-avoid border-b border-zinc-100 align-top"
+                key={`${item.productName}-${index}`}
+              >
                 {block.tableColumns?.product && (
                   <td className={`px-2 ${rowSpacing[block.tableStyle ?? "normal"]}`}>
                     <strong>{item.productName}</strong>
                     {block.tableColumns?.variant && item.variantName && (
-                      <span className="block text-zinc-500" style={{ fontSize: 11 }}>· {item.variantName}</span>
+                      <span className="block text-zinc-500" style={{ fontSize: 11 }}>
+                        · {item.variantName}
+                      </span>
                     )}
                     {block.tableColumns?.extras && item.extras && (
-                      <span className="block text-zinc-500" style={{ fontSize: 11 }}>+ {item.extras}</span>
+                      <span className="block text-zinc-500" style={{ fontSize: 11 }}>
+                        + {item.extras}
+                      </span>
                     )}
                   </td>
                 )}
                 {block.tableColumns?.quantity && (
-                  <td className={`px-2 text-center tabular-nums ${rowSpacing[block.tableStyle ?? "normal"]}`}>{item.quantity}</td>
+                  <td className={`px-2 text-center tabular-nums ${rowSpacing[block.tableStyle ?? "normal"]}`}>
+                    {item.quantity}
+                  </td>
                 )}
                 {block.tableColumns?.unitPrice && (
                   <td className={`px-2 text-right tabular-nums ${rowSpacing[block.tableStyle ?? "normal"]}`}>
@@ -191,7 +206,9 @@ function RenderBlock({
                   </td>
                 )}
                 {block.tableColumns?.total && (
-                  <td className={`px-2 text-right font-bold tabular-nums ${rowSpacing[block.tableStyle ?? "normal"]}`}>
+                  <td
+                    className={`px-2 text-right font-bold tabular-nums ${rowSpacing[block.tableStyle ?? "normal"]}`}
+                  >
                     {money(item.total, data.currency)}
                   </td>
                 )}
@@ -239,6 +256,7 @@ function RenderBlock({
     }
     case "qr":
       return data.qrUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- El QR es un data URL efímero que debe imprimirse sin pasar por el optimizador.
         <img
           className="h-20 w-20 rounded border border-zinc-200 bg-white object-contain p-1"
           src={data.qrUrl}
@@ -258,18 +276,10 @@ function RenderBlock({
       ) : null;
     case "customText":
       return (
-        <BlockText
-          block={block}
-          text={block.text ? resolveText(block.text, data) : "Texto personalizado"}
-        />
+        <BlockText block={block} text={block.text ? resolveText(block.text, data) : "Texto personalizado"} />
       );
     case "separator":
-      return (
-        <hr
-          className="border-t"
-          style={{ borderColor: block.color ?? "#d4d4d8", opacity: 0.7 }}
-        />
-      );
+      return <hr className="border-t" style={{ borderColor: block.color ?? "#d4d4d8", opacity: 0.7 }} />;
     case "footer":
       return (
         <p
@@ -282,7 +292,9 @@ function RenderBlock({
             whiteSpace: "pre-wrap",
           }}
         >
-          {block.text ? resolveText(block.text, data) : data.terms ?? "Documento operativo. No válido como comprobante fiscal."}
+          {block.text
+            ? resolveText(block.text, data)
+            : (data.terms ?? "Documento operativo. No válido como comprobante fiscal.")}
         </p>
       );
     default:
@@ -306,16 +318,19 @@ export function InvoiceRenderer({
 }) {
   const rows = groupBlockRows(design.blocks);
   return (
-<div
-        className={`invoice-sheet bg-white text-zinc-950 ${invoiceFontClass[design.font]}`}
-        style={{ color: "#111111", fontFamily: undefined }}
-      >
-        {interactive && (
-          <div className="flex items-start justify-between gap-4 border-b border-dashed border-zinc-200 pb-2" style={{ fontSize: 10, color: "#9ca3af" }}>
-            <span>Documento operativo · No fiscal</span>
-            <span>Vista previa · {invoicePresetLabels[design.preset]}</span>
-          </div>
-        )}
+    <div
+      className={`invoice-sheet bg-white text-zinc-950 ${invoiceFontClass[design.font]}`}
+      style={{ color: "#111111", fontFamily: undefined }}
+    >
+      {interactive && (
+        <div
+          className="flex items-start justify-between gap-4 border-b border-dashed border-zinc-200 pb-2"
+          style={{ fontSize: 10, color: "#9ca3af" }}
+        >
+          <span>Documento operativo · No fiscal</span>
+          <span>Vista previa · {invoicePresetLabels[design.preset]}</span>
+        </div>
+      )}
       {rows.map((row, rowIndex) => {
         const rowKey = row.map((block) => block.id).join("|");
         return (

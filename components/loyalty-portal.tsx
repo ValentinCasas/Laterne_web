@@ -54,7 +54,9 @@ export function LoyaltyPortal() {
 
   /** @summary Consulta el perfil utilizando exclusivamente el token privado guardado en el dispositivo. */
   async function loadProfile(accessToken: string) {
-    const response = await scopedFetch("/api/loyalty", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const response = await scopedFetch("/api/loyalty", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     const result = (await response.json().catch(() => ({}))) as {
       customer?: LoyaltyProfile;
       rewards?: LoyaltyReward[];
@@ -178,7 +180,10 @@ export function LoyaltyPortal() {
               </p>
               <p className="mt-1 text-sm font-bold">{nextReward.name}</p>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-pink-500 transition-all" style={{ width: `${nextReward.progress}%` }} />
+                <div
+                  className="h-full rounded-full bg-pink-500 transition-all"
+                  style={{ width: `${nextReward.progress}%` }}
+                />
               </div>
               <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums">
                 {profile.points} / {nextReward.pointsNeeded}
@@ -220,7 +225,9 @@ export function LoyaltyPortal() {
               {rewards.map((reward) => (
                 <article
                   className={`rounded-2xl border p-4 ${
-                    reward.reached ? "border-emerald-500/40 bg-emerald-500/10" : "border-white/10 bg-white/[.03]"
+                    reward.reached
+                      ? "border-emerald-500/40 bg-emerald-500/10"
+                      : "border-white/10 bg-white/[.03]"
                   }`}
                   key={reward.id}
                 >

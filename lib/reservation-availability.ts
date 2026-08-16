@@ -83,6 +83,9 @@ const weekdayAliases = [
   ["sabado", "saturday"],
 ] as const;
 
+/**
+ * @summary Normaliza fechas y horas recibidas por el cálculo de disponibilidad.
+ */
 function normalized(value: string) {
   return value
     .normalize("NFD")
@@ -91,26 +94,41 @@ function normalized(value: string) {
     .toLocaleLowerCase("es");
 }
 
+/**
+ * @summary Indica si un horario de apertura aplica a una fecha.
+ */
 function openingMatchesDate(dayOfWeek: string, date: string) {
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
   const label = normalized(dayOfWeek);
   return weekdayAliases[weekday].some((alias) => label.includes(alias));
 }
 
+/**
+ * @summary Convierte una hora textual a minutos desde medianoche.
+ */
 function minutes(value: string) {
   const [hour, minute] = value.split(":").map(Number);
   return hour * 60 + minute;
 }
 
+/**
+ * @summary Construye una fecha local para una hora determinada.
+ */
 function timeAt(value: number) {
   const normalizedMinutes = ((value % 1_440) + 1_440) % 1_440;
   return `${String(Math.floor(normalizedMinutes / 60)).padStart(2, "0")}:${String(normalizedMinutes % 60).padStart(2, "0")}`;
 }
 
+/**
+ * @summary Construye una fecha local combinando día y horario.
+ */
 function dateValue(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
+/**
+ * @summary Convierte horarios de apertura en rangos reservables.
+ */
 function openingRanges(opening: AvailabilityOpening) {
   return [
     [opening.morningStartTime, opening.morningEndTime],
@@ -118,6 +136,9 @@ function openingRanges(opening: AvailabilityOpening) {
   ].filter((range): range is [string, string] => Boolean(range[0] && range[1]));
 }
 
+/**
+ * @summary Indica si una franja está alcanzada por un bloqueo de reservas.
+ */
 function blockedAt(date: string, time: string, blocks: AvailabilityBlock[]) {
   return blocks.some((block) => {
     if (date < block.startDate || date > block.endDate) return false;
@@ -129,6 +150,9 @@ function blockedAt(date: string, time: string, blocks: AvailabilityBlock[]) {
   });
 }
 
+/**
+ * @summary Devuelve una configuración de reservas segura cuando aún no existe.
+ */
 function emptySettings(): ReservationAvailabilitySettings {
   return {
     enabled: true,
@@ -171,7 +195,8 @@ export function calculateReservationAvailability({
         const start = minutes(startText);
         let end = minutes(endText);
         if (end <= start) end += 1_440;
-        const first = Math.ceil(start / RESERVATION_SLOT_INTERVAL_MINUTES) * RESERVATION_SLOT_INTERVAL_MINUTES;
+        const first =
+          Math.ceil(start / RESERVATION_SLOT_INTERVAL_MINUTES) * RESERVATION_SLOT_INTERVAL_MINUTES;
         for (let value = first; value < end; value += RESERVATION_SLOT_INTERVAL_MINUTES) {
           const calendarDate = addOrderDate(businessDate, Math.floor(value / 1_440));
           if (calendarDate !== date) continue;
@@ -194,18 +219,16 @@ export function calculateReservationAvailability({
     }
   }
 
-  const slots = [...candidateTimes]
-    .sort()
-    .map((time): ReservationAvailabilitySlot => {
-      const remaining = Math.max(0, settings.capacityPerSlot - (occupied.get(time) ?? 0));
-      const pendingPeople = pending.get(time) ?? 0;
-      return {
-        time,
-        remaining,
-        pending: pendingPeople,
-        status: remaining < requestedPartySize ? "full" : pendingPeople > 0 ? "pending" : "available",
-      };
-    });
+  const slots = [...candidateTimes].sort().map((time): ReservationAvailabilitySlot => {
+    const remaining = Math.max(0, settings.capacityPerSlot - (occupied.get(time) ?? 0));
+    const pendingPeople = pending.get(time) ?? 0;
+    return {
+      time,
+      remaining,
+      pending: pendingPeople,
+      status: remaining < requestedPartySize ? "full" : pendingPeople > 0 ? "pending" : "available",
+    };
+  });
 
   return {
     date,
@@ -215,6 +238,9 @@ export function calculateReservationAvailability({
   };
 }
 
+/**
+ * @summary Carga en paralelo la configuración y ocupación necesarias para calcular disponibilidad.
+ */
 async function loadAvailabilityData({
   tenantId,
   branchId,
@@ -299,7 +325,7 @@ async function loadAvailabilityData({
   return { settings, openings, blocks, reservations };
 }
 
-/** @summary Fuente server-side única para calendario, formulario público y validación final. */
+/** @summary Fuente única del servidor para calendario, formulario público y validación final. */
 export async function getReservationAvailability({
   tenantId,
   branchId,
@@ -321,7 +347,14 @@ export async function getReservationAvailability({
   database?: ReservationDatabase;
   excludeReservationId?: number;
 }) {
-  const data = await loadAvailabilityData({ tenantId, branchId, from: date, to: date, excludeReservationId, database });
+  const data = await loadAvailabilityData({
+    tenantId,
+    branchId,
+    from: date,
+    to: date,
+    excludeReservationId,
+    database,
+  });
   return calculateReservationAvailability({ date, partySize, sector, timeZone, now, ...data });
 }
 
@@ -361,6 +394,9 @@ export async function getReservationAvailabilityRange({
   };
 }
 
+/**
+ * @summary Normaliza una fecha de reserva para persistencia y comparación.
+ */
 export function reservationDateValue(date: string) {
   return dateValue(date);
 }
