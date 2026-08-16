@@ -76,6 +76,21 @@ export function tableStatusStyle(status: string | null | undefined) {
   return tableStatusStyles[status ?? "free"] ?? tableStatusStyles.free;
 }
 
+/** @summary Color hex del brillo suave que acompaña a cada estado en el plano. */
+export const tableStatusGlow: Record<string, string> = {
+  free: "#34d399",
+  reserved: "#a78bfa",
+  occupied: "#38bdf8",
+  awaiting_order: "#fbbf24",
+  preparing: "#fb923c",
+  ready_to_bill: "#f472b6",
+};
+
+/** @summary Devuelve el color de brillo de un estado (verde por defecto). */
+export function tableStatusGlowColor(status: string | null | undefined) {
+  return tableStatusGlow[status ?? "free"] ?? tableStatusGlow.free;
+}
+
 /** @summary Orden de presentación de los estados en la leyenda y los contadores del salón. */
 export const tableStatusOrder = [
   "free",

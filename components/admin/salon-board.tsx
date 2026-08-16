@@ -6,12 +6,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import type { Route } from "next";
+import { AdminPageHelp } from "@/components/admin/admin-page-help";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatusLabel, type OrderStatus } from "@/lib/orders";
-import { tableStatusLabel, tableStatusOrder, tableStatusStyles } from "@/lib/table-status";
+import {
+  tableStatusGlowColor,
+  tableStatusLabel,
+  tableStatusOrder,
+  tableStatusStyles,
+} from "@/lib/table-status";
+import {
+  clampToFloor,
+  gridPositions,
+  gridPositionsAvoiding,
+  isValidTablePosition,
+  type Point,
+} from "@/lib/table-layout";
 import type { SalonOrder, SalonPayload, SalonProduct, SalonTable } from "@/lib/salon-data";
 
 export type SalonBoardProps = {
@@ -45,6 +58,119 @@ function elapsedLabel(iso: string) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `hace ${hours} h ${rest} min` : `hace ${hours} h`;
+}
+
+/** @summary Cronómetro compacto de una mesa abierta en formato HH:MM. */
+function tableClock(iso: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+/** @summary Cronómetro en vivo que se actualiza cada 30 segundos sin recargar el tablero. */
+function SessionTime({ iso }: { iso: string }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick((value) => value + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <>{tableClock(iso)}</>;
+}
+
+/** @summary Menú compacto "⋯" con las acciones secundarias del salón. */
+function MoreMenu({
+  mesasHref,
+  onSectors,
+  onRefresh,
+  refreshing,
+}: {
+  mesasHref: Route;
+  onSectors: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-[var(--admin-surface-elevated)] text-lg font-black leading-none text-zinc-300 transition hover:border-white/25 hover:text-white"
+        type="button"
+        aria-label="Más acciones"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-full z-50 mt-2 w-60 rounded-2xl border border-white/10 bg-[var(--admin-surface)] p-1.5 shadow-2xl shadow-black/50"
+          role="menu"
+          aria-label="Acciones del salón"
+        >
+          <Link
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold text-zinc-300 transition hover:bg-white/5 hover:text-white"
+            href={mesasHref}
+            onClick={() => setOpen(false)}
+            role="menuitem"
+          >
+            <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm4 2v6m4-6v6m4-6v6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Mesas y QR
+          </Link>
+          <button
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-zinc-300 transition hover:bg-white/5 hover:text-white"
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onSectors();
+            }}
+            role="menuitem"
+          >
+            <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            Sectores
+          </button>
+          <button
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-zinc-300 transition hover:bg-white/5 hover:text-white"
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onRefresh();
+            }}
+            role="menuitem"
+          >
+            <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M20 11a8 8 0 1 0-.5 4.5M20 4v7h-7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {refreshing ? "Actualizando…" : "Refrescar"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** @summary Estado operativo de una mesa: el de su sesión abierta o "free". */
@@ -86,7 +212,18 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
   const [layoutMode, setLayoutMode] = useState(false);
   const [selected, setSelected] = useState<SalonTable | null>(null);
   const [modal, setModal] = useState<ModalName | null>(null);
-  const [overrides, setOverrides] = useState<Record<number, { x: number; y: number }>>({});
+  const [overrides, setOverrides] = useState<Record<number, Point>>({});
+
+  /** @summary En mobile la vista por defecto es la lista: el plano chico no es operativo. */
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const apply = () => {
+      if (media.matches) setView((current) => (current === "map" ? "list" : current));
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
 
   /** @summary Refresca el salón desde el servidor conservando la mesa seleccionada. */
   const load = useCallback(async (silent = false) => {
@@ -137,6 +274,17 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
     const options = data.sectors.filter((sector) => sector.active && !seen.has(sector.id) && seen.add(sector.id));
     return options.sort((a, b) => a.branchId - b.branchId || a.sortOrder - b.sortOrder);
   }, [data.sectors]);
+
+  /** @summary Nombre del sector visible en el plano, para el indicador de orientación. */
+  const activeSectorName = useMemo(() => {
+    if (sectorFilter === "all") return "Todos los sectores";
+    if (sectorFilter === "none") return "Sin sector";
+    return sectorOptions.find((sector) => sector.id === Number(sectorFilter))?.name ?? "Sector";
+  }, [sectorFilter, sectorOptions]);
+
+  /** @summary Sector sobre el que se ofrece crear la primera mesa cuando el empty state lo pide. */
+  const emptySectorId =
+    sectorFilter !== "all" && sectorFilter !== "none" && data.tables.length > 0 ? Number(sectorFilter) : null;
 
   /** @summary Reejecuta una acción y refresca el tablero, mostrando el resultado. */
   async function runAction(action: () => Promise<unknown>, successTitle?: string) {
@@ -213,76 +361,129 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
     }, "Mesa cerrada");
   }
 
+  /** @summary Aplica posiciones temporales (para "Ordenar automáticamente") sin persistir. */
+  function applyOverrides(positions: Record<number, Point>) {
+    setOverrides((current) => ({ ...current, ...positions }));
+  }
+
+  /** @summary Descarta las posiciones temporales y vuelve a las guardadas. */
+  function clearOverrides() {
+    setOverrides({});
+  }
+
+  /** @summary Guarda un lote de posiciones y refresca el tablero. */
+  async function persistPositions(positions: Record<number, Point>) {
+    try {
+      await Promise.all(
+        Object.entries(positions).map(([id, point]) =>
+          api(`/api/admin/tables/${id}/position`, {
+            method: "POST",
+            body: JSON.stringify(point),
+          }),
+        ),
+      );
+      await load();
+    } catch (reason) {
+      await showError("No se pudo guardar el orden", reason);
+    }
+  }
+
   return (
     <section>
-      <AdminPageHeader
-        eyebrow="Operación · Salón"
-        title="Salón"
-        description="El plano de tus mesas con su estado en vivo: abrí mesas, cargá consumos, trasladá comensales y cerrá la cuenta desde un solo lugar."
-        section="salon"
-        actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/mesas")}>
-              Mesas y QR
-            </Link>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Salón</h1>
+          <AdminPageHelp section="salon" />
+          <p className="hidden min-w-0 truncate text-sm text-zinc-500 lg:block">
+            Estado del salón en tiempo real{data.activeBranch ? ` · ${data.activeBranch.name}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {view === "map" && (
             <button
-              className="btn btn-secondary"
-              onClick={() => void load()}
-              type="button"
-              aria-label="Refrescar salón"
-            >
-              {loading ? "Actualizando…" : "Refrescar"}
-            </button>
-            <button className="btn btn-secondary" onClick={() => setModal("sectors")} type="button">
-              Sectores
-            </button>
-            <button className="btn btn-secondary" onClick={() => setModal("newTable")} type="button">
-              + Mesa
-            </button>
-            <button
-              className={`btn ${layoutMode ? "" : "btn-secondary"}`}
+              className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-bold transition ${
+                layoutMode
+                  ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
+                  : "border-white/10 bg-[var(--admin-surface-elevated)] text-zinc-300 hover:border-white/25 hover:text-white"
+              }`}
               onClick={() => setLayoutMode((current) => !current)}
               type="button"
               aria-pressed={layoutMode}
             >
-              {layoutMode ? "Terminar plano" : "Editar plano"}
+              {layoutMode ? "Finalizar edición" : "Editar plano"}
             </button>
-          </div>
-        }
-      />
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        {tableStatusOrder.map((status) => (
-          <button
-            className={`rounded-xl border px-3 py-2 text-sm font-bold transition sm:px-4 ${
-              statusFilter === status
-                ? "border-[var(--admin-primary)] bg-[var(--admin-primary)]/15 text-[var(--admin-primary-strong)]"
-                : "border-white/10 bg-white/5 text-zinc-400 hover:text-white"
-            }`}
-            key={status}
-            onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
-            type="button"
-          >
-            <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${tableStatusStyles[status].dot}`} />
-            {tableStatusLabel(status)}
-            <span className="ml-2 rounded-full bg-black/30 px-2 py-0.5 text-xs">{counters[status] ?? 0}</span>
+          )}
+          <button className="btn h-10 px-4" onClick={() => setModal("newTable")} type="button">
+            + Mesa
           </button>
-        ))}
+          <MoreMenu
+            mesasHref={adminHrefFromPathname(pathname, "/admin/mesas")}
+            onSectors={() => setModal("sectors")}
+            onRefresh={() => void load()}
+            refreshing={loading}
+          />
+        </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <label className="block min-w-[220px] flex-1">
-          <span className="sr-only">Buscar mesa</span>
+      <div className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1">
+        {tableStatusOrder.map((status) => {
+          const count = counters[status] ?? 0;
+          const active = statusFilter === status;
+          const dimmed = !active && count === 0;
+          return (
+            <button
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                active
+                  ? "border-white/25 bg-white/10 text-white"
+                  : dimmed
+                    ? "border-white/5 bg-white/[.02] text-zinc-600 hover:text-zinc-400"
+                    : "border-white/10 bg-white/5 text-zinc-400 hover:text-white"
+              }`}
+              key={status}
+              onClick={() => setStatusFilter(active ? "all" : status)}
+              type="button"
+              aria-pressed={active}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${tableStatusStyles[status].dot} ${active ? "" : "opacity-60"}`}
+              />
+              {tableStatusLabel(status)}
+              <span
+                className={`ml-0.5 rounded-full bg-black/25 px-1.5 py-px text-[10px] font-black ${
+                  count > 0 ? "" : "opacity-50"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-64">
+          <svg
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+          </svg>
           <input
-            className="input"
+            className="input pl-9"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar mesa, sector o código"
+            placeholder="Buscar mesa…"
             type="search"
+            aria-label="Buscar mesa"
           />
-        </label>
+        </div>
         <select
-          className="input max-w-[240px]"
+          className="input w-full sm:w-56"
           value={sectorFilter}
           onChange={(event) => setSectorFilter(event.target.value)}
           aria-label="Filtrar por sector"
@@ -295,14 +496,21 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
             </option>
           ))}
         </select>
-        <div className="flex rounded-xl bg-white/5 p-1" role="group" aria-label="Vista del salón">
+        <div
+          className="ml-auto flex rounded-xl border border-white/10 bg-white/5 p-1"
+          role="group"
+          aria-label="Vista del salón"
+        >
           {(["map", "list"] as const).map((option) => (
             <button
-              className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-                view === option ? "bg-pink-500 text-white" : "text-zinc-500 hover:text-zinc-300"
+              className={`rounded-lg px-3.5 py-1.5 text-sm font-bold transition ${
+                view === option ? "bg-[var(--admin-primary-strong)] text-white" : "text-zinc-500 hover:text-zinc-200"
               }`}
               key={option}
-              onClick={() => setView(option)}
+              onClick={() => {
+                setView(option);
+                if (option === "list") setLayoutMode(false);
+              }}
               type="button"
             >
               {option === "map" ? "Plano" : "Lista"}
@@ -312,23 +520,98 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
       </div>
 
       {visibleTables.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/[.02] p-10 text-center">
-          <p className="text-xl font-black">No hay mesas en esta vista</p>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-500">
-            Creá tus mesas desde “Mesas y QR” o con el botón “+ Mesa”, y asignales un sector para que aparezcan
-            en el plano.
-          </p>
-          <Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin/mesas")}>
-            Ir a Mesas y QR
-          </Link>
-        </div>
+        data.tables.length === 0 ? (
+          <div className="salon-floor flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 p-10 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/5">
+              <svg
+                aria-hidden
+                className="h-7 w-7 text-zinc-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="6" cy="6" r="2.2" />
+                <circle cx="18" cy="6" r="2.2" />
+                <circle cx="6" cy="18" r="2.2" />
+                <circle cx="18" cy="18" r="2.2" />
+                <path d="M6 8.2v7.6M18 8.2v7.6M8.2 6h7.6M8.2 18h7.6" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xl font-black">Todavía no hay mesas</p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
+                Creá tu primera mesa para que aparezca en el plano, o generá las mesas con su QR desde “Mesas y QR”.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button className="btn" onClick={() => setModal("newTable")} type="button">
+                + Agregar primera mesa
+              </button>
+              <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/mesas")}>
+                Mesas y QR
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="salon-floor flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 p-10 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/5">
+              <svg
+                aria-hidden
+                className="h-7 w-7 text-zinc-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xl font-black">
+                {emptySectorId ? "Todavía no hay mesas en este sector" : "No hay mesas que coincidan con esta vista"}
+              </p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
+                {emptySectorId
+                  ? "Agregá una mesa a este sector o explorá el resto del salón."
+                  : "Probá con otra búsqueda o quitá los filtros para ver todas las mesas."}
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {emptySectorId ? (
+                <button className="btn" onClick={() => setModal("newTable")} type="button">
+                  + Agregar mesa en este sector
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setQuery("");
+                    setSectorFilter("all");
+                    setStatusFilter("all");
+                  }}
+                  type="button"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          </div>
+        )
       ) : view === "map" ? (
         <FloorMap
           tables={visibleTables}
           overrides={overrides}
           layoutMode={layoutMode}
+          currency={data.currency}
+          sectorLabel={activeSectorName}
+          selectedId={selected?.id ?? null}
           onSelect={setSelected}
           onPositionCommit={commitPosition}
+          onApplyOverrides={applyOverrides}
+          onClearOverrides={clearOverrides}
+          onPersistPositions={persistPositions}
         />
       ) : (
         <TableView
@@ -494,6 +777,7 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
           branches={data.branches}
           sectors={data.sectors}
           defaultBranchId={data.activeBranch?.id ?? data.tables[0]?.branchId ?? data.branches[0]?.id ?? null}
+          defaultSectorId={emptySectorId}
           onClose={() => setModal(null)}
           onSaved={async (payload) => {
             await runAction(async () => {
@@ -507,97 +791,181 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
   );
 }
 
-/** @summary Plano del salón: mesas posicionadas con arrastre simple en modo edición. */
+/** @summary Plano del salón: mesas como tarjetas, arrastre solo en modo edición y auto-orden. */
 function FloorMap({
   tables,
   overrides,
   layoutMode,
+  currency,
+  sectorLabel,
+  selectedId,
   onSelect,
   onPositionCommit,
+  onApplyOverrides,
+  onClearOverrides,
+  onPersistPositions,
 }: {
   tables: SalonTable[];
-  overrides: Record<number, { x: number; y: number }>;
+  overrides: Record<number, Point>;
   layoutMode: boolean;
+  currency: string;
+  sectorLabel: string;
+  selectedId: number | null;
   onSelect: (table: SalonTable) => void;
   onPositionCommit: (tableId: number, x: number, y: number) => void;
+  onApplyOverrides: (positions: Record<number, Point>) => void;
+  onClearOverrides: () => void;
+  onPersistPositions: (positions: Record<number, Point>) => Promise<void>;
 }) {
   const floorRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ tableId: number; x: number; y: number } | null>(null);
   const [moved, setMoved] = useState(false);
   const dragOffset = useRef({ dx: 0, dy: 0 });
+  const dragSize = useRef({ width: 120, height: 84 });
 
-  /** @summary Posición de la mesa: override de arrastre, guardada o grilla por defecto. */
-  function positionOf(table: SalonTable) {
-    const override = overrides[table.id];
-    if (override) return override;
-    if (table.positionX !== null && table.positionY !== null) {
-      return { x: table.positionX, y: table.positionY };
-    }
-    const index = tables.findIndex((candidate) => candidate.id === table.id);
-    const columns = 5;
-    const col = index % columns;
-    const row = Math.floor(index / columns);
-    return { x: 12 + col * 18, y: 12 + row * 18 };
-  }
+  /** @summary Grilla por defecto: solo mesas sin coordenadas, evitando las ya posicionadas. */
+  const gridForMissing = useMemo(() => {
+    const missing = tables.filter(
+      (candidate) => !overrides[candidate.id] && !isValidTablePosition(candidate.positionX, candidate.positionY),
+    );
+    if (missing.length === 0) return {};
+    const positioned = tables.filter((candidate) => !missing.includes(candidate));
+    const occupied = positioned.map((candidate) => {
+      const candidateOverride = overrides[candidate.id];
+      return candidateOverride ?? { x: candidate.positionX!, y: candidate.positionY! };
+    });
+    return gridPositionsAvoiding(
+      missing.map((candidate) => candidate.id),
+      occupied,
+    );
+  }, [overrides, tables]);
 
-  /** @summary Inicia el arrastre de una mesa en modo edición del plano. */
+  /** @summary Posición efectiva: override de arrastre, guardada válida o grilla por defecto. */
+  const positionOf = useCallback(
+    (table: SalonTable): Point => {
+      const override = overrides[table.id];
+      if (override) return override;
+      if (isValidTablePosition(table.positionX, table.positionY)) {
+        return { x: table.positionX!, y: table.positionY! };
+      }
+      return gridForMissing[table.id] ?? { x: 500, y: 500 };
+    },
+    [overrides, gridForMissing],
+  );
+
+  /** @summary Inicia el arrastre solo en modo edición y mide la mesa para mantenerla dentro del plano. */
   function startDrag(event: React.PointerEvent, table: SalonTable) {
     if (!layoutMode || !floorRef.current) return;
     event.preventDefault();
+    const element = event.currentTarget as HTMLElement;
+    const elementRect = element.getBoundingClientRect();
+    dragSize.current = {
+      width: elementRect.width || 120,
+      height: elementRect.height || 84,
+    };
     const rect = floorRef.current.getBoundingClientRect();
     const position = positionOf(table);
-    const currentX = (rect.width * position.x) / 1000;
-    const currentY = (rect.height * position.y) / 1000;
+    const currentX = rect.left + (rect.width * position.x) / 1000;
+    const currentY = rect.top + (rect.height * position.y) / 1000;
     dragOffset.current = { dx: event.clientX - currentX, dy: event.clientY - currentY };
     setDrag({ tableId: table.id, x: position.x, y: position.y });
     setMoved(false);
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    element.setPointerCapture(event.pointerId);
   }
 
-  /** @summary Mueve la mesa siguiendo el puntero dentro del plano. */
+  /** @summary Mueve la mesa siguiendo el puntero, con clamp para que nunca quede fuera del canvas. */
   function moveDrag(event: React.PointerEvent) {
     if (!drag || !floorRef.current) return;
     const rect = floorRef.current.getBoundingClientRect();
-    const x = Math.min(96, Math.max(4, ((event.clientX - dragOffset.current.dx - rect.left) / rect.width) * 1000));
-    const y = Math.min(96, Math.max(4, ((event.clientY - dragOffset.current.dy - rect.top) / rect.height) * 1000));
-    if (Math.abs(x - drag.x) > 3 || Math.abs(y - drag.y) > 3) setMoved(true);
-    setDrag({ tableId: drag.tableId, x: Math.round(x), y: Math.round(y) });
+    const raw = {
+      x: ((event.clientX - dragOffset.current.dx - rect.left) / rect.width) * 1000,
+      y: ((event.clientY - dragOffset.current.dy - rect.top) / rect.height) * 1000,
+    };
+    const clamped = clampToFloor(
+      raw,
+      dragSize.current.width / 2 / rect.width,
+      dragSize.current.height / 2 / rect.height,
+    );
+    if (Math.abs(clamped.x - drag.x) > 3 || Math.abs(clamped.y - drag.y) > 3) setMoved(true);
+    setDrag({ tableId: drag.tableId, x: clamped.x, y: clamped.y });
   }
 
-  /** @summary Termina el arrastre y guarda la posición si realmente cambió. */
+  /** @summary Termina el arrastre y guarda la posición si realmente se movió. */
   function endDrag() {
     if (drag && moved) onPositionCommit(drag.tableId, drag.x, drag.y);
     setDrag(null);
     setMoved(false);
   }
 
+  /** @summary Distribuye todas las mesas en una grilla prolija, con confirmación de guardado. */
+  async function autoArrange() {
+    const positions = gridPositions(tables.map((table) => table.id));
+    onApplyOverrides(positions);
+    const confirmation = await Swal.fire({
+      title: "¿Guardar este orden?",
+      text: "Las mesas quedan distribuidas en una grilla prolija dentro del plano. Podés descartar para conservar el orden actual.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Guardar orden",
+      cancelButtonText: "Descartar",
+      confirmButtonColor: "#ec4899",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (confirmation.isConfirmed) {
+      await onPersistPositions(positions);
+    } else {
+      onClearOverrides();
+    }
+  }
+
   return (
     <div
-      className={`relative min-h-[540px] w-full overflow-hidden rounded-3xl border border-white/10 bg-white/[.02] p-6 ${
-        layoutMode ? "touch-none" : ""
+      className={`salon-floor relative h-[calc(100dvh-330px)] min-h-[400px] w-full overflow-hidden rounded-3xl border border-white/10 ${
+        layoutMode ? "is-editing touch-none" : ""
       }`}
       ref={floorRef}
       role="group"
       aria-label="Plano del salón"
     >
+      <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-xs font-bold text-zinc-300 backdrop-blur">
+        <span className="h-2 w-2 rounded-full bg-[var(--admin-primary)]" />
+        {sectorLabel}
+        <span className="font-black text-zinc-500">· {tables.length}</span>
+      </div>
+
       {layoutMode && (
-        <p className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full bg-zinc-900 px-4 py-1.5 text-xs font-black text-zinc-300 shadow-lg">
-          Arrastrá las mesas para acomodar el plano
-        </p>
+        <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-400/30 bg-black/70 px-4 py-1.5 text-xs font-black text-amber-300 shadow-lg backdrop-blur">
+          Modo edición: arrastrá las mesas para acomodar el plano
+        </div>
       )}
+
       {tables.map((table) => {
         const position = drag?.tableId === table.id ? drag : positionOf(table);
         const status = tableStatus(table);
         const styles = tableStatusStyles[status] ?? tableStatusStyles.free;
+        const glow = tableStatusGlowColor(status);
+        const isSelected = selectedId === table.id;
+        const sizeClass = table.capacity <= 2 ? "w-[96px]" : table.capacity <= 6 ? "w-[116px]" : "w-[136px]";
+        const shadows = `0 10px 24px rgba(0,0,0,.45), 0 0 26px ${glow}40${
+          drag?.tableId === table.id
+            ? ", 0 0 0 2px rgba(255,255,255,.65)"
+            : isSelected
+              ? ", 0 0 0 2px var(--admin-primary)"
+              : ""
+        }`;
         return (
           <button
-            className={`absolute z-10 min-w-[84px] max-w-[150px] rounded-2xl border-2 px-3 py-2 text-center shadow-xl transition ${
-              layoutMode ? "cursor-grab active:cursor-grabbing" : "hover:z-20 hover:scale-105"
-            } ${styles.chip} ${drag?.tableId === table.id ? "ring-2 ring-white/60" : ""}`}
+            className={`absolute z-10 flex flex-col items-center justify-center gap-0.5 rounded-2xl border-2 bg-[var(--admin-surface)]/95 px-2 py-2 backdrop-blur-sm transition ${
+              layoutMode ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+            } ${sizeClass} ${styles.chip} ${drag?.tableId === table.id ? "z-30 scale-110" : ""} ${
+              isSelected && !layoutMode ? "z-30 scale-105" : ""
+            }`}
             style={{
               left: `${position.x / 10}%`,
               top: `${position.y / 10}%`,
               transform: "translate(-50%, -50%)",
+              boxShadow: shadows,
             }}
             key={table.id}
             onClick={() => {
@@ -610,23 +978,62 @@ function FloorMap({
             type="button"
             aria-label={`Mesa ${table.name} · ${tableStatusLabel(status)}`}
           >
-            <span className="block text-xl font-black leading-none">{table.name}</span>
-            <span className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wide">
-              <span className={`h-2 w-2 rounded-full ${styles.dot}`} />
-              {tableStatusLabel(status)}
+            <span className="flex w-full items-center justify-center gap-1.5">
+              <span className="text-base font-black leading-none sm:text-lg">{table.name}</span>
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${styles.dot} ${table.session ? "animate-pulse" : ""}`}
+              />
             </span>
-            {table.session && (
-              <span className="mt-1 block truncate text-[11px] font-bold text-white/70">
-                {table.session.orders.length} comanda{table.session.orders.length === 1 ? "" : "s"}
-                {table.session.totals.total > 0 ? ` · ${money(table.session.totals.total, "ARS")}` : ""}
-              </span>
+            {table.session ? (
+              <>
+                <span className="text-[11px] font-bold leading-tight text-white/80">
+                  {table.session.partySize} {table.session.partySize === 1 ? "comensal" : "comensales"}
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-black leading-tight text-white">
+                  <SessionTime iso={table.session.openedAt} />
+                  {table.session.totals.total > 0 && (
+                    <>
+                      <span className="text-white/30">·</span>
+                      <span>{money(table.session.totals.total, currency)}</span>
+                    </>
+                  )}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] font-bold leading-tight text-white/50">
+                  {table.capacity} {table.capacity === 1 ? "persona" : "personas"}
+                </span>
+                <span className="text-[10px] font-black uppercase leading-tight tracking-wide">
+                  {tableStatusLabel(status)}
+                </span>
+              </>
             )}
           </button>
         );
       })}
-      <p className="absolute bottom-3 right-4 z-0 text-xs text-zinc-700">
-        {tables.length} mesa{tables.length === 1 ? "" : "s"} en esta vista
-      </p>
+
+      {layoutMode && (
+        <button
+          className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/60 px-3.5 py-2 text-xs font-bold text-zinc-300 backdrop-blur transition hover:border-white/25 hover:text-white"
+          type="button"
+          onClick={() => void autoArrange()}
+        >
+          <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+          </svg>
+          Ordenar automáticamente
+        </button>
+      )}
+
+      {!layoutMode && (
+        <p className="pointer-events-none absolute bottom-3 right-4 z-10 text-xs text-zinc-600">
+          {tables.length} mesa{tables.length === 1 ? "" : "s"} · usá “Editar plano” para moverlas
+        </p>
+      )}
     </div>
   );
 }
@@ -685,18 +1092,26 @@ function TableView({
                     </span>
                   </div>
                   {table.session ? (
-                    <div className="mt-4 space-y-1 border-t border-white/10 pt-3 text-sm">
-                      <p className="font-bold text-zinc-200">
-                        {table.session.customerName || `Mesa ${table.name}`}
-                        {table.session.partySize > 1 ? ` · ${table.session.partySize} personas` : ""}
-                      </p>
-                      <p className="text-zinc-500">
-                        {table.session.orders.length} comanda{table.session.orders.length === 1 ? "" : "s"} ·{" "}
-                        {money(table.session.totals.total, table.session.orders[0]?.currency ?? currency)}
-                      </p>
-                      <p className="text-xs text-zinc-600">
-                        Abierta {elapsedLabel(table.session.openedAt)}
-                        {table.session.waiter ? ` · ${table.session.waiter.name}` : ""}
+                    <div className="mt-4 space-y-1.5 border-t border-white/10 pt-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate font-bold text-zinc-200">
+                          {table.session.customerName || `Mesa ${table.name}`}
+                          {table.session.partySize > 1 ? ` · ${table.session.partySize} personas` : ""}
+                        </p>
+                        <strong className="shrink-0">
+                          {money(table.session.totals.total, table.session.orders[0]?.currency ?? currency)}
+                        </strong>
+                      </div>
+                      <p className="flex items-center gap-2 text-xs text-zinc-500">
+                        <SessionTime iso={table.session.openedAt} />
+                        <span className="h-0.5 w-0.5 rounded-full bg-zinc-600" />
+                        {table.session.orders.length} comanda{table.session.orders.length === 1 ? "" : "s"}
+                        {table.session.waiter ? (
+                          <>
+                            <span className="h-0.5 w-0.5 rounded-full bg-zinc-600" />
+                            {table.session.waiter.name}
+                          </>
+                        ) : null}
                       </p>
                     </div>
                   ) : (
@@ -714,7 +1129,7 @@ function TableView({
   );
 }
 
-/** @summary Panel de una mesa: abrir, gestionar consumos, traslados, precuenta, cierre y timeline. */
+/** @summary Panel lateral de una mesa: estado, consumos, comandas, historial y acciones contextuales. */
 function TablePanel({
   table,
   currency,
@@ -752,19 +1167,20 @@ function TablePanel({
     };
   }, [table.code]);
 
+  const openOrders = session
+    ? session.orders.filter((order) => !["delivered", "cancelled"].includes(order.status))
+    : [];
+
   return (
-    <div
-      className="fixed inset-0 z-[120] grid place-items-center bg-black/80 p-4 backdrop-blur"
-      onClick={onClose}
-    >
-      <article
-        className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl"
+    <div className="salon-fade fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <aside
+        className="salon-drawer absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l border-white/10 bg-[var(--admin-background)] shadow-2xl shadow-black/60"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={`Mesa ${table.name}`}
       >
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
+        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="section-eyebrow">
@@ -772,23 +1188,27 @@ function TablePanel({
               </p>
               <StatusBadge status={status} />
             </div>
-            <h2 className="mt-2 text-3xl font-black">{table.name}</h2>
+            <h2 className="mt-1.5 text-2xl font-black sm:text-3xl">{table.name}</h2>
             {session && (
               <p className="mt-1 text-sm text-zinc-400">
-                Abierta {elapsedLabel(session.openedAt)} · {new Date(session.openedAt).toLocaleString("es-AR")}
+                Abierta <SessionTime iso={session.openedAt} /> ·{" "}
+                {new Date(session.openedAt).toLocaleTimeString("es-AR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden h-20 w-20 overflow-hidden rounded-xl bg-white p-1 sm:block">
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="hidden h-16 w-16 overflow-hidden rounded-xl bg-white p-0.5 sm:block">
               {qr ? (
-                <Image src={qr} alt={`QR de ${table.name}`} width={80} height={80} unoptimized />
+                <Image src={qr} alt={`QR de ${table.name}`} width={64} height={64} unoptimized />
               ) : (
-                <span className="grid h-full place-items-center text-[10px] text-black">QR</span>
+                <span className="grid h-full place-items-center text-[9px] text-black">QR</span>
               )}
             </div>
             <button
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl transition hover:bg-white/10"
               onClick={onClose}
               aria-label="Cerrar"
             >
@@ -797,171 +1217,177 @@ function TablePanel({
           </div>
         </header>
 
-        {!session ? (
-          <div className="mt-6">
-            <p className="text-sm leading-relaxed text-zinc-400">
-              Esta mesa está libre. El código QR sigue asociado a esta mesa: los clientes que lo escaneen
-              llegan directo a la carta de esta sucursal.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button className="btn" onClick={() => onOpenModal("open")} type="button">
-                Abrir mesa
-              </button>
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+          {!session ? (
+            <div className="flex flex-col items-start gap-5">
+              <p className="text-sm leading-relaxed text-zinc-400">
+                Esta mesa está libre. El código QR sigue asociado a esta mesa: los clientes que lo escaneen
+                llegan directo a la carta de esta sucursal.
+              </p>
+              {canManageOrders ? (
+                <button className="btn" onClick={() => onOpenModal("open")} type="button">
+                  Abrir mesa
+                </button>
+              ) : (
+                <p className="text-sm font-bold text-emerald-300">Mesa disponible</p>
+              )}
             </div>
-          </div>
-        ) : (
-          <>
-            <section className="mt-6 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl bg-white/5 p-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Comensales</h3>
-                <dl className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-zinc-500">Cliente</dt>
-                    <dd className="text-right font-bold">{session.customerName || "Sin asignar"}</dd>
-                  </div>
-                  {session.phone && (
+          ) : (
+            <>
+              <section className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl bg-white/5 p-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Comensales</h3>
+                  <dl className="mt-3 space-y-2 text-sm">
                     <div className="flex justify-between gap-4">
-                      <dt className="text-zinc-500">Teléfono</dt>
-                      <dd className="text-right font-bold">{session.phone}</dd>
+                      <dt className="text-zinc-500">Cliente</dt>
+                      <dd className="text-right font-bold">{session.customerName || "Sin asignar"}</dd>
                     </div>
-                  )}
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-zinc-500">Comensales</dt>
-                    <dd className="text-right font-bold">{session.partySize}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-zinc-500">Camarero</dt>
-                    <dd className="text-right font-bold">{session.waiter?.name ?? "Sin asignar"}</dd>
-                  </div>
-                  {session.notes && (
+                    {session.phone && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-zinc-500">Teléfono</dt>
+                        <dd className="text-right font-bold">{session.phone}</dd>
+                      </div>
+                    )}
                     <div className="flex justify-between gap-4">
-                      <dt className="text-zinc-500">Nota</dt>
-                      <dd className="text-right font-bold">{session.notes}</dd>
+                      <dt className="text-zinc-500">Comensales</dt>
+                      <dd className="text-right font-bold">{session.partySize}</dd>
                     </div>
-                  )}
-                </dl>
-              </div>
-              <div className="rounded-2xl bg-white/5 p-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Consumo</h3>
-                <dl className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-zinc-500">Comandas</dt>
-                    <dd className="text-right font-bold">{session.orders.length}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-zinc-500">Productos</dt>
-                    <dd className="text-right font-bold">{session.totals.itemCount}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4 text-lg">
-                    <dt className="text-zinc-400">Total</dt>
-                    <dd className="font-black">{money(session.totals.total, currency)}</dd>
-                  </div>
-                  <div className="flex items-center gap-2 pt-2">
-                    <label className="text-xs text-zinc-500" htmlFor="session-status">
-                      Estado manual:
-                    </label>
-                    <select
-                      className="input flex-1 py-1.5 text-sm"
-                      id="session-status"
-                      value={session.status}
-                      onChange={(event) => onChangeSessionStatus(event.target.value)}
-                    >
-                      {["reserved", "occupied", "awaiting_order", "preparing", "ready_to_bill"].map(
-                        (candidate) => (
-                          <option key={candidate} value={candidate}>
-                            {tableStatusLabel(candidate)}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
-                </dl>
-              </div>
-            </section>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-zinc-500">Camarero</dt>
+                      <dd className="text-right font-bold">{session.waiter?.name ?? "Sin asignar"}</dd>
+                    </div>
+                    {session.notes && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-zinc-500">Nota</dt>
+                        <dd className="text-right font-bold">{session.notes}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+                <div className="rounded-2xl bg-white/5 p-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Consumo</h3>
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-zinc-500">Comandas</dt>
+                      <dd className="text-right font-bold">{session.orders.length}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-zinc-500">Productos</dt>
+                      <dd className="text-right font-bold">{session.totals.itemCount}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4 text-lg">
+                      <dt className="text-zinc-400">Total</dt>
+                      <dd className="font-black">{money(session.totals.total, currency)}</dd>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <label className="text-xs text-zinc-500" htmlFor="session-status">
+                        Estado manual:
+                      </label>
+                      <select
+                        className="input flex-1 py-1.5 text-sm"
+                        id="session-status"
+                        value={session.status}
+                        onChange={(event) => onChangeSessionStatus(event.target.value)}
+                      >
+                        {["reserved", "occupied", "awaiting_order", "preparing", "ready_to_bill"].map(
+                          (candidate) => (
+                            <option key={candidate} value={candidate}>
+                              {tableStatusLabel(candidate)}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                  </dl>
+                </div>
+              </section>
 
-            <section className="mt-7">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                  Comandas ({session.orders.length})
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {canManageOrders && (
-                    <button className="btn" onClick={() => onOpenModal("order")} type="button">
-                      + Agregar consumo
-                    </button>
-                  )}
+              <section className="mt-7">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                    Comandas ({session.orders.length})
+                  </h3>
                   <button className="btn btn-secondary" onClick={() => onOpenModal("bill")} type="button">
                     Precuenta
                   </button>
                 </div>
-              </div>
-              <div className="mt-3 space-y-3">
-                {session.orders.map((order) => (
-                  <ComandaCard
-                    key={order.id}
-                    order={order}
-                    currency={order.currency || currency}
-                    canManageOrders={canManageOrders}
-                    onStatusChange={(status) => onChangeOrderStatus(order.id, status)}
-                  />
-                ))}
-              </div>
-            </section>
+                <div className="mt-3 space-y-3">
+                  {session.orders.map((order) => (
+                    <ComandaCard
+                      key={order.id}
+                      order={order}
+                      currency={order.currency || currency}
+                      canManageOrders={canManageOrders}
+                      onStatusChange={(status) => onChangeOrderStatus(order.id, status)}
+                    />
+                  ))}
+                </div>
+              </section>
 
-            <section className="mt-7">
-              <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Historial</h3>
-              <ol className="mt-3 space-y-0">
-                {session.events.map((event, index) => (
-                  <li className="relative flex gap-3 pb-4 pl-5 last:pb-0" key={event.id}>
-                    <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--admin-primary)]" />
-                    {index < session.events.length - 1 && (
-                      <span className="absolute left-[4px] top-4 h-full w-px bg-white/10" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold">{event.note || eventLabel(event.eventType)}</p>
-                      <p className="text-xs text-zinc-500">
-                        {new Date(event.createdAt).toLocaleTimeString("es-AR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        {event.userName ? ` · ${event.userName}` : ""}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
+              <section className="mt-7">
+                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Historial</h3>
+                <ol className="mt-3 space-y-0">
+                  {session.events.map((event, index) => (
+                    <li className="relative flex gap-3 pb-4 pl-5 last:pb-0" key={event.id}>
+                      <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--admin-primary)]" />
+                      {index < session.events.length - 1 && (
+                        <span className="absolute left-[4px] top-4 h-full w-px bg-white/10" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold">{event.note || eventLabel(event.eventType)}</p>
+                        <p className="text-xs text-zinc-500">
+                          {new Date(event.createdAt).toLocaleTimeString("es-AR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {event.userName ? ` · ${event.userName}` : ""}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            </>
+          )}
+        </div>
 
-            <footer className="mt-7 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-2 lg:grid-cols-3">
+        {session && (
+          <footer className="border-t border-white/10 px-5 py-4 sm:px-7">
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {canManageOrders && (
+                <button className="btn" onClick={() => onOpenModal("order")} type="button">
+                  + Agregar consumo
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={() => onOpenModal("move")} type="button">
                 Trasladar mesa
               </button>
-              <button className="btn btn-secondary" onClick={() => onOpenModal("transfer")} type="button">
-                Mover comandas
-              </button>
-              <button className="btn btn-secondary" onClick={() => onOpenModal("split")} type="button">
-                Separar comandas
-              </button>
+              {openOrders.length > 0 && (
+                <button className="btn btn-secondary" onClick={() => onOpenModal("transfer")} type="button">
+                  Mover comandas
+                </button>
+              )}
+              {openOrders.length > 0 && (
+                <button className="btn btn-secondary" onClick={() => onOpenModal("split")} type="button">
+                  Separar comandas
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={() => onOpenModal("merge")} type="button">
                 Unir con otra mesa
               </button>
-              <button
-                className="btn btn-secondary"
-                disabled
-                title="Dividir cuenta por producto o comensal estará disponible próximamente."
-                type="button"
-              >
-                Dividir cuenta · Próximamente
-              </button>
               {canManageOrders && (
-                <button className="btn" onClick={onCloseSession} type="button">
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--admin-danger)] px-4 text-sm font-bold text-white transition hover:brightness-90"
+                  onClick={onCloseSession}
+                  type="button"
+                >
                   Cerrar mesa
                 </button>
               )}
-            </footer>
-          </>
+            </div>
+          </footer>
         )}
-      </article>
+      </aside>
     </div>
   );
 }
@@ -2044,12 +2470,14 @@ function NewTableModal({
   branches,
   sectors,
   defaultBranchId,
+  defaultSectorId,
   onClose,
   onSaved,
 }: {
   branches: SalonPayload["branches"];
   sectors: SalonPayload["sectors"];
   defaultBranchId: number | null;
+  defaultSectorId?: number | null;
   onClose: () => void;
   onSaved: (payload: {
     name: string;
@@ -2061,20 +2489,24 @@ function NewTableModal({
   }) => Promise<void>;
 }) {
   const [branchId, setBranchId] = useState<number | null>(defaultBranchId ?? branches[0]?.id ?? null);
+  const [sectorId, setSectorId] = useState<number | null>(defaultSectorId ?? null);
   const [submitting, setSubmitting] = useState(false);
   const branchSectors = sectors.filter((sector) => sector.branchId === branchId && sector.active);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!branchId) return;
     const form = new FormData(event.currentTarget);
-    const sectorId = Number(form.get("sectorId")) || null;
-    const sectorName = sectorId ? branchSectors.find((sector) => sector.id === sectorId)?.name ?? "" : "";
+    const resolvedSectorId =
+      sectorId && branchSectors.some((sector) => sector.id === sectorId) ? sectorId : null;
+    const sectorName = resolvedSectorId
+      ? branchSectors.find((sector) => sector.id === resolvedSectorId)?.name ?? ""
+      : "";
     setSubmitting(true);
     try {
       await onSaved({
         name: String(form.get("name") ?? ""),
         sector: sectorName,
-        sectorId,
+        sectorId: resolvedSectorId,
         capacity: Number(form.get("capacity") ?? 4),
         active: form.get("active") === "on",
         branchId,
@@ -2096,7 +2528,13 @@ function NewTableModal({
             <select
               className="input"
               value={branchId ?? ""}
-              onChange={(event) => setBranchId(event.target.value ? Number(event.target.value) : null)}
+              onChange={(event) => {
+                const next = event.target.value ? Number(event.target.value) : null;
+                setBranchId(next);
+                if (next && !sectors.some((sector) => sector.id === sectorId && sector.branchId === next)) {
+                  setSectorId(null);
+                }
+              }}
             >
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
@@ -2107,7 +2545,11 @@ function NewTableModal({
           </label>
           <label>
             <span className="label">Sector</span>
-            <select className="input" name="sectorId" defaultValue="">
+            <select
+              className="input"
+              value={sectorId ?? ""}
+              onChange={(event) => setSectorId(event.target.value ? Number(event.target.value) : null)}
+            >
               <option value="">Sin sector</option>
               {branchSectors.map((sector) => (
                 <option key={sector.id} value={sector.id}>
