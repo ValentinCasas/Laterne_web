@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
-import { PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
+import { FileDropzone } from "@/components/admin/file-dropzone";
 import {
   marginPercent,
   markupPercent,
@@ -663,23 +663,21 @@ export function ProductEditor({
                       ))}
                     </select>
                   </label>
-                  <label className="block sm:col-span-2">
+                  <div className="sm:col-span-2">
                     <span className="block text-sm font-semibold text-[var(--admin-muted)]">Imagen del producto</span>
-                    <div className="flex items-center gap-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={draft.imageUrl ? `/images/images_product/${draft.imageUrl}` : PRODUCT_IMAGE_FALLBACK}
-                        alt="Vista previa"
-                        className="h-16 w-16 shrink-0 rounded-xl border border-[var(--admin-border)] object-cover"
-                      />
-                      <input
-                        className="input"
+                    <div className="mt-2">
+                      <FileDropzone
+                        resource="productos"
+                        accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
+                        emptyLabel="Arrastrá una imagen o hacé clic para elegirla"
+                        hint="JPG, PNG, WebP, AVIF o GIF · hasta 5 MB"
                         value={draft.imageUrl}
-                        onChange={(event) => patch({ imageUrl: event.target.value })}
-                        placeholder="Nombre del archivo cargado en Archivos"
+                        onUploaded={(storedValue) => patch({ imageUrl: storedValue })}
+                        onCleared={() => patch({ imageUrl: "" })}
+                        preview="image"
                       />
                     </div>
-                  </label>
+                  </div>
                 </div>
 
                 <div>
@@ -1463,24 +1461,38 @@ export function ProductEditor({
                   hint="La imagen se muestra en la carta. Los modelos 3D y AR se cargan desde Archivos y aparecen en el detalle del producto."
                 />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block sm:col-span-2">
+                  <div className="sm:col-span-2">
                     <span className="block text-sm font-semibold text-[var(--admin-muted)]">Modelo principal (GLB o GLTF)</span>
-                    <input
-                      className="input"
-                      value={draft.model3dUrl}
-                      onChange={(event) => patch({ model3dUrl: event.target.value })}
-                      placeholder="models/{id}/products/archivo.glb"
-                    />
-                  </label>
-                  <label className="block">
+                    <div className="mt-2">
+                      <FileDropzone
+                        resource="product-model"
+                        accept=".glb,.gltf"
+                        emptyLabel="Arrastrá el modelo o hacé clic para elegirlo"
+                        hint="GLB o GLTF 2.0 · hasta 40 MB (GLB) / 15 MB (GLTF)"
+                        value={draft.model3dUrl}
+                        onUploaded={(storedValue) => patch({ model3dUrl: storedValue })}
+                        onCleared={() => patch({ model3dUrl: "" })}
+                        preview="model"
+                        displayName={draft.model3dUrl.split("/").pop() || "Modelo 3D"}
+                      />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
                     <span className="block text-sm font-semibold text-[var(--admin-muted)]">Modelo USDZ para iPhone (opcional)</span>
-                    <input
-                      className="input"
-                      value={draft.usdzUrl}
-                      onChange={(event) => patch({ usdzUrl: event.target.value })}
-                      placeholder="models/{id}/products/archivo.usdz"
-                    />
-                  </label>
+                    <div className="mt-2">
+                      <FileDropzone
+                        resource="product-model"
+                        accept=".usdz"
+                        emptyLabel="Arrastrá el USDZ o hacé clic para elegirlo"
+                        hint="USDZ · hasta 60 MB · se muestra con Quick Look en iPhone"
+                        value={draft.usdzUrl}
+                        onUploaded={(storedValue) => patch({ usdzUrl: storedValue })}
+                        onCleared={() => patch({ usdzUrl: "" })}
+                        preview="file"
+                        displayName={draft.usdzUrl.split("/").pop() || "Modelo USDZ"}
+                      />
+                    </div>
+                  </div>
                   <label className="block">
                     <span className="block text-sm font-semibold text-[var(--admin-muted)]">Escala inicial</span>
                     <input
@@ -1567,6 +1579,37 @@ export function ProductEditor({
                       Permitir ajustar tamaño en AR
                     </label>
                   </div>
+                  <details className="group rounded-2xl border border-white/10 bg-white/[.02] sm:col-span-2">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 select-none [&::-webkit-details-marker]:hidden">
+                      <span className="text-sm font-bold text-zinc-300">
+                        Rutas técnicas
+                        <small className="mt-0.5 block font-normal text-[var(--admin-muted)]">
+                          Para reutilizar archivos ya cargados en Archivos
+                        </small>
+                      </span>
+                      <span className="text-xs text-zinc-500 transition group-open:rotate-180">▾</span>
+                    </summary>
+                    <div className="grid gap-4 border-t border-white/10 p-4 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="block text-sm font-semibold text-[var(--admin-muted)]">Ruta del modelo 3D</span>
+                        <input
+                          className="input"
+                          value={draft.model3dUrl}
+                          onChange={(event) => patch({ model3dUrl: event.target.value })}
+                          placeholder="models/{tenant}/products/archivo.glb"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="block text-sm font-semibold text-[var(--admin-muted)]">Ruta del modelo USDZ</span>
+                        <input
+                          className="input"
+                          value={draft.usdzUrl}
+                          onChange={(event) => patch({ usdzUrl: event.target.value })}
+                          placeholder="models/{tenant}/products/archivo.usdz"
+                        />
+                      </label>
+                    </div>
+                  </details>
                 </div>
               </div>
             )}

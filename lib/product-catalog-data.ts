@@ -29,15 +29,36 @@ export type CatalogProductRow = {
   markup: number | null;
   favorite: boolean;
   featured: boolean;
+  /** Identificador de la categoría efectiva (hija si existe, si no la categoría). */
   categoryId: number | null;
-  categoryName: string | null;
-  subcategoryName: string | null;
+  /** Categoría padre cuando el producto cuelga de una subcategoría. */
+  parentCategoryId: number | null;
+  /** Breadcrumb legible "Categoría › Subcategoría". */
+  categoryBreadcrumb: string;
+  stationId: number | null;
   stationName: string | null;
   branchCount: number;
   activeBranchCount: number;
-  /** Stock actual en la sucursal activa (null si no hay sucursal activa o no se controla). */
+  /** Sucursales donde el producto está publicado (para filtrar por local). */
+  branchIds: number[];
+  /** Stock físico en la sucursal activa (null si no hay sucursal activa o no se controla). */
   stock: string | null;
+  /** Unidades reservadas en la sucursal activa. */
+  reserved: string | null;
+  /** Disponible = físico − reservado en la sucursal activa. */
+  available: string | null;
+  /** Mínimo configurado en la sucursal activa (para alertas de stock bajo). */
+  minimum: string | null;
   tracked: boolean;
+  hasRecipe: boolean;
+  hasCombo: boolean;
+  hasModifiers: boolean;
+  hasChannelPrices: boolean;
+  hasImage: boolean;
+  hasModel3d: boolean;
+  arEnabled: boolean;
+  /** Fecha de la última actualización para ordenar por "más reciente". */
+  updatedAt: string;
 };
 
 export type CatalogCategoryOption = {
@@ -74,8 +95,20 @@ export async function loadProductCatalogData(context: AuthorizationContext): Pro
       include: {
         categories: { include: { category: { include: { parent: { select: { name: true } } } } } },
         branchAssignments: { select: { branchId: true, active: true } },
-        inventoryStocks: { select: { branchId: true, current: true, tracked: true } },
-        station: { select: { name: true } },
+        inventoryStocks: {
+          select: { branchId: true, current: true, reserved: true, minimum: true, tracked: true },
+        },
+        station: { select: { id: true, name: true } },
+        _count: {
+          select: {
+            recipeItems: true,
+            comboParts: true,
+            optionGroups: true,
+            variants: true,
+            extras: true,
+            priceLists: true,
+          },
+        },
       },
       orderBy: [{ favorite: "desc" }, { name: "asc" }],
     }),
@@ -113,11 +146,14 @@ export async function loadProductCatalogData(context: AuthorizationContext): Pro
   return {
     products: products.map((product) => {
       const category = product.categories[0]?.category ?? null;
+      const parent = category?.parent ?? null;
       const stock = activeId
         ? product.inventoryStocks.find((entry) => entry.branchId === activeId) ?? null
         : null;
       const price = product.price !== null && product.price !== undefined ? Number(product.price) : null;
       const cost = product.cost !== null && product.cost !== undefined ? Number(product.cost) : null;
+      const current = stock && stock.tracked ? Number(stock.current) : null;
+      const reserved = stock && stock.tracked ? Number(stock.reserved ?? 0) : null;
       return {
         id: product.id,
         name: product.name,
@@ -137,13 +173,27 @@ export async function loadProductCatalogData(context: AuthorizationContext): Pro
         favorite: product.favorite,
         featured: product.featured,
         categoryId: category?.id ?? null,
-        categoryName: category?.name ?? null,
-        subcategoryName: category?.parent?.name ?? null,
+        parentCategoryId: category?.parentId ?? null,
+        categoryBreadcrumb: [parent?.name, category?.name].filter(Boolean).join(" › "),
+        stationId: product.stationId ?? null,
         stationName: product.station?.name ?? null,
         branchCount: product.branchAssignments.length,
         activeBranchCount: product.branchAssignments.filter((entry) => entry.active).length,
-        stock: stock?.tracked ? String(Number(stock.current)) : null,
+        branchIds: product.branchAssignments.map((entry) => entry.branchId),
+        stock: current !== null ? String(current) : null,
+        reserved: reserved !== null ? String(reserved) : null,
+        available: current !== null ? String(Math.max(0, current - (reserved ?? 0))) : null,
+        minimum: stock?.tracked ? String(Number(stock.minimum ?? 0)) : null,
         tracked: stock?.tracked ?? false,
+        hasRecipe: product._count.recipeItems > 0,
+        hasCombo: product._count.comboParts > 0,
+        hasModifiers:
+          product._count.optionGroups > 0 || product._count.variants > 0 || product._count.extras > 0,
+        hasChannelPrices: product._count.priceLists > 0,
+        hasImage: product.imageUrl.trim() !== "",
+        hasModel3d: Boolean(product.model3dUrl && product.model3dUrl.trim() !== ""),
+        arEnabled: product.arEnabled,
+        updatedAt: product.updatedAt.toISOString(),
       };
     }),
     categories: categories.map((category) => ({

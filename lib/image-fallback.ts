@@ -16,6 +16,34 @@ export const DEFAULT_IMAGE_PLACEHOLDERS = new Set([
   "default.png",
 ]);
 
+/** @summary Extensión de imagen que los gestores de archivos aceptan para la carta. */
+const IMAGE_FILE_PATTERN = /^[\w\-. ]+\.(png|jpe?g|webp|avif|gif)$/i;
+
+/**
+ * @summary Devuelve la URL pública de la imagen de un producto o el respaldo si no es un archivo válido.
+ *
+ * Algunos registros históricos guardaron texto libre (nombres, rutas rotas) en
+ * `imageUrl`. Esta función evita renderizar imágenes rotas o texto ALT encima
+ * de la interfaz: solo trata como imagen un nombre de archivo con extensión
+ * conocida; todo lo demás usa el placeholder de producto.
+ */
+export function productImageSrc(imageUrl: string | null | undefined): string {
+  const value = (imageUrl ?? "").trim();
+  if (!value || DEFAULT_IMAGE_PLACEHOLDERS.has(value)) return PRODUCT_IMAGE_FALLBACK;
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return value;
+  if (!IMAGE_FILE_PATTERN.test(value)) return PRODUCT_IMAGE_FALLBACK;
+  return `/images/images_product/${value}`;
+}
+
+/** @summary Devuelve la URL pública de un modelo 3D normalizando el formato histórico almacenado. */
+export function modelPublicUrl(value: string | null | undefined): string {
+  const model = (value ?? "").trim();
+  if (!model) return "";
+  if (/^(?:https?:)?\/\//i.test(model)) return model.replace(/^https?:\/\//i, "");
+  return model.startsWith("/") ? model : `/${model}`;
+}
+
 /**
  * @summary Sustituye una imagen fallida por el recurso de respaldo apropiado.
  *
