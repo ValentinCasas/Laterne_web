@@ -48,7 +48,7 @@ type PriceDraft = {
   endTime: string;
 };
 type ComboDraft = { itemProductId: number; name: string; quantity: string };
-type RecipeDraft = { ingredientProductId: number; name: string; quantity: string; unit: string };
+type RecipeDraft = { ingredientProductId: number; name: string; quantity: string; unit: string; yieldPercent: string };
 type BranchDraft = {
   branchId: number;
   name: string;
@@ -294,6 +294,7 @@ function draftFromDetail(detail: ProductDetail, options: ProductEditorOptions): 
       name: item.ingredientProductName,
       quantity: item.quantity,
       unit: item.unit,
+      yieldPercent: item.yieldPercent,
     })),
     branchAssignments: assignments,
   };
@@ -405,7 +406,7 @@ export function ProductEditor({
       patch({
         recipeIngredients: [
           ...draft.recipeIngredients,
-          { ingredientProductId: product.id, name: product.name, quantity: "1", unit: "unidad" },
+          { ingredientProductId: product.id, name: product.name, quantity: "1", unit: "unidad", yieldPercent: "100" },
         ],
       });
     }
@@ -483,6 +484,7 @@ export function ProductEditor({
           ingredientProductId: item.ingredientProductId,
           quantity: item.quantity,
           unit: item.unit,
+          yieldPercent: item.yieldPercent,
         })),
         branchAssignments: draft.branchAssignments.map((assignment) => ({
           branchId: assignment.branchId,
@@ -1407,6 +1409,28 @@ export function ProductEditor({
                               <option key={unit} value={unit}>{unit}</option>
                             ))}
                           </select>
+                          <label className="flex items-center gap-1 text-xs text-[var(--admin-muted)]">
+                            Rend.
+                            <input
+                              className="input w-16"
+                              type="number"
+                              min={0.001}
+                              max={999}
+                              step="0.5"
+                              value={item.yieldPercent}
+                              onChange={(event) =>
+                                patch({
+                                  recipeIngredients: draft.recipeIngredients.map((entry) =>
+                                    entry.ingredientProductId === item.ingredientProductId
+                                      ? { ...entry, yieldPercent: event.target.value }
+                                      : entry,
+                                  ),
+                                })
+                              }
+                              aria-label={`Rendimiento de ${item.name}`}
+                            />
+                            <span>%</span>
+                          </label>
                           <button
                             type="button"
                             onClick={() =>

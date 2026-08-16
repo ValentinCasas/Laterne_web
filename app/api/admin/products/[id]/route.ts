@@ -6,6 +6,7 @@ import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { applyProductWrite, productWriteData, removeProductEntirely, removeProductFromBranch } from "@/lib/product-catalog";
 import { loadProductDetail } from "@/lib/product-catalog-data";
+import { recordIngredientCostHistory } from "@/lib/recipes";
 
 /**
  * @summary Detalle, edición y baja de un producto del catálogo.
@@ -46,9 +47,32 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       excludeId: id,
       requirePrice: published,
     });
-    const oldItem = await prisma.product.findUnique({ where: { id }, select: { name: true, status: true } });
+    const oldItem = await prisma.product.findUnique({
+      where: { id },
+      select: { name: true, status: true, cost: true, costUnit: true },
+    });
+    if (!oldItem) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
 
-    await prisma.$transaction((transaction) => applyProductWrite(transaction, auth.tenant.id, id, write));
+    await prisma.$transaction(async (transaction) => {
+      await applyProductWrite(transaction, auth.tenant.id, id, write);
+      // El costo de un ingrediente es histórico: cada cambio se registra, nunca se reescribe el pasado.
+      const saved = await transaction.product.findUniqueOrThrow({
+        where: { id },
+        select: { cost: true, costUnit: true },
+      });
+      const oldCost = oldItem.cost === null || oldItem.cost === undefined ? null : Number(oldItem.cost);
+      const newCost = saved.cost === null || saved.cost === undefined ? null : Number(saved.cost);
+      if (oldCost !== newCost || oldItem.costUnit !== saved.costUnit) {
+        await recordIngredientCostHistory(transaction, {
+          tenantId: auth.tenant.id,
+          productId: id,
+          cost: newCost ?? 0,
+          unit: saved.costUnit,
+          changedById: auth.session.userId,
+          reason: "Edición de producto",
+        });
+      }
+    });
     const item = await prisma.product.findUniqueOrThrow({ where: { id } });
 
     await recordAudit({

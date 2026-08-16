@@ -211,6 +211,7 @@ export type ProductDetailRecipeIngredient = {
   ingredientProductName: string;
   quantity: string;
   unit: string;
+  yieldPercent: string;
 };
 
 export type ProductDetailBranchAssignment = {
@@ -472,6 +473,7 @@ export async function loadProductDetail(
       ingredientProductName: item.ingredient.name,
       quantity: decimalString(item.quantity) ?? "1",
       unit: item.unit,
+      yieldPercent: decimalString(item.yieldPercent) ?? "100",
     })),
     branchAssignments: assignments,
   };

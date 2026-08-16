@@ -23,6 +23,8 @@ export type CanonicalRouteContext = {
 /** Secciones administrativas cuyo contenido puede depender de una sucursal. */
 export const BRANCH_ADMIN_SECTIONS = new Set([
   "productos",
+  "ingredientes",
+  "recetas",
   "opciones-producto",
   "categorias",
   "promociones",

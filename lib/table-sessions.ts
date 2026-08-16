@@ -3,7 +3,8 @@ import type { AuthorizationContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { orderPublicToken, orderReference, orderTokenHash } from "@/lib/order-security";
 import { productAvailableAt } from "@/lib/product-availability";
-import { assertStockAvailability, consumeOrderStock } from "@/lib/order-stock";
+import { assertStockAvailability } from "@/lib/order-stock";
+import { buildRecipeConsumptionPlan, consumeRecipeStock } from "@/lib/recipe-stock";
 import {
   deriveSessionStatus,
   isTableSessionStatus,
@@ -266,12 +267,10 @@ export async function addTableOrder(
   for (const item of calculatedItems) {
     quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
   }
-  const stocks = await assertStockAvailability(
-    context.tenant.id,
-    session.branchId,
-    quantities,
-    (productId) => productMap.get(productId)?.name ?? "Producto",
-  );
+  const productName = (productId: number) => productMap.get(productId)?.name ?? "Producto";
+  // Plan de consumo: expande recetas (subrecetas + merma) y combos hasta la materia prima.
+  const consumptionPlan = await buildRecipeConsumptionPlan(context.tenant.id, quantities);
+  const stocks = await assertStockAvailability(context.tenant.id, session.branchId, consumptionPlan.plan, productName);
 
   const reference = await uniqueOrderReference(branch.orderPrefix);
   const token = orderPublicToken();
@@ -309,14 +308,17 @@ export async function addTableOrder(
         history: { create: { toStatus: "received", note: "Consumo cargado desde el salón" } },
       },
     });
-    await consumeOrderStock(transaction, {
+    await consumeRecipeStock(transaction, {
       tenantId: context.tenant.id,
       branchId: session.branchId,
       orderId: created.id,
       reference,
-      quantities,
+      plan: consumptionPlan.plan,
       stocks,
-      productName: (productId) => productMap.get(productId)?.name ?? "Producto",
+      costById: consumptionPlan.costById,
+      units: consumptionPlan.units,
+      conversions: consumptionPlan.conversions,
+      productName,
     });
     await refreshSessionStatus(transaction, session.id);
     await transaction.tableSessionEvent.create({

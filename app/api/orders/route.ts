@@ -5,7 +5,8 @@ import { loyaltyTokenHash } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
-import { assertStockAvailability, consumeOrderStock } from "@/lib/order-stock";
+import { assertStockAvailability } from "@/lib/order-stock";
+import { buildRecipeConsumptionPlan, consumeRecipeStock } from "@/lib/recipe-stock";
 import { deriveSessionStatus } from "@/lib/table-status";
 import { resolveOrderPromotion, type PromotionCandidate, type PromotionItem } from "@/lib/promotion";
 import {
@@ -374,14 +375,21 @@ export async function POST(request: Request) {
   for (const item of calculatedItems) {
     quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
   }
+  const productName = (productId: number) => productMap.get(productId)?.name ?? "Producto";
+
+  // Plan de consumo: expande recetas (subrecetas + merma) y combos hasta la materia prima.
+  let consumptionPlan: Awaited<ReturnType<typeof buildRecipeConsumptionPlan>>;
+  try {
+    consumptionPlan = await buildRecipeConsumptionPlan(tenant.id, quantities);
+  } catch (reason) {
+    return NextResponse.json(
+      { error: reason instanceof Error ? reason.message : "No se pudo calcular el consumo de ingredientes" },
+      { status: 409 },
+    );
+  }
   let trackedStocks: Awaited<ReturnType<typeof assertStockAvailability>> = [];
   try {
-    trackedStocks = await assertStockAvailability(
-      tenant.id,
-      branch.id,
-      quantities,
-      (productId) => productMap.get(productId)?.name ?? "Producto",
-    );
+    trackedStocks = await assertStockAvailability(tenant.id, branch.id, consumptionPlan.plan, productName);
   } catch (reason) {
     return NextResponse.json(
       { error: reason instanceof Error ? reason.message : "No se pudo validar el stock" },
@@ -453,14 +461,17 @@ export async function POST(request: Request) {
           data: { tenantId: tenant.id, key: idempotencyKey, orderId: order.id, reference, token, total },
         });
       }
-      await consumeOrderStock(transaction, {
+      await consumeRecipeStock(transaction, {
         tenantId: tenant.id,
         branchId: branch.id,
         orderId: order.id,
         reference,
-        quantities,
+        plan: consumptionPlan.plan,
         stocks: trackedStocks,
-        productName: (productId) => productMap.get(productId)?.name ?? "Producto",
+        costById: consumptionPlan.costById,
+        units: consumptionPlan.units,
+        conversions: consumptionPlan.conversions,
+        productName,
       });
       await transaction.notification.create({
         data: {
@@ -522,7 +533,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          reason instanceof Error && reason.message.includes("stock")
+          reason instanceof Error &&
+          (reason.message.includes("stock") || reason.message.includes("convertir"))
             ? reason.message
             : "No se pudo confirmar el pedido",
       },

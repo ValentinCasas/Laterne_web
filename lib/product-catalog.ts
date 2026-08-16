@@ -97,7 +97,8 @@ function daysValue(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull
   return days.length ? (days as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
 }
 
-const RECIPE_UNITS = ["unidad", "g", "kg", "ml", "l", "cucharada", "cucharadita", "taza"];
+/** @summary Unidades estándar de receta; el negocio puede sumar unidades propias vía conversiones. */
+export const RECIPE_UNITS = ["unidad", "g", "kg", "ml", "l", "cucharada", "cucharadita", "taza"];
 
 /**
  * @summary Normaliza y valida el payload completo del editor de productos.
@@ -248,11 +249,17 @@ export async function productWriteData(
   }
 
   // Receta: ingredientes con stock (productos reales con inventario).
-  const recipeIngredients = (input.recipeIngredients ?? []).map((item) => ({
-    ingredientProductId: Number(item.ingredientProductId),
-    quantity: numberOrNull(item.quantity, 0.001, 9999) ?? 1,
-    unit: RECIPE_UNITS.includes(item.unit ?? "") ? item.unit : "unidad",
-  }));
+  // La unidad puede ser estándar o personalizada del negocio; se valida el largo.
+  const recipeIngredients = (input.recipeIngredients ?? []).map((item) => {
+    const unit = typeof item.unit === "string" ? item.unit.trim() : "";
+    return {
+      ingredientProductId: Number(item.ingredientProductId),
+      quantity: numberOrNull(item.quantity, 0.001, 9999) ?? 1,
+      unit: unit && unit.length <= 40 ? unit : "unidad",
+      // Rendimiento por defecto sin merma (100%); se conserva el explícito.
+      yieldPercent: numberOrNull(item.yieldPercent, 0.001, 999) ?? 100,
+    };
+  });
   if (recipeIngredients.length) {
     const ingredientIds = [...new Set(recipeIngredients.map((item) => item.ingredientProductId))];
     const validIngredients = await prisma.product.findMany({
@@ -374,7 +381,12 @@ export type ProductWriteInput = {
     items: Array<{ name: string; price?: string | number | null; active?: boolean }>;
   }>;
   comboItems?: Array<{ itemProductId: number; quantity: string | number }>;
-  recipeIngredients?: Array<{ ingredientProductId: number; quantity: string | number; unit?: string }>;
+  recipeIngredients?: Array<{
+    ingredientProductId: number;
+    quantity: string | number;
+    unit?: string;
+    yieldPercent?: string | number;
+  }>;
   branchAssignments?: Array<{
     branchId: number;
     active: boolean;
@@ -491,6 +503,7 @@ export async function applyProductWrite(
         ingredientProductId: item.ingredientProductId,
         quantity: item.quantity,
         unit: item.unit,
+        yieldPercent: item.yieldPercent,
         sortOrder: index,
       })),
     });
@@ -692,6 +705,7 @@ export async function duplicateProduct(tenantId: number, productId: number) {
           ingredientProductId: item.ingredientProductId,
           quantity: item.quantity,
           unit: item.unit,
+          yieldPercent: item.yieldPercent,
           sortOrder: item.sortOrder,
         })),
       });

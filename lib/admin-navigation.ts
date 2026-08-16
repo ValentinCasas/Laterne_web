@@ -197,6 +197,26 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
+        id: "costos",
+        label: "Costos",
+        items: [
+          {
+            href: "/admin/ingredientes",
+            label: "Ingredientes",
+            icon: "IN",
+            permission: "product.manage",
+            description: "Costo, unidad y stock de la materia prima",
+          },
+          {
+            href: "/admin/recetas",
+            label: "Recetas",
+            icon: "RE",
+            permission: "product.manage",
+            description: "Costos de recetas y ficha técnica imprimible",
+          },
+        ],
+      },
+      {
         id: "comercial",
         label: "Comercial",
         items: [
