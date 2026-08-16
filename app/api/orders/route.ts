@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
 import { assertStockAvailability } from "@/lib/order-stock";
+import { inventoryPolicy, trackedStocksForPlan } from "@/lib/inventory";
 import { buildRecipeConsumptionPlan, consumeRecipeStock } from "@/lib/recipe-stock";
 import { deriveSessionStatus } from "@/lib/table-status";
 import { resolveOrderPromotion, type PromotionCandidate, type PromotionItem } from "@/lib/promotion";
@@ -387,9 +388,14 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   }
+  // Política de stock: estricta impide vender sin stock; permisiva vende con advertencia.
+  const policy = await inventoryPolicy(tenant.id);
+  const allowNegative = policy.stockPolicy === "warn";
   let trackedStocks: Awaited<ReturnType<typeof assertStockAvailability>> = [];
   try {
-    trackedStocks = await assertStockAvailability(tenant.id, branch.id, consumptionPlan.plan, productName);
+    trackedStocks = allowNegative
+      ? ((await trackedStocksForPlan(prisma, tenant.id, branch.id, consumptionPlan.plan)) as never)
+      : await assertStockAvailability(tenant.id, branch.id, consumptionPlan.plan, productName);
   } catch (reason) {
     return NextResponse.json(
       { error: reason instanceof Error ? reason.message : "No se pudo validar el stock" },
@@ -472,6 +478,7 @@ export async function POST(request: Request) {
         units: consumptionPlan.units,
         conversions: consumptionPlan.conversions,
         productName,
+        allowNegative,
       });
       await transaction.notification.create({
         data: {

@@ -170,6 +170,8 @@ export async function consumeRecipeStock(
     units: Map<number, string>;
     conversions: UnitConversionRow[];
     productName: (productId: number) => string;
+    /** true = política permisiva: permite stock negativo con advertencia. */
+    allowNegative?: boolean;
   },
 ) {
   for (const stock of input.stocks) {
@@ -191,10 +193,12 @@ export async function consumeRecipeStock(
       }
     }
 
-    const result = await transaction.inventoryStock.updateMany({
-      where: { id: stock.id, tracked: true, current: { gte: quantity } },
-      data: { current: { decrement: quantity } },
-    });
+    // Guarda atómica: en modo estricto no se descuenta sin stock suficiente (evita
+    // carreras que dejen negativo); en modo permisivo solo se evita la pérdida de updates.
+    const where = input.allowNegative
+      ? { id: stock.id, tracked: true }
+      : { id: stock.id, tracked: true, current: { gte: quantity } };
+    const result = await transaction.inventoryStock.updateMany({ where, data: { current: { decrement: quantity } } });
     if (result.count !== 1) throw new Error("El stock cambió mientras confirmabas el pedido");
     const updated = await transaction.inventoryStock.findUniqueOrThrow({ where: { id: stock.id } });
 

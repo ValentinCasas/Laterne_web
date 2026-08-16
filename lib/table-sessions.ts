@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { orderPublicToken, orderReference, orderTokenHash } from "@/lib/order-security";
 import { productAvailableAt } from "@/lib/product-availability";
 import { assertStockAvailability } from "@/lib/order-stock";
+import { inventoryPolicy, trackedStocksForPlan } from "@/lib/inventory";
 import { buildRecipeConsumptionPlan, consumeRecipeStock } from "@/lib/recipe-stock";
 import {
   deriveSessionStatus,
@@ -270,7 +271,12 @@ export async function addTableOrder(
   const productName = (productId: number) => productMap.get(productId)?.name ?? "Producto";
   // Plan de consumo: expande recetas (subrecetas + merma) y combos hasta la materia prima.
   const consumptionPlan = await buildRecipeConsumptionPlan(context.tenant.id, quantities);
-  const stocks = await assertStockAvailability(context.tenant.id, session.branchId, consumptionPlan.plan, productName);
+  // Política de stock: estricta impide vender sin stock; permisiva vende con advertencia.
+  const policy = await inventoryPolicy(context.tenant.id);
+  const allowNegative = policy.stockPolicy === "warn";
+  const stocks = allowNegative
+    ? ((await trackedStocksForPlan(prisma, context.tenant.id, session.branchId, consumptionPlan.plan)) as never)
+    : await assertStockAvailability(context.tenant.id, session.branchId, consumptionPlan.plan, productName);
 
   const reference = await uniqueOrderReference(branch.orderPrefix);
   const token = orderPublicToken();
@@ -319,6 +325,7 @@ export async function addTableOrder(
       units: consumptionPlan.units,
       conversions: consumptionPlan.conversions,
       productName,
+      allowNegative,
     });
     await refreshSessionStatus(transaction, session.id);
     await transaction.tableSessionEvent.create({

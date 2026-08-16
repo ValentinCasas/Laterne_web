@@ -7,7 +7,25 @@ export const stockMovementTypeLabels: Record<string, string> = {
   order_return: "Devolución por cancelación",
   manual_in: "Ajuste manual",
   manual_out: "Ajuste manual",
+  waste: "Merma / desperdicio",
+  transfer_in: "Entrada por transferencia",
+  transfer_out: "Salida por transferencia",
+  count_adjustment: "Ajuste por conteo físico",
+  reserve: "Reserva de stock",
+  release: "Liberación de reserva",
 };
+
+/** @summary Tipos de movimiento que modifican el stock físico (no solo reservas). */
+export const PHYSICAL_MOVEMENT_TYPES = new Set([
+  "order",
+  "order_return",
+  "manual_in",
+  "manual_out",
+  "waste",
+  "transfer_in",
+  "transfer_out",
+  "count_adjustment",
+]);
 
 /**
  * @summary Prevalida que haya stock suficiente para las cantidades pedidas y devuelve las existencias controladas.
@@ -45,15 +63,19 @@ export async function consumeOrderStock(
     /** Existencias controladas devueltas por `assertStockAvailability`. */
     stocks: Array<{ id: number; productId: number }>;
     productName: (productId: number) => string;
+    /** true = política permisiva: permite stock negativo con advertencia. */
+    allowNegative?: boolean;
   },
 ) {
   for (const stock of input.stocks) {
     const quantity = input.quantities.get(stock.productId) ?? 0;
     if (!quantity) continue;
-    const result = await transaction.inventoryStock.updateMany({
-      where: { id: stock.id, tracked: true, current: { gte: quantity } },
-      data: { current: { decrement: quantity } },
-    });
+    // Guarda atómica: en modo estricto no se descuenta si no alcanza (evita carreras
+    // que dejen stock negativo); en modo permisivo solo se evita la pérdida de updates.
+    const where = input.allowNegative
+      ? { id: stock.id, tracked: true }
+      : { id: stock.id, tracked: true, current: { gte: quantity } };
+    const result = await transaction.inventoryStock.updateMany({ where, data: { current: { decrement: quantity } } });
     if (result.count !== 1) throw new Error("El stock cambió mientras confirmabas el pedido");
     const updated = await transaction.inventoryStock.findUniqueOrThrow({ where: { id: stock.id } });
     await transaction.stockMovement.create({
