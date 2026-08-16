@@ -1,18 +1,15 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createSession, tenantSessionCookieName } from "@/lib/auth";
+import { createSession, sessionCookieAttributes, tenantSessionCookieName } from "@/lib/auth";
 import { classifyHost } from "@/lib/domains";
+import { effectiveHost } from "@/lib/trusted-headers";
 import { tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 
 /** @summary Canjea una transferencia heredada y termina siempre en la ruta canónica del tenant y la sucursal. */
 export async function POST(request: Request) {
-  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLocaleLowerCase("es");
+  const host = effectiveHost(request.headers).split(",")[0].trim().split(":")[0].toLocaleLowerCase("es");
   const hostContext = classifyHost(host);
   const tenantSlug =
     request.headers.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es") ||
@@ -92,12 +89,6 @@ export async function POST(request: Request) {
     ? tenantBranchAdminPath(tenantSlug, branchSlug)
     : tenantAdminPath(tenantSlug);
   const response = NextResponse.json({ ok: true, redirect: redirectPath });
-  response.cookies.set(tenantSessionCookieName(tenantSlug), token, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 8,
-    path: "/",
-  });
+  response.cookies.set(tenantSessionCookieName(tenantSlug), token, sessionCookieAttributes(60 * 60 * 8));
   return response;
 }

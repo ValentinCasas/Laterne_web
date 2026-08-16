@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { classifyHost } from "@/lib/domains";
+import { effectiveHost } from "@/lib/trusted-headers";
 import { getDefaultTenant, UnknownHostError } from "@/lib/tenant";
 import { defaultMenuClickTheme } from "@/lib/menuclick-theme";
 import { defaultPalette } from "@/lib/theme-palettes";
@@ -9,7 +10,7 @@ import { defaultPalette } from "@/lib/theme-palettes";
 /** @summary Define la instalación de MenuClick como aplicación web y sus accesos rápidos. */
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
+  const host = effectiveHost(requestHeaders);
   const kind = classifyHost(host).kind;
   let name = "MenuClick";
   let primary = defaultMenuClickTheme.primary;

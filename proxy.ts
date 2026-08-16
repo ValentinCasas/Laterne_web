@@ -8,6 +8,7 @@ import {
   normalizeHost,
   publicRootUrl,
 } from "@/lib/domains";
+import { effectiveHost, sanitizedForwardedHeaders } from "@/lib/trusted-headers";
 import {
   isBranchAdminLogicalPath,
   parseCanonicalPath,
@@ -47,9 +48,7 @@ function startsWithAny(pathname: string, prefixes: string[]) {
 }
 
 function requestHost(request: NextRequest) {
-  return normalizeHost(
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.hostname,
-  );
+  return normalizeHost(effectiveHost(request.headers));
 }
 
 function baseHost(url: string) {
@@ -65,7 +64,7 @@ function contextHeaders(
     adminScope?: "tenant" | "branch" | "consolidated";
   },
 ) {
-  const headers = new Headers(request.headers);
+  const headers = sanitizedForwardedHeaders(request.headers);
   headers.set("x-menuclick-original-path", request.nextUrl.pathname + request.nextUrl.search);
   headers.set("x-menuclick-route-kind", values.routeKind);
   if (values.tenantSlug)
@@ -166,7 +165,7 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/api/")) {
     const canonicalApi = apiRewrite(request);
     if (canonicalApi) return canonicalApi;
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: sanitizedForwardedHeaders(request.headers) } });
   }
 
   // Auth de plataforma usa una URL explícita, pero reutiliza la pantalla interna existente.
@@ -388,7 +387,7 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: sanitizedForwardedHeaders(request.headers) } });
 }
 
 export const config = {

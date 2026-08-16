@@ -1,11 +1,10 @@
-import { unlink } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getStorage, sanitizeStorageKey } from "@/lib/storage";
 
 const mediaUpdate = z.object({ altText: z.string().trim().max(300).optional() });
 
@@ -63,22 +62,10 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       { error: `El archivo está siendo utilizado en ${usages} registro${usages === 1 ? "" : "s"}.` },
       { status: 409 },
     );
-  const publicRoot = path.resolve(process.cwd(), "public");
-  const target = path.resolve(publicRoot, `.${asset.url}`);
-  if (!target.toLocaleLowerCase("en").startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`))
-    return NextResponse.json({ error: "Ruta de archivo inválida" }, { status: 400 });
-  await unlink(target).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT") throw error;
-  });
+  const storage = getStorage();
+  await storage.remove(sanitizeStorageKey(asset.url));
   if (asset.thumbnailUrl) {
-    const thumbnailTarget = path.resolve(publicRoot, `.${asset.thumbnailUrl}`);
-    if (
-      thumbnailTarget.toLocaleLowerCase("en").startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)
-    ) {
-      await unlink(thumbnailTarget).catch((error: NodeJS.ErrnoException) => {
-        if (error.code !== "ENOENT") throw error;
-      });
-    }
+    await storage.remove(sanitizeStorageKey(asset.thumbnailUrl));
   }
   await prisma.mediaAsset.delete({ where: { id } });
   await recordAudit({

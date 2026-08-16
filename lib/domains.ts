@@ -1,4 +1,5 @@
 import { tenantAdminPath, tenantPublicPath } from "./routes";
+import { effectiveHost, effectiveProto } from "./trusted-headers";
 
 const normalizeConfiguredDomain = (value: string | undefined) =>
   (value ?? "").trim().toLocaleLowerCase("es").replace(/\.$/, "");
@@ -177,11 +178,9 @@ export function normalizeHost(host: string) {
 
 /** @summary Construye el origen de la solicitud respetando HTTP local y el protocolo del proxy en producción. */
 export function requestOrigin(requestHeaders: Pick<Headers, "get">) {
-  const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const host = forwardedHost || requestHeaders.get("host")?.trim();
+  const host = effectiveHost(requestHeaders);
   if (host) {
-    const forwardedProtocol = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim();
-    const protocol = isDevelopmentEnvironment ? "http" : forwardedProtocol || "https";
+    const protocol = isDevelopmentEnvironment ? "http" : effectiveProto(requestHeaders);
     return `${protocol}://${host}`;
   }
   return process.env.NEXT_PUBLIC_SITE_URL || (isDevelopmentEnvironment ? "http://localhost:3000" : null);

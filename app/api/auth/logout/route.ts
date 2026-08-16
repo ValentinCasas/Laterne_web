@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { PLATFORM_SESSION_COOKIE, revokeCurrentSession, tenantSessionCookieName } from "@/lib/auth";
+import {
+  PLATFORM_SESSION_COOKIE,
+  revokeCurrentSession,
+  sessionCookieAttributes,
+  tenantSessionCookieName,
+} from "@/lib/auth";
 import { tenantPublicPath } from "@/lib/routes";
 
 /** @summary Cookie de sesión correspondiente a la ruta canónica que solicitó el logout. */
@@ -14,12 +19,8 @@ function sessionCookieName(request: Request) {
 /** @summary Marca la respuesta como sin caché y elimina únicamente la cookie de la sesión actual. */
 function clearSessionCookie(request: Request, response: NextResponse<unknown>) {
   response.cookies.set(sessionCookieName(request), "", {
+    ...sessionCookieAttributes(0),
     expires: new Date(0),
-    maxAge: 0,
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
   });
   response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
   return response;

@@ -1,0 +1,109 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MenuClick · ejemplo de despliegue en producción (Docker Compose)
+#
+# Copiar como `docker-compose.production.yml`, completar las variables en `.env`
+# (ver `.env.example`) y levantar:
+#   docker compose -f docker-compose.production.yml up -d
+#
+# Migraciones se corren automáticamente (servicio `migrations`).
+# Para varias réplicas del front:
+#   docker compose -f docker-compose.production.yml up -d --scale web=3
+#
+# Ejemplo con MySQL y MinIO embebidos. En producción conviene MySQL gestionado
+# (RDS, Cloud SQL, DigitalOcean Managed) y un bucket; para eso quitar los
+# servicios `mysql` y `minio` y apuntar DATABASE_URL / S3_* a los externos.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD requerida}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-laterne}
+      MYSQL_USER: ${MYSQL_USER:-laterne}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD requerida}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrations:
+    build:
+      context: .
+      target: migrations
+      args:
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      args:
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      ROOT_DOMAIN: ${ROOT_DOMAIN}
+      APP_SUBDOMAIN: ${APP_SUBDOMAIN:-app}
+      PLATFORM_SUBDOMAIN: ${PLATFORM_SUBDOMAIN:-platform}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_PATH_STYLE_DISABLED: ${S3_PATH_STYLE_DISABLED}
+      PRISMA_CONNECTION_LIMIT: ${PRISMA_CONNECTION_LIMIT:-10}
+      PRISMA_POOL_TIMEOUT: ${PRISMA_POOL_TIMEOUT:-10}
+      DEPLOYMENT_VERSION: ${DEPLOYMENT_VERSION:-}
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+    volumes:
+      # Solo necesario si STORAGE_DRIVER=local; en modo s3 puede omitirse.
+      - uploads_data:/app/public
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  mysql_data:
+  minio_data:
+  uploads_data:

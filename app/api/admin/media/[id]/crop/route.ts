@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
@@ -8,6 +7,7 @@ import { recordAudit } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getStorage, sanitizeStorageKey } from "@/lib/storage";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
 /**
@@ -36,15 +36,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Elegí una imagen estática válida" }, { status: 400 });
   }
 
-  const publicRoot = path.resolve(process.cwd(), "public");
-  const sourcePath = path.resolve(publicRoot, `.${original.url}`);
-  if (!sourcePath.toLocaleLowerCase("en").startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)) {
-    return NextResponse.json({ error: "Ruta de archivo inválida" }, { status: 400 });
+  const storage = getStorage();
+  const sourceKey = sanitizeStorageKey(original.url);
+  const sourceBytes = await storage.read(sourceKey);
+  if (!sourceBytes) {
+    return NextResponse.json({ error: "La imagen original ya no está disponible" }, { status: 404 });
   }
 
   try {
     const size = dimensions[parsed.data.preset];
-    const bytes = await sharp(await readFile(sourcePath))
+    const bytes = await sharp(sourceBytes)
       .rotate()
       .resize({ ...size, fit: "cover", position: "attention" })
       .webp({ quality: 84 })
@@ -64,15 +65,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     await ensureTenantCapacity(auth.tenant.id, "storageMb", bytes.byteLength);
 
     const filename = `${path.parse(original.filename).name}-${parsed.data.preset}-${Date.now()}.webp`;
-    const destination = path.join(path.dirname(sourcePath), filename);
-    await writeFile(destination, bytes);
+    const key = `${path.posix.dirname(original.url).replace(/^\/+/, "")}/${filename}`;
+    await storage.write(key, new Uint8Array(bytes), "image/webp");
     const thumbnail = await sharp(bytes)
       .resize({ width: 480, height: 480, fit: "inside", withoutEnlargement: true })
       .webp({ quality: 76 })
       .toBuffer();
-    const thumbnailDirectory = path.join(publicRoot, "images", "thumbnails", original.folder);
-    await mkdir(thumbnailDirectory, { recursive: true });
-    await writeFile(path.join(thumbnailDirectory, filename), thumbnail);
+    await storage.write(`images/thumbnails/${original.folder}/${filename}`, new Uint8Array(thumbnail), "image/webp");
     const url = `${path.posix.dirname(original.url)}/${filename}`;
     const asset = await prisma.mediaAsset.create({
       data: {

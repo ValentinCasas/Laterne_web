@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
@@ -7,6 +6,7 @@ import { authorize } from "@/lib/auth";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
+import { getStorage } from "@/lib/storage";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
 const folders = {
@@ -72,9 +72,7 @@ async function optimizeImage(file: File, source: Uint8Array) {
 async function writeThumbnail(folder: string, filename: string, bytes: Uint8Array | null) {
   if (!bytes) return null;
   const thumbnailName = `${path.parse(filename).name}.webp`;
-  const destination = path.join(process.cwd(), "public", "images", "thumbnails", folder);
-  await mkdir(destination, { recursive: true });
-  await writeFile(path.join(destination, thumbnailName), bytes);
+  await getStorage().write(`images/thumbnails/${folder}/${thumbnailName}`, bytes, "image/webp");
   return `/images/thumbnails/${folder}/${thumbnailName}`;
 }
 
@@ -160,11 +158,9 @@ async function uploadProductModel(request: Request, formData: FormData) {
     const capacityError = await storageCapacityError(auth.tenant.id, file.size);
     if (capacityError) return NextResponse.json({ error: capacityError }, { status: 409 });
     const filename = createFilename(file.name, `.${extension}`);
-    const relativeDirectory = path.join("models", String(auth.tenant.id), "products");
-    const destination = path.join(process.cwd(), "public", relativeDirectory);
-    await mkdir(destination, { recursive: true });
-    await writeFile(path.join(destination, filename), bytes);
-    const url = `/${relativeDirectory.replaceAll("\\", "/")}/${filename}`;
+    const relativeDirectory = path.posix.join("models", String(auth.tenant.id), "products");
+    await getStorage().write(`${relativeDirectory}/${filename}`, bytes, file.type || `model/${extension}`);
+    const url = `/${relativeDirectory}/${filename}`;
 
     await prisma.mediaAsset.create({
       data: {
@@ -233,9 +229,7 @@ export async function POST(request: Request) {
     const capacityError = await storageCapacityError(auth.tenant.id, optimized.bytes.byteLength);
     if (capacityError) return NextResponse.json({ error: capacityError }, { status: 409 });
     const filename = createFilename(file.name, extension);
-    const destination = path.join(process.cwd(), "public", "images", "images_brand");
-    await mkdir(destination, { recursive: true });
-    await writeFile(path.join(destination, filename), optimized.bytes);
+    await getStorage().write(`images/images_brand/${filename}`, optimized.bytes, file.type);
     const url = `/images/images_brand/${filename}`;
     const thumbnailUrl = await writeThumbnail("images_brand", filename, optimized.thumbnail);
     await prisma.mediaAsset.create({
@@ -294,9 +288,7 @@ export async function POST(request: Request) {
   const capacityError = await storageCapacityError(auth.tenant.id, optimized.bytes.byteLength);
   if (capacityError) return NextResponse.json({ error: capacityError }, { status: 409 });
   const filename = createFilename(file.name, extension);
-  const destination = path.join(process.cwd(), "public", "images", folder);
-  await mkdir(destination, { recursive: true });
-  await writeFile(path.join(destination, filename), optimized.bytes);
+  await getStorage().write(`images/${folder}/${filename}`, optimized.bytes, file.type);
   const thumbnailUrl = await writeThumbnail(folder, filename, optimized.thumbnail);
 
   await prisma.mediaAsset.create({

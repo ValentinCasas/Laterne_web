@@ -2,8 +2,9 @@ import bcrypt from "bcryptjs";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createSession, PLATFORM_SESSION_COOKIE, tenantSessionCookieName } from "@/lib/auth";
+import { createSession, PLATFORM_SESSION_COOKIE, sessionCookieAttributes, tenantSessionCookieName } from "@/lib/auth";
 import { classifyHost } from "@/lib/domains";
+import { effectiveHost } from "@/lib/trusted-headers";
 import { platformAdminPath, tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 
@@ -109,10 +110,7 @@ export async function POST(request: Request) {
   );
   const routeKind = request.headers.get("x-menuclick-route-kind") ?? "";
   const routeTenantSlug = request.headers.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
-  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0];
+  const host = effectiveHost(request.headers).split(",")[0].trim().split(":")[0];
   const hostContext = classifyHost(host);
 
   // El contexto lo define la URL visible de login (explícito del formulario o
@@ -235,12 +233,6 @@ export async function POST(request: Request) {
     : tenantSlug
       ? tenantSessionCookieName(tenantSlug)
       : "laterne_session";
-  response.cookies.set(cookieName, token, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 8,
-    path: "/",
-  });
+  response.cookies.set(cookieName, token, sessionCookieAttributes(60 * 60 * 8));
   return response;
 }

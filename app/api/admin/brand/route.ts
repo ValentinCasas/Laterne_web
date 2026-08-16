@@ -1,5 +1,3 @@
-import { unlink } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
@@ -7,6 +5,7 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getStorage, sanitizeStorageKey } from "@/lib/storage";
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 /**
@@ -258,25 +257,11 @@ export async function DELETE(request: Request) {
       where: { tenantId: auth.tenant.id, url: current },
       select: { id: true, thumbnailUrl: true },
     });
-    const publicRoot = path.resolve(process.cwd(), "public");
+    const storage = getStorage();
     for (const asset of assets) {
-      const target = path.resolve(publicRoot, `.${current}`);
-      if (target.toLocaleLowerCase("en").startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)) {
-        await unlink(target).catch((error: NodeJS.ErrnoException) => {
-          if (error.code !== "ENOENT") throw error;
-        });
-      }
+      await storage.remove(sanitizeStorageKey(current));
       if (asset.thumbnailUrl) {
-        const thumbnailTarget = path.resolve(publicRoot, `.${asset.thumbnailUrl}`);
-        if (
-          thumbnailTarget
-            .toLocaleLowerCase("en")
-            .startsWith(`${publicRoot.toLocaleLowerCase("en")}${path.sep}`)
-        ) {
-          await unlink(thumbnailTarget).catch((error: NodeJS.ErrnoException) => {
-            if (error.code !== "ENOENT") throw error;
-          });
-        }
+        await storage.remove(sanitizeStorageKey(asset.thumbnailUrl));
       }
       await prisma.mediaAsset.delete({ where: { id: asset.id } });
     }

@@ -8,6 +8,7 @@ import {
   isLocalDevelopmentHost,
   isPlatformHost,
 } from "@/lib/domains";
+import { effectiveHost } from "@/lib/trusted-headers";
 import { publicTenantWhere } from "@/lib/subscription-access";
 
 /** @summary Indica que el host de la solicitud no se puede asociar a ningún negocio. */
@@ -20,7 +21,7 @@ export class UnknownHostError extends Error {
 
 /** @summary Extrae el host normalizado de la solicitud ignorando proxies y puertos. */
 function requestHost(requestHeaders: Headers) {
-  return (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
+  return effectiveHost(requestHeaders)
     .split(",")[0]
     .trim()
     .split(":")[0]

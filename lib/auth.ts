@@ -12,6 +12,8 @@ import {
   tenantPublicPath,
 } from "@/lib/routes";
 import { resolveHostKind } from "@/lib/host-gate";
+import { effectiveHost } from "@/lib/trusted-headers";
+import { getConfig } from "@/lib/config";
 import { publicTenantWhere } from "@/lib/subscription-access";
 import { paletteFromLegacy, type PaletteColors } from "@/lib/theme-palettes";
 import { effectiveBranchStatus, type BranchEffectiveStatus } from "@/lib/branch";
@@ -57,6 +59,17 @@ export type AuthorizationContext = {
 
 export const PLATFORM_SESSION_COOKIE = "menuclick_platform_session";
 
+/** @summary Atributos de la cookie de sesión (HttpOnly, SameSite=Strict, Secure en producción). */
+export function sessionCookieAttributes(maxAgeSeconds: number) {
+  return {
+    httpOnly: true,
+    sameSite: "strict" as const,
+    secure: getConfig().sessionCookieSecure,
+    maxAge: maxAgeSeconds,
+    path: "/",
+  };
+}
+
 /** @summary Nombre de cookie aislado por tenant para permitir sesiones simultáneas en un único host admin. */
 export function tenantSessionCookieName(tenantSlug: string) {
   const safe = tenantSlug
@@ -79,8 +92,8 @@ async function sessionCookieToken() {
 
 /** @summary Genera la clave binaria utilizada para firmar y validar las sesiones. */
 const key = () => {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret && process.env.NODE_ENV === "production") {
+  const secret = getConfig().authSecret;
+  if (!secret && getConfig().isProduction) {
     throw new Error("AUTH_SECRET es obligatorio en producción");
   }
   return new TextEncoder().encode(secret ?? "development-only-change-me");
@@ -174,11 +187,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
   const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   const adminScope = requestHeaders.get("x-menuclick-admin-scope") ?? "";
-  const host = (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLocaleLowerCase("es");
+  const host = effectiveHost(requestHeaders).toLocaleLowerCase("es");
   const hostContext = await resolveHostKind(host);
 
   // Las rutas canónicas llevan el tenant en la URL. El host solo se usa por compatibilidad heredada.
@@ -457,11 +466,7 @@ export async function authorizeSuperAdmin() {
   const session = await getSession();
   if (!session || session.context !== "platform" || session.membershipId) return null;
   const requestHeaders = await headers();
-  const host = (requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLocaleLowerCase("es");
+  const host = effectiveHost(requestHeaders).toLocaleLowerCase("es");
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   const hostContext = await resolveHostKind(host);
   if (routeKind !== "platform-admin" && hostContext.kind !== "platform") return null;
