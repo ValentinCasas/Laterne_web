@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { currentAdminHref, scopedFetch } from "@/lib/client-routing";
+import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 import { unitLabel } from "@/lib/recipe-units";
 
 /**
@@ -88,6 +90,9 @@ function stockDraftFrom(stocks: IngredientStock[], branches: Branch[]): StockDra
 
 /** @summary Tablero de ingredientes con alta simple, costo con historial y conversiones. */
 export function IngredientsBoard({ initial }: { initial: Payload }) {
+  const pathname = usePathname();
+  /** Resuelve rutas administrativas conservando el contexto visible (mismo valor en SSR y cliente). */
+  const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
   const [payload, setPayload] = useState<Payload>(initial);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -268,7 +273,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
         description="Cargá la materia prima con su costo y unidad base, y controlá el stock por sucursal. Los consumos de los pedidos descuentan los ingredientes de cada receta y guardan el costo histórico."
         actions={
           <>
-            <a href={currentAdminHref("/admin/recetas")} className="btn btn-secondary">
+            <a href={adminHref("/admin/recetas")} className="btn btn-secondary">
               Ver recetas
             </a>
             <button onClick={openCreate} className="btn" disabled={busy}>
@@ -481,7 +486,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
                       </button>
                       {ingredient.hasRecipe && (
                         <a
-                          href={currentAdminHref(`/admin/recetas/${ingredient.id}/ficha`)}
+                          href={adminHref(`/admin/recetas/${ingredient.id}/ficha`)}
                           className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
                         >
                           Ficha

@@ -1,9 +1,10 @@
 "use client";
 
-import { adminHrefForContext, parseCanonicalPath, publicHrefForContext, scopedApiPath } from "@/lib/routes";
+import { parseCanonicalPath, publicHrefForContext, scopedApiPath } from "@/lib/routes";
 
 /**
  * @summary Convierte una ruta lógica de API en su variante canónica con contexto.
+ * Solo se usa en event handlers/effects, nunca durante el render.
  */
 export function apiPath(path: string) {
   if (typeof window === "undefined") return path;
@@ -20,6 +21,8 @@ export function scopedFetch(input: RequestInfo | URL, init?: RequestInit) {
 
 /**
  * @summary Construye un enlace público conservando tenant y sucursal actuales.
+ * No se usa durante el render (depende de `window`); los enlaces visibles se
+ * resuelven en el servidor con `publicHrefForContext`/`publicHrefForVisiblePath`.
  */
 export function currentPublicHref(logicalHref: string, options?: { preserveBranch?: boolean }) {
   if (typeof window === "undefined") return logicalHref;
@@ -30,14 +33,4 @@ export function currentPublicHref(logicalHref: string, options?: { preserveBranc
     logicalHref,
     options?.preserveBranch === false ? undefined : context.branchSlug,
   );
-}
-
-/**
- * @summary Construye un enlace administrativo conservando tenant y sucursal actuales.
- */
-export function currentAdminHref(logicalHref: string) {
-  if (typeof window === "undefined") return logicalHref;
-  const context = parseCanonicalPath(window.location.pathname);
-  if (context.surface !== "tenant-admin" || !context.tenantSlug) return logicalHref;
-  return adminHrefForContext(context.tenantSlug, logicalHref, context.branchSlug, context.tenantGuid);
 }

@@ -1,8 +1,7 @@
-"use client";
-
-import { useMemo, useState } from "react";
+"use client";import { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { currentAdminHref } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 import type { RecipeBoardPayload } from "@/lib/recipe-data";
 
 /**
@@ -53,6 +52,9 @@ function percent(value: number | null) {
 
 /** @summary Tablero de recetas con costo en vivo y acceso a la ficha técnica. */
 export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
+  const pathname = usePathname();
+  /** Resuelve rutas administrativas conservando el contexto visible (mismo valor en SSR y cliente). */
+  const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<RecipeFilter>("all");
   const [statusFilter, setStatusFilter] = useState("");
@@ -90,7 +92,7 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
         section="recetas"
         description="Definí qué consume cada producto: agregá ingredientes con cantidad y unidad, el costo se calcula en vivo con subrecetas, mermas y conversiones. Imprimí la ficha técnica de cada preparación desde el navegador."
         actions={
-          <a href={currentAdminHref("/admin/ingredientes")} className="btn btn-secondary">
+          <a href={adminHref("/admin/ingredientes")} className="btn btn-secondary">
             Gestionar ingredientes
           </a>
         }
@@ -193,14 +195,14 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <a
-                        href={currentAdminHref(`/admin/recetas/${product.id}`)}
+                        href={adminHref(`/admin/recetas/${product.id}`)}
                         className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
                       >
                         Editar
                       </a>
                       {product.hasRecipe && (
                         <a
-                          href={currentAdminHref(`/admin/recetas/${product.id}/ficha`)}
+                          href={adminHref(`/admin/recetas/${product.id}/ficha`)}
                           className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
                         >
                           Ficha

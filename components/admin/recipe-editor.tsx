@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { currentAdminHref, scopedFetch } from "@/lib/client-routing";
+import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 import { RECIPE_UNITS, convertQuantity, isConvertible, unitLabel, type UnitConversionRow } from "@/lib/recipe-units";
 import type { RecipeEditorPayload } from "@/lib/recipe-data";
 
@@ -89,6 +91,9 @@ async function showError(title: string, reason: unknown) {
 
 /** @summary Editor visual de la receta de un producto con costo en vivo. */
 export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
+  const pathname = usePathname();
+  /** Resuelve rutas administrativas conservando el contexto visible (mismo valor en SSR y cliente). */
+  const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
   const [payload, setPayload] = useState<RecipeEditorPayload>(initial);
   const [lines, setLines] = useState<EditorLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
@@ -228,10 +233,7 @@ export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
         )}`}
         actions={
           <>
-            <a
-              href={currentAdminHref("/admin/recetas")}
-              className="btn btn-secondary"
-            >
+            <a href={adminHref("/admin/recetas")} className="btn btn-secondary">
               ← Volver
             </a>
             <button onClick={save} className="btn" disabled={busy}>
@@ -445,7 +447,7 @@ export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
       <p className="mt-4 text-sm text-[var(--admin-muted)]">
         El rendimiento (% de merma) ajusta la cantidad bruta: con 90% de rendimiento se necesita más
         materia prima por cada unidad. Las conversiones de unidades propias se configuran en{" "}
-        <a href={currentAdminHref("/admin/ingredientes")} className="underline">Ingredientes</a>.
+        <a href={adminHref("/admin/ingredientes")} className="underline">Ingredientes</a>.
       </p>
     </div>
   );

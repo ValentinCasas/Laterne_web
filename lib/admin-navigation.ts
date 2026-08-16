@@ -214,6 +214,13 @@ export const ADMIN_NAVIGATION = [
             permission: "product.manage",
             description: "Costos de recetas y ficha técnica imprimible",
           },
+          {
+            href: "/admin/inventario",
+            label: "Inventario",
+            icon: "IV",
+            permission: "product.manage",
+            description: "Stock, movimientos y conteos",
+          },
         ],
       },
       {
