@@ -92,6 +92,13 @@ export const ADMIN_NAVIGATION = [
             description: "Preparaciones en curso",
           },
           {
+            href: "/admin/impresion",
+            label: "Impresión",
+            icon: "IM",
+            permission: "order.manage",
+            description: "Áreas e impresoras de comandas (preparación)",
+          },
+          {
             href: "/admin/salon",
             label: "Salón",
             icon: "SL",

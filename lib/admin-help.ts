@@ -135,6 +135,20 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     ],
     related: ["pedidos", "salon", "productos"],
   },
+  impresion: {
+    title: "Impresión",
+    intro:
+      "Etapa de preparación de la impresión de comandas: se define la arquitectura, pero todavía no se imprime nada.",
+    points: [
+      "Las áreas de impresión (cocina, barra, cafetería, caja…) se crean por sucursal y se asocian con productos y categorías de la carta.",
+      "Las impresoras se registran solo como configuración declarativa: tipo, nombre y datos de conexión. No hay botones de impresión ni conexiones reales todavía.",
+      "Cada comanda guardará pedido, mesa, camarero, productos con modificadores, notas y fecha/hora, independiente del formato físico.",
+      "La cola de comandas (en espera, enviando, impreso, fallido, cancelado) queda en espera hasta que se integre un proveedor de impresión real.",
+    ],
+    warning:
+      "La impresión no es operativa: no intentes imprimir ni conectar impresoras desde esta pantalla.",
+    related: ["pedidos", "cocina", "sucursales"],
+  },
   reservas: {
     title: "Reservas",
     intro: "Administrá las mesas reservadas, la capacidad y los próximos visitantes.",

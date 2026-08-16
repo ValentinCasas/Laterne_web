@@ -51,6 +51,7 @@ model Category {
   branch      Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   products    ProductCategory[]
   promotions  PromotionCategory[]
+  printAreas  PrintAreaCategory[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, branchId, status, sortOrder])
@@ -147,6 +148,7 @@ model Product {
   branchAssignments  BranchProduct[]
   station            KitchenStation?      @relation(fields: [stationId], references: [id], onDelete: SetNull)
   stationId          Int?
+  printAreas         PrintAreaProduct[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -282,6 +284,11 @@ model Tenant {
   activePalette         ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
   themePalettes         ThemePalette[]            @relation("TenantThemePalettes")
   kitchenStations       KitchenStation[]
+  printAreas            PrintArea[]
+  printAreaProducts     PrintAreaProduct[]
+  printAreaCategories   PrintAreaCategory[]
+  printDestinations     PrintDestination[]
+  printJobs             PrintJob[]
 
   @@map("tenant")
 }
@@ -926,6 +933,121 @@ model KitchenStation {
 }
 
 /**
+ * @summary Área de impresión de comandas por sucursal (cocina, barra, cafetería, caja…).
+ * Configuración declarativa: no imprime nada por sí misma. Los productos y
+ * categorías se asocian a un área para que la futura impresión sepa a dónde ir.
+ */
+model PrintArea {
+  id           Int                  @id @default(autoincrement())
+  tenantId     Int
+  branchId     Int
+  name         String               @db.VarChar(100)
+  sortOrder    Int                  @default(0)
+  active       Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  products     PrintAreaProduct[]
+  categories   PrintAreaCategory[]
+  destinations PrintDestination[]
+  jobs         PrintJob[]
+
+  @@unique([tenantId, branchId, name])
+  @@index([tenantId, branchId, active, sortOrder])
+  @@map("printarea")
+}
+
+/**
+ * @summary Asociación producto → área de impresión (un producto puede ir a varias áreas).
+ */
+model PrintAreaProduct {
+  id        Int       @id @default(autoincrement())
+  tenantId  Int
+  areaId    Int
+  productId Int
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  area      PrintArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([areaId, productId])
+  @@index([productId])
+  @@map("printareaproduct")
+}
+
+/**
+ * @summary Asociación categoría → área de impresión.
+ */
+model PrintAreaCategory {
+  id         Int       @id @default(autoincrement())
+  tenantId   Int
+  areaId     Int
+  categoryId Int
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  area       PrintArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([areaId, categoryId])
+  @@index([categoryId])
+  @@map("printareacategory")
+}
+
+/**
+ * @summary Destino de impresión opcional (Ethernet, Bluetooth, USB o servicio local).
+ * Guarda solo configuración declarativa; la conexión real llega en una etapa futura.
+ */
+model PrintDestination {
+  id         Int        @id @default(autoincrement())
+  tenantId   Int
+  branchId   Int
+  areaId     Int?
+  name       String     @db.VarChar(120)
+  type       String     @default("ETHERNET") @db.VarChar(30)
+  connection String?    @db.Text
+  status     String     @default("unknown") @db.VarChar(20)
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  area       PrintArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  jobs       PrintJob[]
+
+  @@index([tenantId, branchId, active])
+  @@map("printdestination")
+}
+
+/**
+ * @summary Comanda en cola, independiente del formato físico de impresión.
+ * Estados conceptuales: pending → processing → printed (o failed/cancelled).
+ * Se genera a partir de un pedido real cuando exista un proveedor de impresión.
+ */
+model PrintJob {
+  id            Int               @id @default(autoincrement())
+  tenantId      Int
+  branchId      Int
+  orderId       Int
+  areaId        Int?
+  destinationId Int?
+  kind          String            @default("comanda") @db.VarChar(30)
+  status        String            @default("pending") @db.VarChar(20)
+  payload       Json
+  error         String?           @db.VarChar(500)
+  printedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order         CustomerOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  area          PrintArea?        @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  destination   PrintDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, branchId, status, createdAt])
+  @@index([orderId])
+  @@map("printjob")
+}
+
+/**
  * @summary Ocupación vigente de una mesa: quién está, cuántos son y qué se consumió.
  * Una mesa tiene como máximo una sesión abierta (closedAt = null) a la vez.
  */
@@ -1052,6 +1174,7 @@ model CustomerOrder {
   invoice         InvoiceRecord?
   idempotencies   OrderIdempotency[]
   promotionUsage  PromotionUsage?
+  printJobs       PrintJob[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
@@ -1476,6 +1599,9 @@ model Branch {
   tableSessions      TableSession[]
   tableSessionEvents TableSessionEvent[]
   kitchenStations    KitchenStation[]
+  printAreas         PrintArea[]
+  printDestinations  PrintDestination[]
+  printJobs          PrintJob[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])
