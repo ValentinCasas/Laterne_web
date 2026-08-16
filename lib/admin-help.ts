@@ -35,17 +35,18 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
   },
   productos: {
     title: "Productos",
-    intro: "Cada producto alimenta tu carta pública: nombre, precio, imagen, disponibilidad y publicación.",
+    intro: "Cada producto alimenta tu carta: nombre, precio, imagen, disponibilidad y publicación. El editor guiado ordena el alta en pasos para que no se confundan modificadores, combos y recetas.",
     points: [
-      "Los estados de publicación controlan si se ve: Publicado (visible), Programado (a futuro), Borrador (sin publicar), Oculto (guardado pero oculto) y Archivado (fuera de uso).",
-      "Podés limitar días y horarios de disponibilidad, y marcar un producto como Agotado.",
-      "Los productos pueden tener variantes (tamaños, presentaciones) y agregados (extras) que se eligen en el panel de Variantes y agregados.",
-      "Si el producto tiene control de stock activo, los pedidos verifican existencias antes de confirmarse.",
-      "La experiencia 3D y realidad aumentada (modelos, medidas, escala y superficie) se configura en la sección avanzada del formulario del producto.",
+      "El listado grande permite buscar, filtrar por estado/categoría/disponibilidad, marcar favoritos (para operación y el futuro POS) y aplicar acciones masivas razonables.",
+      "En precios podés cargar costo y ver margen y markup al instante, además de listas de precio por canal (salón, mostrador, delivery y carta online) con vigencia u horario.",
+      "Los modificadores son elecciones del cliente sobre el mismo producto (tamaño, extras con precio); el combo es una composición fija con otros productos vendibles; la receta conecta ingredientes con stock sin duplicar inventario.",
+      "La disponibilidad por sucursal controla en qué locales se vende, con precio propio, estado de agotado y control de stock por local.",
+      "Duplicar un producto copia toda su configuración pero deja la copia en borrador y con stock en cero para revisarla antes de publicar.",
+      "La experiencia 3D y realidad aumentada (modelos, medidas, escala y superficie) se configura en el último paso del editor.",
     ],
     warning:
       "El precio que ve el cliente siempre es el precio promocional si existe; revisalo antes de publicar.",
-    related: ["opciones-producto", "categorias", "inventario"],
+    related: ["opciones-producto", "categorias", "inventario", "impresion"],
   },
   "opciones-producto": {
     title: "Variantes y agregados",
@@ -62,6 +63,7 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     intro: "Organizá los productos en grupos para que la carta se lea con orden.",
     points: [
       "Una categoría puede tener imagen, descripción y orden de aparición.",
+      "Con «Categoría superior» creás subcategorías: los productos que usen la subcategoría aparecen agrupados dentro de la categoría principal en la carta.",
       "Los productos se asignan a una categoría desde el propio producto o desde aquí.",
       "Las categorías sin productos se muestran igualmente en la carta.",
     ],

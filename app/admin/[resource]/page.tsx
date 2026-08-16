@@ -321,6 +321,13 @@ function createDefinition(
         { key: "publishAt", label: "Publicar desde", type: "datetime-local" },
         { key: "sortOrder", label: "Orden", type: "number", help: "Menor aparece primero" },
         {
+          key: "parentId",
+          label: "Categoría superior (subcategoría)",
+          control: "select",
+          help: "Si elegís una categoría superior, esta queda como subcategoría dentro de ella. Vacío = categoría principal de la carta.",
+          options: categoryOptions,
+        },
+        {
           key: "imageUrl",
           label: "Ícono o imagen de categoría",
           control: "image",

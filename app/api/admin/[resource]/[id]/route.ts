@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAdminResource } from "@/lib/admin-resources";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
-import { resourceScopedWhere } from "@/lib/branch";
+import { resolveCategoryParentId, resourceScopedWhere } from "@/lib/branch";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { productAdminData } from "@/lib/product-admin";
@@ -61,6 +61,7 @@ async function values(
       publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueCategorySlug(tenantId, input.slug || fields.name, id),
       sortOrder: Number(input.sortOrder || 0),
+      parentId: await resolveCategoryParentId(tenantId, branchId, input.parentId, id),
     };
   }
 

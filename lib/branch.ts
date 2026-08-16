@@ -395,6 +395,33 @@ export function resourceScopedWhere(
   return { tenantId };
 }
 
+/**
+ * @summary Valida y resuelve la categoría superior (subcategoría) respetando el alcance del tenant/sucursal.
+ */
+export async function resolveCategoryParentId(
+  tenantId: number,
+  activeBranchId: number | undefined | null,
+  inputParentId: string | undefined,
+  excludeId: number | null = null,
+): Promise<number | null> {
+  if (!inputParentId || !inputParentId.trim()) return null;
+  const parentId = Number(inputParentId);
+  if (!Number.isInteger(parentId) || parentId <= 0) throw new Error("Categoría superior inválida");
+  if (excludeId && parentId === excludeId) {
+    throw new Error("Una categoría no puede ser superior de sí misma");
+  }
+  const parent = await prisma.category.findFirst({
+    where: {
+      id: parentId,
+      tenantId,
+      ...(activeBranchId && activeBranchId > 0 ? { branchId: activeBranchId } : {}),
+    },
+    select: { id: true },
+  });
+  if (!parent) throw new Error("Elegí una categoría superior válida");
+  return parent.id;
+}
+
 /** @summary Asegura la asignación (publicación/configuración) de un producto maestro en una sucursal. */
 export async function ensureBranchProduct(tenantId: number, branchId: number, productId: number) {
   return prisma.branchProduct.upsert({

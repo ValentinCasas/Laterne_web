@@ -11,6 +11,7 @@ import {
   ensureBranchProduct,
   ensureBranchStock,
   ensureDraftLicense,
+  resolveCategoryParentId,
   resolveEffectiveBranchId,
 } from "@/lib/branch";
 import { serialize } from "@/lib/format";
@@ -57,6 +58,7 @@ async function normalize(
       ...fields,
       tenantId,
       branchId: branchId ?? null,
+      parentId: await resolveCategoryParentId(tenantId, branchId, input.parentId),
       status: fields.status || "published",
       publishAt: input.publishAt ? new Date(input.publishAt) : null,
       slug: await uniqueCategorySlug(tenantId, input.slug || fields.name),
