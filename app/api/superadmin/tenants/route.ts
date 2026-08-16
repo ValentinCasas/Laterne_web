@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorizeSuperAdmin } from "@/lib/auth";
+import { createDefaultTenantRoles } from "@/lib/default-roles";
 import { deleteTenants } from "@/lib/delete-tenant";
 import { prisma } from "@/lib/prisma";
 import { isReservedSlug } from "@/lib/domains";
@@ -73,18 +74,9 @@ export async function POST(request: Request) {
         status: "active",
       },
     });
-    const role = await transaction.role.create({
-      data: {
-        tenantId: created.id,
-        key: "owner",
-        name: "Propietario",
-        description: "Control total del negocio",
-        system: true,
-      },
-    });
-    const permissions = await transaction.permission.findMany({ select: { id: true } });
-    await transaction.rolePermission.createMany({
-      data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+    await createDefaultTenantRoles(transaction, created.id);
+    const role = await transaction.role.findFirstOrThrow({
+      where: { tenantId: created.id, key: "owner" },
     });
     const user = await transaction.user.create({
       data: {
