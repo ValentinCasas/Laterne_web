@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
-import { publicTenantUrl, tenantAdminUrl } from "@/lib/domains";
+import { publicTenantUrl } from "@/lib/domains";
+import { platformClientPath } from "@/lib/routes";
 
 /** @summary Centraliza la consulta multi-tenant utilizada por las vistas de supervisión de MenuClick. */
 export async function platformTenants() {
@@ -46,7 +47,7 @@ export async function platformTenants() {
   return tenants.map((tenant) => ({
     ...serialize(tenant),
     publicUrl: publicTenantUrl(tenant.slug, tenant.brandSettings?.customDomain),
-    adminUrl: tenantAdminUrl(tenant.slug, "/admin"),
+    adminUrl: platformClientPath(tenant.publicGuid, tenant.slug),
     storageBytes: Number(storageByTenant.get(tenant.id) ?? 0),
   }));
 }

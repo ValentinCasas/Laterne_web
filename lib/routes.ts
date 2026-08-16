@@ -13,6 +13,8 @@ export type RouteSurface =
 export type CanonicalRouteContext = {
   surface: RouteSurface;
   tenantSlug?: string;
+  /** Identidad pública inmutable del negocio, presente en URLs administrativas canónicas. */
+  tenantGuid?: string;
   branchSlug?: string;
   /** Ruta lógica que entiende el árbol interno heredado durante la transición. */
   logicalPath: string;
@@ -108,6 +110,45 @@ export function tenantBranchAdminPath(tenantSlug: string, branchSlug: string, pa
 }
 
 /**
+ * @summary Construye una ruta administrativa canónica (identidad por GUID) para un tenant.
+ * @param path Ruta como `/admin/foo` o `/foo`.
+ */
+export function tenantAdminGuidPath(guid: string, tenantSlug: string, path = ""): Route {
+  const suffix = normalizedSuffix(path).replace(/^\/admin(?=\/|$)/, "");
+  return `/t/${guid.trim()}/${encodedSlug(tenantSlug)}/admin${suffix}` as Route;
+}
+
+/**
+ * @summary Construye una ruta administrativa canónica (identidad por GUID) para una sucursal.
+ * @param path Ruta como `/admin/foo` o `/foo`.
+ */
+export function tenantBranchAdminGuidPath(
+  guid: string,
+  tenantSlug: string,
+  branchSlug: string,
+  path = "",
+): Route {
+  const suffix = normalizedSuffix(path).replace(/^\/admin(?=\/|$)/, "");
+  return `/t/${guid.trim()}/${encodedSlug(tenantSlug)}/admin/s/${encodedSlug(branchSlug)}${suffix}` as Route;
+}
+
+/**
+ * @summary Ruta canónica del detalle de un cliente en Platform: `/platform/clientes/{guid}/{slug}`.
+ */
+export function platformClientPath(guid: string, tenantSlug: string, path = ""): Route {
+  const suffix = normalizedSuffix(path).replace(/^\/clientes(?=\/|$)/, "");
+  return `/platform/clientes/${guid.trim()}/${encodedSlug(tenantSlug)}${suffix}` as Route;
+}
+
+/**
+ * @summary Ruta canónica del detalle de una sucursal de un cliente en Platform.
+ */
+export function platformBranchPath(guid: string, tenantSlug: string, branchSlug: string, path = ""): Route {
+  const suffix = normalizedSuffix(path).replace(/^\/clientes(?=\/|$)/, "");
+  return `/platform/clientes/${guid.trim()}/${encodedSlug(tenantSlug)}/sucursales/${encodedSlug(branchSlug)}${suffix}` as Route;
+}
+
+/**
  * @summary Convierte una ruta interna `/superadmin/...` en la ruta pública `/platform/...`.
  */
 export function platformAdminPath(path = ""): Route {
@@ -137,6 +178,30 @@ export function isBranchAdminLogicalPath(path: string) {
  */
 export function parseCanonicalPath(pathname: string): CanonicalRouteContext {
   const path = pathname.split("?")[0] || "/";
+
+  // Identidad por GUID: /t/{guid}/{slug}/admin/s/{branch}/... y /t/{guid}/{slug}/admin/...
+  const branchAdminGuid = path.match(/^\/t\/([^/]+)\/([^/]+)\/admin\/s\/([^/]+)(\/.*)?$/);
+  if (branchAdminGuid) {
+    const rest = branchAdminGuid[4] || "";
+    return {
+      surface: "tenant-admin",
+      tenantGuid: decodeURIComponent(branchAdminGuid[1]),
+      tenantSlug: decodeURIComponent(branchAdminGuid[2]),
+      branchSlug: decodeURIComponent(branchAdminGuid[3]),
+      logicalPath: `/admin${rest}`,
+    };
+  }
+
+  const tenantAdminGuid = path.match(/^\/t\/([^/]+)\/([^/]+)\/admin(\/.*)?$/);
+  if (tenantAdminGuid) {
+    const rest = tenantAdminGuid[3] || "";
+    return {
+      surface: "tenant-admin",
+      tenantGuid: decodeURIComponent(tenantAdminGuid[1]),
+      tenantSlug: decodeURIComponent(tenantAdminGuid[2]),
+      logicalPath: `/admin${rest}`,
+    };
+  }
 
   const branchAdmin = path.match(/^\/t\/([^/]+)\/admin\/s\/([^/]+)(\/.*)?$/);
   if (branchAdmin) {
@@ -179,6 +244,32 @@ export function parseCanonicalPath(pathname: string): CanonicalRouteContext {
     };
   }
 
+  // Detalle canónico de cliente en Platform: /platform/clientes/{guid}/{slug}/...
+  const platformBranchDetail = path.match(
+    /^\/platform\/clientes\/([^/]+)\/([^/]+)\/sucursales\/([^/]+)(\/.*)?$/,
+  );
+  if (platformBranchDetail) {
+    const rest = platformBranchDetail[4] || "";
+    return {
+      surface: "platform-admin",
+      tenantGuid: decodeURIComponent(platformBranchDetail[1]),
+      tenantSlug: decodeURIComponent(platformBranchDetail[2]),
+      branchSlug: decodeURIComponent(platformBranchDetail[3]),
+      logicalPath: `/superadmin/clientes/${decodeURIComponent(platformBranchDetail[1])}/${decodeURIComponent(platformBranchDetail[2])}/sucursales/${decodeURIComponent(platformBranchDetail[3])}${rest}`,
+    };
+  }
+
+  const platformClientDetail = path.match(/^\/platform\/clientes\/([^/]+)\/([^/]+)(?:\/(.*))?$/);
+  if (platformClientDetail) {
+    const rest = platformClientDetail[3] || "";
+    return {
+      surface: "platform-admin",
+      tenantGuid: decodeURIComponent(platformClientDetail[1]),
+      tenantSlug: decodeURIComponent(platformClientDetail[2]),
+      logicalPath: `/superadmin/clientes/${decodeURIComponent(platformClientDetail[1])}/${decodeURIComponent(platformClientDetail[2])}${rest}`,
+    };
+  }
+
   const platformAdmin = path.match(/^\/platform(\/.*)?$/);
   if (platformAdmin) {
     return {
@@ -192,12 +283,25 @@ export function parseCanonicalPath(pathname: string): CanonicalRouteContext {
 
 /**
  * @summary Construye un enlace administrativo y conserva la sucursal solo cuando corresponde.
+ * @param tenantGuid Identidad pública inmutable; si se provee se usa la URL con GUID.
  */
-export function adminHrefForContext(tenantSlug: string, logicalHref: string, branchSlug?: string): Route {
+export function adminHrefForContext(
+  tenantSlug: string,
+  logicalHref: string,
+  branchSlug?: string,
+  tenantGuid?: string,
+): Route {
+  const path = normalizedSuffix(logicalHref).replace(/^\/admin(?=\/|$)/, "");
+  const withBranch = branchSlug && isBranchAdminLogicalPath(logicalHref);
+  if (tenantGuid) {
+    return (
+      withBranch
+        ? tenantBranchAdminGuidPath(tenantGuid, tenantSlug, branchSlug as string, path)
+        : tenantAdminGuidPath(tenantGuid, tenantSlug, path)
+    ) as Route;
+  }
   return (
-    branchSlug && isBranchAdminLogicalPath(logicalHref)
-      ? tenantBranchAdminPath(tenantSlug, branchSlug, logicalHref)
-      : tenantAdminPath(tenantSlug, logicalHref)
+    withBranch ? tenantBranchAdminPath(tenantSlug, branchSlug as string, path) : tenantAdminPath(tenantSlug, path)
   ) as Route;
 }
 
@@ -254,7 +358,7 @@ export function publicHrefForVisiblePath(
 export function adminHrefFromPathname(pathname: string, logicalHref: string): Route {
   const context = parseCanonicalPath(pathname);
   if (context.surface !== "tenant-admin" || !context.tenantSlug) return logicalHref as Route;
-  return adminHrefForContext(context.tenantSlug, logicalHref, context.branchSlug);
+  return adminHrefForContext(context.tenantSlug, logicalHref, context.branchSlug, context.tenantGuid);
 }
 
 /**
@@ -287,7 +391,9 @@ export function scopedApiPath(pathname: string, apiPath: string): Route {
   }
 
   if (!context.tenantSlug) return apiPath as Route;
-  const tenant = encodedSlug(context.tenantSlug);
+  const tenant = context.tenantGuid
+    ? `${context.tenantGuid}/${encodedSlug(context.tenantSlug)}`
+    : encodedSlug(context.tenantSlug);
   const branch = context.branchSlug ? `/s/${encodedSlug(context.branchSlug)}` : "";
 
   if (apiPath.startsWith("/api/admin/")) {
@@ -310,9 +416,5 @@ export function switchAdminBranchPath(pathname: string, branchSlug?: string): Ro
   const context = parseCanonicalPath(pathname);
   if (context.surface !== "tenant-admin" || !context.tenantSlug) return pathname as Route;
   const logical = context.logicalPath;
-  return (
-    branchSlug && isBranchAdminLogicalPath(logical)
-      ? tenantBranchAdminPath(context.tenantSlug, branchSlug, logical)
-      : tenantAdminPath(context.tenantSlug, logical)
-  ) as Route;
+  return adminHrefForContext(context.tenantSlug, logical, branchSlug, context.tenantGuid);
 }

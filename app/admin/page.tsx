@@ -25,7 +25,7 @@ export default async function Dashboard() {
       ? context.branches.find((branch) => branch.id === context.activeBranchId)
       : undefined;
   const adminHref = (href: string) =>
-    adminHrefForContext(context.tenant.slug, href, activeBranch?.slug) as Route;
+    adminHrefForContext(context.tenant.slug, href, activeBranch?.slug, context.tenant.publicGuid) as Route;
   const branchFilter = activeBranchWhere(tenantId, context.activeBranchId);
   const productFilter = branchProductWhere(tenantId, context.activeBranchId);
   const [

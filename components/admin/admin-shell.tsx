@@ -219,6 +219,7 @@ export function AdminShell({
   permissions,
   tenantName,
   tenantSlug,
+  tenantGuid,
   publicSiteUrl,
   isSuperAdmin = false,
   adminTheme = "menuclick-dark",
@@ -232,6 +233,7 @@ export function AdminShell({
   permissions: string[];
   tenantName: string;
   tenantSlug: string;
+  tenantGuid?: string;
   publicSiteUrl: string;
   isSuperAdmin?: boolean;
   adminTheme?: string;
@@ -256,8 +258,8 @@ export function AdminShell({
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
   const adminHref = useCallback(
-    (href: string) => adminHrefForContext(tenantSlug, href, branchSlug),
-    [branchSlug, tenantSlug],
+    (href: string) => adminHrefForContext(tenantSlug, href, branchSlug, tenantGuid),
+    [branchSlug, tenantGuid, tenantSlug],
   );
   const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
   const [openGroup, setOpenGroup] = useState<string>(

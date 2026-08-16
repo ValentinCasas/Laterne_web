@@ -5,7 +5,7 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 
 export type BranchDetailData = {
-  tenant: { id: number; name: string; slug: string; status: string };
+  tenant: { id: number; name: string; slug: string; status: string; publicGuid?: string };
   branch: {
     id: number;
     name: string;
@@ -26,6 +26,7 @@ export type BranchDetailData = {
     inheritBrand: boolean;
     createdAt: string;
     updatedAt: string;
+    userUsage?: { allowed: number; used: number };
     licenses: Array<{
       id: number;
       status: string;
@@ -34,6 +35,8 @@ export type BranchDetailData = {
       currentPeriodEnd: string | null;
       graceUntil: string | null;
       priceOverride: number | string | null;
+      pricePerUser: number | string | null;
+      usersAllowed: number;
       notes: string | null;
       plan: { id: number; name: string; slug: string } | null;
     }>;
@@ -84,8 +87,14 @@ export function BranchDetail({
   const tenant = data.tenant;
   const license = branch.licenses[0];
   const publicUrl = `/t/${tenant.slug}/s/${branch.slug}`;
-  const adminUrl = `/t/${tenant.slug}/admin/s/${branch.slug}`;
-  const tenantAdminUrl = `/t/${tenant.slug}/admin`;
+  const adminUrl = tenant.publicGuid
+    ? `/t/${tenant.publicGuid}/${tenant.slug}/admin/s/${branch.slug}`
+    : `/t/${tenant.slug}/admin/s/${branch.slug}`;
+  const tenantAdminUrl = tenant.publicGuid
+    ? `/t/${tenant.publicGuid}/${tenant.slug}/admin`
+    : `/t/${tenant.slug}/admin`;
+  const usage = branch.userUsage ?? { allowed: 0, used: branch.membershipAccess.length };
+  const limitReached = usage.used >= usage.allowed;
 
   /**
    * @summary Aplica la selección solicitada en el detalle de sucursal de plataforma.
@@ -166,6 +175,8 @@ export function BranchDetail({
       planId: string;
       currentPeriodEnd: string;
       graceUntil: string;
+      usersAllowed: string;
+      pricePerUser: string;
       notes: string;
     }>({
       title: `Licencia de ${branch.name}`,
@@ -178,6 +189,10 @@ export function BranchDetail({
         <input id="branch-license-period" type="datetime-local" value="${datetime(license?.currentPeriodEnd)}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
         <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Fin de período de gracia</label>
         <input id="branch-license-grace" type="datetime-local" value="${datetime(license?.graceUntil)}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
+        <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Usuarios permitidos (0 = según plan)</label>
+        <input id="branch-license-users" type="number" min="0" value="${license?.usersAllowed ?? 0}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
+        <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Precio por usuario adicional</label>
+        <input id="branch-license-per-user" type="number" min="0" step="0.01" value="${license?.pricePerUser ?? ""}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
         <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Observaciones</label>
         <textarea id="branch-license-notes" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px" rows="2">${license?.notes ?? ""}</textarea>
       </div>`,
@@ -204,20 +219,28 @@ export function BranchDetail({
             (document.getElementById("branch-license-period") as HTMLInputElement | null)?.value ?? "",
           graceUntil:
             (document.getElementById("branch-license-grace") as HTMLInputElement | null)?.value ?? "",
+          usersAllowed:
+            (document.getElementById("branch-license-users") as HTMLInputElement | null)?.value ?? "0",
+          pricePerUser:
+            (document.getElementById("branch-license-per-user") as HTMLInputElement | null)?.value ?? "",
           notes: (document.getElementById("branch-license-notes") as HTMLTextAreaElement | null)?.value ?? "",
         };
       },
     });
     if (!isConfirmed || !values) return;
     try {
-      const response = await fetch(`/api/platform/tenants/${tenant.id}/branch/${branch.id}/license`, {
-        method: "POST",
+      const basePath = `/api/platform/tenants/${tenant.id}/branch/${branch.id}/license`;
+      const editing = license?.id != null;
+      const response = await fetch(editing ? `${basePath}/${license.id}` : basePath, {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: values.status,
           planId: values.planId ? Number(values.planId) : null,
           currentPeriodEnd: values.currentPeriodEnd ? new Date(values.currentPeriodEnd).toISOString() : null,
           graceUntil: values.graceUntil ? new Date(values.graceUntil).toISOString() : null,
+          usersAllowed: Number(values.usersAllowed || 0),
+          pricePerUser: values.pricePerUser ? Number(values.pricePerUser) : null,
           notes: values.notes || null,
         }),
       });
@@ -230,6 +253,8 @@ export function BranchDetail({
           currentPeriodEnd: string | null;
           graceUntil: string | null;
           priceOverride: number | string | null;
+          pricePerUser: number | string | null;
+          usersAllowed: number;
           notes: string | null;
         };
         error?: string;
@@ -245,14 +270,18 @@ export function BranchDetail({
         });
       }
       const plan = plans.find((item) => item.id === result.license?.planId) ?? null;
+      const saved = {
+        ...result.license!,
+        plan: plan ? { id: plan.id, name: plan.name, slug: plan.name } : null,
+      };
       setBranch((current) => ({
         ...current,
-        licenses: [
-          { ...result.license!, plan: plan ? { id: plan.id, name: plan.name, slug: plan.name } : null },
-        ],
+        licenses: editing
+          ? current.licenses.map((item) => (item.id === saved.id ? saved : item))
+          : [saved, ...current.licenses],
       }));
       await Swal.fire({
-        title: "Licencia actualizada",
+        title: "Licencia guardada",
         text: `La licencia de ${branch.name} quedó en ${result.license.status}.`,
         icon: "success",
         timer: 1400,
@@ -279,7 +308,14 @@ export function BranchDetail({
           ← Clientes
         </Link>
         <span>·</span>
-        <Link className="font-bold text-amber-300" href={`/platform/clientes/${tenant.slug}`}>
+        <Link
+          className="font-bold text-amber-300"
+          href={
+            tenant.publicGuid
+              ? `/platform/clientes/${tenant.publicGuid}/${tenant.slug}`
+              : `/platform/clientes/${tenant.slug}`
+          }
+        >
           {tenant.name}
         </Link>
         <span>·</span>
@@ -347,12 +383,18 @@ export function BranchDetail({
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         <Panel title="Licencia">
+          {limitReached && (
+            <p className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-black uppercase text-rose-300">
+              Sin cupos disponibles ({usage.used}/{usage.allowed} usuarios)
+            </p>
+          )}
           <dl className="grid gap-3 sm:grid-cols-2">
             <Metric
               label="Estado"
               value={statusLabels[license?.status ?? ""] ?? license?.status ?? "Sin licencia"}
             />
             <Metric label="Plan" value={license?.plan?.name ?? "Sin plan"} />
+            <Metric label="Usuarios" value={`${usage.used}/${usage.allowed}`} />
             <Metric
               label="Inicio"
               value={license?.startsAt ? new Date(license.startsAt).toLocaleDateString("es-AR") : "—"}
@@ -368,6 +410,7 @@ export function BranchDetail({
               value={license?.graceUntil ? new Date(license.graceUntil).toLocaleString("es-AR") : "—"}
             />
             <Metric label="Monto" value={money(license?.priceOverride ?? null)} />
+            <Metric label="Precio por usuario" value={money(license?.pricePerUser ?? null)} />
           </dl>
           {license?.notes && (
             <p className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3 text-sm text-slate-400">

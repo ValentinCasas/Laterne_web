@@ -22,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       permissions={context.permissions}
       tenantName={context.tenant.name}
       tenantSlug={context.tenant.slug}
+      tenantGuid={context.tenant.publicGuid}
       publicSiteUrl={publicTenantUrl(context.tenant.slug, context.tenant.customDomain)}
       adminTheme={context.tenant.adminTheme}
       adminAccent={context.tenant.adminAccent}

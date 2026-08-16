@@ -5,26 +5,25 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFields = Record<string, unknown>;
 
 /**
- * Logging estructurado hacia stdout/stderr.
+ * Logging estructurado compatible con Node.js y Edge.
  *
  * En producción emite una línea JSON por evento con timestamp y nivel, para que
  * un recolector (Docker logs, Loki, etc.) la consuma sin post-procesamiento.
  * En desarrollo imprime texto legible. Nunca se escriben secretos.
+ *
+ * Se usa `console.*` (disponible en ambos runtimes) en lugar de los streams de
+ * Node: `console` resuelve igual a stdout/stderr en Node y evita arrastrar
+ * APIs de Node a los bundles Edge.
  */
 function write(level: LogLevel, message: string, fields: LogFields = {}) {
   const timestamp = new Date().toISOString();
-  if (isDevelopment) {
-    const summary = Object.keys(fields).length
-      ? ` ${JSON.stringify(fields)}`
-      : "";
-    const line = `[${timestamp}] ${level.toUpperCase()} ${message}${summary}`;
-    if (level === "error") process.stderr.write(`${line}\n`);
-    else process.stdout.write(`${line}\n`);
-    return;
-  }
-  const line = JSON.stringify({ timestamp, level, message, ...fields });
-  if (level === "error") process.stderr.write(`${line}\n`);
-  else process.stdout.write(`${line}\n`);
+  const line = isDevelopment
+    ? Object.keys(fields).length
+      ? `[${timestamp}] ${level.toUpperCase()} ${message} ${JSON.stringify(fields)}`
+      : `[${timestamp}] ${level.toUpperCase()} ${message}`
+    : JSON.stringify({ timestamp, level, message, ...fields });
+  if (level === "error") console.error(line);
+  else console.log(line);
 }
 
 /** @summary Convierte un motivo de rechazo desconocido en un objeto serializable. */

@@ -19,6 +19,7 @@ import { productAdminData } from "@/lib/product-admin";
 import { promotionData } from "@/lib/promotion-admin";
 import { slugify, uniqueBranchSlug, uniqueCategorySlug } from "@/lib/slug";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
+import { acquireTenantUserLock, assertMemberBranchCapacity, releaseTenantUserLock } from "@/lib/license";
 
 /**
  * @summary Valida la entrada relacionada con el recurso solicitado.
@@ -254,24 +255,36 @@ async function createMember(input: Record<string, string>, tenantId: number) {
   const allBranches = input.allBranches === "true";
 
   return prisma.$transaction(async (transaction) => {
-    const user = await transaction.user.create({
-      data: {
-        name: input.name.trim(),
-        email,
-        password: await bcrypt.hash(password, 12),
-        role: ["owner", "administrator"].includes(role.key) ? 1 : 0,
-        imageUrl: input.imageUrl || "avatar_profile_default.png",
-      },
-    });
-    const membership = await transaction.tenantMembership.create({
-      data: { tenantId, userId: user.id, roleId, allBranches },
-    });
-    if (branches.length) {
-      await transaction.branchMembership.createMany({
-        data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
+    await acquireTenantUserLock(transaction, tenantId);
+    try {
+      await assertMemberBranchCapacity({
+        db: transaction,
+        tenantId,
+        roleKey: role.key,
+        allBranches,
+        branchIds: branches.map((branch) => branch.id),
       });
+      const user = await transaction.user.create({
+        data: {
+          name: input.name.trim(),
+          email,
+          password: await bcrypt.hash(password, 12),
+          role: ["owner", "administrator"].includes(role.key) ? 1 : 0,
+          imageUrl: input.imageUrl || "avatar_profile_default.png",
+        },
+      });
+      const membership = await transaction.tenantMembership.create({
+        data: { tenantId, userId: user.id, roleId, allBranches },
+      });
+      if (branches.length) {
+        await transaction.branchMembership.createMany({
+          data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
+        });
+      }
+      return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
+    } finally {
+      await releaseTenantUserLock(transaction, tenantId);
     }
-    return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
   });
 }
 

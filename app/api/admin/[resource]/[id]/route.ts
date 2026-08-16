@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { productAdminData } from "@/lib/product-admin";
 import { promotionData } from "@/lib/promotion-admin";
 import { slugify, uniqueCategorySlug } from "@/lib/slug";
+import { acquireTenantUserLock, assertMemberBranchCapacity, releaseTenantUserLock } from "@/lib/license";
 
 /**
  * @summary Valida la entrada relacionada con el recurso solicitado.
@@ -236,28 +237,41 @@ async function updateMember(input: Record<string, string>, tenantId: number, use
   const allBranches = input.allBranches === "true";
 
   return prisma.$transaction(async (transaction) => {
-    await transaction.tenantMembership.update({
-      where: { id: membership.id },
-      data: { roleId, allBranches },
-    });
-    const user = await transaction.user.update({
-      where: { id: userId },
-      data: {
-        name: input.name.trim(),
-        email: z.string().trim().email().parse(input.email).toLocaleLowerCase("es"),
-        imageUrl: input.imageUrl || "avatar_profile_default.png",
-        role: ["owner", "administrator"].includes(role.key) ? 1 : 0,
-        ...(input.password
-          ? { password: await bcrypt.hash(z.string().min(8).parse(input.password), 12) }
-          : {}),
-      },
-    });
-    await transaction.branchMembership.deleteMany({ where: { membershipId: membership.id } });
-    if (branches.length)
-      await transaction.branchMembership.createMany({
-        data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
+    await acquireTenantUserLock(transaction, tenantId);
+    try {
+      await assertMemberBranchCapacity({
+        db: transaction,
+        tenantId,
+        roleKey: role.key,
+        allBranches,
+        branchIds: branches.map((branch) => branch.id),
+        excludeUserId: userId,
       });
-    return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
+      await transaction.tenantMembership.update({
+        where: { id: membership.id },
+        data: { roleId, allBranches },
+      });
+      const user = await transaction.user.update({
+        where: { id: userId },
+        data: {
+          name: input.name.trim(),
+          email: z.string().trim().email().parse(input.email).toLocaleLowerCase("es"),
+          imageUrl: input.imageUrl || "avatar_profile_default.png",
+          role: ["owner", "administrator"].includes(role.key) ? 1 : 0,
+          ...(input.password
+            ? { password: await bcrypt.hash(z.string().min(8).parse(input.password), 12) }
+            : {}),
+        },
+      });
+      await transaction.branchMembership.deleteMany({ where: { membershipId: membership.id } });
+      if (branches.length)
+        await transaction.branchMembership.createMany({
+          data: branches.map((branch) => ({ membershipId: membership.id, branchId: branch.id })),
+        });
+      return { ...user, roleId: roleId.toString(), roleName: role.name, password: "" };
+    } finally {
+      await releaseTenantUserLock(transaction, tenantId);
+    }
   });
 }
 

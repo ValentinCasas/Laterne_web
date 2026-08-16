@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { isReservedSlug } from "@/lib/domains";
 import { slugify } from "@/lib/slug";
 import { defaultPalette } from "@/lib/theme-palettes";
+import { generatePublicGuid } from "@/lib/tenant-identity";
 
 /**
  * @summary Valida la entrada relacionada con los tenants.
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       data: {
         name: parsed.data.name,
         slug: await uniqueTenantSlug(parsed.data.slug || parsed.data.name),
+        publicGuid: generatePublicGuid(),
         status: "active",
       },
     });
@@ -106,6 +108,14 @@ export async function POST(request: Request) {
       },
     });
     await transaction.branchMembership.create({ data: { membershipId: membership.id, branchId: branch.id } });
+    await transaction.branchLicense.create({
+      data: {
+        tenantId: created.id,
+        branchId: branch.id,
+        status: "DRAFT",
+        planId: parsed.data.planId ?? undefined,
+      },
+    });
     const palette = await transaction.themePalette.create({
       data: {
         tenantId: created.id,

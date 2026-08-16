@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createSession, sessionCookieAttributes, tenantSessionCookieName } from "@/lib/auth";
 import { classifyHost } from "@/lib/domains";
 import { effectiveHost } from "@/lib/trusted-headers";
-import { tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
+import { tenantAdminGuidPath, tenantAdminPath, tenantBranchAdminGuidPath, tenantBranchAdminPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 
@@ -85,9 +85,14 @@ export async function POST(request: Request) {
     request,
   });
 
+  const tenantGuid = handoff.membership.tenant.publicGuid;
   const redirectPath = branchSlug
-    ? tenantBranchAdminPath(tenantSlug, branchSlug)
-    : tenantAdminPath(tenantSlug);
+    ? tenantGuid
+      ? tenantBranchAdminGuidPath(tenantGuid, tenantSlug, branchSlug)
+      : tenantBranchAdminPath(tenantSlug, branchSlug)
+    : tenantGuid
+      ? tenantAdminGuidPath(tenantGuid, tenantSlug)
+      : tenantAdminPath(tenantSlug);
   const response = NextResponse.json({ ok: true, redirect: redirectPath });
   response.cookies.set(tenantSessionCookieName(tenantSlug), token, sessionCookieAttributes(60 * 60 * 8));
   return response;

@@ -13,11 +13,14 @@ import {
   isBranchAdminLogicalPath,
   parseCanonicalPath,
   platformAdminPath,
+  tenantAdminGuidPath,
   tenantAdminPath,
+  tenantBranchAdminGuidPath,
   tenantBranchAdminPath,
   tenantBranchPublicPath,
   tenantPublicPath,
 } from "@/lib/routes";
+import { resolveGuidBySlug, resolveTenantByGuid } from "@/lib/tenant-identity";
 
 const TENANT_AUTH_PATHS = new Set(["/login", "/recuperar-acceso", "/restablecer-acceso"]);
 const PLATFORM_MARKETING_PREFIXES = [
@@ -60,6 +63,7 @@ function contextHeaders(
   values: {
     routeKind: string;
     tenantSlug?: string;
+    tenantGuid?: string;
     branchSlug?: string;
     adminScope?: "tenant" | "branch" | "consolidated";
   },
@@ -67,6 +71,9 @@ function contextHeaders(
   const headers = sanitizedForwardedHeaders(request.headers);
   headers.set("x-menuclick-original-path", request.nextUrl.pathname + request.nextUrl.search);
   headers.set("x-menuclick-route-kind", values.routeKind);
+  if (values.tenantGuid)
+    headers.set("x-menuclick-tenant-guid", values.tenantGuid.trim().toLocaleLowerCase("es"));
+  else headers.delete("x-menuclick-tenant-guid");
   if (values.tenantSlug)
     headers.set("x-menuclick-tenant-slug", values.tenantSlug.trim().toLocaleLowerCase("es"));
   else headers.delete("x-menuclick-tenant-slug");
@@ -98,6 +105,27 @@ function apiRewrite(request: NextRequest): NextResponse | null {
 
   match = pathname.match(/^\/api\/platform\/(.+)$/);
   if (match) return rewrite(request, `/api/superadmin/${match[1]}`, { routeKind: "platform-admin" });
+
+  match = pathname.match(/^\/api\/t\/([^/]+)\/([^/]+)\/admin\/s\/([^/]+)(?:\/(.*))?$/);
+  if (match) {
+    return rewrite(request, `/api/admin${match[5] ? `/${match[5]}` : ""}`, {
+      routeKind: "tenant-admin",
+      tenantGuid: decodeURIComponent(match[1]),
+      tenantSlug: decodeURIComponent(match[2]),
+      branchSlug: decodeURIComponent(match[3]),
+      adminScope: "branch",
+    });
+  }
+
+  match = pathname.match(/^\/api\/t\/([^/]+)\/([^/]+)\/admin(?:\/(.*))?$/);
+  if (match) {
+    return rewrite(request, `/api/admin${match[3] ? `/${match[3]}` : ""}`, {
+      routeKind: "tenant-admin",
+      tenantGuid: decodeURIComponent(match[1]),
+      tenantSlug: decodeURIComponent(match[2]),
+      adminScope: "consolidated",
+    });
+  }
 
   match = pathname.match(/^\/api\/t\/([^/]+)\/admin\/s\/([^/]+)(?:\/(.*))?$/);
   if (match) {
@@ -187,6 +215,43 @@ export async function proxy(request: NextRequest) {
 
   if (canonical.surface === "tenant-admin" && canonical.tenantSlug) {
     if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+
+    // Identidad por GUID: se resuelve el negocio por su GUID y se normaliza el
+    // slug de la URL al canónico (si cambió, redirigimos para no duplicar).
+    if (canonical.tenantGuid) {
+      const identity = await resolveTenantByGuid(canonical.tenantGuid);
+      if (!identity) return rewrite(request, "/404", { routeKind: "platform-public" });
+      if (identity.slug !== canonical.tenantSlug) {
+        const canonicalPath = canonical.branchSlug
+          ? tenantBranchAdminGuidPath(identity.publicGuid, identity.slug, canonical.branchSlug, canonical.logicalPath)
+          : tenantAdminGuidPath(identity.publicGuid, identity.slug, canonical.logicalPath);
+        return redirectTo(request, adminRootUrl(), canonicalPath);
+      }
+      if (canonical.branchSlug && !isBranchAdminLogicalPath(canonical.logicalPath)) {
+        return redirectTo(
+          request,
+          adminRootUrl(),
+          tenantAdminGuidPath(canonical.tenantGuid, canonical.tenantSlug, canonical.logicalPath),
+        );
+      }
+      return rewrite(request, canonical.logicalPath, {
+        routeKind: "tenant-admin",
+        tenantGuid: identity.publicGuid,
+        tenantSlug: identity.slug,
+        branchSlug: canonical.branchSlug,
+        adminScope: canonical.branchSlug ? "branch" : "consolidated",
+      });
+    }
+
+    // Legacy por slug: se actualiza a la URL canónica con GUID en un solo salto.
+    const legacyGuid = await resolveGuidBySlug(canonical.tenantSlug);
+    if (legacyGuid) {
+      const canonicalPath = canonical.branchSlug
+        ? tenantBranchAdminGuidPath(legacyGuid, canonical.tenantSlug, canonical.branchSlug, canonical.logicalPath)
+        : tenantAdminGuidPath(legacyGuid, canonical.tenantSlug, canonical.logicalPath);
+      return redirectTo(request, adminRootUrl(), canonicalPath);
+    }
+
     // Las secciones tenant-level (usuarios, marca, negocio, etc.) no aceptan un
     // branch decorativo en la URL: se normalizan a una única ruta canónica.
     if (canonical.branchSlug && !isBranchAdminLogicalPath(canonical.logicalPath)) {

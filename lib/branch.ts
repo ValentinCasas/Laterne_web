@@ -307,21 +307,21 @@ export async function resolveEffectiveBranchId(
 
 /** @summary Crea (si falta) la licencia DRAFT inicial de una sucursal recién creada. */
 export async function ensureDraftLicense(tenantId: number, branchId: number) {
-  await prisma.branchLicense.upsert({
-    where: { tenantId_branchId: { tenantId, branchId } },
-    create: {
-      tenantId,
-      branchId,
-      status: "DRAFT",
-      planId:
-        (
-          await prisma.tenantSubscription.findUnique({
-            where: { tenantId },
-            select: { planId: true },
-          })
-        )?.planId ?? undefined,
-    },
-    update: {},
+  const existing = await prisma.branchLicense.findFirst({
+    where: { tenantId, branchId },
+    select: { id: true },
+    orderBy: { id: "asc" },
+  });
+  if (existing) return existing;
+  const planId =
+    (
+      await prisma.tenantSubscription.findUnique({
+        where: { tenantId },
+        select: { planId: true },
+      })
+    )?.planId ?? undefined;
+  return prisma.branchLicense.create({
+    data: { tenantId, branchId, status: "DRAFT", planId },
   });
 }
 

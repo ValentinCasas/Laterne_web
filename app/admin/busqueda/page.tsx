@@ -22,6 +22,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       context.activeBranchId != null && context.activeBranchId > 0
         ? context.branches.find((branch) => branch.id === context.activeBranchId)?.slug
         : undefined,
+      context.tenant.publicGuid,
     ) as Route;
 
   let products: Array<{ id: number; name: string; price: string | null; status: string }> = [];

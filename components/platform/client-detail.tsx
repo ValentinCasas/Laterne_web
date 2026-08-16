@@ -10,6 +10,7 @@ export type ClientDetailData = {
   id: number;
   name: string;
   slug: string;
+  publicGuid?: string;
   status: string;
   createdAt: string;
   storageBytes?: number;
@@ -35,11 +36,19 @@ export type ClientDetailData = {
     address: string;
     active: boolean;
     isPrimary: boolean;
+    userUsage?: { allowed: number; used: number };
     licenses: Array<{
+      id: number;
       status: string;
       planId: number | null;
+      startsAt: string;
       currentPeriodEnd: string | null;
       graceUntil: string | null;
+      priceOverride: number | string | null;
+      pricePerUser: number | string | null;
+      usersAllowed: number;
+      notes: string | null;
+      plan: { id: number; name: string } | null;
     }>;
     _count: { orders: number; membershipAccess: number; inventoryStocks: number };
   }>;
@@ -167,7 +176,27 @@ export function ClientDetail({
     setClient((current) => ({
       ...current,
       branches: current.branches.map((branch) =>
-        branch.id === branchId ? { ...branch, licenses: [license] } : branch,
+        branch.id === branchId
+          ? {
+              ...branch,
+              licenses: branch.licenses.some((item) => item.id === license.id)
+                ? branch.licenses.map((item) => (item.id === license.id ? license : item))
+                : [license, ...branch.licenses],
+            }
+          : branch,
+      ),
+    }));
+  }
+  /**
+   * @summary Elimina una licencia de la vista de cliente de plataforma.
+   */
+  function removeBranchLicense(branchId: number, licenseId: number) {
+    setClient((current) => ({
+      ...current,
+      branches: current.branches.map((branch) =>
+        branch.id === branchId
+          ? { ...branch, licenses: branch.licenses.filter((item) => item.id !== licenseId) }
+          : branch,
       ),
     }));
   }
@@ -251,6 +280,7 @@ export function ClientDetail({
             plans={plans}
             selectedBranchId={selectedBranchId}
             onLicenseUpdated={updateBranchLicense}
+            onLicenseRemoved={removeBranchLicense}
           />
         )}
         {tab === "Usuarios" && (
@@ -404,6 +434,7 @@ function Branches({
   plans,
   selectedBranchId,
   onLicenseUpdated,
+  onLicenseRemoved,
 }: {
   client: ClientDetailData;
   plans: Array<{ id: number; name: string }>;
@@ -412,7 +443,18 @@ function Branches({
     branchId: number,
     license: ClientDetailData["branches"][number]["licenses"][number],
   ) => void;
+  onLicenseRemoved: (branchId: number, licenseId: number) => void;
 }) {
+  const statusLabels: Record<string, string> = {
+    DRAFT: "Borrador",
+    TRIAL: "Prueba",
+    ACTIVE: "Activa",
+    PAYMENT_PENDING: "Pago pendiente",
+    GRACE_PERIOD: "Gracia",
+    SUSPENDED: "Suspendida",
+    CANCELLED: "Cancelada",
+  };
+  const suspendable = new Set(["ACTIVE", "PAYMENT_PENDING", "TRIAL", "GRACE_PERIOD"]);
   /**
    * @summary Actualiza el estado del detalle de cliente de plataforma y conserva su consistencia.
    */
@@ -434,8 +476,10 @@ function Branches({
       planId: string;
       currentPeriodEnd: string;
       graceUntil: string;
+      usersAllowed: string;
+      pricePerUser: string;
     }>({
-      title: `Licencia de ${branch.name}`,
+      title: license ? `Editar licencia de ${branch.name}` : `Asignar licencia a ${branch.name}`,
       html: `<div style="text-align:left">
         <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Estado</label>
         <select id="branch-license-status" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px">${statusOptions.map((option) => `<option value="${option}" ${license?.status === option ? "selected" : ""}>${option}</option>`).join("")}</select>
@@ -444,7 +488,11 @@ function Branches({
         <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Vencimiento del período</label>
         <input id="branch-license-period" type="datetime-local" value="${datetime(license?.currentPeriodEnd)}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
         <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Fin de período de gracia</label>
-        <input id="branch-license-grace" type="datetime-local" value="${datetime(license?.graceUntil)}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px" />
+        <input id="branch-license-grace" type="datetime-local" value="${datetime(license?.graceUntil)}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
+        <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Usuarios permitidos (0 = según plan)</label>
+        <input id="branch-license-users" type="number" min="0" value="${license?.usersAllowed ?? 0}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px;margin-bottom:14px" />
+        <label style="display:block;font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">Precio por usuario adicional</label>
+        <input id="branch-license-per-user" type="number" min="0" step="0.01" value="${license?.pricePerUser ?? ""}" style="width:100%;background:#0f1117;color:#fafafa;border:1px solid #3f3f46;border-radius:10px;padding:10px 12px" />
       </div>`,
       showCancelButton: true,
       confirmButtonText: "Guardar licencia",
@@ -469,33 +517,36 @@ function Branches({
             (document.getElementById("branch-license-period") as HTMLInputElement | null)?.value ?? "",
           graceUntil:
             (document.getElementById("branch-license-grace") as HTMLInputElement | null)?.value ?? "",
+          usersAllowed:
+            (document.getElementById("branch-license-users") as HTMLInputElement | null)?.value ?? "0",
+          pricePerUser:
+            (document.getElementById("branch-license-per-user") as HTMLInputElement | null)?.value ?? "",
         };
       },
     });
     if (!isConfirmed || !values) return;
     try {
-      const response = await fetch(`/api/platform/tenants/${client.id}/branch/${branch.id}/license`, {
-        method: "POST",
+      const basePath = `/api/platform/tenants/${client.id}/branch/${branch.id}/license`;
+      const editing = license?.id != null;
+      const response = await fetch(editing ? `${basePath}/${license.id}` : basePath, {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: values.status,
           planId: values.planId ? Number(values.planId) : null,
           currentPeriodEnd: values.currentPeriodEnd ? new Date(values.currentPeriodEnd).toISOString() : null,
           graceUntil: values.graceUntil ? new Date(values.graceUntil).toISOString() : null,
+          usersAllowed: Number(values.usersAllowed || 0),
+          pricePerUser: values.pricePerUser ? Number(values.pricePerUser) : null,
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
-        license?: {
-          status: string;
-          planId: number | null;
-          currentPeriodEnd: string | null;
-          graceUntil: string | null;
-        };
+        license?: ClientDetailData["branches"][number]["licenses"][number];
         error?: string;
       };
       if (!response.ok || !result.license) {
         return Swal.fire({
-          title: "No se pudo actualizar",
+          title: "No se pudo guardar",
           text: result.error ?? "Revisá los datos e intentá nuevamente.",
           icon: "error",
           confirmButtonColor: "#ec4899",
@@ -505,8 +556,8 @@ function Branches({
       }
       onLicenseUpdated(branch.id, result.license);
       await Swal.fire({
-        title: "Licencia actualizada",
-        text: `La licencia de ${branch.name} quedó en ${result.license.status}.`,
+        title: "Licencia guardada",
+        text: `La licencia de ${branch.name} quedó en ${statusLabels[result.license.status] ?? result.license.status}.`,
         icon: "success",
         timer: 1400,
         showConfirmButton: false,
@@ -515,7 +566,7 @@ function Branches({
       });
     } catch {
       await Swal.fire({
-        title: "No se pudo actualizar",
+        title: "No se pudo guardar",
         text: "Ocurrió un error inesperado. Intentá nuevamente.",
         icon: "error",
         confirmButtonColor: "#ec4899",
@@ -524,73 +575,188 @@ function Branches({
       });
     }
   }
+  /**
+   * @summary Suspende o reactiva una licencia de sucursal desde Platform.
+   */
+  async function setLicenseStatus(branch: ClientDetailData["branches"][number], status: "ACTIVE" | "SUSPENDED") {
+    const license = branch.licenses[0];
+    if (!license) return;
+    const response = await fetch(
+      `/api/platform/tenants/${client.id}/branch/${branch.id}/license/${license.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      },
+    );
+    const result = (await response.json().catch(() => ({}))) as {
+      license?: ClientDetailData["branches"][number]["licenses"][number];
+      error?: string;
+    };
+    if (!response.ok || !result.license) {
+      return Swal.fire({
+        title: "No se pudo actualizar",
+        text: result.error ?? "Intentá nuevamente.",
+        icon: "error",
+        confirmButtonColor: "#ec4899",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    }
+    onLicenseUpdated(branch.id, result.license);
+  }
+  /**
+   * @summary Elimina una licencia de sucursal desde Platform.
+   */
+  async function removeLicense(branch: ClientDetailData["branches"][number]) {
+    const license = branch.licenses[0];
+    if (!license) return;
+    const confirmation = await Swal.fire({
+      title: `¿Quitar la licencia de ${branch.name}?`,
+      text: "Los usuarios con acceso a esta sucursal quedarán sin cupos operativos hasta asignar una licencia nueva.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Quitar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ef4444",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmation.isConfirmed) return;
+    const response = await fetch(
+      `/api/platform/tenants/${client.id}/branch/${branch.id}/license/${license.id}`,
+      { method: "DELETE" },
+    );
+    if (response.ok) {
+      onLicenseRemoved(branch.id, license.id);
+      return;
+    }
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    await Swal.fire({
+      title: "No se pudo quitar",
+      text: result.error ?? "Intentá nuevamente.",
+      icon: "error",
+      confirmButtonColor: "#ec4899",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+  }
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {client.branches.map((branch) => {
-        const license = branch.licenses[0];
-        const licenseLabel =
-          license?.status === "ACTIVE"
-            ? "Licencia activa"
-            : license?.status === "DRAFT"
-              ? "Licencia borrador"
-              : license?.status === "TRIAL"
-                ? "Prueba"
-                : license?.status === "GRACE_PERIOD"
-                  ? "Período de gracia"
-                  : license?.status === "PAYMENT_PENDING"
-                    ? "Pago pendiente"
-                    : license?.status
-                      ? `Licencia ${license.status}`
-                      : "Sin licencia";
-        const detailHref = `/platform/clientes/${client.slug}/sucursales/${branch.slug}`;
-        return (
-          <article
-            className={`relative rounded-2xl border p-5 ${selectedBranchId === branch.id ? "border-amber-300 bg-amber-300/10" : "border-white/10 bg-[#151a24]"}`}
-            key={branch.id}
-          >
-            <Link className="block" href={detailHref as Route}>
-              <div className="flex items-start justify-between gap-3 pr-40">
-                <div>
-                  <h2 className="text-xl font-black hover:text-amber-300">{branch.name}</h2>
-                  <span className={`text-sm ${branch.active ? "text-emerald-300" : "text-slate-400"}`}>
-                    {branch.active ? "Activa" : "Inactiva"}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-2 text-sm text-slate-400">{branch.address}</p>
-              <p
-                className={`mt-3 inline-block rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${license?.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-300" : license?.status === "SUSPENDED" || license?.status === "CANCELLED" ? "bg-rose-500/15 text-rose-300" : "bg-amber-500/15 text-amber-200"}`}
-              >
-                {licenseLabel}
-              </p>
-              {license?.currentPeriodEnd && (
-                <p className="mt-2 text-xs text-slate-500">
-                  Vence: {new Date(license.currentPeriodEnd).toLocaleDateString("es-AR")}
-                </p>
-              )}
-              <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
-                <span>
-                  <strong className="block text-lg">{branch._count.membershipAccess}</strong>usuarios
-                </span>
-                <span>
-                  <strong className="block text-lg">{branch._count.orders}</strong>pedidos
-                </span>
-                <span>
-                  <strong className="block text-lg">{branch._count.inventoryStocks}</strong>stocks
-                </span>
-              </div>
-            </Link>
-            <button
-              className="absolute right-5 top-5 rounded-lg bg-amber-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-amber-300"
-              onClick={() => void editLicense(branch)}
-              type="button"
-            >
-              Administrar licencia
-            </button>
-          </article>
-        );
-      })}
-    </div>
+    <Panel title="Licencias por sucursal">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[880px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-xs font-black uppercase tracking-wider text-slate-500">
+              <th className="px-3 py-3">Sucursal</th>
+              <th className="px-3 py-3">Licencia</th>
+              <th className="px-3 py-3">Estado</th>
+              <th className="px-3 py-3">Usuarios</th>
+              <th className="px-3 py-3">Vencimiento</th>
+              <th className="px-3 py-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            {client.branches.map((branch) => {
+              const license = branch.licenses[0];
+              const usage = branch.userUsage ?? { allowed: 0, used: branch._count.membershipAccess };
+              const limitReached = license?.status !== "SUSPENDED" && usage.allowed > 0 && usage.used >= usage.allowed;
+              const detailHref =
+                client.publicGuid
+                  ? `/platform/clientes/${client.publicGuid}/${client.slug}/sucursales/${branch.slug}`
+                  : `/platform/clientes/${client.slug}/sucursales/${branch.slug}`;
+              return (
+                <tr className={selectedBranchId === branch.id ? "bg-amber-300/10" : ""} key={branch.id}>
+                  <td className="px-3 py-4">
+                    <Link className="font-black hover:text-amber-300" href={detailHref as Route}>
+                      {branch.name}
+                    </Link>
+                    <p className="text-xs text-slate-500">
+                      {branch.active ? "Activa" : "Inactiva"} · {branch.address}
+                    </p>
+                  </td>
+                  <td className="px-3 py-4">
+                    <strong>{license?.plan?.name ?? "Sin plan"}</strong>
+                    <p className="text-xs text-slate-500">
+                      {license ? `${statusLabels[license.status] ?? license.status}` : "Sin licencia"}
+                    </p>
+                  </td>
+                  <td className="px-3 py-4">
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                        !license
+                          ? "bg-slate-500/15 text-slate-400"
+                          : license.status === "ACTIVE" || license.status === "TRIAL"
+                            ? "bg-emerald-500/15 text-emerald-300"
+                            : license.status === "SUSPENDED" || license.status === "CANCELLED"
+                              ? "bg-rose-500/15 text-rose-300"
+                              : "bg-amber-500/15 text-amber-200"
+                      }`}
+                    >
+                      {license ? statusLabels[license.status] ?? license.status : "Sin cupos"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4">
+                    <span className="font-black">{usage.used}</span>
+                    <span className="text-slate-500"> / {usage.allowed}</span>
+                    {limitReached && (
+                      <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-rose-300">
+                        Sin cupos
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-4 text-slate-400">
+                    {license?.currentPeriodEnd
+                      ? new Date(license.currentPeriodEnd).toLocaleDateString("es-AR")
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-4">
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      <button
+                        className="rounded-lg bg-amber-400 px-2.5 py-1.5 text-xs font-black text-slate-950 hover:bg-amber-300"
+                        onClick={() => void editLicense(branch)}
+                        type="button"
+                      >
+                        {license ? "Editar" : "Asignar"}
+                      </button>
+                      {license && suspendable.has(license.status) && (
+                        <button
+                          className="rounded-lg border border-rose-400/30 px-2.5 py-1.5 text-xs font-black text-rose-300 hover:bg-rose-500/10"
+                          onClick={() => void setLicenseStatus(branch, "SUSPENDED")}
+                          type="button"
+                        >
+                          Suspender
+                        </button>
+                      )}
+                      {license?.status === "SUSPENDED" && (
+                        <button
+                          className="rounded-lg border border-emerald-400/30 px-2.5 py-1.5 text-xs font-black text-emerald-300 hover:bg-emerald-500/10"
+                          onClick={() => void setLicenseStatus(branch, "ACTIVE")}
+                          type="button"
+                        >
+                          Reactivar
+                        </button>
+                      )}
+                      {license && (
+                        <button
+                          className="rounded-lg px-2 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-300"
+                          onClick={() => void removeLicense(branch)}
+                          type="button"
+                        >
+                          Quitar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {!client.branches.length && (
+        <p className="py-4 text-sm text-slate-400">Este cliente todavía no tiene sucursales.</p>
+      )}
+    </Panel>
   );
 }
 /**

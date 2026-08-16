@@ -209,6 +209,7 @@ model Tenant {
   id                    Int                       @id @default(autoincrement())
   name                  String                    @db.VarChar(160)
   slug                  String                    @unique @db.VarChar(120)
+  publicGuid            String                    @unique @db.VarChar(36)
   businessType          String?                   @db.VarChar(80)
   status                String                    @default("active") @db.VarChar(20)
   defaultCurrency       String                    @default("ARS") @db.VarChar(3)
@@ -1382,6 +1383,10 @@ model BranchProduct {
 
 /**
  * @summary Entitlement operativo de una sucursal dentro de la suscripción del tenant.
+ *
+ * Una sucursal puede tener varias licencias (p. ej. una activa y otra de refuerzo
+ * con cupos adicionales). La capacidad de usuarios permitidos de una sucursal es
+ * la suma de los cupos de sus licencias operativas vigentes.
  */
 model BranchLicense {
   id               Int       @id @default(autoincrement())
@@ -1393,6 +1398,9 @@ model BranchLicense {
   currentPeriodEnd DateTime?
   graceUntil       DateTime?
   priceOverride    Decimal?  @db.Decimal(14, 2)
+  pricePerUser     Decimal?  @db.Decimal(14, 2)
+  /** Cupos de usuarios permitidos por esta licencia. 0 = usar la capacidad del plan. */
+  usersAllowed     Int       @default(0)
   notes            String?   @db.Text
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -1400,7 +1408,7 @@ model BranchLicense {
   branch           Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   plan             Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
 
-  @@unique([tenantId, branchId])
+  @@index([tenantId, branchId, status])
   @@index([tenantId, status, currentPeriodEnd])
   @@map("branchlicense")
 }

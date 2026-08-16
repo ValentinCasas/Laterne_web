@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { isPlatformLinkActive } from "@/lib/navigation-active";
 
 const groups = [
   { label: "Inicio", links: [["/platform", "Resumen"]] },
@@ -51,7 +52,7 @@ function PlatformNavigation({ onNavigate }: { onNavigate?: () => void }) {
         <section key={group.label}>
           <p className="mc-sidebar-label">{group.label}</p>
           {group.links.map(([href, label]) => {
-            const active = href === "/platform" ? pathname === href : pathname.startsWith(href);
+            const active = isPlatformLinkActive(href, pathname);
             return (
               <Link
                 aria-current={active ? "page" : undefined}

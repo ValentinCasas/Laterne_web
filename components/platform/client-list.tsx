@@ -238,7 +238,7 @@ export function ClientList({ tenants }: { tenants: Tenant[] }) {
                   <div>
                     <Link
                       className="text-lg font-black hover:text-amber-300"
-                      href={`/platform/clientes/${tenant.slug}`}
+                      href={`/platform/clientes/${tenant.publicGuid}/${tenant.slug}`}
                     >
                       {tenant.name}
                     </Link>
@@ -287,7 +287,7 @@ export function ClientList({ tenants }: { tenants: Tenant[] }) {
                   {tenant.branches.map((branch) => (
                     <Link
                       className="rounded-xl border border-white/10 bg-[#202735] p-3"
-                      href={`/platform/clientes/${tenant.slug}/sucursales/${branch.slug}` as Route}
+                      href={`/platform/clientes/${tenant.publicGuid}/${tenant.slug}/sucursales/${branch.slug}` as Route}
                       key={branch.id}
                     >
                       <strong className="block">{branch.name}</strong>

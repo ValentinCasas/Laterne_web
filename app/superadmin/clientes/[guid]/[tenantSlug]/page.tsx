@@ -1,23 +1,24 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ClientDetail, type ClientDetailData } from "@/components/platform/client-detail";
 import { requireSuperAdmin } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { LicenseAssignment } from "@/components/platform/license-assignment";
+import { sumBranchAllowedUsers, effectiveLicenseStatus } from "@/lib/license";
+import { platformClientPath } from "@/lib/routes";
 
 /**
- * @summary Carga el detalle integral de un cliente de la plataforma.
+ * @summary Carga el detalle integral de un cliente por su GUID público (URL canónica de Platform).
  */
 export default async function PlatformClientDetailPage({
   params,
 }: {
-  params: Promise<{ tenantSlug: string }>;
+  params: Promise<{ guid: string; tenantSlug: string }>;
 }) {
   await requireSuperAdmin();
-  const slug = (await params).tenantSlug.trim().toLocaleLowerCase("es");
-  if (!slug) notFound();
+  const [guid, slug] = await Promise.all([(await params).guid, (await params).tenantSlug]);
   const tenant = await prisma.tenant.findUnique({
-    where: { slug },
+    where: { publicGuid: guid.trim().toLocaleLowerCase("es") },
     include: {
       brandSettings: { select: { customDomain: true } },
       activePalette: { select: { name: true, presetKey: true, baseMode: true } },
@@ -28,7 +29,20 @@ export default async function PlatformClientDetailPage({
       },
       branches: {
         include: {
-          licenses: { select: { status: true, planId: true, currentPeriodEnd: true, graceUntil: true } },
+          licenses: {
+            select: {
+              status: true,
+              planId: true,
+              plan: { select: { id: true, name: true, capacity: true } },
+              currentPeriodEnd: true,
+              graceUntil: true,
+              usersAllowed: true,
+              priceOverride: true,
+              pricePerUser: true,
+              notes: true,
+            },
+            orderBy: { id: "asc" },
+          },
           _count: { select: { orders: true, membershipAccess: true, inventoryStocks: true } },
         },
         orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
@@ -55,20 +69,45 @@ export default async function PlatformClientDetailPage({
     },
   });
   if (!tenant) notFound();
-  const [storage, plans] = await Promise.all([
+  if (tenant.slug !== slug.trim().toLocaleLowerCase("es")) {
+    redirect(platformClientPath(tenant.publicGuid, tenant.slug));
+  }
+
+  const [storage, plans, allBranchesMembers, accessRows] = await Promise.all([
     prisma.mediaAsset.aggregate({ where: { tenantId: tenant.id }, _sum: { sizeBytes: true } }),
     prisma.plan.findMany({
       where: { active: true },
       select: { id: true, name: true },
       orderBy: { displayOrder: "asc" },
     }),
+    prisma.tenantMembership.count({
+      where: { tenantId: tenant.id, status: "active", role: { key: { not: "owner" } }, allBranches: true },
+    }),
+    prisma.branchMembership.groupBy({
+      by: ["branchId"],
+      where: {
+        membership: { tenantId: tenant.id, status: "active", role: { key: { not: "owner" } } },
+      },
+      _count: true,
+    }),
   ]);
+  const usedByBranch = new Map(accessRows.map((row) => [row.branchId, row._count]));
+  const now = new Date();
+  const branches = tenant.branches.map((branch) => {
+    const allowed = sumBranchAllowedUsers(
+      branch.licenses.filter((license) => effectiveLicenseStatus(license, now) === "ACTIVE"),
+    );
+    const used = (usedByBranch.get(branch.id) ?? 0) + allBranchesMembers;
+    return { ...branch, userUsage: { allowed, used } };
+  });
+
   return (
     <>
       <ClientDetail
         data={
           serialize({
             ...tenant,
+            branches,
             storageBytes: Number(storage._sum.sizeBytes ?? 0),
           }) as unknown as ClientDetailData
         }

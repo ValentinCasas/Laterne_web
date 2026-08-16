@@ -5,7 +5,13 @@ import { z } from "zod";
 import { createSession, PLATFORM_SESSION_COOKIE, sessionCookieAttributes, tenantSessionCookieName } from "@/lib/auth";
 import { classifyHost } from "@/lib/domains";
 import { effectiveHost } from "@/lib/trusted-headers";
-import { platformAdminPath, tenantAdminPath, tenantBranchAdminPath } from "@/lib/routes";
+import {
+  platformAdminPath,
+  tenantAdminGuidPath,
+  tenantAdminPath,
+  tenantBranchAdminGuidPath,
+  tenantBranchAdminPath,
+} from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 
 const credentials = z.object({
@@ -220,12 +226,17 @@ export async function POST(request: Request) {
   });
 
   const tenantSlug = membership?.tenant.slug;
+  const tenantGuid = membership?.tenant.publicGuid;
   const adminUrl = platformContext
     ? platformAdminPath()
     : tenantSlug
       ? branchSlug
-        ? tenantBranchAdminPath(tenantSlug, branchSlug)
-        : tenantAdminPath(tenantSlug)
+        ? tenantGuid
+          ? tenantBranchAdminGuidPath(tenantGuid, tenantSlug, branchSlug)
+          : tenantBranchAdminPath(tenantSlug, branchSlug)
+        : tenantGuid
+          ? tenantAdminGuidPath(tenantGuid, tenantSlug)
+          : tenantAdminPath(tenantSlug)
       : undefined;
   const response = NextResponse.json({ ok: true, adminUrl });
   const cookieName = platformContext

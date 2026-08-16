@@ -39,5 +39,5 @@ export function currentAdminHref(logicalHref: string) {
   if (typeof window === "undefined") return logicalHref;
   const context = parseCanonicalPath(window.location.pathname);
   if (context.surface !== "tenant-admin" || !context.tenantSlug) return logicalHref;
-  return adminHrefForContext(context.tenantSlug, logicalHref, context.branchSlug);
+  return adminHrefForContext(context.tenantSlug, logicalHref, context.branchSlug, context.tenantGuid);
 }

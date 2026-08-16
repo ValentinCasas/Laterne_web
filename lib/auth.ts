@@ -8,7 +8,7 @@ import { isLocalDevelopmentHost } from "@/lib/domains";
 import {
   adminHrefForContext,
   isBranchAdminLogicalPath,
-  tenantBranchAdminPath,
+  tenantBranchAdminGuidPath,
   tenantPublicPath,
 } from "@/lib/routes";
 import { resolveHostKind } from "@/lib/host-gate";
@@ -36,6 +36,8 @@ export type AuthorizationContext = {
     id: number;
     name: string;
     slug: string;
+    /** Identidad pública inmutable usada en URLs administrativas. */
+    publicGuid: string;
     timeZone: string;
     customDomain?: string | null;
     adminTheme: string;
@@ -185,6 +187,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
 
   const requestHeaders = await headers();
   const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const routeTenantGuid = requestHeaders.get("x-menuclick-tenant-guid")?.trim().toLocaleLowerCase("es");
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   const adminScope = requestHeaders.get("x-menuclick-admin-scope") ?? "";
   const host = effectiveHost(requestHeaders).toLocaleLowerCase("es");
@@ -201,6 +204,11 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
   if (routeTenantSlug && routeKind !== "tenant-admin" && routeKind !== "tenant-auth") return null;
 
   const expectedTenantSlug = routeTenantSlug || (hostContext.kind === "app" ? hostContext.slug : undefined);
+  const tenantFilter = routeTenantGuid
+    ? { publicGuid: routeTenantGuid }
+    : expectedTenantSlug
+      ? { slug: expectedTenantSlug }
+      : {};
   const membership = await prisma.tenantMembership.findFirst({
     where: {
       id: session.membershipId,
@@ -208,7 +216,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
       status: "active",
       tenant: {
         ...publicTenantWhere(),
-        ...(expectedTenantSlug ? { slug: expectedTenantSlug } : {}),
+        ...tenantFilter,
       },
     },
     include: {
@@ -217,6 +225,7 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           id: true,
           name: true,
           slug: true,
+          publicGuid: true,
           status: true,
           subscription: {
             select: { status: true, currentPeriodEnd: true, trialEndsAt: true, gracePeriodEndsAt: true },
@@ -281,6 +290,9 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
     orderBy: { id: "asc" },
   });
   if (!membership) return null;
+  // La URL lleva el slug como parte legible; si no coincide con el canónico del
+  // negocio la solicitud se rechaza (el proxy ya redirige a la URL canónica).
+  if (routeTenantSlug && membership.tenant.slug !== routeTenantSlug) return null;
 
   const permissions = membership.role.permissions
     .map((item) => item.permission.key)
@@ -445,7 +457,14 @@ export async function requirePermission(permission: string) {
   ) {
     const firstBranch = context.branches.find((branch) => branch.active && branch.status === "active");
     if (firstBranch)
-      redirect(tenantBranchAdminPath(context.tenant.slug, firstBranch.slug, logicalPath) as Route);
+      redirect(
+        tenantBranchAdminGuidPath(
+          context.tenant.publicGuid,
+          context.tenant.slug,
+          firstBranch.slug,
+          logicalPath,
+        ) as Route,
+      );
   }
 
   // Compatibilidad con bookmarks/enlaces antiguos: /admin/... nunca queda como
@@ -455,7 +474,9 @@ export async function requirePermission(permission: string) {
       context.activeBranchId && context.activeBranchId > 0
         ? context.branches.find((item) => item.id === context.activeBranchId)
         : undefined;
-    redirect(adminHrefForContext(context.tenant.slug, logicalPath, branch?.slug) as Route);
+    redirect(
+      adminHrefForContext(context.tenant.slug, logicalPath, branch?.slug, context.tenant.publicGuid) as Route,
+    );
   }
 
   return context;

@@ -24,7 +24,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       ? context.branches.find((branch) => branch.id === context.activeBranchId)
       : undefined;
   const auditHref = (targetPage: number): Route =>
-    `${adminHrefForContext(context.tenant.slug, "/admin/auditoria", activeBranch?.slug)}?page=${targetPage}` as Route;
+    `${adminHrefForContext(context.tenant.slug, "/admin/auditoria", activeBranch?.slug, context.tenant.publicGuid)}?page=${targetPage}` as Route;
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where: auditFilter,

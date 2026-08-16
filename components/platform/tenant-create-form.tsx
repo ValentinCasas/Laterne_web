@@ -25,14 +25,20 @@ export function TenantCreateForm({ plans }: { plans: Array<{ id: number; name: s
     const result = (await response.json().catch(() => ({}))) as {
       error?: string;
       tenantId?: number;
-      tenant?: { slug?: string };
+      tenant?: { slug?: string; publicGuid?: string };
     };
     setSaving(false);
     if (!response.ok) {
       setError(result.error ?? "No se pudo crear el cliente");
       return;
     }
-    router.push(result.tenant?.slug ? `/platform/clientes/${result.tenant.slug}` : "/platform/clientes");
+    router.push(
+      result.tenant?.publicGuid && result.tenant?.slug
+        ? `/platform/clientes/${result.tenant.publicGuid}/${result.tenant.slug}`
+        : result.tenant?.slug
+          ? `/platform/clientes/${result.tenant.slug}`
+          : "/platform/clientes",
+    );
     router.refresh();
   }
   return (
