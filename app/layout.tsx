@@ -82,7 +82,20 @@ async function resolveRequestContext() {
   const branchSlug =
     requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const originalPath = requestHeaders.get("x-menuclick-original-path") || "/";
-  return { kind, tenant, brand, palette, menuTheme, platformSettings, branchSlug, originalPath };
+  // El panel administrativo del tenant ofrece su propia barra superior; el header
+  // y footer públicos quedan reservados para la superficie pública.
+  const adminSurface = routeKind === "tenant-admin";
+  return {
+    kind,
+    tenant,
+    brand,
+    palette,
+    menuTheme,
+    platformSettings,
+    branchSlug,
+    originalPath,
+    adminSurface,
+  };
 }
 
 /** @summary Construye metadatos globales administrables para la experiencia resuelta por dominio. */
@@ -137,7 +150,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** @summary Define la estructura global y solo añade la navegación pública cuando existe un negocio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { kind, tenant, brand, palette, menuTheme, branchSlug, originalPath } = await resolveRequestContext();
+  const { kind, tenant, brand, palette, menuTheme, branchSlug, originalPath, adminSurface } =
+    await resolveRequestContext();
   const style = {
     ...paletteCssVariables(palette),
     ...(kind === "platform" ? menuClickCssVariables(menuTheme) : {}),
@@ -156,7 +170,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined}
         style={style}
       >
-        {tenant && (
+        {tenant && !adminSurface && (
           <SiteHeader
             brandName={name}
             logoUrl={brand?.logoUrl}
@@ -172,7 +186,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         ) : (
           children
         )}
-        {tenant && (
+        {tenant && !adminSurface && (
           <SiteFooter
             businessName={name}
             tenantSlug={tenant.slug}
