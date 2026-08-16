@@ -45,6 +45,8 @@ export type AuthorizationContext = {
     palette: PaletteColors | null;
   };
   membership: { id: number; role: { key: string; name: string } };
+  /** Datos del usuario autenticado para identidad y avatar en el panel. */
+  user: { id: number; name: string; email: string; imageUrl: string };
   permissions: string[];
   branches: Array<{
     id: number;
@@ -260,6 +262,9 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           },
         },
       },
+      user: {
+        select: { id: true, name: true, email: true, imageUrl: true },
+      },
       role: {
         select: {
           key: true,
@@ -364,6 +369,12 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
           : null,
     },
     membership: { id: membership.id, role: { key: membership.role.key, name: membership.role.name } },
+    user: {
+      id: membership.user.id,
+      name: membership.user.name,
+      email: membership.user.email,
+      imageUrl: membership.user.imageUrl,
+    },
     permissions,
     branches,
     allBranches,

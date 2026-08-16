@@ -16,15 +16,15 @@ type AdminNotification = {
   createdAt: string;
 };
 
-/** @summary Ícono de campana monocromo para la variante compacta de la barra superior. */
+/** @summary Ícono de campana monocromo para la barra superior. */
 function BellIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
-      className="h-4 w-4"
+      strokeWidth="1.8"
+      className="h-[18px] w-[18px]"
       aria-hidden="true"
     >
       <path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 13 6 9Z" strokeLinejoin="round" />
@@ -33,9 +33,28 @@ function BellIcon() {
   );
 }
 
+/** @summary Marca de tipo para la lista: usa la inicial del tipo con un acento sutil. */
+function typeGlyph(type: string) {
+  return (type.trim().charAt(0) || "N").toUpperCase();
+}
+
+/** @summary Fecha relativa corta (hace 2 min, hace 3 h, hace 2 días…). */
+function relativeTime(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const minutes = Math.round((Date.now() - date.getTime()) / 60000);
+  if (minutes < 1) return "Ahora";
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return days === 1 ? "Hace 1 día" : `Hace ${days} días`;
+  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
+}
+
 /**
  * @summary Carga, presenta y marca avisos del panel sin interrumpir la tarea actual.
- * `compact` lo adapta a la barra superior (campana con menú alineado a la derecha).
+ * `compact` lo adapta a la barra superior (campana + panel flotante amplio).
  */
 export function NotificationCenter({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
@@ -76,13 +95,20 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     if (!open) return;
     /**
-     * @summary Cierra el panel de avisos al interactuar fuera de él.
+     * @summary Cierra el panel de avisos al interactuar fuera de él o con Escape.
      */
     function handlePointer(event: PointerEvent) {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("pointerdown", handlePointer);
-    return () => document.removeEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [open]);
 
   /** @summary Marca los avisos pendientes como leídos y actualiza su apariencia local. */
@@ -97,64 +123,139 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
     setUnread(0);
   }
 
+  if (!compact) {
+    // Variante legada de sidebar (en desuso tras el rediseño de la barra superior).
+    return (
+      <div className="relative border-b border-white/10 p-3" ref={containerRef}>
+        <button
+          className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left text-sm font-bold hover:bg-white/10"
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+          aria-haspopup="true"
+          aria-expanded={open}
+        >
+          <span>Centro de actividad</span>
+          {unread > 0 && (
+            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-pink-500 px-1 text-xs">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </button>
+        {open && (
+          <div className="absolute left-3 right-3 top-[calc(100%-.25rem)] z-50 max-h-[60vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
+            <header className="flex items-center justify-between p-3">
+              <strong>Notificaciones</strong>
+              {unread > 0 && (
+                <button className="text-xs text-pink-300" onClick={readAll}>
+                  Marcar leídas
+                </button>
+              )}
+            </header>
+            {items.map((item) => (
+              <Link
+                className={`block rounded-xl p-3 hover:bg-white/5 ${item.readAt ? "opacity-60" : "bg-pink-500/5"}`}
+                href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
+                key={item.id}
+                onClick={() => setOpen(false)}
+              >
+                <strong className="text-sm">{item.title}</strong>
+                <p className="mt-1 text-xs text-zinc-400">{item.message}</p>
+                <time className="mt-1 block text-[10px] text-zinc-600">{relativeTime(item.createdAt)}</time>
+              </Link>
+            ))}
+            {!items.length && <p className="p-6 text-center text-sm text-zinc-500">No hay notificaciones.</p>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={compact ? "relative" : "relative border-b border-white/10 p-3"} ref={containerRef}>
+    <div className="relative" ref={containerRef}>
       <button
-        className={
-          compact
-            ? "relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-zinc-300 hover:border-white/25"
-            : "flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left text-sm font-bold hover:bg-white/10"
-        }
+        className="relative grid h-9 w-9 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100"
         onClick={() => setOpen((value) => !value)}
         type="button"
         aria-haspopup="true"
         aria-expanded={open}
-        aria-label={compact ? "Centro de actividad" : undefined}
+        aria-label="Notificaciones"
+        title="Notificaciones"
       >
-        {compact ? <BellIcon /> : <span>Centro de actividad</span>}
+        <BellIcon />
         {unread > 0 && (
           <span
-            className={
-              compact
-                ? "absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white"
-                : "grid h-6 min-w-6 place-items-center rounded-full bg-pink-500 px-1 text-xs"
-            }
+            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[9px] font-bold leading-none text-white"
+            aria-label={`${unread} sin leer`}
           >
-            {unread}
+            {unread > 99 ? "99+" : unread}
           </span>
         )}
       </button>
       {open && (
-        <div
-          className={
-            compact
-              ? "absolute right-0 top-full z-50 mt-2 max-h-[min(60vh,28rem)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-2 shadow-2xl"
-              : "absolute left-3 right-3 top-[calc(100%-.25rem)] z-50 max-h-[60vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-2 shadow-2xl lg:left-full lg:right-auto lg:top-0 lg:ml-3 lg:w-96"
-          }
-        >
-          <header className="flex items-center justify-between p-3">
-            <strong>Notificaciones</strong>
+        <div className="absolute right-0 top-full z-50 mt-3 flex max-h-[min(calc(100vh-6.5rem),34rem)] w-[29rem] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-xl shadow-black/25 backdrop-blur-xl">
+          <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+            <div>
+              <h2 className="text-sm font-bold text-white">Notificaciones</h2>
+              <p className="mt-0.5 text-[11px] text-zinc-500">
+                {unread > 0 ? `${unread} sin leer` : "Estás al día"}
+              </p>
+            </div>
             {unread > 0 && (
-              <button className="text-xs text-pink-300" onClick={readAll}>
-                Marcar leídas
+              <button
+                className="mt-0.5 text-xs font-semibold text-pink-300 transition-colors duration-150 hover:text-pink-200"
+                onClick={readAll}
+              >
+                Marcar todas como leídas
               </button>
             )}
           </header>
-          {items.map((item) => (
-            <Link
-              className={`block rounded-xl p-3 hover:bg-white/5 ${item.readAt ? "opacity-60" : "bg-pink-500/5"}`}
-              href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
-              key={item.id}
-              onClick={() => setOpen(false)}
-            >
-              <strong className="text-sm">{item.title}</strong>
-              <p className="mt-1 text-xs text-zinc-400">{item.message}</p>
-              <time className="mt-1 block text-[10px] text-zinc-600">
-                {new Date(item.createdAt).toLocaleString("es-AR")}
-              </time>
-            </Link>
-          ))}
-          {!items.length && <p className="p-6 text-center text-sm text-zinc-500">No hay notificaciones.</p>}
+          <div className="h-px shrink-0 bg-white/[.07]" />
+          {items.length === 0 ? (
+            <div className="grid place-items-center gap-2 px-6 py-12 text-center">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[.05] text-zinc-500">
+                <BellIcon />
+              </span>
+              <p className="text-sm text-zinc-500">No hay notificaciones.</p>
+            </div>
+          ) : (
+            <ul className="max-h-[26rem] flex-1 overflow-y-auto overscroll-contain">
+              {items.map((item) => {
+                const unreadItem = !item.readAt;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
+                      onClick={() => setOpen(false)}
+                      className={`flex gap-3.5 px-5 py-4 transition-colors duration-150 hover:bg-white/[.04] ${
+                        unreadItem ? "bg-white/[.02]" : "opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <span className="relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[.06] text-[10px] font-black text-zinc-400">
+                        {typeGlyph(item.type)}
+                        {unreadItem && (
+                          <span
+                            className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-pink-500"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline justify-between gap-3">
+                          <strong className="truncate text-sm font-semibold text-white">{item.title}</strong>
+                          <time className="shrink-0 text-[11px] text-zinc-500">
+                            {relativeTime(item.createdAt)}
+                          </time>
+                        </span>
+                        <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-zinc-400">
+                          {item.message}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
     </div>

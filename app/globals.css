@@ -164,6 +164,11 @@ button {
   width: min(1280px, calc(100% - 2rem));
   margin-inline: auto;
 }
+/* Contenedor del panel administrativo: más ancho que la superficie pública. */
+.admin-shell-inner {
+  width: min(1536px, calc(100% - 2rem));
+  margin-inline: auto;
+}
 .card {
   border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: var(--brand-card-radius);

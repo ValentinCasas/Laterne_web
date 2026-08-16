@@ -2,9 +2,10 @@
  * Navegación administrativa centralizada de MenuClick.
  *
  * Única fuente de verdad para el menú del panel: cada entrada declara su ruta
- * lógica, su ícono y el permiso real que habilita su visibilidad. El layout
- * (AdminShell) solo consume esta definición, la filtra por permisos y la
- * convierte a URLs canónicas del tenant/sucursal.
+ * lógica, su ícono, el permiso real que habilita su visibilidad y una
+ * descripción breve para los paneles amplios. El layout (AdminShell) solo
+ * consume esta definición, la filtra por permisos y la convierte a URLs
+ * canónicas del tenant/sucursal.
  *
  * Solo se listan opciones cuya funcionalidad/ruta existe hoy en `app/admin`.
  * Las categorías conceptuales de referencia (Compras, Finanzas, etc.) se
@@ -19,6 +20,8 @@ export type AdminNavItem = {
   icon: string;
   /** Permiso requerido para ver la opción. */
   permission: string;
+  /** Descripción breve mostrada en los paneles amplios del mega menú. */
+  description?: string;
 };
 
 export type AdminNavSection = {
@@ -46,8 +49,20 @@ export const ADMIN_NAVIGATION = [
         id: "panel",
         label: "Panel",
         items: [
-          { href: "/admin", label: "Resumen", icon: "IN", permission: "admin.access" },
-          { href: "/admin/onboarding", label: "Puesta en marcha", icon: "OK", permission: "admin.access" },
+          {
+            href: "/admin",
+            label: "Resumen",
+            icon: "IN",
+            permission: "admin.access",
+            description: "Panorama general del negocio",
+          },
+          {
+            href: "/admin/onboarding",
+            label: "Puesta en marcha",
+            icon: "OK",
+            permission: "admin.access",
+            description: "Configuración inicial del local",
+          },
         ],
       },
     ],
@@ -62,22 +77,53 @@ export const ADMIN_NAVIGATION = [
         id: "atencion",
         label: "Atención",
         items: [
-          { href: "/admin/pedidos", label: "Pedidos", icon: "PE", permission: "order.manage" },
-          { href: "/admin/cocina", label: "Cocina", icon: "CO", permission: "order.manage" },
-          { href: "/admin/reservas", label: "Reservas", icon: "RS", permission: "reservation.manage" },
-          { href: "/admin/mesas", label: "Mesas y QR", icon: "QR", permission: "table.manage" },
+          {
+            href: "/admin/pedidos",
+            label: "Pedidos",
+            icon: "PE",
+            permission: "order.manage",
+            description: "Administrá los pedidos del día",
+          },
+          {
+            href: "/admin/cocina",
+            label: "Cocina",
+            icon: "CO",
+            permission: "order.manage",
+            description: "Preparaciones en curso",
+          },
+          {
+            href: "/admin/reservas",
+            label: "Reservas",
+            icon: "RS",
+            permission: "reservation.manage",
+            description: "Confirmá y organizá reservas",
+          },
+          {
+            href: "/admin/mesas",
+            label: "Mesas y QR",
+            icon: "QR",
+            permission: "table.manage",
+            description: "Mesas, sectores y códigos QR",
+          },
         ],
       },
       {
         id: "facturacion",
         label: "Facturación",
         items: [
-          { href: "/admin/facturacion", label: "Facturación", icon: "FC", permission: "order.manage" },
+          {
+            href: "/admin/facturacion",
+            label: "Facturación",
+            icon: "FC",
+            permission: "order.manage",
+            description: "Comprobantes y facturación",
+          },
           {
             href: "/admin/configuracion/comprobantes/plantillas",
             label: "Plantillas de documentos",
             icon: "PL",
             permission: "order.manage",
+            description: "Diseño de comprobantes",
           },
         ],
       },
@@ -90,8 +136,15 @@ export const ADMIN_NAVIGATION = [
             label: "Clientes frecuentes",
             icon: "CF",
             permission: "customer.manage",
+            description: "Base de clientes y puntos",
           },
-          { href: "/admin/fidelizacion", label: "Fidelización", icon: "FI", permission: "customer.manage" },
+          {
+            href: "/admin/fidelizacion",
+            label: "Fidelización",
+            icon: "FI",
+            permission: "customer.manage",
+            description: "Programa de puntos y recompensas",
+          },
         ],
       },
     ],
@@ -106,23 +159,54 @@ export const ADMIN_NAVIGATION = [
         id: "catalogo",
         label: "Catálogo",
         items: [
-          { href: "/admin/productos", label: "Productos", icon: "PR", permission: "product.manage" },
+          {
+            href: "/admin/productos",
+            label: "Productos",
+            icon: "PR",
+            permission: "product.manage",
+            description: "Carta, precios y disponibilidad",
+          },
           {
             href: "/admin/opciones-producto",
             label: "Variantes y extras",
             icon: "VX",
             permission: "product.manage",
+            description: "Opciones y agregados por producto",
           },
-          { href: "/admin/categorias", label: "Categorías", icon: "CA", permission: "category.manage" },
+          {
+            href: "/admin/categorias",
+            label: "Categorías",
+            icon: "CA",
+            permission: "category.manage",
+            description: "Secciones de la carta",
+          },
         ],
       },
       {
         id: "comercial",
         label: "Comercial",
         items: [
-          { href: "/admin/promociones", label: "Promociones", icon: "PM", permission: "promotion.manage" },
-          { href: "/admin/eventos", label: "Eventos", icon: "EV", permission: "event.manage" },
-          { href: "/admin/horarios", label: "Horarios", icon: "HO", permission: "hours.manage" },
+          {
+            href: "/admin/promociones",
+            label: "Promociones",
+            icon: "PM",
+            permission: "promotion.manage",
+            description: "Descuentos, combos y cupones",
+          },
+          {
+            href: "/admin/eventos",
+            label: "Eventos",
+            icon: "EV",
+            permission: "event.manage",
+            description: "Agenda y publicaciones",
+          },
+          {
+            href: "/admin/horarios",
+            label: "Horarios",
+            icon: "HO",
+            permission: "hours.manage",
+            description: "Turnos de atención",
+          },
         ],
       },
       {
@@ -134,6 +218,7 @@ export const ADMIN_NAVIGATION = [
             label: "Testimonios",
             icon: "TE",
             permission: "testimonial.moderate",
+            description: "Moderación de opiniones",
           },
         ],
       },
@@ -149,27 +234,81 @@ export const ADMIN_NAVIGATION = [
         id: "identidad",
         label: "Identidad",
         items: [
-          { href: "/admin/negocio", label: "Negocio", icon: "NE", permission: "business.manage" },
-          { href: "/admin/marca", label: "Marca", icon: "BR", permission: "brand.manage" },
-          { href: "/admin/landing", label: "Portada", icon: "LN", permission: "brand.manage" },
-          { href: "/admin/carta", label: "Carta", icon: "CT", permission: "brand.manage" },
+          {
+            href: "/admin/negocio",
+            label: "Negocio",
+            icon: "NE",
+            permission: "business.manage",
+            description: "Datos de contacto y ubicación",
+          },
+          {
+            href: "/admin/marca",
+            label: "Marca",
+            icon: "BR",
+            permission: "brand.manage",
+            description: "Identidad y colores del negocio",
+          },
+          {
+            href: "/admin/landing",
+            label: "Portada",
+            icon: "LN",
+            permission: "brand.manage",
+            description: "Landing y bienvenida",
+          },
+          {
+            href: "/admin/carta",
+            label: "Carta",
+            icon: "CT",
+            permission: "brand.manage",
+            description: "Vista pública de la carta",
+          },
         ],
       },
       {
         id: "posicionamiento",
         label: "Posicionamiento",
         items: [
-          { href: "/admin/seo", label: "SEO", icon: "SE", permission: "business.manage" },
-          { href: "/admin/redirecciones", label: "Redirecciones", icon: "RD", permission: "business.manage" },
+          {
+            href: "/admin/seo",
+            label: "SEO",
+            icon: "SE",
+            permission: "business.manage",
+            description: "Títulos y descripciones por página",
+          },
+          {
+            href: "/admin/redirecciones",
+            label: "Redirecciones",
+            icon: "RD",
+            permission: "business.manage",
+            description: "Enlaces antiguos a rutas vigentes",
+          },
         ],
       },
       {
         id: "extension",
         label: "Extensión",
         items: [
-          { href: "/admin/integraciones", label: "Integraciones", icon: "IG", permission: "business.manage" },
-          { href: "/admin/legales", label: "Páginas legales", icon: "LG", permission: "content.manage" },
-          { href: "/admin/casos", label: "Casos de éxito", icon: "CX", permission: "content.manage" },
+          {
+            href: "/admin/integraciones",
+            label: "Integraciones",
+            icon: "IG",
+            permission: "business.manage",
+            description: "Servicios y conexiones externas",
+          },
+          {
+            href: "/admin/legales",
+            label: "Páginas legales",
+            icon: "LG",
+            permission: "content.manage",
+            description: "Políticas y condiciones",
+          },
+          {
+            href: "/admin/casos",
+            label: "Casos de éxito",
+            icon: "CX",
+            permission: "content.manage",
+            description: "Historias de clientes",
+          },
         ],
       },
     ],
@@ -184,21 +323,46 @@ export const ADMIN_NAVIGATION = [
         id: "analisis",
         label: "Análisis",
         items: [
-          { href: "/admin/estadisticas", label: "Estadísticas", icon: "AN", permission: "analytics.read" },
-          { href: "/admin/auditoria", label: "Auditoría", icon: "AU", permission: "audit.read" },
-          { href: "/admin/errores", label: "Registro de errores", icon: "ER", permission: "audit.read" },
+          {
+            href: "/admin/estadisticas",
+            label: "Estadísticas",
+            icon: "AN",
+            permission: "analytics.read",
+            description: "Métricas de actividad y ventas",
+          },
+          {
+            href: "/admin/auditoria",
+            label: "Auditoría",
+            icon: "AU",
+            permission: "audit.read",
+            description: "Historial de acciones sensibles",
+          },
+          {
+            href: "/admin/errores",
+            label: "Registro de errores",
+            icon: "ER",
+            permission: "audit.read",
+            description: "Errores y fallas del panel",
+          },
         ],
       },
       {
         id: "equipo",
         label: "Equipo",
         items: [
-          { href: "/admin/usuarios", label: "Usuarios", icon: "US", permission: "user.manage" },
+          {
+            href: "/admin/usuarios",
+            label: "Usuarios",
+            icon: "US",
+            permission: "user.manage",
+            description: "Miembros, roles y permisos",
+          },
           {
             href: "/admin/notificaciones",
             label: "Notificaciones",
             icon: "NO",
             permission: "notification.manage",
+            description: "Configuración de avisos",
           },
         ],
       },
@@ -206,9 +370,27 @@ export const ADMIN_NAVIGATION = [
         id: "datos",
         label: "Datos y archivos",
         items: [
-          { href: "/admin/archivos", label: "Archivos", icon: "MD", permission: "media.manage" },
-          { href: "/admin/datos", label: "Importar / exportar", icon: "DT", permission: "admin.access" },
-          { href: "/admin/busqueda", label: "Búsqueda global", icon: "BS", permission: "admin.access" },
+          {
+            href: "/admin/archivos",
+            label: "Archivos",
+            icon: "MD",
+            permission: "media.manage",
+            description: "Imágenes y modelos 3D",
+          },
+          {
+            href: "/admin/datos",
+            label: "Importar / exportar",
+            icon: "DT",
+            permission: "admin.access",
+            description: "Copia de seguridad de datos",
+          },
+          {
+            href: "/admin/busqueda",
+            label: "Búsqueda global",
+            icon: "BS",
+            permission: "admin.access",
+            description: "Buscar en todo el negocio",
+          },
         ],
       },
     ],
@@ -223,14 +405,34 @@ export const ADMIN_NAVIGATION = [
         id: "asistencia",
         label: "Asistencia",
         items: [
-          { href: "/admin/ayuda", label: "Centro de ayuda", icon: "AY", permission: "content.manage" },
-          { href: "/admin/soporte", label: "Soporte", icon: "SO", permission: "support.manage" },
+          {
+            href: "/admin/ayuda",
+            label: "Centro de ayuda",
+            icon: "AY",
+            permission: "content.manage",
+            description: "Guías y preguntas frecuentes",
+          },
+          {
+            href: "/admin/soporte",
+            label: "Soporte",
+            icon: "SO",
+            permission: "support.manage",
+            description: "Consultas y tickets de ayuda",
+          },
         ],
       },
       {
         id: "cuenta",
         label: "Cuenta",
-        items: [{ href: "/admin/cuenta", label: "Mi cuenta", icon: "MC", permission: "admin.access" }],
+        items: [
+          {
+            href: "/admin/cuenta",
+            label: "Mi cuenta",
+            icon: "MC",
+            permission: "admin.access",
+            description: "Tu perfil y seguridad",
+          },
+        ],
       },
     ],
   },

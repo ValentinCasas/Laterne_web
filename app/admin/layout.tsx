@@ -30,6 +30,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       branches={context.branches}
       activeBranchId={context.activeBranchId}
       allBranches={context.allBranches}
+      userName={context.user.name}
+      userEmail={context.user.email}
+      userImageUrl={context.user.imageUrl}
     >
       {children}
     </AdminShell>

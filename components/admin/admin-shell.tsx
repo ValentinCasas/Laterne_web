@@ -79,13 +79,67 @@ function megaMenuColumns(count: number) {
   return "";
 }
 
+/**
+ * @summary Resuelve la URL pública del avatar a partir del nombre de archivo almacenado.
+ * Los valores vacíos o el placeholder por defecto se tratan como "sin foto".
+ */
+function avatarUrl(imageUrl?: string) {
+  const value = imageUrl?.trim();
+  if (!value || value === "avatar_profile_default.png") return null;
+  if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/")) return value;
+  return `/images/images_profile/${value}`;
+}
+
+/** @summary Avatar circular con foto real y fallback a iniciales si no hay imagen. */
+function UserAvatar({
+  name,
+  imageUrl,
+  className = "",
+}: {
+  name: string;
+  imageUrl?: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const src = avatarUrl(imageUrl);
+  if (src && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className={`${className || "h-8 w-8"} rounded-full object-cover ring-1 ring-white/10`}
+      />
+    );
+  }
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "U";
+  return (
+    <span
+      className={`${className || "h-8 w-8"} grid place-items-center rounded-full bg-pink-500/10 text-[11px] font-black text-pink-300`}
+      aria-hidden="true"
+    >
+      {initials}
+    </span>
+  );
+}
+
 function SearchIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       className="h-4 w-4"
       aria-hidden="true"
     >
@@ -101,7 +155,7 @@ function ExternalIcon() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       className="h-4 w-4"
       aria-hidden="true"
     >
@@ -118,7 +172,7 @@ function LogoutIcon() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       className="h-4 w-4"
       aria-hidden="true"
     >
@@ -129,14 +183,14 @@ function LogoutIcon() {
   );
 }
 
-function ChevronDownIcon({ open = false }: { open?: boolean }) {
+function ChevronDownIcon({ open = false, className = "" }: { open?: boolean; className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.5"
-      className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
+      strokeWidth="2"
+      className={`h-3 w-3 shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""} ${className}`}
       aria-hidden="true"
     >
       <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -144,29 +198,48 @@ function ChevronDownIcon({ open = false }: { open?: boolean }) {
   );
 }
 
-/** @summary Menú de perfil de la barra superior: cuenta, acceso público y cierre de sesión. */
+/**
+ * @summary Menú de perfil de la barra superior: identidad, cuenta y cierre de sesión.
+ * Soporta foto de usuario (o iniciales), navegación con teclado, Escape y click afuera.
+ */
 function ProfileMenu({
-  name,
+  userName,
+  userEmail,
+  userImageUrl,
+  tenantName,
   adminHref,
-  publicSite,
   onLogout,
 }: {
-  name: string;
+  userName?: string;
+  userEmail?: string;
+  userImageUrl?: string;
+  tenantName: string;
   adminHref: (href: string) => Route;
-  publicSite: string;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
+  const displayName = userName?.trim() || tenantName;
+  const menuItems: Array<{ key: string; label: string; danger?: boolean }> = [
+    { key: "profile", label: "Mi perfil" },
+    { key: "logout", label: "Cerrar sesión", danger: true },
+  ];
 
   useEffect(() => {
     if (!open) return;
-    /** @summary Cierra el menú al interactuar fuera de él o con Escape. */
+    /**
+     * @summary Cierra el menú al interactuar fuera de él o con Escape.
+     */
     function handlePointer(event: PointerEvent) {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     }
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        setFocusIndex(-1);
+      }
     }
     document.addEventListener("pointerdown", handlePointer);
     document.addEventListener("keydown", handleEscape);
@@ -176,78 +249,95 @@ function ProfileMenu({
     };
   }, [open]);
 
+  /** @summary Navegación con teclado dentro del menú (flechas, Inicio, Fin). */
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (menuItems.length === 0) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      let next = focusIndex;
+      if (event.key === "ArrowDown") next += 1;
+      else if (event.key === "ArrowUp") next -= 1;
+      else if (event.key === "Home") next = 0;
+      else next = menuItems.length - 1;
+      next = Math.max(0, Math.min(menuItems.length - 1, next));
+      setFocusIndex(next);
+      itemRefs.current[next]?.focus();
+    }
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2.5 text-sm font-bold text-zinc-200 hover:border-white/25"
+        className="flex h-9 items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label="Menú de perfil"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-500/15 text-[10px] font-black text-pink-300">
-          {tenantInitials(name)}
-        </span>
-        <span className="hidden max-w-28 truncate xl:block">{name}</span>
-        <ChevronDownIcon open={open} />
+        <UserAvatar name={displayName} imageUrl={userImageUrl} />
+        <span className="hidden max-w-20 truncate 2xl:block">{tenantName}</span>
+        <ChevronDownIcon open={open} className="hidden text-zinc-500 2xl:block" />
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl"
+          className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 p-1.5 shadow-xl shadow-black/25 backdrop-blur-xl"
           role="menu"
+          aria-label="Menú de perfil"
+          onKeyDown={handleMenuKeyDown}
         >
-          <Link
-            role="menuitem"
-            href={adminHref("/admin/cuenta")}
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-300 hover:bg-white/10"
-          >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5 text-[10px] font-black text-pink-300">
-              MC
-            </span>
-            Mi cuenta
-          </Link>
-          <a
-            role="menuitem"
-            href={publicSite}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-300 hover:bg-white/10"
-          >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5 text-[10px] font-black text-pink-300">
-              VS
-            </span>
-            Ver sitio
-            <span className="ml-auto text-zinc-600">
-              <ExternalIcon />
-            </span>
-          </a>
-          <a
-            role="menuitem"
-            href={`${publicSite}/carta`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-300 hover:bg-white/10"
-          >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5 text-[10px] font-black text-pink-300">
-              VC
-            </span>
-            Ver carta
-            <span className="ml-auto text-zinc-600">
-              <ExternalIcon />
-            </span>
-          </a>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={onLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-red-300 hover:bg-red-500/10"
-          >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-red-500/10 text-[10px] font-black">
-              <LogoutIcon />
-            </span>
-            Cerrar sesión
-          </button>
+          <div className="flex items-center gap-3 rounded-xl px-3 py-3">
+            <UserAvatar name={displayName} imageUrl={userImageUrl} className="h-10 w-10 text-sm" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+              <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>
+            </div>
+          </div>
+          <div className="my-1 h-px bg-white/[.07]" />
+          {menuItems.map((entry, index) => {
+            const tabIndex = focusIndex === -1 || focusIndex === index ? 0 : -1;
+            if (entry.key === "profile") {
+              return (
+                <Link
+                  key={entry.key}
+                  role="menuitem"
+                  ref={(element) => {
+                    itemRefs.current[index] = element;
+                  }}
+                  href={adminHref("/admin/cuenta")}
+                  tabIndex={tabIndex}
+                  onClick={() => {
+                    setOpen(false);
+                    setFocusIndex(-1);
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                >
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/[.05] text-[10px] font-black text-zinc-400">
+                    MC
+                  </span>
+                  Mi perfil
+                </Link>
+              );
+            }
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                role="menuitem"
+                ref={(element) => {
+                  itemRefs.current[index] = element;
+                }}
+                tabIndex={tabIndex}
+                onClick={onLogout}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-300 transition-colors duration-150 hover:bg-red-500/10"
+              >
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-red-500/10 text-[10px] font-black">
+                  <LogoutIcon />
+                </span>
+                Cerrar sesión
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -276,6 +366,9 @@ export function AdminShell({
   branches = [],
   activeBranchId,
   allBranches = false,
+  userName,
+  userEmail,
+  userImageUrl,
 }: {
   children: React.ReactNode;
   permissions: string[];
@@ -290,6 +383,9 @@ export function AdminShell({
   branches?: Array<{ id: number; name: string; slug: string; isPrimary: boolean }>;
   activeBranchId?: number;
   allBranches?: boolean;
+  userName?: string;
+  userEmail?: string;
+  userImageUrl?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -616,16 +712,17 @@ export function AdminShell({
     >
       <header
         ref={headerRef}
-        className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/90 backdrop-blur-xl print:hidden"
+        className="sticky top-0 z-50 border-b border-white/[.08] bg-zinc-950/80 backdrop-blur-xl print:hidden"
       >
-        <div className="shell flex h-16 items-center gap-2 sm:gap-3">
+        <div className="admin-shell-inner flex h-16 items-center gap-2 sm:gap-3">
           <button
             ref={mobileTriggerRef}
             type="button"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5 text-lg text-white hover:bg-white/10 lg:hidden"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white lg:hidden"
             aria-controls="admin-navigation-panel"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+            title={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
             onClick={() => {
               if (mobileMenuOpen) {
                 setMobileMenuPath(null);
@@ -640,25 +737,27 @@ export function AdminShell({
 
           <Link
             href={adminHref("/admin")}
-            className="flex shrink-0 items-center gap-2.5 rounded-xl px-1.5 py-1.5 hover:bg-white/5"
+            className="flex shrink-0 items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors duration-150 hover:bg-white/[.04]"
             onClick={() => {
               setOpenGroup(null);
               setMobileMenuPath(null);
             }}
           >
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--admin-primary-strong)] text-sm font-black text-white">
+            <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--admin-primary-strong)] text-xs font-black text-white">
               {tenantInitials(tenantName)}
             </span>
             <span className="hidden min-w-0 leading-tight sm:block">
-              <strong className="block max-w-44 truncate text-sm">{tenantName}</strong>
-              <small className="block text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">
+              <strong className="block max-w-28 truncate text-sm font-semibold text-white xl:max-w-32">
+                {tenantName}
+              </strong>
+              <small className="block text-[9px] font-bold uppercase tracking-[.16em] text-zinc-500">
                 Administración
               </small>
             </span>
           </Link>
 
           <nav
-            className="hidden items-center gap-0.5 lg:flex lg:min-w-0"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1"
             aria-label="Secciones administrativas"
             onMouseLeave={scheduleCloseGroup}
           >
@@ -668,7 +767,7 @@ export function AdminShell({
               return (
                 <div
                   key={group.id}
-                  className="relative"
+                  className="shrink-0"
                   onMouseEnter={() => {
                     cancelCloseGroup();
                     setOpenGroupBoth(group.id);
@@ -679,10 +778,10 @@ export function AdminShell({
                       triggerRefs.current[group.id] = element;
                     }}
                     type="button"
-                    className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold transition ${
+                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-sm transition-colors duration-150 xl:px-3 ${
                       expanded || groupActive
-                        ? "bg-white/10 text-white"
-                        : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                        ? "bg-white/[.06] text-white"
+                        : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
                     }`}
                     aria-haspopup="true"
                     aria-expanded={expanded}
@@ -697,35 +796,39 @@ export function AdminShell({
                     }}
                   >
                     <span className="truncate">{group.label}</span>
-                    <ChevronDownIcon open={expanded} />
+                    <ChevronDownIcon open={expanded} className="text-zinc-600" />
                   </button>
                 </div>
               );
             })}
           </nav>
 
-          <div className="ml-auto flex min-w-0 items-center gap-2">
-            {branchNavigationAvailable && (
-              <BranchSwitcher
-                branches={branches}
-                activeBranchId={activeBranchId}
-                activeBranchName={activeBranch?.name}
-                consolidatedAvailable={allBranches}
-                compact
-              />
-            )}
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
+            <div className="hidden md:block">
+              {branchNavigationAvailable && (
+                <BranchSwitcher
+                  branches={branches}
+                  activeBranchId={activeBranchId}
+                  activeBranchName={activeBranch?.name}
+                  consolidatedAvailable={allBranches}
+                  compact
+                />
+              )}
+            </div>
 
             <button
               type="button"
-              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-bold text-zinc-300 hover:border-white/25"
+              className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
               onClick={() => {
                 setCommandOpen(true);
                 setMobileMenuPath(null);
               }}
+              aria-label="Buscar (Ctrl K)"
+              title="Buscar (Ctrl K)"
             >
               <SearchIcon />
               <span className="hidden xl:inline">Buscar</span>
-              <kbd className="hidden rounded-lg border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-500 2xl:inline">
+              <kbd className="hidden h-5 items-center rounded border border-white/10 bg-white/[.04] px-1.5 font-sans text-[10px] font-medium text-zinc-500 2xl:flex">
                 Ctrl K
               </kbd>
             </button>
@@ -736,25 +839,36 @@ export function AdminShell({
               href={publicSite}
               target="_blank"
               rel="noreferrer"
-              className="hidden h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-bold text-zinc-300 hover:border-white/25 lg:flex"
+              aria-label="Ver sitio"
+              title="Ver sitio"
+              className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
             >
               <ExternalIcon />
-              <span className="hidden 2xl:inline">Ver sitio</span>
+              <span className="hidden xl:inline">Ver sitio</span>
             </a>
 
             {isSuperAdmin && (
               <Link
                 href={platformAdminPath()}
-                className="hidden h-10 items-center gap-2 rounded-xl border border-amber-500/15 bg-amber-500/5 px-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10 sm:flex"
+                aria-label="Ir a la plataforma"
+                title="Ir a la plataforma"
+                className="hidden h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-amber-300/90 transition-colors duration-150 hover:bg-amber-500/[.08] sm:flex"
               >
-                <span className="grid h-5 w-5 place-items-center rounded-md bg-amber-500/15 text-[8px] font-black">
+                <span className="grid h-5 w-5 place-items-center rounded-md bg-amber-500/15 text-[8px] font-black text-amber-300">
                   SA
                 </span>
                 <span className="hidden xl:inline">Plataforma</span>
               </Link>
             )}
 
-            <ProfileMenu name={tenantName} adminHref={adminHref} publicSite={publicSite} onLogout={logout} />
+            <ProfileMenu
+              userName={userName}
+              userEmail={userEmail}
+              userImageUrl={userImageUrl}
+              tenantName={tenantName}
+              adminHref={adminHref}
+              onLogout={logout}
+            />
           </div>
         </div>
       </header>
@@ -775,26 +889,21 @@ export function AdminShell({
           }
           onBlur={handlePanelBlur}
         >
-          <div className="shell overflow-hidden rounded-b-3xl border border-t-0 border-white/10 bg-[var(--admin-surface)] shadow-2xl shadow-black/40">
-            <div className="flex items-center gap-3 border-b border-white/10 px-6 py-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-pink-500/15 text-xs font-black text-pink-300">
-                {activeGroup.icon}
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[.2em] text-[var(--admin-primary)]">
-                  {activeGroup.label}
-                </p>
-                <p className="truncate text-sm text-zinc-500">{activeGroup.description}</p>
-              </div>
+          <div className="admin-shell-inner overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
+            <div className="flex items-baseline gap-3 border-b border-white/[.06] px-8 py-5">
+              <h2 className="text-sm font-bold text-white">{activeGroup.label}</h2>
+              <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
             </div>
-            <div className={`grid gap-8 px-6 py-6 ${megaMenuColumns(activeGroup.sections.length)}`}>
+            <div
+              className={`grid gap-x-14 gap-y-9 px-8 py-7 ${megaMenuColumns(activeGroup.sections.length)}`}
+            >
               {(() => {
                 let flatIndex = 0;
                 return activeGroup.sections.map((section) => (
                   <section key={section.id} className="min-w-0">
-                    <h2 className="mb-2 text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">
+                    <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
                       {section.label}
-                    </h2>
+                    </h3>
                     <div className="space-y-0.5">
                       {section.items.map((item) => {
                         const index = flatIndex++;
@@ -811,20 +920,33 @@ export function AdminShell({
                               setOpenGroupBoth(null);
                               setMobileMenuPath(null);
                             }}
-                            className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                              active
-                                ? "bg-pink-500 text-white shadow-lg shadow-pink-950/30"
-                                : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                            className={`group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors duration-150 ${
+                              active ? "bg-white/[.06]" : "hover:bg-white/[.04]"
                             }`}
                           >
                             <span
-                              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
-                                active ? "bg-white/20" : "bg-white/5 text-pink-300 group-hover:bg-pink-500/15"
+                              className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
+                                active
+                                  ? "bg-pink-500/15 text-pink-300"
+                                  : "bg-white/[.05] text-zinc-500 group-hover:text-zinc-300"
                               }`}
                             >
                               {item.icon}
                             </span>
-                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            <span className="min-w-0">
+                              <span
+                                className={`block truncate text-sm font-medium transition-colors duration-150 ${
+                                  active ? "text-white" : "text-zinc-300 group-hover:text-white"
+                                }`}
+                              >
+                                {item.label}
+                              </span>
+                              {item.description && (
+                                <span className="mt-0.5 block truncate text-xs text-zinc-500">
+                                  {item.description}
+                                </span>
+                              )}
+                            </span>
                           </Link>
                         );
                       })}
@@ -837,7 +959,7 @@ export function AdminShell({
         </div>
       )}
 
-      <main className="admin-main shell py-6 lg:py-8">{children}</main>
+      <main className="admin-main admin-shell-inner py-6 lg:py-8">{children}</main>
 
       {mobileMenuOpen && (
         <>
@@ -848,33 +970,43 @@ export function AdminShell({
           />
           <div
             id="admin-navigation-panel"
-            className="fixed inset-y-0 left-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-r border-white/10 bg-zinc-950 shadow-2xl shadow-black/50 lg:hidden"
+            className="fixed inset-y-0 left-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-r border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 lg:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Menú de administración"
           >
-            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 pt-[env(safe-area-inset-top)]">
-              <span className="min-w-0">
-                <small className="block text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
-                  Administración
-                </small>
-                <strong className="block truncate text-sm">{tenantName}</strong>
-              </span>
+            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.08] px-4 py-3.5 pt-[env(safe-area-inset-top)]">
+              <div className="flex min-w-0 items-center gap-3">
+                <UserAvatar
+                  name={userName?.trim() || tenantName}
+                  imageUrl={userImageUrl}
+                  className="h-9 w-9 text-xs"
+                />
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm text-white">
+                    {userName?.trim() || tenantName}
+                  </strong>
+                  <small className="block truncate text-[11px] text-zinc-500">
+                    {userEmail || tenantName}
+                  </small>
+                </span>
+              </div>
               <button
                 ref={mobileCloseButtonRef}
                 type="button"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-lg text-white transition hover:bg-white/10"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
                 onClick={() => setMobileMenuPath(null)}
                 aria-label="Cerrar navegación"
+                title="Cerrar navegación"
               >
                 ×
               </button>
             </div>
 
-            <div className="grid gap-2 border-b border-white/10 px-3 py-3">
+            <div className="grid gap-2 border-b border-white/[.08] px-3 py-3">
               <button
                 type="button"
-                className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-zinc-300 hover:border-white/25"
+                className="flex h-11 w-full items-center gap-3 rounded-xl border border-white/[.08] bg-white/[.03] px-4 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
                 onClick={() => {
                   setCommandOpen(true);
                   setMobileMenuPath(null);
@@ -903,47 +1035,45 @@ export function AdminShell({
                 return (
                   <section
                     key={group.id}
-                    className={`overflow-hidden rounded-2xl border transition ${
+                    className={`overflow-hidden rounded-xl border transition-colors duration-150 ${
                       containsActive
-                        ? "border-pink-500/25 bg-pink-500/[.04]"
-                        : "border-white/[.07] bg-white/[.02]"
+                        ? "border-white/[.1] bg-white/[.03]"
+                        : "border-white/[.06] bg-transparent"
                     }`}
                   >
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-white/5"
+                      className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 hover:bg-white/[.04]"
                       aria-controls={`mobile-admin-group-${group.id}`}
                       aria-expanded={expanded}
                       onClick={() => setMobileExpanded((current) => (current === group.id ? null : group.id))}
                     >
                       <span
-                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[10px] font-black tracking-wider ${
-                          containsActive ? "bg-pink-500 text-white" : "bg-white/5 text-pink-300"
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
+                          containsActive ? "bg-pink-500/15 text-pink-300" : "bg-white/[.05] text-zinc-500"
                         }`}
                       >
                         {group.icon}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm">{group.label}</strong>
-                        <small className="hidden truncate text-[10px] text-zinc-600">
-                          {group.description}
-                        </small>
+                        <strong
+                          className={`block truncate text-sm font-medium ${
+                            containsActive ? "text-white" : "text-zinc-300"
+                          }`}
+                        >
+                          {group.label}
+                        </strong>
                       </span>
-                      <span
-                        className={`text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
-                        aria-hidden="true"
-                      >
-                        ⌄
-                      </span>
+                      <ChevronDownIcon open={expanded} className="text-zinc-600" />
                     </button>
                     {expanded && (
                       <div
                         id={`mobile-admin-group-${group.id}`}
-                        className="space-y-3 border-t border-white/[.07] p-3"
+                        className="space-y-4 border-t border-white/[.06] p-3"
                       >
                         {group.sections.map((section) => (
                           <div key={section.id}>
-                            <h3 className="mb-1 px-2 text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">
+                            <h3 className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                               {section.label}
                             </h3>
                             <div className="space-y-0.5">
@@ -954,20 +1084,33 @@ export function AdminShell({
                                     key={item.href}
                                     href={adminHref(item.href)}
                                     onClick={() => setMobileMenuPath(null)}
-                                    className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-bold transition ${
-                                      active
-                                        ? "bg-pink-500 text-white shadow-lg shadow-pink-950/30"
-                                        : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                                    className={`flex items-start gap-3 rounded-lg px-2.5 py-2.5 transition-colors duration-150 ${
+                                      active ? "bg-white/[.06]" : "hover:bg-white/[.04]"
                                     }`}
                                   >
                                     <span
-                                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
-                                        active ? "bg-white/20" : "bg-white/5 text-pink-300"
+                                      className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
+                                        active
+                                          ? "bg-pink-500/15 text-pink-300"
+                                          : "bg-white/[.05] text-zinc-500"
                                       }`}
                                     >
                                       {item.icon}
                                     </span>
-                                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                                    <span className="min-w-0">
+                                      <span
+                                        className={`block truncate text-sm font-medium transition-colors duration-150 ${
+                                          active ? "text-white" : "text-zinc-300"
+                                        }`}
+                                      >
+                                        {item.label}
+                                      </span>
+                                      {item.description && (
+                                        <span className="mt-0.5 block truncate text-xs text-zinc-500">
+                                          {item.description}
+                                        </span>
+                                      )}
+                                    </span>
                                   </Link>
                                 );
                               })}
@@ -984,9 +1127,9 @@ export function AdminShell({
                 <Link
                   href={platformAdminPath()}
                   onClick={() => setMobileMenuPath(null)}
-                  className="flex items-center gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-3 py-3 text-sm font-bold text-amber-300 hover:bg-amber-500/10"
+                  className="flex items-center gap-3 rounded-xl border border-amber-500/15 bg-amber-500/[.04] px-3 py-3 text-sm font-medium text-amber-300 transition-colors duration-150 hover:bg-amber-500/[.08]"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-[10px] font-black">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/10 text-[9px] font-black">
                     SA
                   </span>
                   Plataforma
@@ -994,27 +1137,20 @@ export function AdminShell({
               )}
             </nav>
 
-            <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-3">
+            <div className="grid gap-2 border-t border-white/[.08] p-3">
               <a
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center text-xs font-black text-zinc-300 hover:bg-pink-500 hover:text-white"
-                href={publicSite}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Ver sitio
-              </a>
-              <a
-                className="rounded-xl border border-pink-500/20 bg-pink-500/10 px-3 py-2.5 text-center text-xs font-black text-pink-200 hover:bg-pink-500 hover:text-white"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[.08] bg-white/[.03] px-3 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
                 href={`${publicSite}/carta`}
                 target="_blank"
                 rel="noreferrer"
               >
+                <ExternalIcon />
                 Ver carta
               </a>
               <button
                 type="button"
                 onClick={logout}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-red-500/15 bg-red-500/5 px-3 py-2.5 text-center text-xs font-black text-red-300 hover:bg-red-500/10"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/15 bg-red-500/[.04] px-3 text-sm font-medium text-red-300 transition-colors duration-150 hover:bg-red-500/10"
               >
                 <LogoutIcon />
                 Cerrar sesión
@@ -1030,7 +1166,7 @@ export function AdminShell({
           onClick={closeCommand}
         >
           <section
-            className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+            className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -1087,7 +1223,7 @@ export function AdminShell({
                       const active = item.key === commandItems[commandActive]?.key;
                       return (
                         <Link
-                          className={`flex items-center gap-3 rounded-2xl p-3 ${
+                          className={`flex items-center gap-3 rounded-xl p-3 transition-colors duration-150 ${
                             active ? "bg-pink-500/10 ring-1 ring-pink-500/30" : "hover:bg-white/5"
                           }`}
                           href={item.href}
