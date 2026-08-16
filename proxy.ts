@@ -146,6 +146,15 @@ function apiRewrite(request: NextRequest): NextResponse | null {
     });
   }
 
+  match = pathname.match(/^\/api\/t\/([^/]+)\/([^/]+)\/auth\/(.+)$/);
+  if (match) {
+    return rewrite(request, `/api/auth/${match[3]}`, {
+      routeKind: "tenant-auth",
+      tenantGuid: decodeURIComponent(match[1]),
+      tenantSlug: decodeURIComponent(match[2]),
+    });
+  }
+
   match = pathname.match(/^\/api\/t\/([^/]+)\/auth\/(.+)$/);
   if (match) {
     return rewrite(request, `/api/auth/${match[2]}`, {

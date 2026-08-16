@@ -36,12 +36,18 @@ export async function POST(
   const branch = await prisma.branch.findFirst({ where: { id: branchId, tenantId } });
   if (!branch) return NextResponse.json({ error: "Sucursal no encontrada" }, { status: 404 });
 
+  const isDraft = parsed.data.status === "DRAFT";
+  const wantsCapacity = typeof parsed.data.usersAllowed === "number" && parsed.data.usersAllowed > 0;
+  const initialStatus = isDraft && wantsCapacity ? "ACTIVE" : parsed.data.status;
+  const initialStartsAt = isDraft && wantsCapacity ? new Date() : undefined;
+
   const license = await prisma.branchLicense.create({
     data: {
       tenantId,
       branchId,
-      status: parsed.data.status,
+      status: initialStatus,
       planId: parsed.data.planId ?? undefined,
+      startsAt: initialStartsAt,
       currentPeriodEnd: parsed.data.currentPeriodEnd ? new Date(parsed.data.currentPeriodEnd) : null,
       graceUntil: parsed.data.graceUntil ? new Date(parsed.data.graceUntil) : null,
       priceOverride: parsed.data.priceOverride ?? null,

@@ -41,6 +41,14 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: "Licencia no encontrada" }, { status: 404 });
 
   const data: Record<string, unknown> = {};
+  const nextStatus = parsed.data.status ?? existing.status;
+  const nextUsersAllowed = parsed.data.usersAllowed ?? existing.usersAllowed;
+  const isDraft = nextStatus === "DRAFT";
+  const wantsCapacity = typeof nextUsersAllowed === "number" && nextUsersAllowed > 0;
+  if (wantsCapacity && isDraft) {
+    data.status = "ACTIVE";
+    if (!existing.startsAt) data.startsAt = new Date();
+  }
   if (parsed.data.status !== undefined) data.status = parsed.data.status;
   if (parsed.data.planId !== undefined) data.planId = parsed.data.planId;
   if (parsed.data.currentPeriodEnd !== undefined)
