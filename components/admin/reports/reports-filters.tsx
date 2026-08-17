@@ -15,6 +15,7 @@ export function ReportsFilters({
   channels,
   sources,
   disabled = false,
+  periodPreset,
 }: {
   filters: {
     from?: string;
@@ -27,6 +28,7 @@ export function ReportsFilters({
     paymentMethod?: string | null;
     channel?: string | null;
     source?: string | null;
+    period?: string;
   };
   onChange: (patch: Record<string, unknown>) => void;
   branches: Array<{ id: number; name: string }>;
@@ -38,6 +40,7 @@ export function ReportsFilters({
   channels: string[];
   sources: string[];
   disabled?: boolean;
+  periodPreset?: string;
 }) {
   const selectClass = useMemo(
     () =>
@@ -45,15 +48,77 @@ export function ReportsFilters({
     [],
   );
 
+  function patchWithAutoCustom(patch: Record<string, unknown>) {
+    if ((patch.from !== undefined || patch.to !== undefined) && filters.period && filters.period !== "custom") {
+      return { ...patch, period: "custom" };
+    }
+    return patch;
+  }
+
+  function handleFromChange(value: string) {
+    onChange(patchWithAutoCustom({ from: value }));
+  }
+
+  function handleToChange(value: string) {
+    onChange(patchWithAutoCustom({ to: value }));
+  }
+
+  function handlePeriodChange(preset: string) {
+    if (preset === "custom") {
+      onChange({ period: preset });
+      return;
+    }
+    const now = new Date();
+    let from: Date;
+    if (preset === "7d") {
+      from = new Date(now);
+      from.setUTCDate(from.getUTCDate() - 7);
+      from.setUTCHours(0, 0, 0, 0);
+    } else if (preset === "30d") {
+      from = new Date(now);
+      from.setUTCDate(from.getUTCDate() - 30);
+      from.setUTCHours(0, 0, 0, 0);
+    } else if (preset === "3m") {
+      from = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    } else if (preset === "6m") {
+      from = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+    } else if (preset === "12m") {
+      from = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+    } else {
+      from = new Date(now.getTime() - 30 * 86_400_000);
+      from.setUTCHours(0, 0, 0, 0);
+    }
+    const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    onChange({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10), period: preset });
+  }
+
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+      {periodPreset !== undefined && (
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Período</label>
+          <select
+            className={selectClass}
+            value={periodPreset}
+            onChange={(event) => handlePeriodChange(event.target.value)}
+            disabled={disabled}
+          >
+            <option value="7d">7 días</option>
+            <option value="30d">30 días</option>
+            <option value="3m">3 meses</option>
+            <option value="6m">6 meses</option>
+            <option value="12m">12 meses</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+      )}
       <div className="flex flex-col gap-1">
         <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Desde</label>
         <input
           type="date"
           className={selectClass}
           value={filters.from || ""}
-          onChange={(event) => onChange({ from: event.target.value })}
+          onChange={(event) => handleFromChange(event.target.value)}
           disabled={disabled}
         />
       </div>
@@ -63,7 +128,7 @@ export function ReportsFilters({
           type="date"
           className={selectClass}
           value={filters.to || ""}
-          onChange={(event) => onChange({ to: event.target.value })}
+          onChange={(event) => handleToChange(event.target.value)}
           disabled={disabled}
         />
       </div>

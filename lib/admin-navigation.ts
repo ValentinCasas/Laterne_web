@@ -458,6 +458,19 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+      {
+        id: "ingenieria-menu-reportes",
+        label: "Ingeniería de menú",
+        items: [
+          {
+            href: "/admin/reportes/ingenieria-menu",
+            label: "Ingeniería de menú",
+            icon: "IM",
+            permission: "analytics.read",
+            description: "Popularidad, rentabilidad y clasificación de productos",
+          },
+        ],
+      },
     ],
   },
   {
@@ -609,11 +622,14 @@ export function adminLinkMatchScore(pathname: string, href: string): number {
   const pathSegments = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
   const hrefSegments = href.replace(/\/+$/, "").split("/").filter(Boolean);
   if (hrefSegments.length === 1 && hrefSegments[0] === "admin") {
-    return pathSegments.length === 1 && pathSegments[0] === "admin" ? 1 : 0;
+    const last = pathSegments[pathSegments.length - 1];
+    const prev = pathSegments[pathSegments.length - 2];
+    return last === "admin" && prev !== "s" ? 1 : 0;
   }
   if (pathSegments.length < hrefSegments.length) return 0;
   for (let index = 0; index < hrefSegments.length; index++) {
-    if (pathSegments[index] !== hrefSegments[index]) return 0;
+    const pathIndex = pathSegments.length - hrefSegments.length + index;
+    if (pathSegments[pathIndex] !== hrefSegments[index]) return 0;
   }
   return hrefSegments.length;
 }

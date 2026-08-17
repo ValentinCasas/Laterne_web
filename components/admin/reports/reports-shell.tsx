@@ -16,6 +16,9 @@ export function ReportsShell({
   paymentMethods,
   channels,
   sources,
+  defaultFrom,
+  defaultTo,
+  periodPreset,
 }: {
   children: React.ReactNode;
   branches: Array<{ id: number; name: string }>;
@@ -26,6 +29,9 @@ export function ReportsShell({
   paymentMethods: string[];
   channels: string[];
   sources: string[];
+  defaultFrom?: string;
+  defaultTo?: string;
+  periodPreset?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -33,8 +39,8 @@ export function ReportsShell({
 
   const filters = useMemo(
     () => ({
-      from: searchParams.get("from") || undefined,
-      to: searchParams.get("to") || undefined,
+      from: searchParams.get("from") || defaultFrom || undefined,
+      to: searchParams.get("to") || defaultTo || undefined,
       branchId: searchParams.has("branchId") ? Number(searchParams.get("branchId")) : null,
       categoryId: searchParams.has("categoryId") ? Number(searchParams.get("categoryId")) : null,
       productId: searchParams.has("productId") ? Number(searchParams.get("productId")) : null,
@@ -43,8 +49,9 @@ export function ReportsShell({
       paymentMethod: searchParams.get("paymentMethod") || null,
       channel: searchParams.get("channel") || null,
       source: searchParams.get("source") || null,
+      period: searchParams.get("period") || periodPreset || undefined,
     }),
-    [searchParams],
+    [searchParams, defaultFrom, defaultTo, periodPreset],
   );
 
   function handleFilterChange(patch: Record<string, unknown>) {
@@ -73,6 +80,7 @@ export function ReportsShell({
         paymentMethods={paymentMethods}
         channels={channels}
         sources={sources}
+        periodPreset={filters.period}
       />
       {children}
     </div>

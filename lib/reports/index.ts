@@ -103,6 +103,37 @@ export type BranchComparisonItem = {
   byChannel: Record<string, number>;
 };
 
+export type MenuEngineeringItem = {
+  productId: number;
+  productName: string;
+  categoryName: string | null;
+  units: number;
+  sales: number;
+  cmv: number | null;
+  cmvPercent: number | null;
+  margin: number | null;
+  marginPercent: number | null;
+  markup: number | null;
+  costAvailable: boolean;
+  previousUnits: number;
+  previousSales: number;
+  previousMarginPercent: number | null;
+  unitsTrend: "up" | "down" | "stable";
+  salesTrend: "up" | "down" | "stable";
+  marginTrend: "up" | "down" | "stable";
+  quadrant: "potenciar" | "revisar" | "promocionar" | "reformular" | "sin_datos";
+  quadrantReason: string;
+};
+
+export type MenuEngineeringSummary = {
+  totalProducts: number;
+  withCostData: number;
+  withoutCostData: number;
+  quadrantDistribution: Record<string, number>;
+  popularityMedian: number;
+  marginMedian: number;
+};
+
 export type OrderDetail = {
   id: number;
   reference: string;

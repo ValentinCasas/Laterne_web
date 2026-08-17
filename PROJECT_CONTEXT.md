@@ -64,7 +64,7 @@ Docker NO obligatorio para desarrollo.
 | Fidelización | FUNCIONAL |
 | Administración (Marca, Landing, Integraciones, Notificaciones, Datos) | FUNCIONAL |
 | Estadísticas/Analítica | PARCIAL |
-| Reportes (Resumen, Ventas, Productos, Compras, Sucursales) | FUNCIONAL |
+| Reportes (Resumen, Ventas, Productos, Compras, Sucursales, Ingeniería de menú) | FUNCIONAL |
 
 ## Modelos importantes
 - **Tenant / Branch / TenantMembership / AuthSession**: multi-tenancy, sucursales, acceso.
@@ -107,6 +107,8 @@ Docker NO obligatorio para desarrollo.
 - Delivery propio: `OrderDelivery` + `OrderDeliveryItem` + `ExternalOrder`.
 - Impresión declarativa: `PrintArea` + `PrintDestination` + `PrintJob`.
 - Finanzas: movimientos inmutables; corrección por reversión.
+- Reportes: `ReportsShell` es Client Component y maneja filtros URL-driven internamente; las páginas Server Components solo pasan defaults serializables y datos iniciales. No se pasan callbacks desde Server a Client.
+- Navegación admin: `adminLinkMatchScore` compara segmentos desde el final para soportar URLs canónicas con GUID/slug.
 
 ## Pendientes
 - Migración de analítica hacia dashboards de gestión comercial.

@@ -61,6 +61,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/reportes/productos",
       "/admin/reportes/compras",
       "/admin/reportes/sucursales",
+      "/admin/reportes/ingenieria-menu",
     ]);
     for (const link of adminNavLinks()) {
       expect(known.has(link.href), `ruta inexistente: ${link.href}`).toBe(true);
