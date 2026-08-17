@@ -24,35 +24,24 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/clientes-frecuentes",
       "/admin/fidelizacion",
       "/admin/productos",
+      "/admin/opciones-producto",
       "/admin/ingredientes",
       "/admin/recetas",
       "/admin/inventario",
       "/admin/compras",
       "/admin/gastos",
-      "/admin/opciones-producto",
-      "/admin/categorias",
-      "/admin/promociones",
-      "/admin/eventos",
-      "/admin/horarios",
-      "/admin/testimonios",
-      "/admin/negocio",
       "/admin/marca",
       "/admin/landing",
       "/admin/carta",
-      "/admin/seo",
-      "/admin/redirecciones",
       "/admin/integraciones",
-      "/admin/legales",
-      "/admin/casos",
       "/admin/estadisticas",
       "/admin/auditoria",
       "/admin/errores",
-      "/admin/usuarios",
       "/admin/notificaciones",
       "/admin/archivos",
       "/admin/datos",
       "/admin/busqueda",
-      "/admin/ayuda",
+      "/admin/testimonios",
       "/admin/soporte",
       "/admin/cuenta",
     ]);
@@ -86,8 +75,10 @@ describe("definición centralizada de navegación administrativa", () => {
   });
 
   it("localiza el grupo correcto de una ruta", () => {
-    expect(adminGroupIdForHref("/admin/pedidos")).toBe("operacion");
+    expect(adminGroupIdForHref("/admin/pedidos")).toBe("ventas");
     expect(adminGroupIdForHref("/admin/productos")).toBe("carta");
+    expect(adminGroupIdForHref("/admin/compras")).toBe("compras");
+    expect(adminGroupIdForHref("/admin/inventario")).toBe("inventario");
   });
 });
 
@@ -114,7 +105,12 @@ describe("resaltado de ruta activa del panel", () => {
   });
 
   it("devuelve una sola entrada activa y gana la más específica", () => {
-    const groups = adminGroupsForPermissions(["admin.access", "order.manage", "product.manage"]);
+    const groups = adminGroupsForPermissions([
+      "admin.access",
+      "order.manage",
+      "product.manage",
+      "purchase.manage",
+    ]);
     const active = findActiveAdminLink(groups, "/admin/configuracion/comprobantes/plantillas");
     expect(active?.href).toBe("/admin/configuracion/comprobantes/plantillas");
 

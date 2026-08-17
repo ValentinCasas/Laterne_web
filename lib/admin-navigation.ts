@@ -8,19 +8,13 @@
  * canónicas del tenant/sucursal.
  *
  * Solo se listan opciones cuya funcionalidad/ruta existe hoy en `app/admin`.
- * Las categorías conceptuales de referencia (Compras, Finanzas, etc.) se
- * agregan aquí cuando sus páginas existan, sin tocar los componentes.
  */
 
 export type AdminNavItem = {
-  /** Ruta lógica `/admin/...` que el shell traduce a la URL canónica. */
   href: string;
   label: string;
-  /** Marca corta de dos caracteres usada como ícono. */
   icon: string;
-  /** Permiso requerido para ver la opción. */
   permission: string;
-  /** Descripción breve mostrada en los paneles amplios del mega menú. */
   description?: string;
 };
 
@@ -68,10 +62,10 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
-    id: "operacion",
-    label: "Operación",
-    icon: "OP",
-    description: "Atención, facturación y clientes del día a día",
+    id: "ventas",
+    label: "Ventas",
+    icon: "VE",
+    description: "Pedidos, atención, clientes y facturación del día a día",
     sections: [
       {
         id: "atencion",
@@ -96,7 +90,7 @@ export const ADMIN_NAVIGATION = [
             label: "Impresión",
             icon: "IM",
             permission: "order.manage",
-            description: "Áreas e impresoras de comandas (preparación)",
+            description: "Áreas e impresoras de comandas",
           },
           {
             href: "/admin/salon",
@@ -106,38 +100,11 @@ export const ADMIN_NAVIGATION = [
             description: "Plano de mesas, estados y consumos del salón",
           },
           {
-            href: "/admin/reservas",
-            label: "Reservas",
-            icon: "RS",
-            permission: "reservation.manage",
-            description: "Confirmá y organizá reservas",
-          },
-          {
             href: "/admin/mesas",
             label: "Mesas y QR",
             icon: "QR",
             permission: "table.manage",
             description: "Mesas, sectores y códigos QR",
-          },
-        ],
-      },
-      {
-        id: "facturacion",
-        label: "Facturación",
-        items: [
-          {
-            href: "/admin/facturacion",
-            label: "Facturación",
-            icon: "FC",
-            permission: "order.manage",
-            description: "Comprobantes y facturación",
-          },
-          {
-            href: "/admin/configuracion/comprobantes/plantillas",
-            label: "Plantillas de documentos",
-            icon: "PL",
-            permission: "order.manage",
-            description: "Diseño de comprobantes",
           },
         ],
       },
@@ -161,13 +128,109 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+      {
+        id: "reservas",
+        label: "Reservas",
+        items: [
+          {
+            href: "/admin/reservas",
+            label: "Reservas",
+            icon: "RS",
+            permission: "reservation.manage",
+            description: "Confirmá y organizá reservas",
+          },
+        ],
+      },
+      {
+        id: "facturacion",
+        label: "Facturación",
+        items: [
+          {
+            href: "/admin/facturacion",
+            label: "Facturación",
+            icon: "FC",
+            permission: "order.manage",
+            description: "Comprobantes y facturación",
+          },
+          {
+            href: "/admin/configuracion/comprobantes/plantillas",
+            label: "Plantillas de documentos",
+            icon: "PL",
+            permission: "order.manage",
+            description: "Diseño de comprobantes",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "compras",
+    label: "Compras",
+    icon: "CO",
+    description: "Pedidos, recepciones, facturas y gastos con proveedores",
+    sections: [
+      {
+        id: "compras",
+        label: "Operación",
+        items: [
+          {
+            href: "/admin/compras",
+            label: "Compras",
+            icon: "CO",
+            permission: "purchase.manage",
+            description: "Pedidos, recepciones y facturas de proveedores",
+          },
+          {
+            href: "/admin/gastos",
+            label: "Gastos",
+            icon: "GA",
+            permission: "purchase.manage",
+            description: "Gastos sin inventario y previsiones",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "inventario",
+    label: "Inventario",
+    icon: "IN",
+    description: "Stock, movimientos, ingredientes y recetas",
+    sections: [
+      {
+        id: "inventario",
+        label: "Operación",
+        items: [
+          {
+            href: "/admin/inventario",
+            label: "Inventario",
+            icon: "IV",
+            permission: "product.manage",
+            description: "Stock, movimientos y conteos",
+          },
+          {
+            href: "/admin/ingredientes",
+            label: "Ingredientes",
+            icon: "IG",
+            permission: "product.manage",
+            description: "Costo, unidad y stock de la materia prima",
+          },
+          {
+            href: "/admin/recetas",
+            label: "Recetas",
+            icon: "RE",
+            permission: "product.manage",
+            description: "Costos de recetas y ficha técnica imprimible",
+          },
+        ],
+      },
     ],
   },
   {
     id: "carta",
     label: "Carta",
     icon: "CA",
-    description: "Catálogo, promociones y contenido de la carta",
+    description: "Catálogo, precios y variantes de productos",
     sections: [
       {
         id: "catalogo",
@@ -187,115 +250,20 @@ export const ADMIN_NAVIGATION = [
             permission: "product.manage",
             description: "Opciones y agregados por producto",
           },
-          {
-            href: "/admin/categorias",
-            label: "Categorías",
-            icon: "CA",
-            permission: "category.manage",
-            description: "Secciones de la carta",
-          },
-        ],
-      },
-      {
-        id: "costos",
-        label: "Costos",
-        items: [
-          {
-            href: "/admin/ingredientes",
-            label: "Ingredientes",
-            icon: "IN",
-            permission: "product.manage",
-            description: "Costo, unidad y stock de la materia prima",
-          },
-          {
-            href: "/admin/recetas",
-            label: "Recetas",
-            icon: "RE",
-            permission: "product.manage",
-            description: "Costos de recetas y ficha técnica imprimible",
-          },
-          {
-            href: "/admin/inventario",
-            label: "Inventario",
-            icon: "IV",
-            permission: "product.manage",
-            description: "Stock, movimientos y conteos",
-          },
-          {
-            href: "/admin/compras",
-            label: "Compras",
-            icon: "CO",
-            permission: "purchase.manage",
-            description: "Pedidos, recepciones y facturas de proveedores",
-          },
-          {
-            href: "/admin/gastos",
-            label: "Gastos",
-            icon: "GA",
-            permission: "purchase.manage",
-            description: "Gastos sin inventario y previsiones",
-          },
-        ],
-      },
-      {
-        id: "comercial",
-        label: "Comercial",
-        items: [
-          {
-            href: "/admin/promociones",
-            label: "Promociones",
-            icon: "PM",
-            permission: "promotion.manage",
-            description: "Descuentos, combos y cupones",
-          },
-          {
-            href: "/admin/eventos",
-            label: "Eventos",
-            icon: "EV",
-            permission: "event.manage",
-            description: "Agenda y publicaciones",
-          },
-          {
-            href: "/admin/horarios",
-            label: "Horarios",
-            icon: "HO",
-            permission: "hours.manage",
-            description: "Turnos de atención",
-          },
-        ],
-      },
-      {
-        id: "comunidad",
-        label: "Comunidad",
-        items: [
-          {
-            href: "/admin/testimonios",
-            label: "Testimonios",
-            icon: "TE",
-            permission: "testimonial.moderate",
-            description: "Moderación de opiniones",
-          },
         ],
       },
     ],
   },
   {
-    id: "presencia",
+    id: "marca",
     label: "Marca",
     icon: "BR",
-    description: "Identidad, posicionamiento y presencia pública",
+    description: "Identidad, presencia pública e integraciones",
     sections: [
       {
         id: "identidad",
         label: "Identidad",
         items: [
-          {
-            href: "/admin/negocio",
-            label: "Negocio",
-            icon: "NE",
-            permission: "business.manage",
-            description: "Datos de contacto y ubicación",
-          },
           {
             href: "/admin/marca",
             label: "Marca",
@@ -312,7 +280,7 @@ export const ADMIN_NAVIGATION = [
           },
           {
             href: "/admin/carta",
-            label: "Carta",
+            label: "Carta pública",
             icon: "CT",
             permission: "brand.manage",
             description: "Vista pública de la carta",
@@ -320,28 +288,8 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
-        id: "posicionamiento",
-        label: "Posicionamiento",
-        items: [
-          {
-            href: "/admin/seo",
-            label: "SEO",
-            icon: "SE",
-            permission: "business.manage",
-            description: "Títulos y descripciones por página",
-          },
-          {
-            href: "/admin/redirecciones",
-            label: "Redirecciones",
-            icon: "RD",
-            permission: "business.manage",
-            description: "Enlaces antiguos a rutas vigentes",
-          },
-        ],
-      },
-      {
-        id: "extension",
-        label: "Extensión",
+        id: "presencia",
+        label: "Presencia",
         items: [
           {
             href: "/admin/integraciones",
@@ -351,18 +299,18 @@ export const ADMIN_NAVIGATION = [
             description: "Servicios y conexiones externas",
           },
           {
-            href: "/admin/legales",
-            label: "Páginas legales",
-            icon: "LG",
-            permission: "content.manage",
-            description: "Políticas y condiciones",
+            href: "/admin/configuracion/comprobantes/plantillas",
+            label: "Plantillas de documentos",
+            icon: "PL",
+            permission: "order.manage",
+            description: "Diseño de comprobantes",
           },
           {
-            href: "/admin/casos",
-            label: "Casos de éxito",
-            icon: "CX",
-            permission: "content.manage",
-            description: "Historias de clientes",
+            href: "/admin/testimonios",
+            label: "Testimonios",
+            icon: "TE",
+            permission: "testimonial.moderate",
+            description: "Moderación de opiniones",
           },
         ],
       },
@@ -402,28 +350,8 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
-        id: "equipo",
-        label: "Equipo",
-        items: [
-          {
-            href: "/admin/usuarios",
-            label: "Usuarios",
-            icon: "US",
-            permission: "user.manage",
-            description: "Miembros, roles y permisos",
-          },
-          {
-            href: "/admin/notificaciones",
-            label: "Notificaciones",
-            icon: "NO",
-            permission: "notification.manage",
-            description: "Configuración de avisos",
-          },
-        ],
-      },
-      {
         id: "datos",
-        label: "Datos y archivos",
+        label: "Datos",
         items: [
           {
             href: "/admin/archivos",
@@ -448,6 +376,19 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+      {
+        id: "equipo",
+        label: "Equipo",
+        items: [
+          {
+            href: "/admin/notificaciones",
+            label: "Notificaciones",
+            icon: "NO",
+            permission: "notification.manage",
+            description: "Configuración de avisos",
+          },
+        ],
+      },
     ],
   },
   {
@@ -460,13 +401,6 @@ export const ADMIN_NAVIGATION = [
         id: "asistencia",
         label: "Asistencia",
         items: [
-          {
-            href: "/admin/ayuda",
-            label: "Centro de ayuda",
-            icon: "AY",
-            permission: "content.manage",
-            description: "Guías y preguntas frecuentes",
-          },
           {
             href: "/admin/soporte",
             label: "Soporte",
@@ -493,12 +427,10 @@ export const ADMIN_NAVIGATION = [
   },
 ] as const satisfies readonly AdminNavGroup[];
 
-/** @summary Devuelve todas las entradas de navegación en un único arreglo plano. */
 export function adminNavLinks(): AdminNavItem[] {
   return ADMIN_NAVIGATION.flatMap((group) => group.sections.flatMap((section) => [...section.items]));
 }
 
-/** @summary Filtra los grupos por los permisos reales de la membresía activa. */
 export function adminGroupsForPermissions(permissions: readonly string[]): AdminNavGroup[] {
   return ADMIN_NAVIGATION.flatMap((group) => {
     const sections = group.sections
@@ -511,7 +443,6 @@ export function adminGroupsForPermissions(permissions: readonly string[]): Admin
   });
 }
 
-/** @summary Localiza el grupo que contiene una ruta (para abrir el panel correcto). */
 export function adminGroupIdForHref(href: string): string {
   const group = ADMIN_NAVIGATION.find((candidate) =>
     candidate.sections.some((section) => section.items.some((item) => item.href === href)),
@@ -519,14 +450,6 @@ export function adminGroupIdForHref(href: string): string {
   return group?.id ?? ADMIN_NAVIGATION[0]?.id ?? "inicio";
 }
 
-/**
- * @summary Puntaje de coincidencia entre una ruta lógica visible y un enlace.
- *
- * Comparación por segmentos: el enlace debe ser prefijo exacto de segmentos de
- * la ruta (evita que `/admin/productos` ilumine `/admin/productos-nuevos`).
- * `/admin` solo coincide con coincidencia exacta. Mayor profundidad = mayor
- * puntaje, de modo que de todos los candidatos gana uno solo.
- */
 export function adminLinkMatchScore(pathname: string, href: string): number {
   const pathSegments = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
   const hrefSegments = href.replace(/\/+$/, "").split("/").filter(Boolean);
@@ -540,12 +463,6 @@ export function adminLinkMatchScore(pathname: string, href: string): number {
   return hrefSegments.length;
 }
 
-/**
- * @summary Devuelve la ÚNICA entrada activa para la ruta visible, o null.
- *
- * Si dos enlaces compiten (uno prefijo del otro), gana el de mayor profundidad
- * y, en empate, el de href más largo. Garantiza una sola opción activa.
- */
 export function findActiveAdminLink(
   groups: readonly Pick<AdminNavGroup, "sections">[],
   pathname: string,

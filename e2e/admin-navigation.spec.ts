@@ -1,7 +1,7 @@
 /**
- * Verifica visualmente que el módulo de Inventario esté integrado al menú
- * principal: Carta → Costos → Inventario, que el enlace use las rutas
- * tenant/branch-scoped de los helpers y que el módulo abra correctamente.
+ * Verifica visualmente que los módulos principales estén integrados al menú
+ * principal, que los enlaces usen las rutas tenant/branch-scoped de los helpers
+ * y que cada módulo abra correctamente.
  * Crea un usuario administrativo temporal y lo elimina al terminar.
  */
 import { config as loadEnv } from "dotenv";
@@ -109,23 +109,21 @@ test.beforeEach(async ({ page }) => {
 // El mega-menú de escritorio no aplica al proyecto mobile (drawer).
 test.skip(({ isMobile }) => isMobile, "El mega-menú es de escritorio");
 
-test("Carta → Costos → Inventario aparece en el menú y abre el módulo", async ({ page }) => {
+test("Inventario aparece en el menú y abre el módulo", async ({ page }) => {
   await page.goto(`/t/${tenantSlug}/admin`);
-  await expect(page.getByRole("button", { name: "Carta" })).toBeVisible();
-  await page.getByRole("button", { name: "Carta" }).click();
+  await expect(page.getByRole("button", { name: "Inventario" })).toBeVisible();
+  await page.getByRole("button", { name: "Inventario" }).click();
 
   const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
   await expect(inventarioLink).toBeVisible();
-  await expect(page.getByText("Costos", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Operación", { exact: true }).first()).toBeVisible();
 
-  // El enlace usa las rutas tenant-scoped de los helpers (nada hardcodeado).
   const href = await inventarioLink.getAttribute("href");
   expect(href).toMatch(/\/admin\/inventario$/);
 
   await inventarioLink.click();
   await expect(page).toHaveURL(/\/admin\/inventario$/);
   await expect(page.getByRole("heading", { name: "Inventario" })).toBeVisible();
-  // El módulo completo está cargado: pestañas operativas.
   await expect(page.getByRole("button", { name: "Stock por sucursal" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Movimientos" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Conteos físicos" })).toBeVisible();
@@ -135,10 +133,41 @@ test("Carta → Costos → Inventario aparece en el menú y abre el módulo", as
 test("con sucursal seleccionada el enlace de Inventario conserva la sucursal", async ({ page }) => {
   expect(branchSlugs.length).toBeGreaterThan(0);
   await page.goto(`/t/${tenantSlug}/admin/s/${branchSlugs[0]}`);
-  await page.getByRole("button", { name: "Carta" }).click();
+  await page.getByRole("button", { name: "Inventario" }).click();
 
   const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
   await expect(inventarioLink).toBeVisible();
   const href = await inventarioLink.getAttribute("href");
   expect(href).toMatch(new RegExp(`/admin/s/${branchSlugs[0]}/inventario$`));
+});
+
+test("Compras aparece en el menú y abre el módulo", async ({ page }) => {
+  await page.goto(`/t/${tenantSlug}/admin`);
+  await expect(page.getByRole("button", { name: "Compras" })).toBeVisible();
+  await page.getByRole("button", { name: "Compras" }).click();
+
+  const comprasLink = page.locator('a').filter({ hasText: 'Compras' }).first();
+  await expect(comprasLink).toBeVisible();
+  const href = await comprasLink.getAttribute("href");
+  expect(href).toMatch(/\/admin\/compras$/);
+
+  await comprasLink.click();
+  await expect(page).toHaveURL(/\/admin\/compras$/);
+  await expect(page.getByRole("heading", { name: "Compras" })).toBeVisible();
+});
+
+test("Ventas agrupa pedidos, clientes, reservas y facturacion", async ({ page }) => {
+  await page.goto(`/t/${tenantSlug}/admin`);
+  await expect(page.getByRole("button", { name: "Ventas" })).toBeVisible();
+  await page.getByRole("button", { name: "Ventas" }).click();
+
+  await expect(page.getByText("Atención", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Clientes", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Reservas", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Facturación", { exact: true }).first()).toBeVisible();
+
+  const pedidosLink = page.locator('a').filter({ hasText: 'Pedidos' }).first();
+  await expect(pedidosLink).toBeVisible();
+  await pedidosLink.click();
+  await expect(page).toHaveURL(/\/admin\/pedidos$/);
 });
