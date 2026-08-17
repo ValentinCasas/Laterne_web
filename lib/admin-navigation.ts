@@ -459,6 +459,19 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
+        id: "consolidado-reportes",
+        label: "Consolidado",
+        items: [
+          {
+            href: "/admin/reportes/consolidado",
+            label: "Consolidado",
+            icon: "CO",
+            permission: "analytics.read",
+            description: "Vista integral multi-sucursal del tenant",
+          },
+        ],
+      },
+      {
         id: "ingenieria-menu-reportes",
         label: "Ingeniería de menú",
         items: [

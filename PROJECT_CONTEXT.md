@@ -64,7 +64,7 @@ Docker NO obligatorio para desarrollo.
 | Fidelización | FUNCIONAL |
 | Administración (Marca, Landing, Integraciones, Notificaciones, Datos) | FUNCIONAL |
 | Estadísticas/Analítica | PARCIAL |
-| Reportes (Resumen, Ventas, Productos, Compras, Sucursales, Ingeniería de menú) | FUNCIONAL |
+| Reportes (Resumen, Ventas, Productos, Compras, Sucursales, Consolidado, Ingeniería de menú) | FUNCIONAL |
 
 ## Modelos importantes
 - **Tenant / Branch / TenantMembership / AuthSession**: multi-tenancy, sucursales, acceso.
@@ -109,6 +109,7 @@ Docker NO obligatorio para desarrollo.
 - Finanzas: movimientos inmutables; corrección por reversión.
 - Reportes: `ReportsShell` es Client Component y maneja filtros URL-driven internamente; las páginas Server Components solo pasan defaults serializables y datos iniciales. No se pasan callbacks desde Server a Client.
 - Navegación admin: `adminLinkMatchScore` compara segmentos desde el final para soportar URLs canónicas con GUID/slug.
+- Multi-sucursal: `ConsolidadoShell` y `MultiBranchSelector` en `components/admin/multi-branch/`. La página `/admin/reportes/consolidado` carga KPIs, comparativa, stock crítico, promociones, usuarios/acceso y licencias. Reutiliza `computeBranchComparison`, `computeVentasKpis`, `computeEvolution`, `computeByChannel`, `computeBySource` desde `lib/reports/`. No duplica lógica de analytics.
 
 ## Pendientes
 - Migración de analítica hacia dashboards de gestión comercial.
