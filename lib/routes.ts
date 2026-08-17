@@ -45,6 +45,7 @@ export const BRANCH_ADMIN_SECTIONS = new Set([
   "inventario",
   "compras",
   "gastos",
+  "finanzas",
   "mesas",
   "clientes-frecuentes",
   "estadisticas",

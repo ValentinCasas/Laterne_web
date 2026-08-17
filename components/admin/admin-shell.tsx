@@ -451,7 +451,6 @@ export function AdminShell({
   const panelItemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const mobileTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null);
-  const closeTimer = useRef<number | null>(null);
   const mobileMenuOpenRef = useRef(false);
 
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
@@ -488,31 +487,11 @@ export function AdminShell({
     if (current && triggerRefs.current[current]) triggerRefs.current[current]?.focus();
   }, []);
 
-  /** @summary Programa el cierre del mega menú al salir del área del panel. */
-  const scheduleCloseGroup = useCallback(() => {
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setOpenGroup(null), 140);
-  }, []);
-
-  /** @summary Cancela el cierre diferido del mega menú (el puntero volvió al área). */
-  const cancelCloseGroup = useCallback(() => {
-    if (closeTimer.current !== null) {
-      window.clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  }, []);
-
   function setOpenGroupBoth(value: string | null) {
     if (openGroupRef.current !== value) setPanelFocusIndex(-1);
     openGroupRef.current = value;
     setOpenGroup(value);
   }
-
-  useEffect(() => {
-    return () => {
-      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (!mobileMenuOpen && !commandOpen) return;
@@ -802,20 +781,12 @@ export function AdminShell({
           <nav
             className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1"
             aria-label="Secciones administrativas"
-            onMouseLeave={scheduleCloseGroup}
           >
             {accessibleGroups.map((group) => {
               const groupActive = activeGroupId === group.id;
               const expanded = openGroup === group.id;
               return (
-                <div
-                  key={group.id}
-                  className="shrink-0"
-                  onMouseEnter={() => {
-                    cancelCloseGroup();
-                    setOpenGroupBoth(group.id);
-                  }}
-                >
+                <div key={group.id} className="shrink-0">
                   <button
                     ref={(element) => {
                       triggerRefs.current[group.id] = element;
@@ -833,7 +804,6 @@ export function AdminShell({
                       if (expanded) {
                         closeMegaMenu();
                       } else {
-                        cancelCloseGroup();
                         setOpenGroupBoth(group.id);
                       }
                     }}
@@ -930,14 +900,12 @@ export function AdminShell({
       </header>
 
       {activeGroup && (
-        <div
-          ref={megaPanelRef}
-          className="fixed inset-x-0 top-16 z-40 flex justify-center print:hidden"
-          role="region"
-          aria-label={`Secciones de ${activeGroup.label}`}
-          onMouseEnter={cancelCloseGroup}
-          onMouseLeave={scheduleCloseGroup}
-          onKeyDown={(event) =>
+          <div
+            ref={megaPanelRef}
+            className="fixed inset-x-0 top-16 z-40 flex justify-center print:hidden"
+            role="region"
+            aria-label={`Secciones de ${activeGroup.label}`}
+            onKeyDown={(event) =>
             handlePanelKeyDown(
               event,
               activeGroup.sections.flatMap((section) => [...section.items]),

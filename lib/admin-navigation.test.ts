@@ -49,6 +49,13 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/repartidores",
       "/admin/cobros",
       "/admin/clientes",
+      "/admin/finanzas",
+      "/admin/finanzas/cuentas",
+      "/admin/finanzas/movimientos",
+      "/admin/finanzas/flujo-caja",
+      "/admin/finanzas/cuentas-cobrar",
+      "/admin/finanzas/cuentas-pagar",
+      "/admin/finanzas/estado-resultados",
     ]);
     for (const link of adminNavLinks()) {
       expect(known.has(link.href), `ruta inexistente: ${link.href}`).toBe(true);
@@ -86,6 +93,13 @@ describe("definición centralizada de navegación administrativa", () => {
     expect(adminGroupIdForHref("/admin/inventario")).toBe("productos");
     expect(adminGroupIdForHref("/admin/marca")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/estadisticas")).toBe("administracion");
+    expect(adminGroupIdForHref("/admin/finanzas")).toBe("finanzas");
+    expect(adminGroupIdForHref("/admin/finanzas/cuentas")).toBe("finanzas");
+    expect(adminGroupIdForHref("/admin/finanzas/movimientos")).toBe("finanzas");
+    expect(adminGroupIdForHref("/admin/finanzas/flujo-caja")).toBe("finanzas");
+    expect(adminGroupIdForHref("/admin/finanzas/cuentas-cobrar")).toBe("finanzas");
+    expect(adminGroupIdForHref("/admin/finanzas/cuentas-pagar")).toBe("finanzas");
+    expect(adminGroupIdForHref("/admin/finanzas/estado-resultados")).toBe("finanzas");
   });
 });
 

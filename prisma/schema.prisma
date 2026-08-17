@@ -303,6 +303,12 @@ model User {
   driverProfiles           DriverProfile[]
   driverIncidentsReported  DriverIncident[]
   deliveryStatusLogs       OrderDeliveryStatusLog[] @relation("DeliveryStatusLogChangedBy")
+  financialMovements       FinancialMovement[]      @relation("FinancialMovementCreatedBy")
+  financialTransfers       FinancialTransfer[]      @relation("FinancialTransferCreatedBy")
+  receivableDocuments      ReceivableDocument[]     @relation("ReceivableDocumentCreatedBy")
+  receivablePayments       ReceivablePayment[]      @relation("ReceivablePaymentCreatedBy")
+  receivablePaymentsReversed ReceivablePayment[]    @relation("ReceivablePaymentReversedBy")
+  receivableAllocationsReversed ReceivableAllocation[] @relation("ReceivableAllocationReversedBy")
 
   @@unique([email])
   @@map("user")
@@ -407,6 +413,12 @@ model Tenant {
   customerPayments        CustomerPayment[]
   externalOrders          ExternalOrder[]
   externalEvents          ExternalEvent[]
+  financialAccounts       FinancialAccount[]
+  financialMovements      FinancialMovement[]
+  financialTransfers      FinancialTransfer[]
+  receivableDocuments     ReceivableDocument[]
+  receivablePayments      ReceivablePayment[]
+  receivableAllocations   ReceivableAllocation[]
   driverPositions         DriverPosition[]
   deliveryProviderConfigs DeliveryProviderConfig[]
   driverProfiles          DriverProfile[]
@@ -1423,6 +1435,7 @@ model CustomerOrder {
   deliveries      OrderDelivery[]
   payments        CustomerPayment[]
   externalOrders  ExternalOrder[]
+  receivableDocuments ReceivableDocument[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
@@ -1464,6 +1477,7 @@ model OrderItem {
   extrasTotal       Decimal             @default(0) @db.Decimal(12, 2)
   notes             String?             @db.VarChar(500)
   lineTotal         Decimal             @db.Decimal(12, 2)
+  costSnapshot      Decimal?            @db.Decimal(14, 4)
   deliveredQuantity Int                 @default(0)
   pendingQuantity   Int?
   order             CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -1858,6 +1872,8 @@ model LoyaltyCustomer {
   branchLinks     LoyaltyBranchLink[]
   payments        CustomerPayment[]
   deliveries      OrderDelivery[]
+  receivableDocuments ReceivableDocument[]
+  receivablePayments  ReceivablePayment[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -1990,6 +2006,10 @@ model Branch {
   countSessions      InventoryCountSession[]
   driverPositions    DriverPosition[]
   driverBranches     DriverBranch[]
+  financialAccounts  FinancialAccount[]
+  financialMovements FinancialMovement[]
+  receivableDocuments ReceivableDocument[]
+  receivablePayments ReceivablePayment[]
 
   @@map("branch")
 }
@@ -3069,4 +3089,190 @@ model OrderDeliveryStatusLog {
   @@index([tenantId, deliveryId, changedAt])
   @@index([tenantId, driverProfileId, status, changedAt])
   @@map("orderdeliverystatuslog")
+}
+
+/**
+ * @summary Cuenta financiera del negocio (caja, banco, billetera o similar).
+ * branchId nulo significa cuenta compartida de todo el negocio. El saldo se deriva
+ * de los movimientos (balance de apertura + ingresos - egresos), nunca se almacena.
+ */
+model FinancialAccount {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int
+  branchId      Int?
+  name          String   @db.VarChar(160)
+  code          String?  @db.VarChar(40)
+  type          String   @default("caja") @db.VarChar(30)
+  currency      String   @default("ARS") @db.VarChar(3)
+  status        String   @default("active") @db.VarChar(20)
+  openingBalance Decimal @default(0) @db.Decimal(14, 2)
+  openingDate   DateTime @default(now())
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  movements     FinancialMovement[]
+  transfersFrom FinancialTransfer[] @relation("FinancialTransferFrom")
+  transfersTo   FinancialTransfer[] @relation("FinancialTransferTo")
+  receivablePayments ReceivablePayment[]
+
+  @@index([tenantId, branchId, status])
+  @@map("financialaccount")
+}
+
+/**
+ * @summary Movimiento individual del ledger financiero. Cada ingreso o egreso de una
+ * cuenta genera un registro inmutable; la corrección se hace por reversión (nunca borrado).
+ * transferId vincula los dos movimientos de una transferencia; reversesId apunta al
+ * movimiento anulado. origin indica el flujo del sistema que lo generó.
+ */
+model FinancialMovement {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int
+  branchId      Int?
+  accountId     Int
+  date          DateTime @default(now())
+  type          String   @db.VarChar(30)
+  direction     String   @db.VarChar(4)
+  amount        Decimal  @db.Decimal(14, 2)
+  concept       String   @db.VarChar(220)
+  reference     String?  @db.VarChar(80)
+  origin        String   @default("manual") @db.VarChar(40)
+  referenceType String?  @db.VarChar(40)
+  referenceId   Int?
+  transferId    Int?
+  reversesId    Int?
+  createdById   Int?
+  createdAt     DateTime @default(now())
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  account       FinancialAccount    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  transfer      FinancialTransfer?  @relation(fields: [transferId], references: [id], onDelete: SetNull)
+  reverses      FinancialMovement?  @relation("FinancialMovementReversal", fields: [reversesId], references: [id], onDelete: SetNull)
+  reversedBy    FinancialMovement[] @relation("FinancialMovementReversal")
+  createdBy     User?               @relation("FinancialMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, accountId, date])
+  @@index([tenantId, date])
+  @@index([tenantId, type, date])
+  @@index([tenantId, referenceType, referenceId])
+  @@index([transferId])
+  @@index([reversesId])
+  @@map("financialmovement")
+}
+
+/**
+ * @summary Transferencia entre cuentas del negocio. Se materializa como dos movimientos
+ * (salida de origen y entrada de destino) dentro de la misma transacción de base de datos.
+ */
+model FinancialTransfer {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int
+  reference     String   @unique @db.VarChar(24)
+  fromAccountId Int
+  toAccountId   Int
+  amount        Decimal  @db.Decimal(14, 2)
+  transferDate  DateTime @default(now())
+  notes         String?  @db.VarChar(300)
+  createdById   Int?
+  createdAt     DateTime @default(now())
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromAccount   FinancialAccount    @relation("FinancialTransferFrom", fields: [fromAccountId], references: [id], onDelete: Restrict)
+  toAccount     FinancialAccount    @relation("FinancialTransferTo", fields: [toAccountId], references: [id], onDelete: Restrict)
+  createdBy     User?               @relation("FinancialTransferCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  movements     FinancialMovement[]
+
+  @@index([tenantId, fromAccountId, transferDate])
+  @@index([tenantId, toAccountId, transferDate])
+  @@map("financialtransfer")
+}
+
+/**
+ * @summary Documento que genera una cuenta a cobrar a un cliente (por ejemplo una orden).
+ * Los pagos se aplican contra el documento vía ReceivableAllocation; status refleja el avance.
+ */
+model ReceivableDocument {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int
+  branchId       Int?
+  customerId     Int
+  orderId        Int?
+  number         String   @db.VarChar(24)
+  documentDate   DateTime @default(now())
+  dueDate        DateTime
+  originalAmount Decimal  @db.Decimal(14, 2)
+  paidAmount     Decimal  @default(0) @db.Decimal(14, 2)
+  status         String   @default("open") @db.VarChar(20)
+  notes          String?  @db.VarChar(300)
+  createdById    Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch?               @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customer       LoyaltyCustomer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order          CustomerOrder?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy      User?                 @relation("ReceivableDocumentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  allocations    ReceivableAllocation[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, customerId, status, dueDate])
+  @@map("receivabledocument")
+}
+
+/**
+ * @summary Pago recibido de un cliente en el módulo Finanzas (cuenta a cobrar).
+ * Se asigna a uno o más documentos; la anulación se hace por reversión.
+ */
+model ReceivablePayment {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  branchId     Int?
+  customerId   Int
+  number       String   @db.VarChar(24)
+  amount       Decimal  @db.Decimal(14, 2)
+  method       String   @default("efectivo") @db.VarChar(40)
+  accountId    Int?
+  paidAt       DateTime @default(now())
+  notes        String?  @db.VarChar(240)
+  status       String   @default("confirmed") @db.VarChar(20)
+  createdById  Int?
+  createdAt    DateTime @default(now())
+  reversedAt   DateTime?
+  reversedById Int?
+  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch?               @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customer     LoyaltyCustomer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  account      FinancialAccount?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  createdBy    User?                 @relation("ReceivablePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reversedBy   User?                 @relation("ReceivablePaymentReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+  allocations  ReceivableAllocation[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, customerId, paidAt])
+  @@map("receivablepayment")
+}
+
+/**
+ * @summary Asignación de un pago a un documento de cuenta a cobrar. Permite pagos
+ * parciales, sobre-aplicación (saldo a favor) y distribución entre varios documentos.
+ */
+model ReceivableAllocation {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  paymentId    Int
+  documentId   Int
+  amount       Decimal  @db.Decimal(14, 2)
+  status       String   @default("active") @db.VarChar(20)
+  reversedAt   DateTime?
+  reversedById Int?
+  createdAt    DateTime @default(now())
+  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payment      ReceivablePayment     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  document     ReceivableDocument    @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  reversedBy   User?                 @relation("ReceivableAllocationReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+
+  @@index([documentId])
+  @@index([paymentId])
+  @@map("receivableallocation")
 }

@@ -289,6 +289,105 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
+    id: "finanzas",
+    label: "Finanzas",
+    icon: "FI",
+    description: "Cuentas, movimientos, cobranzas, pagos y resultados",
+    sections: [
+      {
+        id: "resumen-finanzas",
+        label: "Resumen",
+        items: [
+          {
+            href: "/admin/finanzas",
+            label: "Resumen",
+            icon: "FI",
+            permission: "finance.view",
+            description: "Panorama financiero del negocio",
+          },
+        ],
+      },
+      {
+        id: "cuentas-finanzas",
+        label: "Cuentas",
+        items: [
+          {
+            href: "/admin/finanzas/cuentas",
+            label: "Cuentas",
+            icon: "CU",
+            permission: "finance.view",
+            description: "Cuentas corrientes y bancarias",
+          },
+        ],
+      },
+      {
+        id: "movimientos-finanzas",
+        label: "Movimientos",
+        items: [
+          {
+            href: "/admin/finanzas/movimientos",
+            label: "Movimientos",
+            icon: "MO",
+            permission: "finance.view",
+            description: "Registro de movimientos financieros",
+          },
+        ],
+      },
+      {
+        id: "flujo-finanzas",
+        label: "Flujo de caja",
+        items: [
+          {
+            href: "/admin/finanzas/flujo-caja",
+            label: "Flujo de caja",
+            icon: "FC",
+            permission: "finance.view",
+            description: "Entradas y salidas de efectivo",
+          },
+        ],
+      },
+      {
+        id: "cuentas-cobrar-finanzas",
+        label: "Cuentas a cobrar",
+        items: [
+          {
+            href: "/admin/finanzas/cuentas-cobrar",
+            label: "Cuentas a cobrar",
+            icon: "CC",
+            permission: "finance.view",
+            description: "Saldos pendientes de clientes",
+          },
+        ],
+      },
+      {
+        id: "cuentas-pagar-finanzas",
+        label: "Cuentas a pagar",
+        items: [
+          {
+            href: "/admin/finanzas/cuentas-pagar",
+            label: "Cuentas a pagar",
+            icon: "CP",
+            permission: "finance.view",
+            description: "Obligaciones pendientes con proveedores",
+          },
+        ],
+      },
+      {
+        id: "resultados-finanzas",
+        label: "Resultados",
+        items: [
+          {
+            href: "/admin/finanzas/estado-resultados",
+            label: "Estado de resultados",
+            icon: "ER",
+            permission: "finance.view",
+            description: "Ganancias, gastos y rentabilidad",
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "administracion",
     label: "Administración",
     icon: "AD",
