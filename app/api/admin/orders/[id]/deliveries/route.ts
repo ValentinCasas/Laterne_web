@@ -4,6 +4,8 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize, canAccessBranch } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
+import { driverCoversBranch } from "@/lib/delivery-drivers";
+import { ACTIVE_DELIVERY_STATUSES } from "@/lib/delivery-orders";
 
 const deliveryItemInput = z.object({
   orderItemId: z.number().int().positive(),
@@ -47,6 +49,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "No tenés acceso a la sucursal de este pedido" }, { status: 403 });
   }
 
+  // Una entrega vigente impide crear una segunda para el mismo pedido: los
+  // pedidos DELIVERY ya tienen su entrega SIN ASIGNAR creada automáticamente.
+  const activeDelivery = await prisma.orderDelivery.findFirst({
+    where: { orderId: id, tenantId: auth.tenant.id, status: { in: [...ACTIVE_DELIVERY_STATUSES] } },
+    select: { id: true, number: true, status: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (activeDelivery) {
+    return NextResponse.json(
+      { error: `El pedido ya tiene una entrega en curso (${activeDelivery.number})` },
+      { status: 409 },
+    );
+  }
+
   const itemMap = new Map(order.items.map((item) => [item.id, item]));
   for (const item of parsed.data.items) {
     const source = itemMap.get(item.orderItemId);
@@ -69,7 +85,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       select: { id: true, userId: true, branches: { select: { branchId: true } } },
     });
     if (!profile) return NextResponse.json({ error: "Repartidor no encontrado o inactivo" }, { status: 404 });
-    if (order.branchId && !profile.branches.some((item) => item.branchId === order.branchId)) {
+    if (!driverCoversBranch(profile.branches.map((item) => item.branchId), order.branchId)) {
       return NextResponse.json({ error: "El repartidor no tiene habilitada la sucursal del pedido" }, { status: 400 });
     }
     assignedProfileId = profile.id;

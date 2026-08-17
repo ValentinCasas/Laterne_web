@@ -16,6 +16,7 @@ import {
   ORDER_MINIMUM_LEAD_MINUTES,
   orderTimeText,
 } from "@/lib/order-scheduling";
+import { ensureDeliveryForOrder, requiresDelivery } from "@/lib/delivery-orders";
 
 /**
  * @summary Valida la entrada relacionada con los pedidos.
@@ -450,6 +451,7 @@ export async function POST(request: Request) {
           items: { create: calculatedItems },
           history: { create: { toStatus: "received", note: "Pedido creado desde la carta" } },
         },
+        include: { items: true },
       });
       if (tableSession) {
         const sessionStatuses = await transaction.customerOrder.findMany({
@@ -468,6 +470,23 @@ export async function POST(request: Request) {
       if (idempotencyKey) {
         await transaction.orderIdempotency.create({
           data: { tenantId: tenant.id, key: idempotencyKey, orderId: order.id, reference, token, total },
+        });
+      }
+      if (requiresDelivery(order.orderType)) {
+        await ensureDeliveryForOrder(transaction, {
+          id: order.id,
+          tenantId: order.tenantId,
+          branchId: order.branchId,
+          customerId: order.customerId,
+          customerName: order.customerName,
+          deliveryAddress: order.deliveryAddress,
+          items: order.items.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+          })),
         });
       }
       await consumeRecipeStock(transaction, {

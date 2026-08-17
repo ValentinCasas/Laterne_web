@@ -60,6 +60,28 @@ export function nextDriverStatus(from: string): string | null {
   return allowed.find((candidate) => candidate !== "INCIDENT") ?? null;
 }
 
+/**
+ * @summary Estados de pedido que habilitan el RETIRADO: el repartidor solo puede
+ * retirar cuando el pedido está LISTO (o ya en camino).
+ */
+export const RETIRE_READY_ORDER_STATUSES = new Set<string>(["ready", "on_the_way"]);
+
+/** @summary Indica si el pedido ya está LISTO y habilita al repartidor a retirar la entrega. */
+export function canRetireDelivery(orderStatus: string | null | undefined): boolean {
+  return !!orderStatus && RETIRE_READY_ORDER_STATUSES.has(orderStatus);
+}
+
+/**
+ * @summary Estado de pedido que debe reflejar el avance logístico de la entrega.
+ * EN CAMINO y ENTREGADO sincronizan el ciclo del pedido; el resto no lo altera
+ * (RETIRADO es logístico puro y no crea un estado nuevo de pedido).
+ */
+export function orderStatusForDelivery(deliveryStatus: string | null | undefined): string | null {
+  if (deliveryStatus === "ON_THE_WAY") return "on_the_way";
+  if (deliveryStatus === "DELIVERED") return "delivered";
+  return null;
+}
+
 /** @summary Devuelve los timestamps que deben actualizarse al pasar a cada estado. */
 export function deliveryStatusTimestamps(status: string): {
   assignedAt?: Date;
@@ -71,4 +93,15 @@ export function deliveryStatusTimestamps(status: string): {
   if (status === "PICKED_UP") return { pickedUpAt: now };
   if (status === "DELIVERED") return { deliveredAt: now };
   return {};
+}
+
+/**
+ * @summary Indica si un repartidor está habilitado para la sucursal de la entrega.
+ * Aislamiento estricto: un pedido sin sucursal es válido para cualquier repartidor
+ * del tenant, pero un pedido con sucursal solo puede ser atendido por repartidores
+ * que tengan esa sucursal habilitada.
+ */
+export function driverCoversBranch(enabledBranchIds: Array<number>, orderBranchId: number | null | undefined): boolean {
+  if (!orderBranchId) return true;
+  return enabledBranchIds.includes(orderBranchId);
 }

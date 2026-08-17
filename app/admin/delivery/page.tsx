@@ -2,6 +2,7 @@ import { DeliveryCenter } from "@/components/admin/delivery-center";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { deliveryDetailInclude } from "@/lib/delivery-detail";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,7 @@ export default async function AdminDeliveryPage() {
   const [deliveries, branches, drivers] = await Promise.all([
     prisma.orderDelivery.findMany({
       where: { tenantId: context.tenant.id, branchId: { in: accessibleBranchIds } },
-      include: {
-        order: { select: { id: true, reference: true, status: true, orderType: true, channel: true, source: true, total: true, customerName: true } },
-        branch: { select: { id: true, name: true } },
-        driver: { select: { id: true, name: true } },
-        driverProfile: { select: { id: true, name: true, phone: true } },
-        items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true } },
-      },
+      include: deliveryDetailInclude,
       orderBy: { createdAt: "desc" },
       take: 200,
     }),

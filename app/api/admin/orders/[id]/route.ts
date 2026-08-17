@@ -9,6 +9,7 @@ import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders"
 import { awardOrderLoyalty } from "@/lib/loyalty";
 import { deriveSessionStatus } from "@/lib/table-status";
 import { emitOrderStatusNotification } from "@/lib/order-notifications";
+import { ACTIVE_DELIVERY_STATUSES, assertOrderCancellable } from "@/lib/delivery-orders";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -62,7 +63,32 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         },
       });
       if (parsed.data.status === "cancelled") {
+        // No se cancela en silencio una entrega ya retirada/en camino: el
+        // repartidor está en la calle y la resolución exige intervención admin.
+        await assertOrderCancellable(transaction, id, auth.tenant.id);
         await restoreOrderStock(transaction, { id, reference: current.reference });
+        // El pedido cancela sus entregas en curso para no dejar logística huérfana.
+        const activeDeliveries = await transaction.orderDelivery.findMany({
+          where: { orderId: id, tenantId: auth.tenant.id, status: { in: [...ACTIVE_DELIVERY_STATUSES] } },
+          select: { id: true, status: true, driverProfileId: true },
+        });
+        for (const delivery of activeDeliveries) {
+          await transaction.orderDelivery.update({
+            where: { id: delivery.id },
+            data: { status: "CANCELLED" },
+          });
+          await transaction.orderDeliveryStatusLog.create({
+            data: {
+              tenantId: auth.tenant.id,
+              deliveryId: delivery.id,
+              driverProfileId: delivery.driverProfileId,
+              status: "CANCELLED",
+              previousStatus: delivery.status,
+              reason: `Pedido ${current.reference} cancelado`,
+              changedById: auth.session.userId,
+            },
+          });
+        }
       }
       if (parsed.data.status === "delivered") {
         await awardOrderLoyalty(transaction, {
@@ -110,6 +136,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       status: parsed.data.status,
     });
   } catch (reason) {
+    if (reason instanceof Error && reason.message === "DELIVERY_EN_ROUTE") {
+      return NextResponse.json(
+        { error: "El pedido está en camino con un repartidor: resolvé la entrega antes de cancelarlo." },
+        { status: 409 },
+      );
+    }
     if (reason instanceof Error && reason.message.includes("cambió de estado mientras tanto")) {
       return NextResponse.json({ error: reason.message }, { status: 409 });
     }

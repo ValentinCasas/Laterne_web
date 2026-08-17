@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
+import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 import { usePathname } from "next/navigation";
@@ -55,6 +56,12 @@ export type AdminOrder = {
     note: string | null;
     createdAt: string;
   }>;
+  delivery?: {
+    id: number;
+    number: string;
+    status: string;
+    driverProfile?: { name: string } | null;
+  } | null;
 };
 
 const statusStyle: Record<string, string> = {
@@ -398,6 +405,14 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                             {orderTypeLabel(order.orderType)}
                             {order.table ? ` · ${order.table.name}` : ""}
                           </span>
+                          {order.delivery && (
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${deliveryStatusMeta(order.delivery.status).badge}`}
+                            >
+                              Delivery: {deliveryStatusMeta(order.delivery.status).label}
+                              {order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}
+                            </span>
+                          )}
                           <span className="text-xs text-zinc-500">
                             {order.items.reduce((sum, item) => sum + item.quantity, 0)} productos
                           </span>
@@ -592,6 +607,16 @@ function OrderDetail({
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Dirección</dt>
                   <dd className="text-right font-bold">{order.deliveryAddress}</dd>
+                </div>
+              )}
+              {order.delivery && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Reparto</dt>
+                  <dd className="text-right font-bold">
+                    {deliveryStatusMeta(order.delivery.status).label}
+                    {order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}
+                    {order.delivery.number ? ` · ${order.delivery.number}` : ""}
+                  </dd>
                 </div>
               )}
               {order.requestedAt && (

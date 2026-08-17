@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorize } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
+import { deliveryDetailInclude } from "@/lib/delivery-detail";
 
 /**
  * @summary Lista entregas con filtros por estado, sucursal, repartidor, canal y búsqueda.
@@ -42,13 +43,7 @@ export async function GET(request: Request) {
   const [deliveries, total] = await Promise.all([
     prisma.orderDelivery.findMany({
       where,
-      include: {
-        order: { select: { id: true, reference: true, status: true, orderType: true, channel: true, source: true, total: true, customerName: true } },
-        branch: { select: { id: true, name: true } },
-        driver: { select: { id: true, name: true } },
-        driverProfile: { select: { id: true, name: true, phone: true } },
-        items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true } },
-      },
+      include: deliveryDetailInclude,
       orderBy: { createdAt: "desc" },
       take: limit,
       skip: offset,

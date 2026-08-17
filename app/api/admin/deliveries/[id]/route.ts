@@ -4,7 +4,10 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize, canAccessBranch } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
-import { deliveryStatusTimestamps } from "@/lib/delivery-drivers";
+import { deliveryStatusTimestamps, driverCoversBranch } from "@/lib/delivery-drivers";
+import { ensureDeliveryForOrder, ORDER_STATUSES_WITH_DELIVERY, requiresDelivery } from "@/lib/delivery-orders";
+import { deliveryDetailInclude } from "@/lib/delivery-detail";
+import { applyDeliveryStatusToOrder } from "@/lib/delivery-sync";
 
 const updateDeliveryInput = z.object({
   status: z.enum(["PENDING_ASSIGNMENT", "ASSIGNED", "PICKED_UP", "ON_THE_WAY", "DELIVERED", "FAILED", "CANCELLED", "INCIDENT"]).optional(),
@@ -40,7 +43,21 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const delivery = await prisma.orderDelivery.findFirst({
     where: { id, tenantId: auth.tenant.id },
-    include: { order: { select: { branchId: true, status: true } }, driverProfile: { select: { id: true, name: true } } },
+    include: {
+      order: {
+        select: {
+          id: true,
+          branchId: true,
+          status: true,
+          orderType: true,
+          customerId: true,
+          customerName: true,
+          deliveryAddress: true,
+          items: true,
+        },
+      },
+      driverProfile: { select: { id: true, name: true } },
+    },
   });
   if (!delivery) return NextResponse.json({ error: "Entrega no encontrada" }, { status: 404 });
   if (delivery.order.branchId && !canAccessBranch(auth, delivery.order.branchId)) {
@@ -60,11 +77,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       select: { id: true, name: true, userId: true, branches: { select: { branchId: true } } },
     });
     if (!profile) return NextResponse.json({ error: "Repartidor no encontrado o inactivo" }, { status: 404 });
-    if (delivery.order.branchId) {
-      const hasBranch = profile.branches.some((item) => item.branchId === delivery.order.branchId);
-      if (!hasBranch) {
-        return NextResponse.json({ error: "El repartidor no tiene habilitada la sucursal de la entrega" }, { status: 400 });
-      }
+    if (!driverCoversBranch(profile.branches.map((item) => item.branchId), delivery.order.branchId)) {
+      return NextResponse.json({ error: "El repartidor no tiene habilitada la sucursal de la entrega" }, { status: 400 });
     }
     resolvedProfileId = profile.id;
     resolvedUserId = profile.userId ?? null;
@@ -111,7 +125,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
       const reloaded = await tx.orderDelivery.findFirstOrThrow({
         where: { id, tenantId: auth.tenant.id },
-        include: { driverProfile: { select: { id: true, name: true } }, driver: { select: { id: true, name: true } } },
+        include: deliveryDetailInclude,
       });
 
       // Historial de estados con timestamp real (asignación/reasignación/estado).
@@ -131,6 +145,48 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             changedById: auth.session.userId,
           },
         });
+      }
+
+      // Cancelar/fallar una entrega de un pedido DELIVERY activo reabre el
+      // remito como SIN ASIGNAR para que el centro de delivery no quede huérfano.
+      if (status && ["CANCELLED", "FAILED"].includes(status)) {
+        const order = delivery.order;
+        if (requiresDelivery(order.orderType) && ORDER_STATUSES_WITH_DELIVERY.has(order.status)) {
+          await ensureDeliveryForOrder(
+            tx,
+            {
+              id: order.id,
+              tenantId: auth.tenant.id,
+              branchId: order.branchId,
+              customerId: order.customerId,
+              customerName: order.customerName,
+              deliveryAddress: order.deliveryAddress,
+              items: order.items.map((item) => ({
+                id: item.id,
+                productId: item.productId,
+                productName: item.productName,
+                unitPrice: item.unitPrice,
+                quantity: item.quantity,
+              })),
+            },
+            auth.session.userId,
+          );
+        }
+      }
+
+      // El ciclo logístico coordina el ciclo del pedido: EN CAMINO y ENTREGADO
+      // se reflejan en el estado del pedido dentro de la misma transacción.
+      if (["ON_THE_WAY", "DELIVERED"].includes(reloaded.status)) {
+        await applyDeliveryStatusToOrder(
+          tx,
+          {
+            orderId: reloaded.orderId,
+            tenantId: reloaded.tenantId,
+            status: reloaded.status,
+            items: reloaded.items,
+          },
+          { userId: auth.session.userId },
+        );
       }
 
       return reloaded;
@@ -168,7 +224,21 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
   const delivery = await prisma.orderDelivery.findFirst({
     where: { id, tenantId: auth.tenant.id },
-    include: { order: { select: { branchId: true, status: true } }, items: true },
+    include: {
+      order: {
+        select: {
+          id: true,
+          branchId: true,
+          status: true,
+          orderType: true,
+          customerId: true,
+          customerName: true,
+          deliveryAddress: true,
+          items: true,
+        },
+      },
+      items: true,
+    },
   });
   if (!delivery) return NextResponse.json({ error: "Entrega no encontrada" }, { status: 404 });
   if (["DELIVERED", "FAILED", "CANCELLED"].includes(delivery.status)) {
@@ -186,6 +256,31 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       });
     }
     await transaction.orderDelivery.delete({ where: { id } });
+
+    // Un pedido DELIVERY activo nunca queda sin remito: al eliminar la entrega
+    // se reabre una nueva SIN ASIGNAR de forma idempotente.
+    const order = delivery.order;
+    if (requiresDelivery(order.orderType) && ORDER_STATUSES_WITH_DELIVERY.has(order.status)) {
+      await ensureDeliveryForOrder(
+        transaction,
+        {
+          id: order.id,
+          tenantId: auth.tenant.id,
+          branchId: order.branchId,
+          customerId: order.customerId,
+          customerName: order.customerName,
+          deliveryAddress: order.deliveryAddress,
+          items: order.items.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+          })),
+        },
+        auth.session.userId,
+      );
+    }
   });
 
   await recordAudit({

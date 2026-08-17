@@ -4,7 +4,8 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
-import { deliveryStatusTimestamps } from "@/lib/delivery-drivers";
+import { deliveryStatusTimestamps, canRetireDelivery } from "@/lib/delivery-drivers";
+import { applyDeliveryStatusToOrder } from "@/lib/delivery-sync";
 
 const driverUpdateStatusInput = z.object({
   status: z.enum(["PICKED_UP", "ON_THE_WAY", "DELIVERED"]),
@@ -37,6 +38,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
+      // El repartidor solo puede RETIRAR cuando el pedido ya está LISTO: la
+      // cocina manda sobre la logística y el servidor lo garantiza.
+      const current = await tx.orderDelivery.findFirst({
+        where: { id: deliveryId, tenantId: auth.tenant.id, driverProfileId: driverProfile.id },
+        select: { status: true, order: { select: { status: true } } },
+      });
+      if (!current) throw new Error("NOT_MINE");
+      if (status === "PICKED_UP" && !canRetireDelivery(current.order?.status)) {
+        throw new Error("NOT_READY");
+      }
+
       // Compra optimista: solo avanza si la entrega sigue asignada a este repartidor
       // y en el estado previo correcto.
       const change = await tx.orderDelivery.updateMany({
@@ -53,11 +65,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         },
       });
       if (change.count !== 1) {
-        const current = await tx.orderDelivery.findFirst({
+        const currentDelivery = await tx.orderDelivery.findFirst({
           where: { id: deliveryId, tenantId: auth.tenant.id },
           select: { status: true, driverProfileId: true },
         });
-        if (!current || current.driverProfileId !== driverProfile.id) {
+        if (!currentDelivery || currentDelivery.driverProfileId !== driverProfile.id) {
           throw new Error("NOT_MINE");
         }
         throw new Error("INVALID_TRANSITION");
@@ -69,6 +81,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           branch: { select: { id: true, name: true } },
           order: { select: { id: true, reference: true, customerName: true } },
           driverProfile: { select: { id: true, name: true } },
+          items: { select: { orderItemId: true, quantityDelivered: true } },
         },
       });
 
@@ -84,6 +97,21 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         },
       });
 
+      // El ciclo logístico coordina el ciclo del pedido: EN CAMINO y ENTREGADO
+      // se reflejan en el estado del pedido dentro de la misma transacción.
+      if (reloaded.status === "ON_THE_WAY" || reloaded.status === "DELIVERED") {
+        await applyDeliveryStatusToOrder(
+          tx,
+          {
+            orderId: reloaded.orderId,
+            tenantId: reloaded.tenantId,
+            status: reloaded.status,
+            items: reloaded.items,
+          },
+          { userId: auth.session.userId },
+        );
+      }
+
       return reloaded;
     });
 
@@ -98,6 +126,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     return NextResponse.json({ delivery: serialize(updated) });
   } catch (error) {
+    if (error instanceof Error && error.message === "NOT_READY") {
+      return NextResponse.json({ error: "El pedido todavía no está listo para retirar." }, { status: 409 });
+    }
     if (error instanceof Error && (error.message === "INVALID_TRANSITION" || error.message === "NOT_MINE")) {
       return NextResponse.json(
         { error: error.message === "NOT_MINE" ? "La entrega no está asignada a vos" : "No podés saltar pasos: avanzá en orden" },

@@ -2,6 +2,7 @@ import { OrderBoard, type AdminOrder } from "@/components/admin/order-board";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { ACTIVE_DELIVERY_STATUSES } from "@/lib/delivery-orders";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -38,5 +39,24 @@ export default async function AdminOrdersPage() {
     ...order,
     trackingToken: idempotencies[0]?.token ?? null,
   }));
-  return <OrderBoard initialOrders={serialize(publicOrders) as unknown as AdminOrder[]} />;
+  const deliveries = await prisma.orderDelivery.findMany({
+    where: {
+      tenantId: context.tenant.id,
+      orderId: { in: orders.map((order) => order.id) },
+      status: { in: [...ACTIVE_DELIVERY_STATUSES] },
+    },
+    select: {
+      orderId: true,
+      id: true,
+      number: true,
+      status: true,
+      driverProfile: { select: { name: true } },
+    },
+  });
+  const deliveryByOrderId = new Map(deliveries.map((delivery) => [delivery.orderId, delivery]));
+  const ordersWithDelivery = publicOrders.map((order) => ({
+    ...order,
+    delivery: deliveryByOrderId.get(order.id) ?? null,
+  }));
+  return <OrderBoard initialOrders={serialize(ordersWithDelivery) as unknown as AdminOrder[]} />;
 }

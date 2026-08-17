@@ -1,45 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { scopedFetch } from "@/lib/client-routing";
+import { canRetireDelivery } from "@/lib/delivery-drivers";
+import { orderStatusLabel } from "@/lib/orders";
+import { normalizeDeliveryDetail, type DeliveryDetail } from "@/lib/delivery-detail";
 
-type Delivery = {
-  id: number;
-  number: string;
-  status: string;
-  provider: string;
-  externalOrderId?: string | null;
-  deliveryType: string;
-  deliveryDate: Date | string;
-  createdAt: Date | string;
-  customerName: string;
-  deliveryAddress?: string | null;
-  contactPhone?: string | null;
-  contactName?: string | null;
-  instructions?: string | null;
-  receiverName?: string | null;
-  latitude?: string | null;
-  longitude?: string | null;
-  assignedAt?: Date | string | null;
-  pickedUpAt?: Date | string | null;
-  deliveredAt?: Date | string | null;
-  driver?: { id: number; name: string } | null;
-  driverProfile?: { id: number; name: string; phone?: string | null } | null;
-  branch?: { id: number; name: string } | null;
-  order?: {
-    id: number;
-    reference: string;
-    status: string;
-    orderType: string;
-    channel: string;
-    source: string;
-    total: string | number | object;
-    customerName: string;
-  } | null;
-  items: Array<{ id: number; productName: string; quantityDelivered: number; unitPrice: string | number | object }>;
-};
+type Delivery = DeliveryDetail;
 
 type Branch = { id: number; name: string; slug: string };
 type Driver = { id: number; name: string; phone?: string; status?: string };
@@ -51,14 +20,23 @@ type DeliveryCenterProps = {
   mapProviders: Array<{ provider: string }>;
 };
 
-type DeliveryStatus = "PENDING_ASSIGNMENT" | "ASSIGNED" | "PICKED_UP" | "ON_THE_WAY" | "DELIVERED" | "FAILED" | "CANCELLED";
+type DeliveryStatus =
+  | "PENDING_ASSIGNMENT"
+  | "ASSIGNED"
+  | "PICKED_UP"
+  | "ON_THE_WAY"
+  | "DELIVERED"
+  | "INCIDENT"
+  | "FAILED"
+  | "CANCELLED";
 
 const STATUS_LABELS: Record<DeliveryStatus, string> = {
-  PENDING_ASSIGNMENT: "Pendiente asignación",
+  PENDING_ASSIGNMENT: "Sin asignar",
   ASSIGNED: "Asignado",
   PICKED_UP: "Retirado",
   ON_THE_WAY: "En camino",
   DELIVERED: "Entregado",
+  INCIDENT: "Incidencia",
   FAILED: "Fallido",
   CANCELLED: "Cancelado",
 };
@@ -69,8 +47,19 @@ const STATUS_COLORS: Record<string, string> = {
   PICKED_UP: "bg-indigo-500/15 text-indigo-300",
   ON_THE_WAY: "bg-violet-500/15 text-violet-300",
   DELIVERED: "bg-emerald-500/15 text-emerald-300",
+  INCIDENT: "bg-orange-500/15 text-orange-300",
   FAILED: "bg-red-500/15 text-red-300",
   CANCELLED: "bg-zinc-500/15 text-zinc-300",
+};
+
+const ORDER_STATUS_COLORS: Record<string, string> = {
+  received: "bg-sky-500/15 text-sky-300",
+  confirmed: "bg-indigo-500/15 text-indigo-300",
+  preparing: "bg-amber-500/15 text-amber-300",
+  ready: "bg-pink-500/15 text-pink-300",
+  on_the_way: "bg-violet-500/15 text-violet-300",
+  delivered: "bg-emerald-500/15 text-emerald-300",
+  cancelled: "bg-red-500/15 text-red-300",
 };
 
 function statusColor(status: string) {
@@ -79,6 +68,15 @@ function statusColor(status: string) {
 
 function statusLabel(status: string) {
   return STATUS_LABELS[status as DeliveryStatus] ?? status;
+}
+
+function orderStatusColor(status: string) {
+  return ORDER_STATUS_COLORS[status] ?? "bg-zinc-500/15 text-zinc-300";
+}
+
+/** @summary Centros de preparación que todavía no habilitan el retiro. */
+function awaitingKitchen(orderStatus: string | null | undefined) {
+  return ["received", "confirmed", "preparing"].includes(orderStatus ?? "");
 }
 
 /** @summary Centro de delivery con lista, mapa abstracto y detalle de entregas. */
@@ -92,6 +90,28 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
   const [saving, setSaving] = useState(false);
 
   const hasMap = mapProviders.length > 0;
+
+  // Polling ligero (sin WebSockets): refleja los avances del repartidor y de
+  // cocina en el centro de delivery usando el endpoint de lista existente.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void (async () => {
+        if (saving) return;
+        const response = await scopedFetch("/api/admin/delivery?limit=200").catch(() => null);
+        if (!response || !response.ok) return;
+        const body = (await response.json().catch(() => null)) as { items?: Delivery[] } | null;
+        if (!body?.items) return;
+        const fresh = body.items.map(normalizeDeliveryDetail);
+        setDeliveries(fresh);
+        setSelected((current) => {
+          if (!current) return current;
+          const match = fresh.find((item) => item.id === current.id);
+          return match ? { ...match, items: match.items ?? [] } : current;
+        });
+      })();
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [saving]);
 
   const visible = useMemo(() => {
     const q = filterQ.trim().toLocaleLowerCase("es");
@@ -115,12 +135,13 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
         body: JSON.stringify({ status: "ASSIGNED", driverProfileId }),
       });
       const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
-      if (!response.ok || !body.delivery) {
+      const delivery = body.delivery ? normalizeDeliveryDetail(body.delivery) : undefined;
+      if (!response.ok || !delivery) {
         await Swal.fire({ title: "No se pudo asignar", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
         return;
       }
-      setDeliveries((current) => current.map((d) => (d.id === deliveryId ? body.delivery! : d)));
-      setSelected((current) => (current?.id === deliveryId ? body.delivery! : current));
+      setDeliveries((current) => current.map((d) => (d.id === deliveryId ? delivery : d)));
+      setSelected((current) => (current?.id === deliveryId ? delivery : current));
       await Swal.fire({ title: "Repartidor asignado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
     } finally {
       setSaving(false);
@@ -136,12 +157,13 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
         body: JSON.stringify({ status }),
       });
       const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
-      if (!response.ok || !body.delivery) {
+      const delivery = body.delivery ? normalizeDeliveryDetail(body.delivery) : undefined;
+      if (!response.ok || !delivery) {
         await Swal.fire({ title: "No se pudo actualizar", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
         return;
       }
-      setDeliveries((current) => current.map((d) => (d.id === deliveryId ? body.delivery! : d)));
-      setSelected((current) => (current?.id === deliveryId ? body.delivery! : current));
+      setDeliveries((current) => current.map((d) => (d.id === deliveryId ? delivery : d)));
+      setSelected((current) => (current?.id === deliveryId ? delivery : current));
     } finally {
       setSaving(false);
     }
@@ -202,10 +224,10 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
           {selected ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-lg font-black">{selected.number}</h3>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusColor(selected.status)}`}>{statusLabel(selected.status)}</span>
-              </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-black">{selected.number}</h3>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusColor(selected.status)}`}>{statusLabel(selected.status)}</span>
+                </div>
                 <p className="mt-1 text-sm text-[var(--admin-muted)]">{selected.customerName} · {selected.order?.reference ?? "—"}</p>
                 <p className="text-sm text-[var(--admin-muted)]">{selected.deliveryAddress}</p>
                 <p className="text-sm text-[var(--admin-muted)]">{selected.contactPhone} · {selected.contactName}</p>
@@ -214,6 +236,45 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
                   <div><span className="text-[var(--admin-muted)]">Lat:</span> {selected.latitude ?? "—"}</div>
                   <div><span className="text-[var(--admin-muted)]">Lng:</span> {selected.longitude ?? "—"}</div>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Pedido</p>
+                <dl className="mt-2 space-y-1 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[var(--admin-muted)]">Estado</dt>
+                    <dd>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${orderStatusColor(selected.order?.status ?? "")}`}>
+                        {orderStatusLabel(selected.order?.status ?? "—")}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[var(--admin-muted)]">Modalidad</dt>
+                    <dd className="font-bold">{selected.order?.orderType ?? "—"}</dd>
+                  </div>
+                  {selected.order?.channel && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-[var(--admin-muted)]">Canal</dt>
+                      <dd className="font-bold">{selected.order.channel}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[var(--admin-muted)]">Total</dt>
+                    <dd className="font-bold">{selected.order ? String(selected.order.total) : "—"}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Preparación</p>
+                <p className={`mt-2 text-sm font-bold ${awaitingKitchen(selected.order?.status) ? "text-amber-300" : "text-emerald-300"}`}>
+                  {awaitingKitchen(selected.order?.status)
+                    ? "Esperando a cocina"
+                    : selected.order?.status === "ready"
+                      ? "Listo para retirar"
+                      : orderStatusLabel(selected.order?.status ?? "—")}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
@@ -232,18 +293,27 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
               <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
                 <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Estado</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      className={`btn btn-secondary text-xs ${selected.status === status ? "btn-primary" : ""}`}
-                      onClick={() => updateStatus(selected.id, status)}
-                      disabled={saving}
-                    >
-                      {STATUS_LABELS[status]}
-                    </button>
-                  ))}
+                  {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => {
+                    const blocked = status === "PICKED_UP" && !canRetireDelivery(selected.order?.status);
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        title={blocked ? "El pedido todavía no está listo para retirar" : undefined}
+                        className={`btn btn-secondary text-xs ${selected.status === status ? "btn-primary" : ""} ${blocked ? "opacity-40" : ""}`}
+                        onClick={() => updateStatus(selected.id, status)}
+                        disabled={saving || blocked}
+                      >
+                        {STATUS_LABELS[status]}
+                      </button>
+                    );
+                  })}
                 </div>
+                {awaitingKitchen(selected.order?.status) && (
+                  <p className="mt-2 text-xs text-amber-300">
+                    Esperando a cocina: el repartidor solo puede retirar cuando el pedido esté listo.
+                  </p>
+                )}
               </div>
 
               {hasMap && selected.latitude && selected.longitude && (
@@ -256,7 +326,7 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
               <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
                 <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Items</p>
                 <div className="mt-2 space-y-1">
-                  {selected.items.map((item) => (
+                  {(selected.items ?? []).map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span>{item.productName}</span>
                       <span className="tabular-nums text-[var(--admin-muted)]">x{item.quantityDelivered}</span>
