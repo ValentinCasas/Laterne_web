@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHelp } from "@/components/admin/admin-page-help";
 import { InvoiceDetailModal, NewInvoiceModal, NewOrderModal, OrderDetailModal, SupplierModal } from "@/components/admin/purchases-modals";
+import { SupplierDetailModal, type Supplier } from "@/components/admin/supplier-detail-modal";
 import { scopedFetch } from "@/lib/client-routing";
 import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/purchases";
 
@@ -16,7 +17,6 @@ import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/pu
  * varias recepciones y los pagos parciales avanzan el estado del documento.
  */
 
-type Supplier = { id: number; name: string; taxId?: string | null; phone?: string | null; email?: string | null; paymentTerms?: string | null; notes?: string | null; active?: boolean };
 type BranchOption = { id: number; name: string; slug: string; active: boolean };
 type ProductOption = { id: number; name: string; cost?: number | string | null; costUnit?: string | null; imageUrl?: string | null };
 type OrderRow = {
@@ -169,6 +169,7 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [openOrder, setOpenOrder] = useState<OrderDetail | null>(null);
   const [openInvoice, setOpenInvoice] = useState<InvoiceDetail | null>(null);
+  const [openSupplier, setOpenSupplier] = useState<Supplier | null>(null);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | "new" | null>(null);
@@ -355,7 +356,8 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
       {tab === "proveedores" && (
         <SuppliersTable
           suppliers={payload.suppliers}
-          onEdit={(supplier) => setEditingSupplier(supplier)}
+          currency={currency}
+          onEdit={(supplier) => setOpenSupplier(supplier)}
           onRefresh={refresh}
           setBusy={setBusy}
         />
@@ -415,9 +417,25 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
       {editingSupplier && (
         <SupplierModal
           supplier={editingSupplier === "new" ? null : editingSupplier}
+          branches={payload.branches}
           onClose={() => setEditingSupplier(null)}
-          onSaved={async () => {
+          onSaved={async (saved) => {
             setEditingSupplier(null);
+            await refresh();
+            const savedSupplier = saved as { id: number } | undefined;
+            if (savedSupplier && openSupplier?.id === savedSupplier.id) {
+              setOpenSupplier(savedSupplier as Supplier);
+            }
+          }}
+        />
+      )}
+      {openSupplier && (
+        <SupplierDetailModal
+          supplier={openSupplier}
+          branches={payload.branches}
+          onClose={() => setOpenSupplier(null)}
+          onUpdated={async (updated) => {
+            setOpenSupplier(updated);
             await refresh();
           }}
         />
@@ -778,20 +796,41 @@ function InvoicesTable({
 /** @summary Tabla de proveedores. */
 function SuppliersTable({
   suppliers,
+  currency,
   onEdit,
   onRefresh,
   setBusy,
 }: {
   suppliers: Supplier[];
+  currency: string;
   onEdit: (supplier: Supplier) => void;
   onRefresh: () => Promise<void>;
   setBusy: (value: boolean) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
+  const categories = useMemo(() => {
+    const map = new Map<string, number>();
+    suppliers.forEach((supplier) => { if (supplier.category) map.set(supplier.category, (map.get(supplier.category) ?? 0) + 1); });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [suppliers]);
+
+  const visible = useMemo(() => {
+    return suppliers.filter((supplier) => {
+      if (query && !supplier.name.toLowerCase().includes(query.toLowerCase()) && !(supplier.taxId ?? "").toLowerCase().includes(query.toLowerCase())) return false;
+      if (statusFilter && supplier.status !== statusFilter) return false;
+      if (categoryFilter && supplier.category !== categoryFilter) return false;
+      return true;
+    });
+  }, [suppliers, query, statusFilter, categoryFilter]);
+
   /** @summary Elimina un proveedor sin documentos. */
   async function remove(supplier: Supplier) {
     const result = await Swal.fire({
       title: "¿Eliminar proveedor?",
-      text: `Vas a eliminar “${supplier.name}”. No es posible si tiene pedidos o gastos.`,
+      text: `Vas a eliminar “${supplier.name}”. No es posible si tiene pedidos, recepciones, facturas, gastos o movimientos.`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Eliminar",
@@ -807,7 +846,27 @@ function SuppliersTable({
       await api(`/api/admin/compras/proveedores/${supplier.id}`, { method: "DELETE" });
       await onRefresh();
     } catch (reason) {
-      await showError("No se pudo eliminar el proveedor", reason);
+      const message = reason instanceof Error ? reason.message : "";
+      const retry = await Swal.fire({
+        title: "No se pudo eliminar",
+        text: message || "El proveedor tiene historial asociado. ¿Querés bloquearlo en su lugar?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Bloquear",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#ef4444",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      if (retry.isConfirmed) {
+        try {
+          await api(`/api/admin/compras/proveedores/${supplier.id}`, { method: "PUT", body: JSON.stringify({ status: "blocked", blockedReason: "Bloqueado por tener historial asociado" }) });
+          await Swal.fire({ title: "Proveedor bloqueado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+          await onRefresh();
+        } catch {
+          await showError("No se pudo bloquear el proveedor", reason);
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -824,52 +883,80 @@ function SuppliersTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-              <th className="px-4 py-3">Proveedor</th>
-              <th className="px-4 py-3">Contacto</th>
-              <th className="px-4 py-3">Condiciones</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--admin-border)]/70">
-            {suppliers.map((supplier) => (
-              <tr key={supplier.id} className="transition-colors hover:bg-white/[0.02]">
-                <td className="px-4 py-3">
-                  <p className="font-black">{supplier.name}</p>
-                  {supplier.taxId && <p className="text-xs text-[var(--admin-muted)]">{supplier.taxId}</p>}
-                </td>
-                <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">
-                  {supplier.phone || supplier.email || "—"}
-                </td>
-                <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">{supplier.paymentTerms || "—"}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${supplier.active === false ? "bg-zinc-500/15 text-zinc-400" : "bg-emerald-500/15 text-emerald-300"}`}>
-                    {supplier.active === false ? "Inactivo" : "Activo"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onEdit(supplier)}>
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
-                      onClick={() => void remove(supplier)}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="input w-auto" placeholder="Buscar por nombre o CUIT…" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <select className="input w-auto" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="blocked">Bloqueado</option>
+          <option value="suspended">Suspendido</option>
+        </select>
+        {categories.length > 0 && (
+          <select className="input w-auto" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="">Todas las categorías</option>
+            {categories.map(([name]) => (
+              <option key={name} value={name}>{name}</option>
             ))}
-          </tbody>
-        </table>
+          </select>
+        )}
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
+                <th className="px-4 py-3">Código</th>
+                <th className="px-4 py-3">Proveedor</th>
+                <th className="px-4 py-3">CUIT</th>
+                <th className="px-4 py-3">Contacto</th>
+                <th className="px-4 py-3">Condiciones</th>
+                <th className="px-4 py-3 text-right">Saldo</th>
+                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--admin-border)]/70">
+              {visible.map((supplier) => (
+                <tr key={supplier.id} className="transition-colors hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">{supplier.code ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={() => onEdit(supplier)}>
+                      {supplier.name}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">{supplier.taxId ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">
+                    {supplier.contactName ?? supplier.phone ?? supplier.email ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">{supplier.paymentTerms || "—"}</td>
+                  <td className="px-4 py-3 text-right text-sm font-bold tabular-nums">
+                    {money(supplier.currentBalance ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${supplier.status === "active" ? "bg-emerald-500/15 text-emerald-300" : supplier.status === "blocked" ? "bg-rose-500/15 text-rose-300" : "bg-amber-500/15 text-amber-300"}`}>
+                      {supplier.status === "active" ? "Activo" : supplier.status === "blocked" ? "Bloqueado" : "Suspendido"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onEdit(supplier)}>
+                        Ver / Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
+                        onClick={() => void remove(supplier)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

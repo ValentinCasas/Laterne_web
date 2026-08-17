@@ -13,7 +13,7 @@ import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/pu
  * vinculada a recepciones, pagos parciales/totales y proveedores.
  */
 
-type Supplier = { id: number; name: string; taxId?: string | null; phone?: string | null; email?: string | null; paymentTerms?: string | null; notes?: string | null; active?: boolean };
+type Supplier = { id: number; name: string; code?: string | null; taxId?: string | null; contactName?: string | null; phone?: string | null; email?: string | null; address?: string | null; paymentTerms?: string | null; currency?: string | null; category?: string | null; creditLimit?: number | null; status?: string; notes?: string | null; branches?: Array<{ branch: { id: number; name: string } }> };
 type BranchOption = { id: number; name: string; slug: string; active: boolean };
 type ProductOption = { id: number; name: string; cost?: number | string | null; costUnit?: string | null; imageUrl?: string | null };
 type ReceiptRow = {
@@ -1035,21 +1035,30 @@ export function InvoiceDetailModal({
 /** @summary Formulario de proveedor (alta y edición). */
 export function SupplierModal({
   supplier,
+  branches = [],
   onClose,
   onSaved,
 }: {
   supplier: Supplier | null;
+  branches: Array<{ id: number; name: string }>;
   onClose: () => void;
-  onSaved: () => Promise<void>;
+  onSaved: (saved?: unknown) => Promise<void>;
 }) {
   const [draft, setDraft] = useState({
     name: supplier?.name ?? "",
+    code: supplier?.code ?? "",
     taxId: supplier?.taxId ?? "",
+    contactName: supplier?.contactName ?? "",
     phone: supplier?.phone ?? "",
     email: supplier?.email ?? "",
+    address: supplier?.address ?? "",
     paymentTerms: supplier?.paymentTerms ?? "",
+    currency: supplier?.currency ?? "ARS",
+    category: supplier?.category ?? "",
+    creditLimit: supplier?.creditLimit ?? "",
+    status: supplier?.status ?? "active",
     notes: supplier?.notes ?? "",
-    active: supplier?.active ?? true,
+    branchIds: supplier?.branches?.map((b) => b.branch.id) ?? [],
   });
   const [saving, setSaving] = useState(false);
 
@@ -1061,13 +1070,17 @@ export function SupplierModal({
     }
     setSaving(true);
     try {
+      let saved: Supplier | undefined;
       if (supplier) {
-        await api(`/api/admin/compras/proveedores/${supplier.id}`, { method: "PUT", body: JSON.stringify(draft) });
+        const updated = await api<{ item: Supplier }>(`/api/admin/compras/proveedores/${supplier.id}`, { method: "PUT", body: JSON.stringify(draft) });
+        saved = updated.item;
+        await Swal.fire({ title: "Proveedor actualizado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       } else {
-        await api("/api/admin/compras/proveedores", { method: "POST", body: JSON.stringify(draft) });
+        const created = await api<{ item: Supplier }>("/api/admin/compras/proveedores", { method: "POST", body: JSON.stringify(draft) });
+        saved = created.item;
+        await Swal.fire({ title: "Proveedor creado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       }
-      await Swal.fire({ title: supplier ? "Proveedor actualizado" : "Proveedor creado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
-      await onSaved();
+      await onSaved(saved);
     } catch (reason) {
       await showError("No se pudo guardar el proveedor", reason);
     } finally {
@@ -1083,8 +1096,16 @@ export function SupplierModal({
           <input className="input mt-1" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Ej. Distribuidora Alimentos S.A." />
         </label>
         <label className="block">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Código</span>
+          <input className="input mt-1" value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} placeholder="Ej. PRV-000001" />
+        </label>
+        <label className="block">
           <span className="block text-sm font-semibold text-[var(--admin-muted)]">CUIT / documento</span>
           <input className="input mt-1" value={draft.taxId} onChange={(event) => setDraft((current) => ({ ...current, taxId: event.target.value }))} />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Contacto</span>
+          <input className="input mt-1" value={draft.contactName} onChange={(event) => setDraft((current) => ({ ...current, contactName: event.target.value }))} placeholder="Nombre del contacto" />
         </label>
         <label className="block">
           <span className="block text-sm font-semibold text-[var(--admin-muted)]">Teléfono</span>
@@ -1094,20 +1115,65 @@ export function SupplierModal({
           <span className="block text-sm font-semibold text-[var(--admin-muted)]">Email</span>
           <input className="input mt-1" type="email" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} />
         </label>
+        <label className="block sm:col-span-2">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Dirección</span>
+          <input className="input mt-1" value={draft.address} onChange={(event) => setDraft((current) => ({ ...current, address: event.target.value }))} placeholder="Domicilio fiscal o comercial" />
+        </label>
         <label className="block">
           <span className="block text-sm font-semibold text-[var(--admin-muted)]">Condiciones de pago</span>
           <input className="input mt-1" value={draft.paymentTerms} onChange={(event) => setDraft((current) => ({ ...current, paymentTerms: event.target.value }))} placeholder="Ej. 30 días" />
         </label>
+        <label className="block">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Moneda</span>
+          <input className="input mt-1" value={draft.currency} onChange={(event) => setDraft((current) => ({ ...current, currency: event.target.value }))} placeholder="ARS" />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Límite de crédito</span>
+          <input className="input mt-1" type="number" value={draft.creditLimit} onChange={(event) => setDraft((current) => ({ ...current, creditLimit: event.target.value }))} placeholder="0.00" />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Categoría</span>
+          <input className="input mt-1" value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Ej. Distribuidora" />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-semibold text-[var(--admin-muted)]">Estado</span>
+          <select className="input mt-1" value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}>
+            <option value="active">Activo</option>
+            <option value="blocked">Bloqueado</option>
+            <option value="suspended">Suspendido</option>
+          </select>
+        </label>
+        {branches.length > 0 && (
+          <label className="block sm:col-span-2">
+            <span className="block text-sm font-semibold text-[var(--admin-muted)]">Sucursales habilitadas</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {branches.map((branch) => {
+                const checked = draft.branchIds.includes(branch.id);
+                return (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    onClick={() => {
+                      setDraft((current) => ({
+                        ...current,
+                        branchIds: checked ? current.branchIds.filter((id) => id !== branch.id) : [...current.branchIds, branch.id],
+                      }));
+                    }}
+                    className={`rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
+                      checked ? "border-pink-500/40 bg-pink-500/10 text-pink-300" : "border-[var(--admin-border)] text-[var(--admin-muted)] hover:bg-white/5"
+                    }`}
+                  >
+                    {branch.name}
+                  </button>
+                );
+              })}
+            </div>
+          </label>
+        )}
         <label className="block sm:col-span-2">
           <span className="block text-sm font-semibold text-[var(--admin-muted)]">Notas</span>
           <textarea className="input mt-1 min-h-16" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} />
         </label>
-        {supplier && (
-          <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
-            <input type="checkbox" checked={draft.active} onChange={(event) => setDraft((current) => ({ ...current, active: event.target.checked }))} className="accent-pink-500" />
-            Proveedor activo
-          </label>
-        )}
       </div>
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--admin-border)] pt-4">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>

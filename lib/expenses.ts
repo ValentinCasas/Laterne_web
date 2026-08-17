@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { nextDocumentNumber, PurchaseError, round2, PAYMENT_METHODS } from "@/lib/purchases";
+import { nextDocumentNumber, PurchaseError, round2, PAYMENT_METHODS, createSupplierLedgerEntry, updateSupplierBalance } from "@/lib/purchases";
 
 /**
  * Servicio de Gastos de MenuClick.
@@ -63,7 +63,7 @@ export async function createExpense(tenantId: number, userId: number | null, inp
 
   return prisma.$transaction(async (transaction) => {
     const number = await nextDocumentNumber(transaction, tenantId, "GA");
-    return transaction.expense.create({
+    const expense = await transaction.expense.create({
       data: {
         tenantId,
         branchId: input.branchId ?? null,
@@ -88,6 +88,27 @@ export async function createExpense(tenantId: number, userId: number | null, inp
         supplier: { select: { id: true, name: true } },
       },
     });
+
+    if (expense.supplierId && total > 0) {
+      await createSupplierLedgerEntry(transaction, tenantId, userId, {
+        supplierId: expense.supplierId,
+        branchId: input.branchId ?? null,
+        type: "expense",
+        referenceType: "expense",
+        referenceId: expense.id,
+        documentNumber: expense.number,
+        originalAmount: round2(total),
+        appliedAmount: 0,
+        remainingAmount: round2(total),
+        currency: "ARS",
+        dueDate: input.dueDate ?? null,
+        status: "open",
+        notes: input.notes?.trim() || null,
+      });
+      await updateSupplierBalance(transaction, tenantId, expense.supplierId, round2(total));
+    }
+
+    return expense;
   });
 }
 
@@ -167,12 +188,11 @@ export async function payExpense(
     if (!expense) throw new PurchaseError("El gasto no existe", 404);
     if (expense.status === "cancelled") throw new PurchaseError("El gasto está anulado", 409);
 
-    const paid = await transaction.expense.updateMany({
-      where: { id: expense.id, paidAmount: { lte: Number(expense.total) - amount } },
-      data: { paidAmount: { increment: amount } },
-    });
-    if (paid.count !== 1) {
-      throw new PurchaseError(`El pago supera el saldo pendiente (${round2(Number(expense.total) - Number(expense.paidAmount))})`, 409);
+    const amount = Number(input.amount);
+    const currentPaid = Number(expense.paidAmount);
+    const pending = Number(expense.total) - currentPaid;
+    if (amount > pending + 0.01) {
+      throw new PurchaseError(`El pago supera el saldo pendiente (${round2(pending)})`, 409);
     }
 
     const number = await nextDocumentNumber(transaction, tenantId, "PC");
@@ -189,14 +209,51 @@ export async function payExpense(
       },
     });
 
-    const updated = await transaction.expense.findUniqueOrThrow({ where: { id: expense.id } });
-    const newPaid = Number(updated.paidAmount);
-    const nextStatus = newPaid >= Number(updated.total) ? "paid" : "partially_paid";
+    const newPaid = currentPaid + amount;
+    const nextStatus = newPaid >= Number(expense.total) ? "paid" : "partially_paid";
+    const finalPaid = nextStatus === "paid" ? Number(expense.total) : newPaid;
     await transaction.expense.update({
       where: { id: expense.id },
-      data: { status: nextStatus, ...(newPaid >= Number(updated.total) ? { paidAmount: updated.total } : {}) },
+      data: { paidAmount: finalPaid, status: nextStatus },
     });
-    return { payment, status: nextStatus, balance: round2(Number(updated.total) - newPaid) };
+
+    if (expense.supplierId) {
+      const expenseLedger = await transaction.supplierLedgerEntry.findFirst({
+        where: { tenantId, supplierId: expense.supplierId, referenceType: "expense", referenceId: expense.id, status: "open" },
+      });
+
+      if (expenseLedger) {
+        const newApplied = Number(expenseLedger.appliedAmount) + amount;
+        const newRemaining = Math.max(0, Number(expenseLedger.remainingAmount) - amount);
+        await transaction.supplierLedgerEntry.update({
+          where: { id: expenseLedger.id },
+          data: {
+            appliedAmount: newApplied,
+            remainingAmount: newRemaining,
+            status: newRemaining <= 0.01 ? "closed" : "open",
+          },
+        });
+        await updateSupplierBalance(transaction, tenantId, expense.supplierId, -amount);
+      }
+
+      await createSupplierLedgerEntry(transaction, tenantId, userId, {
+        supplierId: expense.supplierId,
+        branchId: expense.branchId ?? undefined,
+        type: "payment",
+        referenceType: "purchase_payment",
+        referenceId: payment.id,
+        documentNumber: payment.number,
+        originalAmount: amount,
+        appliedAmount: amount,
+        remainingAmount: 0,
+        currency: "ARS",
+        paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+        status: "closed",
+        notes: input.notes?.trim() || null,
+      });
+    }
+
+    return { payment, status: nextStatus, balance: round2(Number(expense.total) - finalPaid) };
   });
 }
 

@@ -235,6 +235,7 @@ model User {
   purchaseInvoicesCreated PurchaseInvoice[]       @relation("PurchaseInvoiceCreatedBy")
   purchasePaymentsCreated PurchasePayment[]       @relation("PurchasePaymentCreatedBy")
   expensesCreated         Expense[]               @relation("ExpenseCreatedBy")
+  supplierLedgerEntries   SupplierLedgerEntry[]   @relation("SupplierLedgerCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -325,6 +326,8 @@ model Tenant {
   stockTransfers         StockTransfer[]
   inventoryCountSessions InventoryCountSession[]
   suppliers              Supplier[]
+  supplierBranches       SupplierBranch[]
+  supplierLedgerEntries  SupplierLedgerEntry[]
   expenseCategories      ExpenseCategory[]
   documentSequences      DocumentSequence[]
   purchaseOrders         PurchaseOrder[]
@@ -1775,6 +1778,7 @@ model Branch {
   purchaseReceipts   PurchaseReceipt[]
   purchaseInvoices   PurchaseInvoice[]
   expenses           Expense[]
+  supplierBranches   SupplierBranch[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])
@@ -1957,11 +1961,12 @@ model InventorySettings {
 
 /**
  * @summary Proveedor del negocio para pedidos, recepciones y gastos.
- * Solo contiene datos de contacto y condiciones; nunca documentación fiscal.
+ * Incluye datos de contacto, condiciones, cuenta corriente y sucursales habilitadas.
  */
 model Supplier {
   id               Int               @id @default(autoincrement())
   tenantId         Int
+  code             String?           @db.VarChar(40)
   name             String            @db.VarChar(180)
   taxId            String?           @db.VarChar(60)
   contactName      String?           @db.VarChar(120)
@@ -1969,8 +1974,14 @@ model Supplier {
   email            String?           @db.VarChar(160)
   address          String?           @db.VarChar(240)
   paymentTerms     String?           @db.VarChar(80)
+  currency         String            @default("ARS") @db.VarChar(3)
+  status           String            @default("active") @db.VarChar(20)
+  category         String?           @db.VarChar(80)
+  creditLimit      Decimal?          @db.Decimal(14, 2)
+  currentBalance   Decimal           @default(0) @db.Decimal(14, 2)
+  blockedAt        DateTime?
+  blockedReason    String?           @db.VarChar(300)
   notes            String?           @db.Text
-  active           Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1978,10 +1989,66 @@ model Supplier {
   purchaseReceipts PurchaseReceipt[]
   purchaseInvoices PurchaseInvoice[]
   expenses         Expense[]
+  branches         SupplierBranch[]
+  ledgerEntries    SupplierLedgerEntry[]
 
+  @@unique([tenantId, code])
   @@unique([tenantId, name])
-  @@index([tenantId, active])
+  @@index([tenantId, status])
+  @@index([tenantId, category])
   @@map("supplier")
+}
+
+/**
+ * @summary Sucursales habilitadas para un proveedor (maestro N:M).
+ */
+model SupplierBranch {
+  id         Int       @id @default(autoincrement())
+  tenantId   Int
+  supplierId Int
+  branchId   Int
+  createdAt  DateTime  @default(now())
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, branchId])
+  @@index([tenantId, branchId])
+  @@map("supplierbranch")
+}
+
+/**
+ * @summary Ledger inmutable de la cuenta corriente de un proveedor.
+ * Cada entrada representa un hecho documentado: compra, factura, nota de crédito,
+ * pago, devolución o ajuste. El saldo se calcula acumulando importes aplicados.
+ */
+model SupplierLedgerEntry {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int
+  supplierId      Int
+  branchId        Int?
+  type            String    @db.VarChar(30)
+  referenceType   String?   @db.VarChar(40)
+  referenceId     Int?
+  documentNumber  String?   @db.VarChar(24)
+  originalAmount  Decimal   @db.Decimal(14, 2)
+  appliedAmount   Decimal   @default(0) @db.Decimal(14, 2)
+  remainingAmount Decimal   @db.Decimal(14, 2)
+  currency        String    @default("ARS") @db.VarChar(3)
+  dueDate         DateTime?
+  paidAt          DateTime?
+  status          String    @default("open") @db.VarChar(20)
+  notes           String?   @db.VarChar(300)
+  createdById     Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier        Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  createdBy       User?     @relation("SupplierLedgerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, supplierId, status, dueDate])
+  @@index([tenantId, supplierId, createdAt])
+  @@map("supplierledgerentry")
 }
 
 /**

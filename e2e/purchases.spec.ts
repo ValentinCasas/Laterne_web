@@ -102,7 +102,7 @@ test.beforeAll(async () => {
       tenantId: tenant!.id,
       name: `Distribuidora Verificación ${Date.now()}`,
       paymentTerms: "contado",
-      active: true,
+      status: "active",
     },
   });
   supplierId = supplier.id;

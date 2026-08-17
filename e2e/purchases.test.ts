@@ -74,7 +74,7 @@ describe("compras y gastos end-to-end (DB real)", () => {
         tenantId: tenant.id,
         name: `Proveedor verificación ${Date.now()}`,
         paymentTerms: "contado",
-        active: true,
+        status: "active",
       },
     });
     supplierId = supplier.id;

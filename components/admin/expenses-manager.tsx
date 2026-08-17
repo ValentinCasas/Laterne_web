@@ -18,7 +18,7 @@ import { expenseStatusLabels } from "@/lib/expenses";
  * antes de convertirlas en un gasto real.
  */
 
-type Supplier = { id: number; name: string; active?: boolean };
+type Supplier = { id: number; name: string; status?: string };
 type BranchOption = { id: number; name: string; slug: string; active: boolean };
 type Category = { id: number; name: string; group: string; active?: boolean };
 type ExpenseRow = {

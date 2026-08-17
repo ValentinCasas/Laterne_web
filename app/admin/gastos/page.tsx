@@ -1,6 +1,7 @@
 import { ExpensesManager } from "@/components/admin/expenses-manager";
 import { requirePermission } from "@/lib/auth";
 import { expenseSummary, listExpenseCategories, listExpenses, listRecurringExpenses } from "@/lib/expenses";
+import { listSuppliers } from "@/lib/purchases";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
@@ -26,11 +27,7 @@ export default async function GastosPage() {
       orderBy: [{ active: "desc" }, { name: "asc" }],
       select: { id: true, name: true, slug: true, active: true },
     }),
-    prisma.supplier.findMany({
-      where: { tenantId: context.tenant.id },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, active: true },
-    }),
+    listSuppliers(context.tenant.id),
     listExpenseCategories(context.tenant.id, true),
     listExpenses(context.tenant.id, { limit: 60 }),
     listRecurringExpenses(context.tenant.id),

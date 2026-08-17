@@ -98,7 +98,7 @@ export async function nextDocumentNumber(
 /** @summary Valida que el proveedor pertenezca al tenant y esté activo. */
 export async function requireSupplier(tenantId: number, supplierId: number) {
   const supplier = await prisma.supplier.findFirst({
-    where: { id: supplierId, tenantId, active: true },
+    where: { id: supplierId, tenantId, status: "active" },
   });
   if (!supplier) throw new PurchaseError("El proveedor no existe o no está activo", 404);
   return supplier;
@@ -581,6 +581,24 @@ export async function createPurchaseInvoice(
 
     await applyInvoicedCosts(transaction, tenantId, invoice, lines);
 
+    await createSupplierLedgerEntry(transaction, tenantId, userId, {
+      supplierId: input.supplierId,
+      branchId: input.branchId ?? null,
+      type: "purchase_invoice",
+      referenceType: "purchase_invoice",
+      referenceId: invoice.id,
+      documentNumber: invoice.number,
+      originalAmount: Number(invoice.total),
+      appliedAmount: 0,
+      remainingAmount: Number(invoice.total),
+      currency: "ARS",
+      dueDate: input.dueDate ?? null,
+      status: "open",
+      notes: input.notes?.trim() || null,
+    });
+
+    await updateSupplierBalance(transaction, tenantId, input.supplierId, Number(invoice.total));
+
     return invoice;
   });
 }
@@ -675,13 +693,11 @@ export async function payPurchaseInvoice(
     if (!invoice) throw new PurchaseError("La factura no existe", 404);
     if (invoice.status === "cancelled") throw new PurchaseError("La factura está anulada", 409);
 
-    // Guarda atómica: solo paga si el monto no supera el saldo pendiente.
-    const paid = await transaction.purchaseInvoice.updateMany({
-      where: { id: invoice.id, paidAmount: { lte: Number(invoice.total) - amount } },
-      data: { paidAmount: { increment: amount } },
-    });
-    if (paid.count !== 1) {
-      throw new PurchaseError(`El pago supera el saldo pendiente (${round2(Number(invoice.total) - Number(invoice.paidAmount))})`, 409);
+    const amount = Number(input.amount);
+    const currentPaid = Number(invoice.paidAmount);
+    const pending = Number(invoice.total) - currentPaid;
+    if (amount > pending + 0.01) {
+      throw new PurchaseError(`El pago supera el saldo pendiente (${round2(pending)})`, 409);
     }
 
     const number = await nextDocumentNumber(transaction, tenantId, "PC");
@@ -698,14 +714,49 @@ export async function payPurchaseInvoice(
       },
     });
 
-    const updated = await transaction.purchaseInvoice.findUniqueOrThrow({ where: { id: invoice.id } });
-    const newPaid = Number(updated.paidAmount);
-    const nextStatus = newPaid >= Number(updated.total) ? "paid" : "partially_paid";
+    const newPaid = currentPaid + amount;
+    const nextStatus = newPaid >= Number(invoice.total) ? "paid" : "partially_paid";
+    const finalPaid = nextStatus === "paid" ? Number(invoice.total) : newPaid;
     await transaction.purchaseInvoice.update({
       where: { id: invoice.id },
-      data: { status: nextStatus, ...(newPaid >= Number(updated.total) ? { paidAmount: updated.total } : {}) },
+      data: { paidAmount: finalPaid, status: nextStatus },
     });
-    return { payment, status: nextStatus, balance: round2(Number(updated.total) - newPaid) };
+
+    const invoiceLedger = await transaction.supplierLedgerEntry.findFirst({
+      where: { tenantId, supplierId: invoice.supplierId, referenceType: "purchase_invoice", referenceId: invoice.id, status: "open" },
+    });
+
+    if (invoiceLedger) {
+      const newApplied = Number(invoiceLedger.appliedAmount) + amount;
+      const newRemaining = Math.max(0, Number(invoiceLedger.remainingAmount) - amount);
+      await transaction.supplierLedgerEntry.update({
+        where: { id: invoiceLedger.id },
+        data: {
+          appliedAmount: newApplied,
+          remainingAmount: newRemaining,
+          status: newRemaining <= 0.01 ? "closed" : "open",
+        },
+      });
+      await updateSupplierBalance(transaction, tenantId, invoice.supplierId, -amount);
+    }
+
+    await createSupplierLedgerEntry(transaction, tenantId, userId, {
+      supplierId: invoice.supplierId,
+      branchId: invoice.branchId ?? undefined,
+      type: "payment",
+      referenceType: "purchase_payment",
+      referenceId: payment.id,
+      documentNumber: payment.number,
+      originalAmount: amount,
+      appliedAmount: amount,
+      remainingAmount: 0,
+      currency: "ARS",
+      paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+      status: "closed",
+      notes: input.notes?.trim() || null,
+    });
+
+    return { payment, status: nextStatus, balance: round2(Number(invoice.total) - finalPaid) };
   });
 }
 
@@ -867,33 +918,90 @@ export async function listPurchaseInvoices(
   return { items, total };
 }
 
-/** @summary Lista proveedores activos del tenant. */
+/** @summary Lista proveedores del tenant con datos para la tabla operativa. */
 export async function listSuppliers(tenantId: number, query?: string) {
   return prisma.supplier.findMany({
     where: { tenantId, ...(query ? { name: { contains: query } } : {}) },
     orderBy: { name: "asc" },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      taxId: true,
+      contactName: true,
+      phone: true,
+      email: true,
+      paymentTerms: true,
+      currency: true,
+      status: true,
+      category: true,
+      creditLimit: true,
+      currentBalance: true,
+      branches: { include: { branch: { select: { id: true, name: true } } } },
+    },
   });
 }
 
-/** @summary Crea un proveedor. */
+/** @summary Crea un proveedor con datos de maestro y cuenta corriente. */
 export async function createSupplier(
   tenantId: number,
-  input: { name: string; taxId?: string; contactName?: string; phone?: string; email?: string; address?: string; paymentTerms?: string; notes?: string },
+  input: {
+    name: string;
+    code?: string;
+    taxId?: string;
+    contactName?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    paymentTerms?: string;
+    currency?: string;
+    status?: string;
+    category?: string;
+    creditLimit?: number | null;
+    notes?: string;
+    branchIds?: number[];
+  },
 ) {
   const name = input.name.trim();
   if (!name) throw new PurchaseError("Indicá el nombre del proveedor", 400);
-  return prisma.supplier.create({
-    data: {
-      tenantId,
-      name,
-      taxId: input.taxId?.trim() || null,
-      contactName: input.contactName?.trim() || null,
-      phone: input.phone?.trim() || null,
-      email: input.email?.trim() || null,
-      address: input.address?.trim() || null,
-      paymentTerms: input.paymentTerms?.trim() || null,
-      notes: input.notes?.trim() || null,
-    },
+  const code = input.code?.trim() || null;
+  const currency = input.currency?.trim() || "ARS";
+  const status = ["active", "blocked", "suspended"].includes(input.status || "") ? input.status! : "active";
+
+  return prisma.$transaction(async (transaction) => {
+    const supplier = await transaction.supplier.create({
+      data: {
+        tenantId,
+        name,
+        code,
+        taxId: input.taxId?.trim() || null,
+        contactName: input.contactName?.trim() || null,
+        phone: input.phone?.trim() || null,
+        email: input.email?.trim() || null,
+        address: input.address?.trim() || null,
+        paymentTerms: input.paymentTerms?.trim() || null,
+        currency,
+        status,
+        category: input.category?.trim() || null,
+        creditLimit: input.creditLimit ?? null,
+        notes: input.notes?.trim() || null,
+      },
+    });
+
+    if (input.branchIds?.length) {
+      await transaction.supplierBranch.createMany({
+        data: input.branchIds.map((branchId) => ({
+          tenantId,
+          supplierId: supplier.id,
+          branchId,
+        })),
+      });
+    }
+
+    return transaction.supplier.findUniqueOrThrow({
+      where: { id: supplier.id },
+      include: { branches: { include: { branch: { select: { id: true, name: true } } } } },
+    });
   });
 }
 
@@ -901,33 +1009,366 @@ export async function createSupplier(
 export async function updateSupplier(
   tenantId: number,
   supplierId: number,
-  input: { name?: string; taxId?: string | null; contactName?: string | null; phone?: string | null; email?: string | null; address?: string | null; paymentTerms?: string | null; notes?: string | null; active?: boolean },
+  input: {
+    name?: string;
+    code?: string | null;
+    taxId?: string | null;
+    contactName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    paymentTerms?: string | null;
+    currency?: string | null;
+    status?: string | null;
+    category?: string | null;
+    creditLimit?: number | null;
+    blockedAt?: Date | null;
+    blockedReason?: string | null;
+    notes?: string | null;
+    active?: boolean;
+    branchIds?: number[];
+  },
 ) {
-  return prisma.supplier.updateMany({
-    where: { id: supplierId, tenantId },
-    data: {
-      ...(input.name !== undefined ? { name: input.name.trim() || "Proveedor" } : {}),
-      ...(input.taxId !== undefined ? { taxId: input.taxId?.trim() || null } : {}),
-      ...(input.contactName !== undefined ? { contactName: input.contactName?.trim() || null } : {}),
-      ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
-      ...(input.email !== undefined ? { email: input.email?.trim() || null } : {}),
-      ...(input.address !== undefined ? { address: input.address?.trim() || null } : {}),
-      ...(input.paymentTerms !== undefined ? { paymentTerms: input.paymentTerms?.trim() || null } : {}),
-      ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
-      ...(input.active !== undefined ? { active: input.active } : {}),
-    },
+  return prisma.$transaction(async (transaction) => {
+    const data: Record<string, unknown> = {};
+    if (input.name !== undefined) data.name = input.name.trim() || "Proveedor";
+    if (input.code !== undefined) data.code = input.code?.trim() || null;
+    if (input.taxId !== undefined) data.taxId = input.taxId?.trim() || null;
+    if (input.contactName !== undefined) data.contactName = input.contactName?.trim() || null;
+    if (input.phone !== undefined) data.phone = input.phone?.trim() || null;
+    if (input.email !== undefined) data.email = input.email?.trim() || null;
+    if (input.address !== undefined) data.address = input.address?.trim() || null;
+    if (input.paymentTerms !== undefined) data.paymentTerms = input.paymentTerms?.trim() || null;
+    if (input.currency !== undefined) data.currency = input.currency?.trim() || "ARS";
+    if (input.status !== undefined) data.status = ["active", "blocked", "suspended"].includes(input.status || "") ? input.status! : "active";
+    if (input.category !== undefined) data.category = input.category?.trim() || null;
+    if (input.creditLimit !== undefined) data.creditLimit = input.creditLimit;
+    if (input.blockedAt !== undefined) data.blockedAt = input.blockedAt;
+    if (input.blockedReason !== undefined) data.blockedReason = input.blockedReason?.trim() || null;
+    if (input.notes !== undefined) data.notes = input.notes?.trim() || null;
+    if (input.active !== undefined) data.status = input.active ? "active" : "blocked";
+
+    const updated = await transaction.supplier.updateMany({
+      where: { id: supplierId, tenantId },
+      data,
+    });
+    if (!updated.count) throw new PurchaseError("El proveedor no existe", 404);
+
+    if (input.branchIds !== undefined) {
+      await transaction.supplierBranch.deleteMany({ where: { supplierId } });
+      if (input.branchIds.length) {
+        await transaction.supplierBranch.createMany({
+          data: input.branchIds.map((branchId) => ({ tenantId, supplierId, branchId })),
+        });
+      }
+    }
+
+    return transaction.supplier.findUniqueOrThrow({
+      where: { id: supplierId },
+      include: { branches: { include: { branch: { select: { id: true, name: true } } } } },
+    });
   });
+}
+
+/** @summary Verifica si un proveedor tiene documentos o movimientos asociados. */
+export async function hasSupplierHistory(tenantId: number, supplierId: number) {
+  const [orders, receipts, invoices, expenses, ledger] = await Promise.all([
+    prisma.purchaseOrder.count({ where: { tenantId, supplierId } }),
+    prisma.purchaseReceipt.count({ where: { tenantId, supplierId } }),
+    prisma.purchaseInvoice.count({ where: { tenantId, supplierId } }),
+    prisma.expense.count({ where: { tenantId, supplierId } }),
+    prisma.supplierLedgerEntry.count({ where: { tenantId, supplierId } }),
+  ]);
+  return orders > 0 || receipts > 0 || invoices > 0 || expenses > 0 || ledger > 0;
 }
 
 /** @summary Elimina un proveedor si no tiene documentos asociados. */
 export async function removeSupplier(tenantId: number, supplierId: number) {
   return prisma.$transaction(async (transaction) => {
-    const used = await transaction.purchaseOrder.count({ where: { tenantId, supplierId } });
-    if (used) throw new PurchaseError("El proveedor tiene pedidos asociados", 409);
+    const [orders, receipts, invoices, expenses, ledger] = await Promise.all([
+      transaction.purchaseOrder.count({ where: { tenantId, supplierId } }),
+      transaction.purchaseReceipt.count({ where: { tenantId, supplierId } }),
+      transaction.purchaseInvoice.count({ where: { tenantId, supplierId } }),
+      transaction.expense.count({ where: { tenantId, supplierId } }),
+      transaction.supplierLedgerEntry.count({ where: { tenantId, supplierId } }),
+    ]);
+    if (orders > 0 || receipts > 0 || invoices > 0 || expenses > 0 || ledger > 0) {
+      throw new PurchaseError("El proveedor tiene historial (pedidos, recepciones, facturas, gastos o movimientos). Bloquealo en lugar de eliminarlo.", 409);
+    }
     const result = await transaction.supplier.deleteMany({ where: { id: supplierId, tenantId } });
     if (result.count !== 1) throw new PurchaseError("El proveedor no existe", 404);
     return { deleted: true };
   });
+}
+
+/** @summary Obtiene la ficha completa de un proveedor con sucursales habilitadas. */
+export async function getSupplierDetail(tenantId: number, supplierId: number) {
+  const supplier = await prisma.supplier.findFirst({
+    where: { id: supplierId, tenantId },
+    include: {
+      branches: { include: { branch: { select: { id: true, name: true } } } },
+    },
+  });
+  if (!supplier) throw new PurchaseError("El proveedor no existe", 404);
+  return supplier;
+}
+
+/** @summary Asigna sucursales habilitadas a un proveedor (reemplaza la asignación actual). */
+export async function setSupplierBranches(tenantId: number, supplierId: number, branchIds: number[]) {
+  return prisma.$transaction(async (transaction) => {
+    const supplier = await transaction.supplier.findFirst({ where: { id: supplierId, tenantId } });
+    if (!supplier) throw new PurchaseError("El proveedor no existe", 404);
+
+    await transaction.supplierBranch.deleteMany({ where: { supplierId } });
+    if (branchIds.length) {
+      await transaction.supplierBranch.createMany({
+        data: branchIds.map((branchId) => ({ tenantId, supplierId, branchId })),
+      });
+    }
+    return transaction.supplier.findUniqueOrThrow({
+      where: { id: supplierId },
+      include: { branches: { include: { branch: { select: { id: true, name: true } } } } },
+    });
+  });
+}
+
+/** @summary Actualiza el saldo actual del proveedor sumando el importe aplicado. */
+export async function updateSupplierBalance(transaction: Prisma.TransactionClient | typeof prisma, tenantId: number, supplierId: number, delta: number) {
+  await transaction.supplier.updateMany({
+    where: { id: supplierId, tenantId },
+    data: { currentBalance: { increment: delta } },
+  });
+}
+
+/** @summary Aplica un pago a las partidas abiertas de un proveedor. */
+export async function applySupplierPayment(
+  tenantId: number,
+  userId: number | null,
+  supplierId: number,
+  input: { amount: number; entryIds: number[]; method: string; notes?: string | null },
+) {
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) throw new PurchaseError("El monto del pago debe ser mayor a cero", 400);
+
+  return prisma.$transaction(async (transaction) => {
+    const supplier = await transaction.supplier.findFirst({ where: { id: supplierId, tenantId } });
+    if (!supplier) throw new PurchaseError("El proveedor no existe", 404);
+
+    const entries = await transaction.supplierLedgerEntry.findMany({
+      where: { id: { in: input.entryIds }, tenantId, supplierId, status: "open" },
+      orderBy: { dueDate: "asc", createdAt: "asc" },
+    });
+
+    if (!entries.length) throw new PurchaseError("No hay partidas abiertas seleccionadas", 409);
+
+    const totalOpen = entries.reduce((sum, entry) => sum + Number(entry.remainingAmount), 0);
+    if (amount > totalOpen + 0.01) {
+      throw new PurchaseError(`El pago supera el saldo abierto (${round2(totalOpen)})`, 409);
+    }
+
+    const number = await nextDocumentNumber(transaction, tenantId, "PC");
+    let remaining = amount;
+
+    for (const entry of entries) {
+      if (remaining <= 0) break;
+      const apply = Math.min(remaining, Number(entry.remainingAmount));
+      const newApplied = Number(entry.appliedAmount) + apply;
+      const newRemaining = Number(entry.remainingAmount) - apply;
+
+      await transaction.supplierLedgerEntry.update({
+        where: { id: entry.id },
+        data: {
+          appliedAmount: newApplied,
+          remainingAmount: newRemaining,
+          status: newRemaining <= 0.01 ? "closed" : "open",
+        },
+      });
+
+      remaining -= apply;
+    }
+
+    await createSupplierLedgerEntry(transaction, tenantId, userId, {
+      supplierId,
+      branchId: entries[0]?.branchId ?? null,
+      type: "payment",
+      referenceType: "manual_application",
+      documentNumber: number,
+      originalAmount: amount,
+      appliedAmount: amount,
+      remainingAmount: 0,
+      currency: supplier.currency,
+      paidAt: new Date(),
+      status: "closed",
+      notes: input.notes?.trim() || `Pago aplicado a ${entries.length} partida(s)`,
+    });
+
+    await updateSupplierBalance(transaction, tenantId, supplierId, -amount);
+
+    const remainingEntries = await transaction.supplierLedgerEntry.findMany({
+      where: { tenantId, supplierId, status: "open" },
+      select: { id: true, remainingAmount: true },
+    });
+    const newBalance = remainingEntries.reduce((sum, entry) => sum + Number(entry.remainingAmount), 0);
+
+    return { number, amount, appliedTo: entries.length, remainingBalance: round2(newBalance) };
+  });
+}
+
+/** @summary Revierte una entrada del ledger y crea la entrada de reversión. */
+export async function reverseSupplierLedgerEntry(
+  tenantId: number,
+  userId: number | null,
+  entryId: number,
+  reason?: string,
+) {
+  return prisma.$transaction(async (transaction) => {
+    const entry = await transaction.supplierLedgerEntry.findFirst({ where: { id: entryId, tenantId } });
+    if (!entry) throw new PurchaseError("El movimiento no existe", 404);
+    if (entry.status === "reversed") throw new PurchaseError("El movimiento ya fue revertido", 409);
+
+    const reversal = await transaction.supplierLedgerEntry.create({
+      data: {
+        tenantId,
+        supplierId: entry.supplierId,
+        branchId: entry.branchId,
+        type: "reversal",
+        referenceType: entry.referenceType,
+        referenceId: entry.referenceId,
+        documentNumber: `REV-${entry.documentNumber}`,
+        originalAmount: -Number(entry.originalAmount),
+        appliedAmount: -Number(entry.appliedAmount),
+        remainingAmount: -Number(entry.remainingAmount),
+        currency: entry.currency,
+        dueDate: entry.dueDate,
+        paidAt: entry.paidAt,
+        status: entry.status === "open" ? "closed" : "open",
+        notes: `Reversión: ${reason ?? entry.notes ?? ""}`.trim(),
+        createdById: userId,
+      },
+    });
+
+    await transaction.supplierLedgerEntry.update({
+      where: { id: entryId },
+      data: { status: "reversed", notes: `${entry.notes ?? ""}\nRevertido: ${reason ?? ""}`.trim() },
+    });
+
+    if (entry.referenceType === "purchase_invoice" || entry.referenceType === "expense") {
+      await transaction.supplier.updateMany({
+        where: { id: entry.supplierId, tenantId },
+        data: { currentBalance: { decrement: Number(entry.originalAmount) } },
+      });
+    }
+
+    return reversal;
+  });
+}
+
+/** @summary Crea una entrada en el ledger de proveedor. */
+export async function createSupplierLedgerEntry(
+  transaction: Prisma.TransactionClient | typeof prisma,
+  tenantId: number,
+  userId: number | null,
+  input: {
+    supplierId: number;
+    branchId?: number | null;
+    type: string;
+    referenceType?: string | null;
+    referenceId?: number | null;
+    documentNumber?: string | null;
+    originalAmount: number;
+    appliedAmount?: number;
+    remainingAmount?: number;
+    currency?: string;
+    dueDate?: Date | string | null;
+    paidAt?: Date | string | null;
+    status?: string;
+    notes?: string | null;
+  },
+) {
+  const originalAmount = Number(input.originalAmount);
+  const appliedAmount = Number(input.appliedAmount ?? 0);
+  const remainingAmount = Number(input.remainingAmount ?? originalAmount - appliedAmount);
+
+  return transaction.supplierLedgerEntry.create({
+    data: {
+      tenantId,
+      supplierId: input.supplierId,
+      branchId: input.branchId ?? null,
+      type: input.type,
+      referenceType: input.referenceType ?? null,
+      referenceId: input.referenceId ?? null,
+      documentNumber: input.documentNumber?.trim() || null,
+      originalAmount,
+      appliedAmount,
+      remainingAmount,
+      currency: input.currency || "ARS",
+      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      paidAt: input.paidAt ? new Date(input.paidAt) : null,
+      status: input.status || "open",
+      notes: input.notes?.trim() || null,
+      createdById: userId,
+    },
+  });
+}
+
+/** @summary Lista el ledger de un proveedor con filtros. */
+export async function listSupplierLedger(
+  tenantId: number,
+  supplierId: number,
+  filters: { type?: string; status?: string; from?: string; to?: string; limit?: number; offset?: number } = {},
+) {
+  const where: Prisma.SupplierLedgerEntryWhereInput = { tenantId, supplierId };
+  if (filters.type) where.type = filters.type;
+  if (filters.status) where.status = filters.status;
+  if (filters.from) where.createdAt = { ...(where.createdAt as object | undefined), gte: new Date(filters.from) };
+  if (filters.to) where.createdAt = { ...(where.createdAt as object | undefined), lte: new Date(filters.to) };
+
+  const [items, total] = await Promise.all([
+    prisma.supplierLedgerEntry.findMany({
+      where,
+      include: { createdBy: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: filters.limit ?? 100,
+      skip: filters.offset ?? 0,
+    }),
+    prisma.supplierLedgerEntry.count({ where }),
+  ]);
+  return { items, total };
+}
+
+/** @summary Resumen de cuenta del proveedor: saldo, vencido, próximos vencimientos. */
+export async function getSupplierStatement(tenantId: number, supplierId: number) {
+  const supplier = await prisma.supplier.findFirst({
+    where: { id: supplierId, tenantId },
+    select: { id: true, name: true, currentBalance: true, currency: true },
+  });
+  if (!supplier) throw new PurchaseError("El proveedor no existe", 404);
+
+  const now = new Date();
+  const overdue = await prisma.supplierLedgerEntry.aggregate({
+    where: { tenantId, supplierId, status: "open", dueDate: { lt: now } },
+    _sum: { remainingAmount: true },
+  });
+  const upcoming = await prisma.supplierLedgerEntry.findMany({
+    where: { tenantId, supplierId, status: "open", dueDate: { gte: now, lte: new Date(now.getTime() + 30 * 86400000) } },
+    select: { id: true, documentNumber: true, type: true, originalAmount: true, appliedAmount: true, remainingAmount: true, dueDate: true },
+    orderBy: { dueDate: "asc" },
+    take: 20,
+  });
+  const recent = await prisma.supplierLedgerEntry.findMany({
+    where: { tenantId, supplierId },
+    include: { createdBy: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  return {
+    supplier,
+    balance: Number(supplier.currentBalance),
+    overdue: Number(overdue._sum.remainingAmount ?? 0),
+    upcoming,
+    recent,
+  };
 }
 
 /** @summary Redondea un importe a dos decimales. */

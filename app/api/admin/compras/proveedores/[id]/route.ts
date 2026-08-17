@@ -3,23 +3,25 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { updateSupplier, removeSupplier } from "@/lib/purchases";
+import { updateSupplier, getSupplierDetail } from "@/lib/purchases";
 
-/** @summary Detalle, edición y eliminación de un proveedor. */
+/** @summary Ficha completa de un proveedor. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authorize("purchase.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
-  const suppliers = await prisma.supplier.findMany({
-    where: { id: Number(id), tenantId: auth.tenant.id },
-    select: { id: true, name: true, taxId: true, contactName: true, phone: true, email: true, address: true, paymentTerms: true, notes: true, active: true },
-  });
-  const supplier = suppliers[0];
-  if (!supplier) return NextResponse.json({ error: "El proveedor no existe" }, { status: 404 });
-  return NextResponse.json(serialize(supplier));
+  try {
+    const supplier = await getSupplierDetail(auth.tenant.id, Number(id));
+    return NextResponse.json(serialize(supplier));
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "No se pudo cargar el proveedor" },
+      { status: 404 },
+    );
+  }
 }
 
-/** @summary Actualiza un proveedor. */
+/** @summary Actualiza datos del proveedor y sus sucursales habilitadas. */
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authorize("purchase.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -30,19 +32,26 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 
   try {
-    const updated = await updateSupplier(auth.tenant.id, Number(id), {
+    const branchIds = Array.isArray(parsed.branchIds) ? parsed.branchIds.map(Number) : undefined;
+    const supplier = await updateSupplier(auth.tenant.id, Number(id), {
       name: parsed.name,
+      code: parsed.code,
       taxId: parsed.taxId ?? null,
       contactName: parsed.contactName ?? null,
       phone: parsed.phone ?? null,
       email: parsed.email ?? null,
       address: parsed.address ?? null,
       paymentTerms: parsed.paymentTerms ?? null,
+      currency: parsed.currency ?? null,
+      status: parsed.status ?? null,
+      category: parsed.category ?? null,
+      creditLimit: parsed.creditLimit ?? null,
+      blockedAt: parsed.blockedAt ?? null,
+      blockedReason: parsed.blockedReason ?? null,
       notes: parsed.notes ?? null,
       active: parsed.active,
+      branchIds,
     });
-    if (!updated.count) return NextResponse.json({ error: "El proveedor no existe" }, { status: 404 });
-    const supplier = await prisma.supplier.findFirst({ where: { id: Number(id), tenantId: auth.tenant.id } });
     await recordAudit({
       context: auth,
       action: "update",
@@ -66,7 +75,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
   try {
-    const result = await removeSupplier(auth.tenant.id, Number(id));
+    const result = await prisma.supplier.deleteMany({ where: { id: Number(id), tenantId: auth.tenant.id } });
+    if (!result.count) return NextResponse.json({ error: "El proveedor no existe" }, { status: 404 });
     await recordAudit({
       context: auth,
       action: "delete",
@@ -75,7 +85,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       newValues: { deleted: true },
       request,
     });
-    return NextResponse.json(result);
+    return NextResponse.json({ deleted: true });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo eliminar el proveedor" },
