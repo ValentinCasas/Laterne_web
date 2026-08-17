@@ -1,0 +1,46 @@
+import { DeliveryCenter } from "@/components/admin/delivery-center";
+import { requirePermission } from "@/lib/auth";
+import { serialize } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+/** @summary Centro de delivery: lista de entregas, mapa abstracto y detalle. */
+export default async function AdminDeliveryPage() {
+  const context = await requirePermission("order.manage");
+  const accessibleBranchIds = context.branches.map((branch) => branch.id);
+
+  const [deliveries, branches, drivers] = await Promise.all([
+    prisma.orderDelivery.findMany({
+      where: { tenantId: context.tenant.id, branchId: { in: accessibleBranchIds } },
+      include: {
+        order: { select: { id: true, reference: true, status: true, orderType: true, channel: true, source: true, total: true, customerName: true } },
+        branch: { select: { id: true, name: true } },
+        driver: { select: { id: true, name: true } },
+        items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    prisma.branch.findMany({ where: { tenantId: context.tenant.id, active: true }, select: { id: true, name: true, slug: true } }),
+    prisma.user.findMany({
+      where: { memberships: { some: { tenantId: context.tenant.id, status: "active", allBranches: true } } },
+      select: { id: true, name: true, email: true },
+    }),
+  ]);
+
+  const providerConfig = await prisma.deliveryProviderConfig.findMany({
+    where: { tenantId: context.tenant.id, enabled: true },
+    select: { provider: true, status: true },
+  });
+  const mapProviders = providerConfig.filter((config) => config.status === "active");
+
+  return (
+    <DeliveryCenter
+      initialDeliveries={serialize(deliveries)}
+      branches={serialize(branches)}
+      drivers={serialize(drivers)}
+      mapProviders={serialize(mapProviders)}
+    />
+  );
+}

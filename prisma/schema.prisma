@@ -19,6 +19,63 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+/**
+ * @summary Canal comercial del pedido: cómo se generó la venta.
+ */
+enum OrderChannel {
+  SALON
+  MOSTRADOR
+  DELIVERY
+  ONLINE
+}
+
+/**
+ * @summary Origen técnico del pedido: quién/qué lo generó.
+ */
+enum OrderSource {
+  ADMIN
+  MENUCLICK_WEB
+  TABLE_QR
+  POS
+  EXTERNAL_INTEGRATOR
+  API
+}
+
+/**
+ * @summary Estados específicos del ciclo de entrega/reparto.
+ */
+enum DeliveryStatus {
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  PICKED_UP
+  ON_THE_WAY
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+/**
+ * @summary Proveedor externo de delivery o integrador.
+ */
+enum DeliveryProvider {
+  MENUCLICK
+  RAPPI
+  PEDIDOS_YA
+  UBER_EATS
+  CUSTOM
+}
+
+/**
+ * @summary Tipos de eventos externos para webhooks/integradores.
+ */
+enum ExternalEventType {
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_CANCELLED
+  DRIVER_ASSIGNED
+  DELIVERY_UPDATED
+}
+
 model BusinessInfo {
   id           Int     @id @default(autoincrement())
   tenantId     Int     @unique
@@ -241,6 +298,8 @@ model User {
   deliveriesReversed       OrderDelivery[]         @relation("OrderDeliveryReversedBy")
   customerPaymentsCreated  CustomerPayment[]       @relation("CustomerPaymentCreatedBy")
   customerPaymentsReversed CustomerPayment[]       @relation("CustomerPaymentReversedBy")
+  deliveriesAssigned       OrderDelivery[]         @relation("DeliveryDriver")
+  driverPositions          DriverPosition[]
 
   @@unique([email])
   @@map("user")
@@ -343,6 +402,10 @@ model Tenant {
   recurringExpenses      RecurringExpense[]
   orderDeliveries        OrderDelivery[]
   customerPayments       CustomerPayment[]
+  externalOrders         ExternalOrder[]
+  externalEvents         ExternalEvent[]
+  driverPositions        DriverPosition[]
+  deliveryProviderConfigs DeliveryProviderConfig[]
 
   @@map("tenant")
 }
@@ -1315,6 +1378,8 @@ model CustomerOrder {
   publicTokenHash String               @db.VarChar(64)
   status          String               @default("received") @db.VarChar(24)
   orderType       String               @default("takeaway") @db.VarChar(24)
+  channel         OrderChannel         @default(DELIVERY)
+  source          String               @default("website") @db.VarChar(60)
   customerName    String               @db.VarChar(160)
   phone           String               @db.VarChar(60)
   email           String?              @db.VarChar(190)
@@ -1332,7 +1397,6 @@ model CustomerOrder {
   currency        String               @default("ARS") @db.VarChar(3)
   paymentMethod   String               @default("on_delivery") @db.VarChar(30)
   paymentStatus   String               @default("pending") @db.VarChar(24)
-  source          String               @default("website") @db.VarChar(60)
   ipHash          String?              @db.VarChar(64)
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
@@ -1351,6 +1415,7 @@ model CustomerOrder {
   printJobs       PrintJob[]
   deliveries      OrderDelivery[]
   payments        CustomerPayment[]
+  externalOrders  ExternalOrder[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
@@ -1434,6 +1499,21 @@ model OrderDelivery {
   deliveryAddress String?             @db.VarChar(500)
   deliveryType    String              @default("full") @db.VarChar(20)
   status          String              @default("delivered") @db.VarChar(24)
+  provider        DeliveryProvider    @default(MENUCLICK)
+  externalOrderId String?             @db.VarChar(120)
+  externalReference String?           @db.VarChar(200)
+  driverId        Int?
+  assignedAt      DateTime?
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+  latitude        String?             @db.VarChar(32)
+  longitude       String?             @db.VarChar(32)
+  addressSnapshot String?             @db.VarChar(500)
+  contactPhone    String?             @db.VarChar(60)
+  contactName     String?             @db.VarChar(160)
+  instructions    String?             @db.Text
+  receiverName    String?             @db.VarChar(160)
+  deliveryFee     Decimal             @default(0) @db.Decimal(12, 2)
   notes           String?             @db.Text
   createdAt       DateTime            @default(now())
   createdById     Int?
@@ -1443,14 +1523,19 @@ model OrderDelivery {
   order           CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   branch          Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   customer        LoyaltyCustomer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  driver          User?               @relation("DeliveryDriver", fields: [driverId], references: [id], onDelete: SetNull)
   createdBy       User?               @relation("OrderDeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   reversedBy      User?               @relation("OrderDeliveryReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
   items           OrderDeliveryItem[]
   payments        CustomerPayment[]
+  positions       DriverPosition[]
 
   @@unique([tenantId, number])
   @@index([tenantId, orderId, createdAt])
   @@index([tenantId, customerId, createdAt])
+  @@index([tenantId, branchId, status, createdAt])
+  @@index([tenantId, driverId, status])
+  @@index([tenantId, provider, externalOrderId])
   @@map("orderdelivery")
 }
 
@@ -1891,6 +1976,7 @@ model Branch {
   transfersFrom      StockTransfer[]         @relation("TransferFrom")
   transfersTo        StockTransfer[]         @relation("TransferTo")
   countSessions      InventoryCountSession[]
+  driverPositions    DriverPosition[]
 
   @@map("branch")
 }
@@ -2769,4 +2855,101 @@ model PlatformPayment {
   @@index([tenantId, period])
   @@index([createdById])
   @@map("platformpayment")
+}
+
+/**
+ * @summary Mapeo de pedidos externos para idempotencia y trazabilidad.
+ * Permite reconocer el mismo pedido de Rappi, PedidosYa, Uber Eats, etc.
+ * sin crear duplicados.
+ */
+model ExternalOrder {
+  id               Int               @id @default(autoincrement())
+  tenantId         Int
+  orderId          Int
+  provider         DeliveryProvider
+  externalOrderId  String            @db.VarChar(120)
+  externalStoreId  String?           @db.VarChar(120)
+  externalReference String?          @db.VarChar(200)
+  metadata         Json?
+  receivedAt       DateTime          @default(now())
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order            CustomerOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, externalOrderId])
+  @@index([tenantId, orderId])
+  @@index([tenantId, receivedAt])
+  @@map("externalorder")
+}
+
+/**
+ * @summary Evento externo recibido vía webhook o polling.
+ * Garantiza idempotencia: mismo provider + eventId no se procesa dos veces.
+ */
+model ExternalEvent {
+  id                Int               @id @default(autoincrement())
+  tenantId          Int
+  externalOrderId   String?           @db.VarChar(120)
+  provider          DeliveryProvider
+  eventId           String            @db.VarChar(120)
+  eventType         ExternalEventType
+  payload           Json
+  processed         Boolean           @default(false)
+  processedAt       DateTime?
+  error             String?           @db.Text
+  occurredAt        DateTime          @default(now())
+  createdAt         DateTime          @default(now())
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, eventId])
+  @@index([tenantId, processed, occurredAt])
+  @@index([externalOrderId])
+  @@map("externalevent")
+}
+
+/**
+ * @summary Posición GPS del repartidor durante una entrega activa.
+ * No guarda historial infinito: la retención se controla por aplicación.
+ */
+model DriverPosition {
+  id           Int       @id @default(autoincrement())
+  tenantId     Int
+  branchId     Int?
+  deliveryId   Int?
+  driverId     Int
+  latitude     String    @db.VarChar(32)
+  longitude    String    @db.VarChar(32)
+  accuracy     String?   @db.VarChar(32)
+  recordedAt   DateTime  @default(now())
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  delivery     OrderDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  driver       User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, driverId, recordedAt])
+  @@index([tenantId, branchId, recordedAt])
+  @@index([deliveryId])
+  @@map("driverposition")
+}
+
+/**
+ * @summary Configuración de proveedores de mapas, geocoding y routing.
+ * Preparado para evolucionar sin acoplar dominio a Google Maps.
+ */
+model DeliveryProviderConfig {
+  id         Int       @id @default(autoincrement())
+  tenantId   Int
+  provider   String    @db.VarChar(60)
+  enabled    Boolean   @default(false)
+  apiKey     String?   @db.VarChar(255)
+  publicConfig Json?
+  secretConfigured Boolean @default(false)
+  status     String    @default("not_configured") @db.VarChar(30)
+  lastCheckAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider])
+  @@index([tenantId, enabled, status])
+  @@map("deliveryproviderconfig")
 }

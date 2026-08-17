@@ -156,6 +156,13 @@ export const ADMIN_NAVIGATION = [
             permission: "order.manage",
             description: "Documento histórico de entregas",
           },
+          {
+            href: "/admin/delivery",
+            label: "Centro de delivery",
+            icon: "CD",
+            permission: "order.manage",
+            description: "Seguimiento de entregas y repartidores",
+          },
         ],
       },
       {
