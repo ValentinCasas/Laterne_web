@@ -419,3 +419,46 @@ test("responsive móvil: compras y gastos se ven como listas operativas", async 
   await expect(page.getByRole("heading", { name: "Gastos", exact: true })).toBeVisible();
   await expect(page.getByText("Pendiente este mes")).toBeVisible();
 });
+
+test("recepción desde 'Todas las sucursales' usa la sucursal del pedido", async ({ page }) => {
+  const tenant = await prisma.tenant.findFirst({ where: { status: "active" } });
+  const branch = await prisma.branch.findFirst({ where: { tenantId: tenant!.id, active: true }, orderBy: { id: "asc" } });
+  const order = await prisma.purchaseOrder.create({
+    data: {
+      tenantId: tenant!.id,
+      branchId: branch!.id,
+      supplierId,
+      number: `OC-RECEP-${Date.now()}`,
+      status: "sent",
+      orderDate: new Date(),
+      notes: "Verificación recepción",
+      items: {
+        create: [{ productId, quantity: 10, unit: "unidad", unitCost: 1000, sortOrder: 0 }],
+      },
+    },
+    include: { items: true },
+  });
+
+  const preStock = await prisma.inventoryStock.findUnique({
+    where: { branchId_productId: { branchId: branch!.id, productId } },
+  });
+  stockSnapshots.set(`${branch!.id}:${productId}`, { current: preStock?.current ?? 0, existed: Boolean(preStock) });
+
+  await page.goto(`/t/${tenantSlug}/admin/compras`);
+  const row = page.locator("tr").filter({ hasText: order.number }).first();
+  await row.getByRole("button", { name: "Ver" }).click();
+  await expect(page.getByText("Historial de recepciones")).toBeVisible();
+  await page.getByRole("button", { name: "Recibir" }).click();
+  const qtyReceive = page.getByLabel("Cantidad a recibir");
+  await qtyReceive.fill("10");
+  await page.getByRole("button", { name: "Confirmar recepción" }).click();
+  await expect(page.getByText("Recepción RC-")).toBeVisible({ timeout: 8000 });
+  await expect(page.locator("span").filter({ hasText: /^Completo$/ }).first()).toBeVisible();
+
+  const stock = await prisma.inventoryStock.findUnique({
+    where: { branchId_productId: { branchId: branch!.id, productId } },
+  });
+  expect(Number(stock?.current)).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: "✕ Cerrar" }).click();
+});

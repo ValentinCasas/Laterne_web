@@ -400,6 +400,7 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
             await refresh();
           }}
           setBusy={setBusy}
+          branches={payload.branches}
         />
       )}
       {openInvoice && (

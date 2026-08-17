@@ -426,20 +426,24 @@ export function OrderDetailModal({
   onClose,
   onUpdated,
   setBusy,
+  branches,
 }: {
   order: OrderDetail;
   currency: string;
   onClose: () => void;
   onUpdated: (updated: OrderDetail) => Promise<void>;
   setBusy: (value: boolean) => void;
+  branches: BranchOption[];
 }) {
   const [receivingFor, setReceivingFor] = useState<number | null>(null);
   const [receiveQty, setReceiveQty] = useState("");
   const [receiveCost, setReceiveCost] = useState("");
   const [receiveNotes, setReceiveNotes] = useState("");
+  const [receiptBranchId, setReceiptBranchId] = useState<string>(order.branch?.id ? String(order.branch.id) : "");
   const [saving, setSaving] = useState(false);
 
   const canReceive = !["cancelled", "closed"].includes(order.status);
+  const hasBranch = order.branch && order.branch.id > 0;
 
   /** @summary Confirma una recepción física y refresca el detalle. */
   async function confirmReceipt() {
@@ -457,6 +461,7 @@ export function OrderDetailModal({
         method: "POST",
         body: JSON.stringify({
           notes: receiveNotes || undefined,
+          branchId: hasBranch ? undefined : Number(receiptBranchId),
           items: [{ orderItemId: receivingFor, quantity, unit: line.unit, unitCost: Number(receiveCost) || Number(line.unitCost) }],
         }),
       });
@@ -553,6 +558,20 @@ export function OrderDetailModal({
         {receivingFor !== null && (
           <div className="rounded-2xl border border-pink-500/25 bg-pink-500/[0.04] p-4">
             <p className="text-sm font-black text-pink-300">Confirmar recepción</p>
+            <p className="mt-1 text-xs text-[var(--admin-muted)]">
+              Sucursal de recepción: {order.branch?.name ?? "Sin sucursal asignada"}
+            </p>
+            {!hasBranch && (
+              <label className="mt-2 block">
+                <span className="block text-xs font-semibold text-[var(--admin-muted)]">Sucursal receptora *</span>
+                <select className="input mt-1" value={receiptBranchId} onChange={(event) => setReceiptBranchId(event.target.value)} aria-label="Sucursal de recepción">
+                  <option value="">Elegí una sucursal</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {(() => {
               const line = order.items.find((item) => item.id === receivingFor);
               if (!line) return null;
