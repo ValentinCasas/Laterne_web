@@ -221,6 +221,20 @@ export const ADMIN_NAVIGATION = [
             permission: "product.manage",
             description: "Stock, movimientos y conteos",
           },
+          {
+            href: "/admin/compras",
+            label: "Compras",
+            icon: "CO",
+            permission: "purchase.manage",
+            description: "Pedidos, recepciones y facturas de proveedores",
+          },
+          {
+            href: "/admin/gastos",
+            label: "Gastos",
+            icon: "GA",
+            permission: "purchase.manage",
+            description: "Gastos sin inventario y previsiones",
+          },
         ],
       },
       {

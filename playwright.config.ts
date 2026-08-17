@@ -2,6 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Los archivos *.test.ts del directorio e2e corren con Vitest contra la DB real;
+  // Playwright solo ejecuta las verificaciones de navegador (*.spec.ts).
+  testMatch: /.*\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   retries: 0,

@@ -10,6 +10,7 @@ export const stockMovementTypeLabels: Record<string, string> = {
   waste: "Merma / desperdicio",
   transfer_in: "Entrada por transferencia",
   transfer_out: "Salida por transferencia",
+  purchase_in: "Recepción de compra",
   count_adjustment: "Ajuste por conteo físico",
   reserve: "Reserva de stock",
   release: "Liberación de reserva",
@@ -24,6 +25,7 @@ export const PHYSICAL_MOVEMENT_TYPES = new Set([
   "waste",
   "transfer_in",
   "transfer_out",
+  "purchase_in",
   "count_adjustment",
 ]);
 

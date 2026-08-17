@@ -108,7 +108,7 @@ function apiRewrite(request: NextRequest): NextResponse | null {
 
   match = pathname.match(/^\/api\/t\/([^/]+)\/([^/]+)\/admin\/s\/([^/]+)(?:\/(.*))?$/);
   if (match) {
-    return rewrite(request, `/api/admin${match[5] ? `/${match[5]}` : ""}`, {
+    return rewrite(request, `/api/admin${match[4] ? `/${match[4]}` : ""}`, {
       routeKind: "tenant-admin",
       tenantGuid: decodeURIComponent(match[1]),
       tenantSlug: decodeURIComponent(match[2]),

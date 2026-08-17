@@ -27,6 +27,8 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/ingredientes",
       "/admin/recetas",
       "/admin/inventario",
+      "/admin/compras",
+      "/admin/gastos",
       "/admin/opciones-producto",
       "/admin/categorias",
       "/admin/promociones",

@@ -441,6 +441,28 @@ export const adminHelpContent: Record<string, AdminHelpEntry> = {
     ],
     related: ["usuarios"],
   },
+  compras: {
+    title: "Compras",
+    intro:
+      "Separamos Pedido → Recepción → Factura → Pago para que cada etapa tenga su propia trazabilidad.",
+    points: [
+      "Un pedido es la intención de compra: crearlo no modifica inventario.",
+      "Solo la recepción física aumenta el stock, en la sucursal donde llega la mercadería.",
+      "Una factura puede vincularse a una o varias recepciones y mostrar la diferencia entre el costo esperado y el facturado.",
+      "Los pagos parciales dejan el documento en Parcialmente pagado hasta saldar el total.",
+    ],
+    related: ["inventario", "gastos", "productos", "ingredientes"],
+  },
+  gastos: {
+    title: "Gastos",
+    intro: "Registrá gastos que no son compras de stock: alquiler, servicios, personal, marketing y más.",
+    points: [
+      "Los gastos no tocan inventario: solo quedan como documento con estado de pago.",
+      "Las previsiones recurrentes (por ejemplo el alquiler mensual) generan sugerencias que confirmás antes de convertirlas en gasto real.",
+      "Los importes vencidos y los próximos vencimientos aparecen en los indicadores de la cabecera.",
+    ],
+    related: ["compras", "inventario"],
+  },
 };
 
 /** @summary Devuelve la ayuda configurada para una sección o null si no existe. */

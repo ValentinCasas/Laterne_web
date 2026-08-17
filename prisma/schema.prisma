@@ -100,70 +100,73 @@ model OpeningHour {
 }
 
 model Product {
-  id                 Int                  @id @default(autoincrement())
-  tenantId           Int
-  name               String               @db.VarChar(255)
-  slug               String               @db.VarChar(180)
-  description        String               @db.VarChar(700)
-  availability       String?              @map("availavility") @db.VarChar(255)
-  price              Decimal?             @db.Decimal(10, 0)
-  imageUrl           String               @db.VarChar(255)
-  status             String               @default("published") @db.VarChar(20)
-  publishAt          DateTime?
-  featured           Boolean              @default(false)
-  isNew              Boolean              @default(false)
-  recommended        Boolean              @default(false)
-  vegetarian         Boolean              @default(false)
-  vegan              Boolean              @default(false)
-  glutenFree         Boolean              @default(false)
-  alcoholFree        Boolean              @default(false)
-  spiceLevel         Int                  @default(0)
-  preparationMinutes Int?
-  promotionalPrice   Decimal?             @db.Decimal(10, 0)
-  previousPrice      Decimal?             @db.Decimal(10, 0)
-  model3dUrl         String?              @db.VarChar(500)
-  usdzUrl            String?              @db.VarChar(500)
-  modelPosterUrl     String?              @db.VarChar(500)
-  arEnabled          Boolean              @default(false)
-  arScale            Decimal              @default(1.000) @db.Decimal(8, 3)
-  modelWidthCm       Decimal?             @db.Decimal(8, 2)
-  modelHeightCm      Decimal?             @db.Decimal(8, 2)
-  modelDepthCm       Decimal?             @db.Decimal(8, 2)
-  modelOrientation   String               @default("0deg 0deg 0deg") @db.VarChar(80)
-  arPlacement        String               @default("floor") @db.VarChar(20)
-  arAllowScale       Boolean              @default(true)
-  availableDays      Json?
-  availableStartTime DateTime?            @db.Time(0)
-  availableEndTime   DateTime?            @db.Time(0)
-  modelUpdatedAt     DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  categories         ProductCategory[]
-  allergens          ProductAllergen[]
-  relatedFrom        ProductRelation[]    @relation("ProductRelationFrom")
-  relatedTo          ProductRelation[]    @relation("ProductRelationTo")
-  promotions         PromotionProduct[]
-  variants           ProductVariant[]
-  extras             ProductExtra[]
-  optionGroups       ProductOptionGroup[]
-  orderItems         OrderItem[]
-  inventoryStocks    InventoryStock[]
-  branchAssignments  BranchProduct[]
-  station            KitchenStation?      @relation(fields: [stationId], references: [id], onDelete: SetNull)
-  stationId          Int?
-  printAreas         PrintAreaProduct[]
-  cost               Decimal?             @db.Decimal(12, 2)
-  costUnit           String               @default("unidad") @db.VarChar(40)
-  favorite           Boolean              @default(false)
-  comboParts         ProductComboItem[]   @relation("ComboOwner")
-  inCombos           ProductComboItem[]   @relation("ComboPart")
-  recipeItems        RecipeIngredient[]   @relation("RecipeOwner")
-  usedInRecipes      RecipeIngredient[]   @relation("RecipePart")
-  priceLists         ProductPrice[]
-  costHistory        IngredientCostHistory[]
-  stockTransfers     StockTransfer[]
-  countItems         InventoryCountItem[]
+  id                   Int                     @id @default(autoincrement())
+  tenantId             Int
+  name                 String                  @db.VarChar(255)
+  slug                 String                  @db.VarChar(180)
+  description          String                  @db.VarChar(700)
+  availability         String?                 @map("availavility") @db.VarChar(255)
+  price                Decimal?                @db.Decimal(10, 0)
+  imageUrl             String                  @db.VarChar(255)
+  status               String                  @default("published") @db.VarChar(20)
+  publishAt            DateTime?
+  featured             Boolean                 @default(false)
+  isNew                Boolean                 @default(false)
+  recommended          Boolean                 @default(false)
+  vegetarian           Boolean                 @default(false)
+  vegan                Boolean                 @default(false)
+  glutenFree           Boolean                 @default(false)
+  alcoholFree          Boolean                 @default(false)
+  spiceLevel           Int                     @default(0)
+  preparationMinutes   Int?
+  promotionalPrice     Decimal?                @db.Decimal(10, 0)
+  previousPrice        Decimal?                @db.Decimal(10, 0)
+  model3dUrl           String?                 @db.VarChar(500)
+  usdzUrl              String?                 @db.VarChar(500)
+  modelPosterUrl       String?                 @db.VarChar(500)
+  arEnabled            Boolean                 @default(false)
+  arScale              Decimal                 @default(1.000) @db.Decimal(8, 3)
+  modelWidthCm         Decimal?                @db.Decimal(8, 2)
+  modelHeightCm        Decimal?                @db.Decimal(8, 2)
+  modelDepthCm         Decimal?                @db.Decimal(8, 2)
+  modelOrientation     String                  @default("0deg 0deg 0deg") @db.VarChar(80)
+  arPlacement          String                  @default("floor") @db.VarChar(20)
+  arAllowScale         Boolean                 @default(true)
+  availableDays        Json?
+  availableStartTime   DateTime?               @db.Time(0)
+  availableEndTime     DateTime?               @db.Time(0)
+  modelUpdatedAt       DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  tenant               Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categories           ProductCategory[]
+  allergens            ProductAllergen[]
+  relatedFrom          ProductRelation[]       @relation("ProductRelationFrom")
+  relatedTo            ProductRelation[]       @relation("ProductRelationTo")
+  promotions           PromotionProduct[]
+  variants             ProductVariant[]
+  extras               ProductExtra[]
+  optionGroups         ProductOptionGroup[]
+  orderItems           OrderItem[]
+  inventoryStocks      InventoryStock[]
+  branchAssignments    BranchProduct[]
+  station              KitchenStation?         @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  stationId            Int?
+  printAreas           PrintAreaProduct[]
+  cost                 Decimal?                @db.Decimal(12, 2)
+  costUnit             String                  @default("unidad") @db.VarChar(40)
+  favorite             Boolean                 @default(false)
+  comboParts           ProductComboItem[]      @relation("ComboOwner")
+  inCombos             ProductComboItem[]      @relation("ComboPart")
+  recipeItems          RecipeIngredient[]      @relation("RecipeOwner")
+  usedInRecipes        RecipeIngredient[]      @relation("RecipePart")
+  priceLists           ProductPrice[]
+  costHistory          IngredientCostHistory[]
+  stockTransfers       StockTransfer[]
+  countItems           InventoryCountItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  purchaseReceiptItems PurchaseReceiptItem[]
+  purchaseInvoiceItems PurchaseInvoiceItem[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -203,119 +206,133 @@ model Testimonial {
 }
 
 model User {
-  id                  Int                 @id @default(autoincrement())
-  name                String              @db.VarChar(255)
-  email               String              @db.VarChar(255)
-  password            String              @db.VarChar(255)
-  role                Int
-  imageUrl            String              @db.VarChar(255)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  memberships         TenantMembership[]
-  sessions            AuthSession[]
-  auditLogs           AuditLog[]
-  assignedLeads       SalesLead[]         @relation("AssignedSalesLeads")
-  isSuperAdmin        Boolean             @default(false)
-  platformRole        String?             @db.VarChar(40)
-  mediaAssets         MediaAsset[]
-  platformPayments    PlatformPayment[]   @relation("PlatformPaymentCreatedBy")
-  authHandoffs        AuthHandoff[]
-  tableSessionsWaited TableSession[]      @relation("WaiterTableSessions")
-  tableSessionsClosed TableSession[]      @relation("CloserTableSessions")
-  tableSessionEvents  TableSessionEvent[]
-  transfersCreated    StockTransfer[]     @relation("TransferCreatedBy")
-  countSessionsStarted InventoryCountSession[] @relation("CountStartedBy")
-  countSessionsCompleted InventoryCountSession[] @relation("CountCompletedBy")
-  stockMovements        StockMovement[]
+  id                      Int                     @id @default(autoincrement())
+  name                    String                  @db.VarChar(255)
+  email                   String                  @db.VarChar(255)
+  password                String                  @db.VarChar(255)
+  role                    Int
+  imageUrl                String                  @db.VarChar(255)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  memberships             TenantMembership[]
+  sessions                AuthSession[]
+  auditLogs               AuditLog[]
+  assignedLeads           SalesLead[]             @relation("AssignedSalesLeads")
+  isSuperAdmin            Boolean                 @default(false)
+  platformRole            String?                 @db.VarChar(40)
+  mediaAssets             MediaAsset[]
+  platformPayments        PlatformPayment[]       @relation("PlatformPaymentCreatedBy")
+  authHandoffs            AuthHandoff[]
+  tableSessionsWaited     TableSession[]          @relation("WaiterTableSessions")
+  tableSessionsClosed     TableSession[]          @relation("CloserTableSessions")
+  tableSessionEvents      TableSessionEvent[]
+  transfersCreated        StockTransfer[]         @relation("TransferCreatedBy")
+  countSessionsStarted    InventoryCountSession[] @relation("CountStartedBy")
+  countSessionsCompleted  InventoryCountSession[] @relation("CountCompletedBy")
+  stockMovements          StockMovement[]
+  purchaseOrdersCreated   PurchaseOrder[]         @relation("PurchaseOrderCreatedBy")
+  purchaseReceiptsCreated PurchaseReceipt[]       @relation("PurchaseReceiptCreatedBy")
+  purchaseInvoicesCreated PurchaseInvoice[]       @relation("PurchaseInvoiceCreatedBy")
+  purchasePaymentsCreated PurchasePayment[]       @relation("PurchasePaymentCreatedBy")
+  expensesCreated         Expense[]               @relation("ExpenseCreatedBy")
 
   @@unique([email])
   @@map("user")
 }
 
 model Tenant {
-  id                    Int                       @id @default(autoincrement())
-  name                  String                    @db.VarChar(160)
-  slug                  String                    @unique @db.VarChar(120)
-  publicGuid            String                    @unique @db.VarChar(36)
-  businessType          String?                   @db.VarChar(80)
-  status                String                    @default("active") @db.VarChar(20)
-  defaultCurrency       String                    @default("ARS") @db.VarChar(3)
-  locale                String                    @default("es-AR") @db.VarChar(12)
-  timeZone              String                    @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  businessInfo          BusinessInfo?
-  categories            Category[]
-  products              Product[]
-  productCategories     ProductCategory[]
-  events                Event[]
-  openingHours          OpeningHour[]
-  testimonials          Testimonial[]
-  memberships           TenantMembership[]
-  roles                 Role[]
-  auditLogs             AuditLog[]
-  promotions            Promotion[]
-  promotionProducts     PromotionProduct[]
-  promotionCategories   PromotionCategory[]
-  promotionUsages       PromotionUsage[]
-  reservationSettings   ReservationSettings?
-  reservationBlocks     ReservationBlock[]
-  reservations          Reservation[]
-  notifications         Notification[]
-  productVariants       ProductVariant[]
-  productExtras         ProductExtra[]
-  productOptionGroups   ProductOptionGroup[]
-  diningTables          DiningTable[]
-  customerOrders        CustomerOrder[]
-  orderIdempotencies    OrderIdempotency[]
-  analyticsEvents       AnalyticsEvent[]
-  brandSettings         BrandSettings?
-  subscription          TenantSubscription?
-  onboarding            OnboardingProgress?
-  notificationSettings  NotificationSettings?
-  legalPages            LegalPage[]
-  invoiceSettings       InvoiceSettings?
-  helpArticles          HelpArticle[]
-  supportTickets        SupportTicket[]
-  mediaAssets           MediaAsset[]
-  loyaltyCustomers      LoyaltyCustomer[]
-  loyaltyRewards        LoyaltyReward[]
-  successCases          SuccessCase[]
-  branches              Branch[]
-  inventoryStocks       InventoryStock[]
-  stockMovements        StockMovement[]
-  invoices              InvoiceRecord[]
-  documentTemplates     DocumentTemplate[]
-  invoiceDocuments      InvoiceDocumentArtifact[]
-  integrations          IntegrationSettings[]
-  seoPages              SeoPage[]
-  redirectRules         RedirectRule[]
-  errorLogs             ErrorLog[]
-  passwordResetRequests PasswordResetRequest[]
-  platformPayments      PlatformPayment[]
-  branchLicenses        BranchLicense[]
-  branchProducts        BranchProduct[]
-  loyaltyBranchLinks    LoyaltyBranchLink[]
-  tableSectors          TableSector[]
-  tableSessions         TableSession[]
-  tableSessionEvents    TableSessionEvent[]
-  activePaletteId       Int?
-  activePalette         ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
-  themePalettes         ThemePalette[]            @relation("TenantThemePalettes")
-  kitchenStations       KitchenStation[]
-  printAreas            PrintArea[]
-  printAreaProducts     PrintAreaProduct[]
-  printAreaCategories   PrintAreaCategory[]
-  printDestinations     PrintDestination[]
-  printJobs             PrintJob[]
-  productPrices         ProductPrice[]
-  productComboItems     ProductComboItem[]
-  recipeIngredients     RecipeIngredient[]
-  unitConversions       UnitConversion[]
-  ingredientCostHistory IngredientCostHistory[]
-  inventorySettings     InventorySettings?
-  stockTransfers        StockTransfer[]
+  id                     Int                       @id @default(autoincrement())
+  name                   String                    @db.VarChar(160)
+  slug                   String                    @unique @db.VarChar(120)
+  publicGuid             String                    @unique @db.VarChar(36)
+  businessType           String?                   @db.VarChar(80)
+  status                 String                    @default("active") @db.VarChar(20)
+  defaultCurrency        String                    @default("ARS") @db.VarChar(3)
+  locale                 String                    @default("es-AR") @db.VarChar(12)
+  timeZone               String                    @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  businessInfo           BusinessInfo?
+  categories             Category[]
+  products               Product[]
+  productCategories      ProductCategory[]
+  events                 Event[]
+  openingHours           OpeningHour[]
+  testimonials           Testimonial[]
+  memberships            TenantMembership[]
+  roles                  Role[]
+  auditLogs              AuditLog[]
+  promotions             Promotion[]
+  promotionProducts      PromotionProduct[]
+  promotionCategories    PromotionCategory[]
+  promotionUsages        PromotionUsage[]
+  reservationSettings    ReservationSettings?
+  reservationBlocks      ReservationBlock[]
+  reservations           Reservation[]
+  notifications          Notification[]
+  productVariants        ProductVariant[]
+  productExtras          ProductExtra[]
+  productOptionGroups    ProductOptionGroup[]
+  diningTables           DiningTable[]
+  customerOrders         CustomerOrder[]
+  orderIdempotencies     OrderIdempotency[]
+  analyticsEvents        AnalyticsEvent[]
+  brandSettings          BrandSettings?
+  subscription           TenantSubscription?
+  onboarding             OnboardingProgress?
+  notificationSettings   NotificationSettings?
+  legalPages             LegalPage[]
+  invoiceSettings        InvoiceSettings?
+  helpArticles           HelpArticle[]
+  supportTickets         SupportTicket[]
+  mediaAssets            MediaAsset[]
+  loyaltyCustomers       LoyaltyCustomer[]
+  loyaltyRewards         LoyaltyReward[]
+  successCases           SuccessCase[]
+  branches               Branch[]
+  inventoryStocks        InventoryStock[]
+  stockMovements         StockMovement[]
+  invoices               InvoiceRecord[]
+  documentTemplates      DocumentTemplate[]
+  invoiceDocuments       InvoiceDocumentArtifact[]
+  integrations           IntegrationSettings[]
+  seoPages               SeoPage[]
+  redirectRules          RedirectRule[]
+  errorLogs              ErrorLog[]
+  passwordResetRequests  PasswordResetRequest[]
+  platformPayments       PlatformPayment[]
+  branchLicenses         BranchLicense[]
+  branchProducts         BranchProduct[]
+  loyaltyBranchLinks     LoyaltyBranchLink[]
+  tableSectors           TableSector[]
+  tableSessions          TableSession[]
+  tableSessionEvents     TableSessionEvent[]
+  activePaletteId        Int?
+  activePalette          ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
+  themePalettes          ThemePalette[]            @relation("TenantThemePalettes")
+  kitchenStations        KitchenStation[]
+  printAreas             PrintArea[]
+  printAreaProducts      PrintAreaProduct[]
+  printAreaCategories    PrintAreaCategory[]
+  printDestinations      PrintDestination[]
+  printJobs              PrintJob[]
+  productPrices          ProductPrice[]
+  productComboItems      ProductComboItem[]
+  recipeIngredients      RecipeIngredient[]
+  unitConversions        UnitConversion[]
+  ingredientCostHistory  IngredientCostHistory[]
+  inventorySettings      InventorySettings?
+  stockTransfers         StockTransfer[]
   inventoryCountSessions InventoryCountSession[]
+  suppliers              Supplier[]
+  expenseCategories      ExpenseCategory[]
+  documentSequences      DocumentSequence[]
+  purchaseOrders         PurchaseOrder[]
+  purchaseReceipts       PurchaseReceipt[]
+  purchaseInvoices       PurchaseInvoice[]
+  purchasePayments       PurchasePayment[]
+  expenses               Expense[]
+  recurringExpenses      RecurringExpense[]
 
   @@map("tenant")
 }
@@ -920,22 +937,22 @@ model ProductOptionGroup {
  * base del producto se usa cuando no hay entrada para el canal.
  */
 model ProductPrice {
-  id          Int       @id @default(autoincrement())
-  tenantId    Int
-  productId   Int
-  channel     String    @db.VarChar(20)
-  price       Decimal   @db.Decimal(12, 2)
-  active      Boolean   @default(true)
-  validFrom   DateTime?
-  validUntil  DateTime?
-  startTime   DateTime? @db.Time(0)
-  endTime     DateTime? @db.Time(0)
-  daysOfWeek  Json?
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id         Int       @id @default(autoincrement())
+  tenantId   Int
+  productId  Int
+  channel    String    @db.VarChar(20)
+  price      Decimal   @db.Decimal(12, 2)
+  active     Boolean   @default(true)
+  validFrom  DateTime?
+  validUntil DateTime?
+  startTime  DateTime? @db.Time(0)
+  endTime    DateTime? @db.Time(0)
+  daysOfWeek Json?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, channel])
   @@index([tenantId, channel, active])
@@ -947,17 +964,17 @@ model ProductPrice {
  * El combo agrupa productos reales de la carta (p. ej. hamburguesa + papas + gaseosa).
  */
 model ProductComboItem {
-  id            Int     @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   tenantId      Int
   productId     Int
   itemProductId Int
-  quantity      Decimal @default(1) @db.Decimal(12, 3)
-  sortOrder     Int     @default(0)
+  quantity      Decimal  @default(1) @db.Decimal(12, 3)
+  sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product       Product @relation("ComboOwner", fields: [productId], references: [id], onDelete: Cascade)
-  item          Product @relation("ComboPart", fields: [itemProductId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product  @relation("ComboOwner", fields: [productId], references: [id], onDelete: Cascade)
+  item          Product  @relation("ComboPart", fields: [itemProductId], references: [id], onDelete: Cascade)
 
   @@unique([productId, itemProductId])
   @@index([itemProductId])
@@ -970,20 +987,22 @@ model ProductComboItem {
  * conecta el producto compuesto con su inventario sin duplicar modelos.
  */
 model RecipeIngredient {
-  id                  Int     @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
   tenantId            Int
   productId           Int
   ingredientProductId Int
-  quantity            Decimal @default(1) @db.Decimal(12, 3)
-  unit                String  @default("unidad") @db.VarChar(40)
-  /** Rendimiento de la preparación/ingrediente al usarse en la receta: 100 = sin merma. */
-  yieldPercent        Decimal @default(100) @db.Decimal(6, 3)
-  sortOrder           Int     @default(0)
+  quantity            Decimal  @default(1) @db.Decimal(12, 3)
+  unit                String   @default("unidad") @db.VarChar(40)
+  /**
+   * Rendimiento de la preparación/ingrediente al usarse en la receta: 100 = sin merma.
+   */
+  yieldPercent        Decimal  @default(100) @db.Decimal(6, 3)
+  sortOrder           Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-  tenant              Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product             Product @relation("RecipeOwner", fields: [productId], references: [id], onDelete: Cascade)
-  ingredient          Product @relation("RecipePart", fields: [ingredientProductId], references: [id], onDelete: Cascade)
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product             Product  @relation("RecipeOwner", fields: [productId], references: [id], onDelete: Cascade)
+  ingredient          Product  @relation("RecipePart", fields: [ingredientProductId], references: [id], onDelete: Cascade)
 
   @@unique([productId, ingredientProductId])
   @@index([ingredientProductId])
@@ -1083,16 +1102,16 @@ model KitchenStation {
  * categorías se asocian a un área para que la futura impresión sepa a dónde ir.
  */
 model PrintArea {
-  id           Int                  @id @default(autoincrement())
+  id           Int                 @id @default(autoincrement())
   tenantId     Int
   branchId     Int
-  name         String               @db.VarChar(100)
-  sortOrder    Int                  @default(0)
-  active       Boolean              @default(true)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch       Branch               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name         String              @db.VarChar(100)
+  sortOrder    Int                 @default(0)
+  active       Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
   products     PrintAreaProduct[]
   categories   PrintAreaCategory[]
   destinations PrintDestination[]
@@ -1584,24 +1603,26 @@ model SupportTicket {
 }
 
 model MediaAsset {
-  id           Int      @id @default(autoincrement())
-  tenantId     Int
-  branchId     Int?
-  userId       Int?
-  folder       String   @db.VarChar(100)
-  filename     String   @db.VarChar(255)
-  url          String   @db.VarChar(500)
-  thumbnailUrl String?  @db.VarChar(500)
-  mimeType     String   @db.VarChar(120)
-  sizeBytes    BigInt
-  altText      String?  @db.VarChar(300)
-  checksum     String   @db.VarChar(64)
-  width        Int?
-  height       Int?
-  createdAt    DateTime @default(now())
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id                 Int               @id @default(autoincrement())
+  tenantId           Int
+  branchId           Int?
+  userId             Int?
+  folder             String            @db.VarChar(100)
+  filename           String            @db.VarChar(255)
+  url                String            @db.VarChar(500)
+  thumbnailUrl       String?           @db.VarChar(500)
+  mimeType           String            @db.VarChar(120)
+  sizeBytes          BigInt
+  altText            String?           @db.VarChar(300)
+  checksum           String            @db.VarChar(64)
+  width              Int?
+  height             Int?
+  createdAt          DateTime          @default(now())
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch             Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user               User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  invoiceAttachments PurchaseInvoice[] @relation("InvoiceAttachment")
+  expenseAttachments Expense[]         @relation("ExpenseAttachment")
 
   @@unique([tenantId, checksum, folder])
   @@index([tenantId, branchId, folder, createdAt])
@@ -1697,29 +1718,29 @@ model SuccessCase {
 }
 
 model Branch {
-  id                 Int                 @id @default(autoincrement())
+  id                 Int                     @id @default(autoincrement())
   tenantId           Int
-  name               String              @db.VarChar(160)
-  slug               String              @db.VarChar(120)
-  address            String              @db.VarChar(300)
-  city               String?             @db.VarChar(120)
-  province           String?             @db.VarChar(120)
-  phone              String?             @db.VarChar(60)
-  whatsapp           String?             @db.VarChar(60)
-  latitude           Decimal?            @db.Decimal(10, 7)
-  longitude          Decimal?            @db.Decimal(10, 7)
-  deliveryFee        Decimal             @default(0) @db.Decimal(12, 2)
-  minimumOrder       Decimal             @default(0) @db.Decimal(12, 2)
-  orderPrefix        String              @default("PED") @db.VarChar(12)
-  isPrimary          Boolean             @default(false)
-  active             Boolean             @default(true)
-  inheritLanding     Boolean             @default(true)
-  inheritBrand       Boolean             @default(true)
+  name               String                  @db.VarChar(160)
+  slug               String                  @db.VarChar(120)
+  address            String                  @db.VarChar(300)
+  city               String?                 @db.VarChar(120)
+  province           String?                 @db.VarChar(120)
+  phone              String?                 @db.VarChar(60)
+  whatsapp           String?                 @db.VarChar(60)
+  latitude           Decimal?                @db.Decimal(10, 7)
+  longitude          Decimal?                @db.Decimal(10, 7)
+  deliveryFee        Decimal                 @default(0) @db.Decimal(12, 2)
+  minimumOrder       Decimal                 @default(0) @db.Decimal(12, 2)
+  orderPrefix        String                  @default("PED") @db.VarChar(12)
+  isPrimary          Boolean                 @default(false)
+  active             Boolean                 @default(true)
+  inheritLanding     Boolean                 @default(true)
+  inheritBrand       Boolean                 @default(true)
   landingContent     Json?
   brandContent       Json?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tables             DiningTable[]
   orders             CustomerOrder[]
   inventoryStocks    InventoryStock[]
@@ -1747,9 +1768,13 @@ model Branch {
   printAreas         PrintArea[]
   printDestinations  PrintDestination[]
   printJobs          PrintJob[]
-  transfersOut       StockTransfer[]     @relation("TransferFrom")
-  transfersIn        StockTransfer[]     @relation("TransferTo")
+  transfersOut       StockTransfer[]         @relation("TransferFrom")
+  transfersIn        StockTransfer[]         @relation("TransferTo")
   countSessions      InventoryCountSession[]
+  purchaseOrders     PurchaseOrder[]
+  purchaseReceipts   PurchaseReceipt[]
+  purchaseInvoices   PurchaseInvoice[]
+  expenses           Expense[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, active, isPrimary])
@@ -1848,21 +1873,23 @@ model BranchMembership {
 }
 
 model InventoryStock {
-  id        Int             @id @default(autoincrement())
-  tenantId  Int
-  branchId  Int
-  productId Int
-  tracked   Boolean         @default(false)
-  current   Decimal         @default(0) @db.Decimal(12, 3)
-  /** Unidades comprometidas (reservas): el disponible es `current - reserved`. */
-  reserved  Decimal         @default(0) @db.Decimal(12, 3)
-  minimum   Decimal         @default(0) @db.Decimal(12, 3)
-  unit      String          @default("unidad") @db.VarChar(40)
-  updatedAt DateTime        @updatedAt
-  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch    Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  movements StockMovement[]
+  id         Int                  @id @default(autoincrement())
+  tenantId   Int
+  branchId   Int
+  productId  Int
+  tracked    Boolean              @default(false)
+  current    Decimal              @default(0) @db.Decimal(12, 3)
+  /**
+   * Unidades comprometidas (reservas): el disponible es `current - reserved`.
+   */
+  reserved   Decimal              @default(0) @db.Decimal(12, 3)
+  minimum    Decimal              @default(0) @db.Decimal(12, 3)
+  unit       String               @default("unidad") @db.VarChar(40)
+  updatedAt  DateTime             @updatedAt
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product    Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movements  StockMovement[]
   countItems InventoryCountItem[]
 
   @@unique([branchId, productId])
@@ -1871,28 +1898,34 @@ model InventoryStock {
 }
 
 model StockMovement {
-  id           BigInt         @id @default(autoincrement())
-  tenantId     Int
-  stockId      Int
-  orderId      Int?
-  transferId   Int?
-  userId       Int?
-  type         String         @db.VarChar(30)
-  quantity     Decimal        @db.Decimal(12, 3)
-  balanceAfter Decimal        @db.Decimal(12, 3)
-  /** Costo unitario en el momento del movimiento: snapshot que nunca se reescribe. */
-  unitCost     Decimal?       @db.Decimal(14, 4)
-  /** Saldo reservado tras un movimiento de reserva/liberación (null si no aplica). */
-  reservedAfter Decimal?     @db.Decimal(12, 3)
-  /** Referencia legible del documento origen (pedido, transferencia, conteo, merma). */
-  reference    String?        @db.VarChar(80)
-  reason       String         @db.VarChar(300)
-  createdAt    DateTime       @default(now())
-  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stock        InventoryStock @relation(fields: [stockId], references: [id], onDelete: Cascade)
-  order        CustomerOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  transfer     StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
-  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id            BigInt         @id @default(autoincrement())
+  tenantId      Int
+  stockId       Int
+  orderId       Int?
+  transferId    Int?
+  userId        Int?
+  type          String         @db.VarChar(30)
+  quantity      Decimal        @db.Decimal(12, 3)
+  balanceAfter  Decimal        @db.Decimal(12, 3)
+  /**
+   * Costo unitario en el momento del movimiento: snapshot que nunca se reescribe.
+   */
+  unitCost      Decimal?       @db.Decimal(14, 4)
+  /**
+   * Saldo reservado tras un movimiento de reserva/liberación (null si no aplica).
+   */
+  reservedAfter Decimal?       @db.Decimal(12, 3)
+  /**
+   * Referencia legible del documento origen (pedido, transferencia, conteo, merma).
+   */
+  reference     String?        @db.VarChar(80)
+  reason        String         @db.VarChar(300)
+  createdAt     DateTime       @default(now())
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stock         InventoryStock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  order         CustomerOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  transfer      StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([stockId, createdAt])
@@ -1911,11 +1944,362 @@ model InventorySettings {
   id          Int      @id @default(autoincrement())
   tenantId    Int      @unique
   stockPolicy String   @default("strict") @db.VarChar(20)
+  /**
+   * Política de costo al facturar compras: `product` actualiza el costo actual, `history` solo registra historial.
+   */
+  costPolicy  String   @default("product") @db.VarChar(20)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("inventorysettings")
+}
+
+/**
+ * @summary Proveedor del negocio para pedidos, recepciones y gastos.
+ * Solo contiene datos de contacto y condiciones; nunca documentación fiscal.
+ */
+model Supplier {
+  id               Int               @id @default(autoincrement())
+  tenantId         Int
+  name             String            @db.VarChar(180)
+  taxId            String?           @db.VarChar(60)
+  contactName      String?           @db.VarChar(120)
+  phone            String?           @db.VarChar(40)
+  email            String?           @db.VarChar(160)
+  address          String?           @db.VarChar(240)
+  paymentTerms     String?           @db.VarChar(80)
+  notes            String?           @db.Text
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseOrders   PurchaseOrder[]
+  purchaseReceipts PurchaseReceipt[]
+  purchaseInvoices PurchaseInvoice[]
+  expenses         Expense[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, active])
+  @@map("supplier")
+}
+
+/**
+ * @summary Categoría configurable de gastos (Operación, Personal, Marketing, Administración…).
+ * Se siembran ejemplos por tenant, pero el negocio puede crear las propias.
+ */
+model ExpenseCategory {
+  id                Int                @id @default(autoincrement())
+  tenantId          Int
+  group             String             @default("Operación") @db.VarChar(60)
+  name              String             @db.VarChar(120)
+  active            Boolean            @default(true)
+  sortOrder         Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, group, active])
+  @@map("expensecategory")
+}
+
+/**
+ * @summary Contador de numeración por documento y tenant (OC-, RC-, GC-, GA-, PC-).
+ * El incremento es atómico dentro de la transacción del documento.
+ */
+model DocumentSequence {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  prefix    String   @db.VarChar(10)
+  lastValue Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, prefix])
+  @@map("documentsequence")
+}
+
+/**
+ * @summary Pedido de compra: intención de comprar mercadería a un proveedor.
+ * Crear un pedido NO modifica inventario; solo la recepción física lo hace.
+ */
+model PurchaseOrder {
+  id                Int                 @id @default(autoincrement())
+  tenantId          Int
+  branchId          Int
+  supplierId        Int
+  number            String              @db.VarChar(24)
+  status            String              @default("draft") @db.VarChar(24)
+  orderDate         DateTime            @default(now())
+  expectedDate      DateTime?
+  externalReference String?             @db.VarChar(120)
+  notes             String?             @db.Text
+  createdById       Int?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch            Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  supplier          Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdBy         User?               @relation("PurchaseOrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  items             PurchaseOrderItem[]
+  receipts          PurchaseReceipt[]
+  invoices          PurchaseInvoice[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, createdAt])
+  @@map("purchaseorder")
+}
+
+/**
+ * @summary Línea de un pedido de compra con lo pedido, lo recibido acumulado y costos.
+ */
+model PurchaseOrderItem {
+  id               Int                   @id @default(autoincrement())
+  orderId          Int
+  productId        Int
+  quantity         Decimal               @db.Decimal(12, 3)
+  unit             String                @default("unidad") @db.VarChar(40)
+  unitCost         Decimal               @db.Decimal(14, 4)
+  discountPercent  Decimal               @default(0) @db.Decimal(6, 2)
+  taxPercent       Decimal               @default(0) @db.Decimal(6, 2)
+  /**
+   * Cantidad recibida acumulada; la pendiente es `quantity - receivedQuantity`.
+   */
+  receivedQuantity Decimal               @default(0) @db.Decimal(12, 3)
+  sortOrder        Int                   @default(0)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  order            PurchaseOrder         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  receiptItems     PurchaseReceiptItem[]
+
+  @@unique([orderId, productId])
+  @@index([productId])
+  @@map("purchaseorderitem")
+}
+
+/**
+ * @summary Recepción física de mercadería: la única operación que aumenta stock.
+ * Un pedido puede tener muchas recepciones parciales.
+ */
+model PurchaseReceipt {
+  id          Int                      @id @default(autoincrement())
+  tenantId    Int
+  branchId    Int
+  supplierId  Int
+  orderId     Int?
+  number      String                   @db.VarChar(24)
+  receivedAt  DateTime                 @default(now())
+  notes       String?                  @db.Text
+  createdById Int?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch                   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  supplier    Supplier                 @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  order       PurchaseOrder?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy   User?                    @relation("PurchaseReceiptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  items       PurchaseReceiptItem[]
+  invoices    PurchaseInvoiceReceipt[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, branchId, receivedAt])
+  @@map("purchasereceipt")
+}
+
+/**
+ * @summary Línea de recepción: cantidad, unidad y costo informado al recibir.
+ */
+model PurchaseReceiptItem {
+  id          Int                @id @default(autoincrement())
+  receiptId   Int
+  orderItemId Int?
+  productId   Int
+  quantity    Decimal            @db.Decimal(12, 3)
+  unit        String             @default("unidad") @db.VarChar(40)
+  unitCost    Decimal            @db.Decimal(14, 4)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  receipt     PurchaseReceipt    @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderItem   PurchaseOrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  product     Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([receiptId, productId])
+  @@index([productId])
+  @@map("purchasereceiptitem")
+}
+
+/**
+ * @summary Factura o gasto del proveedor vinculado a compras (GC-…).
+ * Puede relacionarse con una o varias recepciones del mismo proveedor.
+ */
+model PurchaseInvoice {
+  id                Int                      @id @default(autoincrement())
+  tenantId          Int
+  branchId          Int?
+  supplierId        Int
+  number            String                   @db.VarChar(24)
+  status            String                   @default("draft") @db.VarChar(24)
+  documentDate      DateTime                 @default(now())
+  dueDate           DateTime?
+  externalNumber    String?                  @db.VarChar(120)
+  financialCategory String                   @default("insumos") @db.VarChar(80)
+  currency          String                   @default("ARS") @db.VarChar(3)
+  subtotal          Decimal                  @db.Decimal(12, 2)
+  taxAmount         Decimal                  @default(0) @db.Decimal(12, 2)
+  total             Decimal                  @db.Decimal(12, 2)
+  paidAmount        Decimal                  @default(0) @db.Decimal(12, 2)
+  notes             String?                  @db.Text
+  attachmentId      Int?
+  createdById       Int?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  tenant            Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch            Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  supplier          Supplier                 @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  attachment        MediaAsset?              @relation("InvoiceAttachment", fields: [attachmentId], references: [id], onDelete: SetNull)
+  createdBy         User?                    @relation("PurchaseInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  items             PurchaseInvoiceItem[]
+  receipts          PurchaseInvoiceReceipt[]
+  payments          PurchasePayment[]
+  order             PurchaseOrder?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderId           Int?
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, dueDate])
+  @@map("purchaseinvoice")
+}
+
+/**
+ * @summary Línea de factura: producto o concepto con cantidad, costo y descuento/impuesto.
+ */
+model PurchaseInvoiceItem {
+  id              Int             @id @default(autoincrement())
+  invoiceId       Int
+  productId       Int?
+  description     String          @db.VarChar(200)
+  quantity        Decimal         @default(1) @db.Decimal(12, 3)
+  unit            String          @default("unidad") @db.VarChar(40)
+  unitCost        Decimal         @db.Decimal(14, 4)
+  discountPercent Decimal         @default(0) @db.Decimal(6, 2)
+  taxPercent      Decimal         @default(0) @db.Decimal(6, 2)
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  invoice         PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product         Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@map("purchaseinvoiceitem")
+}
+
+/**
+ * @summary Vínculo entre una factura y las recepciones que documenta (varias por factura).
+ */
+model PurchaseInvoiceReceipt {
+  id        Int             @id @default(autoincrement())
+  invoiceId Int
+  receiptId Int
+  invoice   PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  receipt   PurchaseReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, receiptId])
+  @@map("purchaseinvoicereceipt")
+}
+
+/**
+ * @summary Pago de una factura de compra o de un gasto (uno de los dos, nunca ambos).
+ * El saldo pendiente se deriva de `total - paidAmount`.
+ */
+model PurchasePayment {
+  id          Int              @id @default(autoincrement())
+  tenantId    Int
+  invoiceId   Int?
+  expenseId   Int?
+  number      String           @db.VarChar(24)
+  amount      Decimal          @db.Decimal(12, 2)
+  method      String           @default("transferencia") @db.VarChar(40)
+  paidAt      DateTime         @default(now())
+  notes       String?          @db.VarChar(240)
+  createdById Int?
+  createdAt   DateTime         @default(now())
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice     PurchaseInvoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  expense     Expense?         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  createdBy   User?            @relation("PurchasePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, invoiceId])
+  @@index([tenantId, expenseId])
+  @@map("purchasepayment")
+}
+
+/**
+ * @summary Gasto que NO afecta inventario (alquiler, servicios, software…).
+ * Se registra como documento con estado de pago y opcionalmente adjunto.
+ */
+model Expense {
+  id                Int               @id @default(autoincrement())
+  tenantId          Int
+  branchId          Int?
+  supplierId        Int?
+  categoryId        Int
+  number            String            @db.VarChar(24)
+  status            String            @default("draft") @db.VarChar(24)
+  expenseDate       DateTime          @default(now())
+  dueDate           DateTime?
+  amountNet         Decimal           @db.Decimal(12, 2)
+  taxAmount         Decimal           @default(0) @db.Decimal(12, 2)
+  total             Decimal           @db.Decimal(12, 2)
+  paidAmount        Decimal           @default(0) @db.Decimal(12, 2)
+  paymentMethod     String?           @db.VarChar(40)
+  financialCategory String?           @db.VarChar(80)
+  notes             String?           @db.Text
+  attachmentId      Int?
+  createdById       Int?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch            Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  supplier          Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  category          ExpenseCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachment        MediaAsset?       @relation("ExpenseAttachment", fields: [attachmentId], references: [id], onDelete: SetNull)
+  createdBy         User?             @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  payments          PurchasePayment[]
+  recurring         RecurringExpense? @relation("RecurringExpenseSource", fields: [recurringId], references: [id], onDelete: SetNull)
+  recurringId       Int?
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, dueDate])
+  @@map("expense")
+}
+
+/**
+ * @summary Gasto recurrente previsto: genera sugerencias, nunca movimientos reales.
+ * El usuario confirma y recién ahí se convierte en un gasto.
+ */
+model RecurringExpense {
+  id          Int              @id @default(autoincrement())
+  tenantId    Int
+  categoryId  Int?
+  name        String           @db.VarChar(160)
+  amount      Decimal          @db.Decimal(12, 2)
+  periodicity String           @default("monthly") @db.VarChar(20)
+  dayOfMonth  Int?
+  dayOfWeek   Int?
+  nextDueDate DateTime         @default(now())
+  active      Boolean          @default(true)
+  notes       String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category    ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  expenses    Expense[]        @relation("RecurringExpenseSource")
+
+  @@index([tenantId, active, nextDueDate])
+  @@map("recurringexpense")
 }
 
 /**

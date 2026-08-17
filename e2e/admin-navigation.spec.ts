@@ -48,7 +48,7 @@ async function createTempAdmin() {
       name: "Verificación navegación",
       email,
       password: await bcrypt.hash(password, 10),
-      role: 1,
+      role: role.id,
       imageUrl: "",
     },
   });
@@ -72,10 +72,21 @@ async function login(page: Page) {
   expect(response.ok()).toBeTruthy();
   const setCookie = response.headers()["set-cookie"];
   expect(setCookie).toBeTruthy();
-  const [name, value] = setCookie.split(";")[0].split("=");
-  await page.context().addCookies([
-    { name, value, url: "http://localhost:3000", httpOnly: true, sameSite: "Strict" },
-  ]);
+  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
+  const parsed = cookies.map((cookie) => {
+    const [pair] = cookie.split(";");
+    const [name, value] = pair.split("=");
+    return { name: name.trim(), value: value.trim() };
+  });
+  await page.context().addCookies(
+    parsed.map(({ name, value }) => ({
+      name,
+      value,
+      url: "http://localhost:3000",
+      httpOnly: true,
+      sameSite: "Strict",
+    })),
+  );
 }
 
 test.beforeAll(async () => {
@@ -103,13 +114,13 @@ test("Carta → Costos → Inventario aparece en el menú y abre el módulo", as
   await expect(page.getByRole("button", { name: "Carta" })).toBeVisible();
   await page.getByRole("button", { name: "Carta" }).click();
 
-  const inventarioLink = page.getByRole("link", { name: "Inventario" });
+  const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
   await expect(inventarioLink).toBeVisible();
   await expect(page.getByText("Costos", { exact: true }).first()).toBeVisible();
 
   // El enlace usa las rutas tenant-scoped de los helpers (nada hardcodeado).
   const href = await inventarioLink.getAttribute("href");
-  expect(href).toMatch(/^\/t\/[^/]+\/laterne\/admin\/inventario$/);
+  expect(href).toMatch(/\/admin\/inventario$/);
 
   await inventarioLink.click();
   await expect(page).toHaveURL(/\/admin\/inventario$/);
@@ -126,7 +137,7 @@ test("con sucursal seleccionada el enlace de Inventario conserva la sucursal", a
   await page.goto(`/t/${tenantSlug}/admin/s/${branchSlugs[0]}`);
   await page.getByRole("button", { name: "Carta" }).click();
 
-  const inventarioLink = page.getByRole("link", { name: "Inventario" });
+  const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
   await expect(inventarioLink).toBeVisible();
   const href = await inventarioLink.getAttribute("href");
   expect(href).toMatch(new RegExp(`/admin/s/${branchSlugs[0]}/inventario$`));

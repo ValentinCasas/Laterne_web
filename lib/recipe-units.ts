@@ -47,9 +47,17 @@ export function standardUnit(unit: string): StandardUnit | null {
   return STANDARD_UNITS[unit.trim().toLocaleLowerCase("es")] ?? null;
 }
 
-/** @summary Normaliza una unidad a minúsculas sin espacios. */
+/** @summary Aliases de unidades legadas que se guardaron con abreviaturas. */
+const UNIT_ALIASES: Record<string, string> = {
+  "unid.": "unidad",
+  "uds.": "unidad",
+  "und": "unidad",
+};
+
+/** @summary Normaliza una unidad a minúsculas sin espacios y resuelve aliases legados. */
 export function normalizeUnit(unit: string): string {
-  return unit.trim().toLocaleLowerCase("es").replace(/\s+/g, "_");
+  const normalized = unit.trim().toLocaleLowerCase("es").replace(/\s+/g, "_");
+  return UNIT_ALIASES[normalized] ?? normalized;
 }
 
 /** @summary Etiqueta legible de una unidad (estándar o la propia). */

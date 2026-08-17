@@ -39,6 +39,7 @@ export const DEFAULT_TENANT_ROLES: DefaultRoleDefinition[] = [
     permissionKeys: [
       "admin.access",
       "product.manage",
+      "purchase.manage",
       "category.manage",
       "event.manage",
       "hours.manage",
