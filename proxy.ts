@@ -18,6 +18,7 @@ import {
   tenantBranchAdminGuidPath,
   tenantBranchAdminPath,
   tenantBranchPublicPath,
+  tenantDriverGuidPath,
   tenantPublicPath,
 } from "@/lib/routes";
 import { resolveGuidBySlug, resolveTenantByGuid } from "@/lib/tenant-identity";
@@ -155,6 +156,23 @@ function apiRewrite(request: NextRequest): NextResponse | null {
     });
   }
 
+  match = pathname.match(/^\/api\/t\/([^/]+)\/([^/]+)\/driver(?:\/(.*))?$/);
+  if (match) {
+    return rewrite(request, `/api/driver${match[3] ? `/${match[3]}` : ""}`, {
+      routeKind: "tenant-driver",
+      tenantGuid: decodeURIComponent(match[1]),
+      tenantSlug: decodeURIComponent(match[2]),
+    });
+  }
+
+  match = pathname.match(/^\/api\/t\/([^/]+)\/driver(?:\/(.*))?$/);
+  if (match) {
+    return rewrite(request, `/api/driver${match[2] ? `/${match[2]}` : ""}`, {
+      routeKind: "tenant-driver",
+      tenantSlug: decodeURIComponent(match[1]),
+    });
+  }
+
   match = pathname.match(/^\/api\/t\/([^/]+)\/auth\/(.+)$/);
   if (match) {
     return rewrite(request, `/api/auth/${match[2]}`, {
@@ -275,6 +293,38 @@ export async function proxy(request: NextRequest) {
       tenantSlug: canonical.tenantSlug,
       branchSlug: canonical.branchSlug,
       adminScope: canonical.branchSlug ? "branch" : "consolidated",
+    });
+  }
+
+  if (canonical.surface === "tenant-driver" && canonical.tenantSlug) {
+    if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+
+    // Identidad por GUID: se resuelve el negocio y se normaliza el slug si cambió.
+    if (canonical.tenantGuid) {
+      const identity = await resolveTenantByGuid(canonical.tenantGuid);
+      if (!identity) return rewrite(request, "/404", { routeKind: "platform-public" });
+      if (identity.slug !== canonical.tenantSlug) {
+        return redirectTo(request, adminRootUrl(), tenantDriverGuidPath(identity.publicGuid, identity.slug, canonical.logicalPath));
+      }
+      return rewrite(request, canonical.logicalPath, {
+        routeKind: "tenant-driver",
+        tenantGuid: identity.publicGuid,
+        tenantSlug: identity.slug,
+      });
+    }
+
+    const legacyGuid = await resolveGuidBySlug(canonical.tenantSlug);
+    if (legacyGuid) {
+      return redirectTo(
+        request,
+        adminRootUrl(),
+        tenantDriverGuidPath(legacyGuid, canonical.tenantSlug, canonical.logicalPath),
+      );
+    }
+
+    return rewrite(request, canonical.logicalPath, {
+      routeKind: "tenant-driver",
+      tenantSlug: canonical.tenantSlug,
     });
   }
 

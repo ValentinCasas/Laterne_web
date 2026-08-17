@@ -203,7 +203,8 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
   ) {
     return null;
   }
-  if (routeTenantSlug && routeKind !== "tenant-admin" && routeKind !== "tenant-auth") return null;
+  if (routeTenantSlug && routeKind !== "tenant-admin" && routeKind !== "tenant-auth" && routeKind !== "tenant-driver")
+    return null;
 
   const expectedTenantSlug = routeTenantSlug || (hostContext.kind === "app" ? hostContext.slug : undefined);
   const tenantFilter = routeTenantGuid
@@ -490,6 +491,25 @@ export async function requirePermission(permission: string) {
     );
   }
 
+  return context;
+}
+
+/**
+ * @summary Exige una membresía con el permiso `driver.self` para la vista personal
+ * del repartidor. Rechaza con redirección al acceso/403 como el resto del panel.
+ */
+export async function requireDriver() {
+  const requestHeaders = await headers();
+  const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
+  const context = await authorize("driver.self");
+  if (!context) {
+    const loginPath = routeTenantSlug ? tenantPublicPath(routeTenantSlug, "/login") : "/login";
+    const session = await getSession();
+    if (!session || session.context !== "tenant" || !session.membershipId) {
+      redirect(loginPath as Route);
+    }
+    redirect("/403");
+  }
   return context;
 }
 

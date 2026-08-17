@@ -46,6 +46,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/cuenta",
       "/admin/entregas",
       "/admin/delivery",
+      "/admin/repartidores",
       "/admin/cobros",
       "/admin/clientes",
     ]);

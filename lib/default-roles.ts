@@ -65,6 +65,12 @@ export const DEFAULT_TENANT_ROLES: DefaultRoleDefinition[] = [
     permissionKeys: ["admin.access", "order.manage", "table.manage"],
   },
   {
+    key: "driver",
+    name: "Repartidor",
+    description: "Accede a sus entregas y reporta incidencias.",
+    permissionKeys: ["admin.access", "driver.self"],
+  },
+  {
     key: "analyst",
     name: "Analista",
     description: "Consulta información y estadísticas.",

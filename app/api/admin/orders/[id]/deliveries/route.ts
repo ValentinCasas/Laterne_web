@@ -18,6 +18,7 @@ const createDeliveryInput = z.object({
   externalOrderId: z.string().trim().max(120).optional(),
   externalReference: z.string().trim().max(200).optional(),
   driverId: z.coerce.number().int().positive().optional(),
+  driverProfileId: z.coerce.number().int().positive().optional(),
   contactPhone: z.string().trim().max(60).optional(),
   contactName: z.string().trim().max(160).optional(),
   instructions: z.string().trim().max(1000).optional(),
@@ -59,6 +60,29 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
 
+  // Resuelve el repartidor del maestro de perfiles y valida la sucursal habilitada.
+  let assignedProfileId: number | null = null;
+  let assignedUserId: number | null = null;
+  if (parsed.data.driverProfileId) {
+    const profile = await prisma.driverProfile.findFirst({
+      where: { id: parsed.data.driverProfileId, tenantId: auth.tenant.id, active: true },
+      select: { id: true, userId: true, branches: { select: { branchId: true } } },
+    });
+    if (!profile) return NextResponse.json({ error: "Repartidor no encontrado o inactivo" }, { status: 404 });
+    if (order.branchId && !profile.branches.some((item) => item.branchId === order.branchId)) {
+      return NextResponse.json({ error: "El repartidor no tiene habilitada la sucursal del pedido" }, { status: 400 });
+    }
+    assignedProfileId = profile.id;
+    assignedUserId = profile.userId;
+  } else if (parsed.data.driverId) {
+    const user = await prisma.user.findFirst({
+      where: { id: parsed.data.driverId, memberships: { some: { tenantId: auth.tenant.id, status: "active" } } },
+      select: { id: true },
+    });
+    if (!user) return NextResponse.json({ error: "Repartidor no encontrado" }, { status: 404 });
+    assignedUserId = user.id;
+  }
+
   const number = `ENT-${Date.now().toString(36).toUpperCase()}`;
   const delivery = await prisma.$transaction(async (transaction) => {
     const created = await transaction.orderDelivery.create({
@@ -75,7 +99,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         provider: parsed.data.provider,
         externalOrderId: parsed.data.externalOrderId ?? undefined,
         externalReference: parsed.data.externalReference ?? undefined,
-        driverId: parsed.data.driverId ?? undefined,
+        status: assignedProfileId ? "ASSIGNED" : "PENDING_ASSIGNMENT",
+        driverProfileId: assignedProfileId ?? undefined,
+        driverId: assignedUserId ?? undefined,
+        assignedAt: assignedProfileId ? new Date() : undefined,
         contactPhone: parsed.data.contactPhone ?? undefined,
         contactName: parsed.data.contactName ?? undefined,
         instructions: parsed.data.instructions ?? undefined,
@@ -92,6 +119,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             notes: item.notes ?? undefined,
           })),
         },
+        statusLogs: assignedProfileId
+          ? {
+              create: {
+                tenantId: auth.tenant.id,
+                driverProfileId: assignedProfileId,
+                status: "ASSIGNED",
+                previousStatus: "PENDING_ASSIGNMENT",
+                reason: "Asignado al crear la entrega",
+                changedById: auth.session.userId,
+              },
+            }
+          : undefined,
       },
       include: { items: true },
     });

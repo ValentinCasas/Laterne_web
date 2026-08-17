@@ -163,6 +163,13 @@ export const ADMIN_NAVIGATION = [
             permission: "order.manage",
             description: "Seguimiento de entregas y repartidores",
           },
+          {
+            href: "/admin/repartidores",
+            label: "Repartidores",
+            icon: "RP",
+            permission: "driver.view",
+            description: "Perfiles de repartidores, sucursales y KPIs",
+          },
         ],
       },
       {

@@ -26,6 +26,7 @@ type Delivery = {
   pickedUpAt?: Date | string | null;
   deliveredAt?: Date | string | null;
   driver?: { id: number; name: string } | null;
+  driverProfile?: { id: number; name: string; phone?: string | null } | null;
   branch?: { id: number; name: string } | null;
   order?: {
     id: number;
@@ -41,7 +42,7 @@ type Delivery = {
 };
 
 type Branch = { id: number; name: string; slug: string };
-type Driver = { id: number; name: string; email?: string };
+type Driver = { id: number; name: string; phone?: string; status?: string };
 
 type DeliveryCenterProps = {
   initialDeliveries: Delivery[];
@@ -97,7 +98,7 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
     return deliveries.filter((d) => {
       if (filterStatus && d.status !== filterStatus) return false;
       if (filterBranch && d.branch?.id !== Number(filterBranch)) return false;
-      if (filterDriver && d.driver?.id !== Number(filterDriver)) return false;
+      if (filterDriver && d.driverProfile?.id !== Number(filterDriver)) return false;
       if (!q) return true;
       return [d.number, d.customerName, d.order?.reference, d.externalOrderId, d.deliveryAddress]
         .filter(Boolean)
@@ -105,13 +106,13 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
     });
   }, [deliveries, filterStatus, filterBranch, filterDriver, filterQ]);
 
-  async function assignDriver(deliveryId: number, driverId: number) {
+  async function assignDriver(deliveryId: number, driverProfileId: number) {
     setSaving(true);
     try {
       const response = await scopedFetch(`/api/admin/deliveries/${deliveryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "ASSIGNED", driverId }),
+        body: JSON.stringify({ status: "ASSIGNED", driverProfileId }),
       });
       const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
       if (!response.ok || !body.delivery) {
@@ -192,7 +193,7 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
               </div>
               <p className="mt-1 text-sm font-bold text-white">{delivery.customerName}</p>
               <p className="text-xs text-[var(--admin-muted)]">{delivery.order?.reference ?? "—"} · {delivery.branch?.name ?? "—"}</p>
-              {delivery.driver && <p className="text-xs text-[var(--admin-muted)]">Repartidor: {delivery.driver.name}</p>}
+              {delivery.driverProfile && <p className="text-xs text-[var(--admin-muted)]">Repartidor: {delivery.driverProfile.name}</p>}
             </button>
           ))}
         </div>
@@ -218,13 +219,13 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
               <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
                 <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Repartidor</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <select className="input w-auto" defaultValue={selected.driver?.id ? String(selected.driver.id) : ""} onChange={(e) => { const val = e.target.value; if (!val) return; assignDriver(selected.id, Number(val)); }} aria-label="Asignar repartidor">
+                  <select className="input w-auto" defaultValue={selected.driverProfile?.id ? String(selected.driverProfile.id) : ""} onChange={(e) => { const val = e.target.value; if (!val) return; assignDriver(selected.id, Number(val)); }} aria-label="Asignar repartidor">
                     <option value="">Asignar repartidor…</option>
                     {drivers.map((driver) => (
                       <option key={driver.id} value={String(driver.id)}>{driver.name}</option>
                     ))}
                   </select>
-                  {selected.driver && <span className="text-sm text-white">{selected.driver.name}</span>}
+                  {selected.driverProfile && <span className="text-sm text-white">{selected.driverProfile.name}</span>}
                 </div>
               </div>
 

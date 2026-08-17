@@ -264,148 +264,155 @@ model Testimonial {
 }
 
 model User {
-  id                       Int                     @id @default(autoincrement())
-  name                     String                  @db.VarChar(255)
-  email                    String                  @db.VarChar(255)
-  password                 String                  @db.VarChar(255)
+  id                       Int                      @id @default(autoincrement())
+  name                     String                   @db.VarChar(255)
+  email                    String                   @db.VarChar(255)
+  password                 String                   @db.VarChar(255)
   role                     Int
-  imageUrl                 String                  @db.VarChar(255)
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
+  imageUrl                 String                   @db.VarChar(255)
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
   memberships              TenantMembership[]
   sessions                 AuthSession[]
   auditLogs                AuditLog[]
-  assignedLeads            SalesLead[]             @relation("AssignedSalesLeads")
-  isSuperAdmin             Boolean                 @default(false)
-  platformRole             String?                 @db.VarChar(40)
+  assignedLeads            SalesLead[]              @relation("AssignedSalesLeads")
+  isSuperAdmin             Boolean                  @default(false)
+  platformRole             String?                  @db.VarChar(40)
   mediaAssets              MediaAsset[]
-  platformPayments         PlatformPayment[]       @relation("PlatformPaymentCreatedBy")
+  platformPayments         PlatformPayment[]        @relation("PlatformPaymentCreatedBy")
   authHandoffs             AuthHandoff[]
-  tableSessionsWaited      TableSession[]          @relation("WaiterTableSessions")
-  tableSessionsClosed      TableSession[]          @relation("CloserTableSessions")
+  tableSessionsWaited      TableSession[]           @relation("WaiterTableSessions")
+  tableSessionsClosed      TableSession[]           @relation("CloserTableSessions")
   tableSessionEvents       TableSessionEvent[]
-  transfersCreated         StockTransfer[]         @relation("TransferCreatedBy")
-  countSessionsStarted     InventoryCountSession[] @relation("CountStartedBy")
-  countSessionsCompleted   InventoryCountSession[] @relation("CountCompletedBy")
+  transfersCreated         StockTransfer[]          @relation("TransferCreatedBy")
+  countSessionsStarted     InventoryCountSession[]  @relation("CountStartedBy")
+  countSessionsCompleted   InventoryCountSession[]  @relation("CountCompletedBy")
   stockMovements           StockMovement[]
-  purchaseOrdersCreated    PurchaseOrder[]         @relation("PurchaseOrderCreatedBy")
-  purchaseReceiptsCreated  PurchaseReceipt[]       @relation("PurchaseReceiptCreatedBy")
-  purchaseInvoicesCreated  PurchaseInvoice[]       @relation("PurchaseInvoiceCreatedBy")
-  purchasePaymentsCreated  PurchasePayment[]       @relation("PurchasePaymentCreatedBy")
-  expensesCreated          Expense[]               @relation("ExpenseCreatedBy")
-  supplierLedgerEntries    SupplierLedgerEntry[]   @relation("SupplierLedgerCreatedBy")
-  deliveriesCreated        OrderDelivery[]         @relation("OrderDeliveryCreatedBy")
-  deliveriesReversed       OrderDelivery[]         @relation("OrderDeliveryReversedBy")
-  customerPaymentsCreated  CustomerPayment[]       @relation("CustomerPaymentCreatedBy")
-  customerPaymentsReversed CustomerPayment[]       @relation("CustomerPaymentReversedBy")
-  deliveriesAssigned       OrderDelivery[]         @relation("DeliveryDriver")
+  purchaseOrdersCreated    PurchaseOrder[]          @relation("PurchaseOrderCreatedBy")
+  purchaseReceiptsCreated  PurchaseReceipt[]        @relation("PurchaseReceiptCreatedBy")
+  purchaseInvoicesCreated  PurchaseInvoice[]        @relation("PurchaseInvoiceCreatedBy")
+  purchasePaymentsCreated  PurchasePayment[]        @relation("PurchasePaymentCreatedBy")
+  expensesCreated          Expense[]                @relation("ExpenseCreatedBy")
+  supplierLedgerEntries    SupplierLedgerEntry[]    @relation("SupplierLedgerCreatedBy")
+  deliveriesCreated        OrderDelivery[]          @relation("OrderDeliveryCreatedBy")
+  deliveriesReversed       OrderDelivery[]          @relation("OrderDeliveryReversedBy")
+  customerPaymentsCreated  CustomerPayment[]        @relation("CustomerPaymentCreatedBy")
+  customerPaymentsReversed CustomerPayment[]        @relation("CustomerPaymentReversedBy")
+  deliveriesAssigned       OrderDelivery[]          @relation("DeliveryDriver")
   driverPositions          DriverPosition[]
+  driverProfiles           DriverProfile[]
+  driverIncidentsReported  DriverIncident[]
+  deliveryStatusLogs       OrderDeliveryStatusLog[] @relation("DeliveryStatusLogChangedBy")
 
   @@unique([email])
   @@map("user")
 }
 
 model Tenant {
-  id                     Int                       @id @default(autoincrement())
-  name                   String                    @db.VarChar(160)
-  slug                   String                    @unique @db.VarChar(120)
-  publicGuid             String                    @unique @db.VarChar(36)
-  businessType           String?                   @db.VarChar(80)
-  status                 String                    @default("active") @db.VarChar(20)
-  defaultCurrency        String                    @default("ARS") @db.VarChar(3)
-  locale                 String                    @default("es-AR") @db.VarChar(12)
-  timeZone               String                    @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
-  createdAt              DateTime                  @default(now())
-  updatedAt              DateTime                  @updatedAt
-  businessInfo           BusinessInfo?
-  categories             Category[]
-  products               Product[]
-  productCategories      ProductCategory[]
-  events                 Event[]
-  openingHours           OpeningHour[]
-  testimonials           Testimonial[]
-  memberships            TenantMembership[]
-  roles                  Role[]
-  auditLogs              AuditLog[]
-  promotions             Promotion[]
-  promotionProducts      PromotionProduct[]
-  promotionCategories    PromotionCategory[]
-  promotionUsages        PromotionUsage[]
-  reservationSettings    ReservationSettings?
-  reservationBlocks      ReservationBlock[]
-  reservations           Reservation[]
-  notifications          Notification[]
-  productVariants        ProductVariant[]
-  productExtras          ProductExtra[]
-  productOptionGroups    ProductOptionGroup[]
-  diningTables           DiningTable[]
-  customerOrders         CustomerOrder[]
-  orderIdempotencies     OrderIdempotency[]
-  analyticsEvents        AnalyticsEvent[]
-  brandSettings          BrandSettings?
-  subscription           TenantSubscription?
-  onboarding             OnboardingProgress?
-  notificationSettings   NotificationSettings?
-  legalPages             LegalPage[]
-  invoiceSettings        InvoiceSettings?
-  helpArticles           HelpArticle[]
-  supportTickets         SupportTicket[]
-  mediaAssets            MediaAsset[]
-  loyaltyCustomers       LoyaltyCustomer[]
-  loyaltyRewards         LoyaltyReward[]
-  successCases           SuccessCase[]
-  branches               Branch[]
-  inventoryStocks        InventoryStock[]
-  stockMovements         StockMovement[]
-  invoices               InvoiceRecord[]
-  documentTemplates      DocumentTemplate[]
-  invoiceDocuments       InvoiceDocumentArtifact[]
-  integrations           IntegrationSettings[]
-  seoPages               SeoPage[]
-  redirectRules          RedirectRule[]
-  errorLogs              ErrorLog[]
-  passwordResetRequests  PasswordResetRequest[]
-  platformPayments       PlatformPayment[]
-  branchLicenses         BranchLicense[]
-  branchProducts         BranchProduct[]
-  loyaltyBranchLinks     LoyaltyBranchLink[]
-  tableSectors           TableSector[]
-  tableSessions          TableSession[]
-  tableSessionEvents     TableSessionEvent[]
-  activePaletteId        Int?
-  activePalette          ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
-  themePalettes          ThemePalette[]            @relation("TenantThemePalettes")
-  kitchenStations        KitchenStation[]
-  printAreas             PrintArea[]
-  printAreaProducts      PrintAreaProduct[]
-  printAreaCategories    PrintAreaCategory[]
-  printDestinations      PrintDestination[]
-  printJobs              PrintJob[]
-  productPrices          ProductPrice[]
-  productComboItems      ProductComboItem[]
-  recipeIngredients      RecipeIngredient[]
-  unitConversions        UnitConversion[]
-  ingredientCostHistory  IngredientCostHistory[]
-  inventorySettings      InventorySettings?
-  stockTransfers         StockTransfer[]
-  inventoryCountSessions InventoryCountSession[]
-  suppliers              Supplier[]
-  supplierBranches       SupplierBranch[]
-  supplierLedgerEntries  SupplierLedgerEntry[]
-  expenseCategories      ExpenseCategory[]
-  documentSequences      DocumentSequence[]
-  purchaseOrders         PurchaseOrder[]
-  purchaseReceipts       PurchaseReceipt[]
-  purchaseInvoices       PurchaseInvoice[]
-  purchasePayments       PurchasePayment[]
-  expenses               Expense[]
-  recurringExpenses      RecurringExpense[]
-  orderDeliveries        OrderDelivery[]
-  customerPayments       CustomerPayment[]
-  externalOrders         ExternalOrder[]
-  externalEvents         ExternalEvent[]
-  driverPositions        DriverPosition[]
+  id                      Int                       @id @default(autoincrement())
+  name                    String                    @db.VarChar(160)
+  slug                    String                    @unique @db.VarChar(120)
+  publicGuid              String                    @unique @db.VarChar(36)
+  businessType            String?                   @db.VarChar(80)
+  status                  String                    @default("active") @db.VarChar(20)
+  defaultCurrency         String                    @default("ARS") @db.VarChar(3)
+  locale                  String                    @default("es-AR") @db.VarChar(12)
+  timeZone                String                    @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  businessInfo            BusinessInfo?
+  categories              Category[]
+  products                Product[]
+  productCategories       ProductCategory[]
+  events                  Event[]
+  openingHours            OpeningHour[]
+  testimonials            Testimonial[]
+  memberships             TenantMembership[]
+  roles                   Role[]
+  auditLogs               AuditLog[]
+  promotions              Promotion[]
+  promotionProducts       PromotionProduct[]
+  promotionCategories     PromotionCategory[]
+  promotionUsages         PromotionUsage[]
+  reservationSettings     ReservationSettings?
+  reservationBlocks       ReservationBlock[]
+  reservations            Reservation[]
+  notifications           Notification[]
+  productVariants         ProductVariant[]
+  productExtras           ProductExtra[]
+  productOptionGroups     ProductOptionGroup[]
+  diningTables            DiningTable[]
+  customerOrders          CustomerOrder[]
+  orderIdempotencies      OrderIdempotency[]
+  analyticsEvents         AnalyticsEvent[]
+  brandSettings           BrandSettings?
+  subscription            TenantSubscription?
+  onboarding              OnboardingProgress?
+  notificationSettings    NotificationSettings?
+  legalPages              LegalPage[]
+  invoiceSettings         InvoiceSettings?
+  helpArticles            HelpArticle[]
+  supportTickets          SupportTicket[]
+  mediaAssets             MediaAsset[]
+  loyaltyCustomers        LoyaltyCustomer[]
+  loyaltyRewards          LoyaltyReward[]
+  successCases            SuccessCase[]
+  branches                Branch[]
+  inventoryStocks         InventoryStock[]
+  stockMovements          StockMovement[]
+  invoices                InvoiceRecord[]
+  documentTemplates       DocumentTemplate[]
+  invoiceDocuments        InvoiceDocumentArtifact[]
+  integrations            IntegrationSettings[]
+  seoPages                SeoPage[]
+  redirectRules           RedirectRule[]
+  errorLogs               ErrorLog[]
+  passwordResetRequests   PasswordResetRequest[]
+  platformPayments        PlatformPayment[]
+  branchLicenses          BranchLicense[]
+  branchProducts          BranchProduct[]
+  loyaltyBranchLinks      LoyaltyBranchLink[]
+  tableSectors            TableSector[]
+  tableSessions           TableSession[]
+  tableSessionEvents      TableSessionEvent[]
+  activePaletteId         Int?
+  activePalette           ThemePalette?             @relation("TenantActivePalette", fields: [activePaletteId], references: [id], onDelete: SetNull)
+  themePalettes           ThemePalette[]            @relation("TenantThemePalettes")
+  kitchenStations         KitchenStation[]
+  printAreas              PrintArea[]
+  printAreaProducts       PrintAreaProduct[]
+  printAreaCategories     PrintAreaCategory[]
+  printDestinations       PrintDestination[]
+  printJobs               PrintJob[]
+  productPrices           ProductPrice[]
+  productComboItems       ProductComboItem[]
+  recipeIngredients       RecipeIngredient[]
+  unitConversions         UnitConversion[]
+  ingredientCostHistory   IngredientCostHistory[]
+  inventorySettings       InventorySettings?
+  stockTransfers          StockTransfer[]
+  inventoryCountSessions  InventoryCountSession[]
+  suppliers               Supplier[]
+  supplierBranches        SupplierBranch[]
+  supplierLedgerEntries   SupplierLedgerEntry[]
+  expenseCategories       ExpenseCategory[]
+  documentSequences       DocumentSequence[]
+  purchaseOrders          PurchaseOrder[]
+  purchaseReceipts        PurchaseReceipt[]
+  purchaseInvoices        PurchaseInvoice[]
+  purchasePayments        PurchasePayment[]
+  expenses                Expense[]
+  recurringExpenses       RecurringExpense[]
+  orderDeliveries         OrderDelivery[]
+  customerPayments        CustomerPayment[]
+  externalOrders          ExternalOrder[]
+  externalEvents          ExternalEvent[]
+  driverPositions         DriverPosition[]
   deliveryProviderConfigs DeliveryProviderConfig[]
+  driverProfiles          DriverProfile[]
+  driverBranches          DriverBranch[]
+  driverIncidents         DriverIncident[]
+  deliveryStatusLogs      OrderDeliveryStatusLog[]
 
   @@map("tenant")
 }
@@ -1488,53 +1495,58 @@ model OrderStatusHistory {
  * documento de referencia para cobros y auditoría.
  */
 model OrderDelivery {
-  id              Int                 @id @default(autoincrement())
-  tenantId        Int
-  orderId         Int
-  number          String              @db.VarChar(24)
-  deliveryDate    DateTime            @default(now())
-  branchId        Int?
-  customerId      Int?
-  customerName    String              @db.VarChar(160)
-  deliveryAddress String?             @db.VarChar(500)
-  deliveryType    String              @default("full") @db.VarChar(20)
-  status          String              @default("delivered") @db.VarChar(24)
-  provider        DeliveryProvider    @default(MENUCLICK)
-  externalOrderId String?             @db.VarChar(120)
-  externalReference String?           @db.VarChar(200)
-  driverId        Int?
-  assignedAt      DateTime?
-  pickedUpAt      DateTime?
-  deliveredAt     DateTime?
-  latitude        String?             @db.VarChar(32)
-  longitude       String?             @db.VarChar(32)
-  addressSnapshot String?             @db.VarChar(500)
-  contactPhone    String?             @db.VarChar(60)
-  contactName     String?             @db.VarChar(160)
-  instructions    String?             @db.Text
-  receiverName    String?             @db.VarChar(160)
-  deliveryFee     Decimal             @default(0) @db.Decimal(12, 2)
-  notes           String?             @db.Text
-  createdAt       DateTime            @default(now())
-  createdById     Int?
-  reversedAt      DateTime?
-  reversedById    Int?
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order           CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  branch          Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  customer        LoyaltyCustomer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  driver          User?               @relation("DeliveryDriver", fields: [driverId], references: [id], onDelete: SetNull)
-  createdBy       User?               @relation("OrderDeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  reversedBy      User?               @relation("OrderDeliveryReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
-  items           OrderDeliveryItem[]
-  payments        CustomerPayment[]
-  positions       DriverPosition[]
+  id                Int                      @id @default(autoincrement())
+  tenantId          Int
+  orderId           Int
+  number            String                   @db.VarChar(24)
+  deliveryDate      DateTime                 @default(now())
+  branchId          Int?
+  customerId        Int?
+  customerName      String                   @db.VarChar(160)
+  deliveryAddress   String?                  @db.VarChar(500)
+  deliveryType      String                   @default("full") @db.VarChar(20)
+  status            String                   @default("delivered") @db.VarChar(24)
+  provider          DeliveryProvider         @default(MENUCLICK)
+  externalOrderId   String?                  @db.VarChar(120)
+  externalReference String?                  @db.VarChar(200)
+  driverId          Int?
+  driverProfileId   Int?
+  assignedAt        DateTime?
+  pickedUpAt        DateTime?
+  deliveredAt       DateTime?
+  latitude          String?                  @db.VarChar(32)
+  longitude         String?                  @db.VarChar(32)
+  addressSnapshot   String?                  @db.VarChar(500)
+  contactPhone      String?                  @db.VarChar(60)
+  contactName       String?                  @db.VarChar(160)
+  instructions      String?                  @db.Text
+  receiverName      String?                  @db.VarChar(160)
+  deliveryFee       Decimal                  @default(0) @db.Decimal(12, 2)
+  notes             String?                  @db.Text
+  createdAt         DateTime                 @default(now())
+  createdById       Int?
+  reversedAt        DateTime?
+  reversedById      Int?
+  tenant            Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order             CustomerOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branch            Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customer          LoyaltyCustomer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  driver            User?                    @relation("DeliveryDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  driverProfile     DriverProfile?           @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+  createdBy         User?                    @relation("OrderDeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reversedBy        User?                    @relation("OrderDeliveryReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+  items             OrderDeliveryItem[]
+  payments          CustomerPayment[]
+  positions         DriverPosition[]
+  incidents         DriverIncident[]
+  statusLogs        OrderDeliveryStatusLog[]
 
   @@unique([tenantId, number])
   @@index([tenantId, orderId, createdAt])
   @@index([tenantId, customerId, createdAt])
   @@index([tenantId, branchId, status, createdAt])
   @@index([tenantId, driverId, status])
+  @@index([tenantId, driverProfileId, status])
   @@index([tenantId, provider, externalOrderId])
   @@map("orderdelivery")
 }
@@ -1977,6 +1989,7 @@ model Branch {
   transfersTo        StockTransfer[]         @relation("TransferTo")
   countSessions      InventoryCountSession[]
   driverPositions    DriverPosition[]
+  driverBranches     DriverBranch[]
 
   @@map("branch")
 }
@@ -2863,17 +2876,17 @@ model PlatformPayment {
  * sin crear duplicados.
  */
 model ExternalOrder {
-  id               Int               @id @default(autoincrement())
-  tenantId         Int
-  orderId          Int
-  provider         DeliveryProvider
-  externalOrderId  String            @db.VarChar(120)
-  externalStoreId  String?           @db.VarChar(120)
+  id                Int              @id @default(autoincrement())
+  tenantId          Int
+  orderId           Int
+  provider          DeliveryProvider
+  externalOrderId   String           @db.VarChar(120)
+  externalStoreId   String?          @db.VarChar(120)
   externalReference String?          @db.VarChar(200)
-  metadata         Json?
-  receivedAt       DateTime          @default(now())
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order            CustomerOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  metadata          Json?
+  receivedAt        DateTime         @default(now())
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order             CustomerOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, provider, externalOrderId])
   @@index([tenantId, orderId])
@@ -2886,19 +2899,19 @@ model ExternalOrder {
  * Garantiza idempotencia: mismo provider + eventId no se procesa dos veces.
  */
 model ExternalEvent {
-  id                Int               @id @default(autoincrement())
-  tenantId          Int
-  externalOrderId   String?           @db.VarChar(120)
-  provider          DeliveryProvider
-  eventId           String            @db.VarChar(120)
-  eventType         ExternalEventType
-  payload           Json
-  processed         Boolean           @default(false)
-  processedAt       DateTime?
-  error             String?           @db.Text
-  occurredAt        DateTime          @default(now())
-  createdAt         DateTime          @default(now())
-  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id              Int               @id @default(autoincrement())
+  tenantId        Int
+  externalOrderId String?           @db.VarChar(120)
+  provider        DeliveryProvider
+  eventId         String            @db.VarChar(120)
+  eventType       ExternalEventType
+  payload         Json
+  processed       Boolean           @default(false)
+  processedAt     DateTime?
+  error           String?           @db.Text
+  occurredAt      DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, provider, eventId])
   @@index([tenantId, processed, occurredAt])
@@ -2911,19 +2924,21 @@ model ExternalEvent {
  * No guarda historial infinito: la retención se controla por aplicación.
  */
 model DriverPosition {
-  id           Int       @id @default(autoincrement())
-  tenantId     Int
-  branchId     Int?
-  deliveryId   Int?
-  driverId     Int
-  latitude     String    @db.VarChar(32)
-  longitude    String    @db.VarChar(32)
-  accuracy     String?   @db.VarChar(32)
-  recordedAt   DateTime  @default(now())
-  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  delivery     OrderDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
-  driver       User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  id              Int            @id @default(autoincrement())
+  tenantId        Int
+  branchId        Int?
+  deliveryId      Int?
+  driverId        Int
+  driverProfileId Int?
+  latitude        String         @db.VarChar(32)
+  longitude       String         @db.VarChar(32)
+  accuracy        String?        @db.VarChar(32)
+  recordedAt      DateTime       @default(now())
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  delivery        OrderDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  driver          User           @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  driverProfile   DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, driverId, recordedAt])
   @@index([tenantId, branchId, recordedAt])
@@ -2936,20 +2951,122 @@ model DriverPosition {
  * Preparado para evolucionar sin acoplar dominio a Google Maps.
  */
 model DeliveryProviderConfig {
-  id         Int       @id @default(autoincrement())
-  tenantId   Int
-  provider   String    @db.VarChar(60)
-  enabled    Boolean   @default(false)
-  apiKey     String?   @db.VarChar(255)
-  publicConfig Json?
-  secretConfigured Boolean @default(false)
-  status     String    @default("not_configured") @db.VarChar(30)
-  lastCheckAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id               Int       @id @default(autoincrement())
+  tenantId         Int
+  provider         String    @db.VarChar(60)
+  enabled          Boolean   @default(false)
+  apiKey           String?   @db.VarChar(255)
+  publicConfig     Json?
+  secretConfigured Boolean   @default(false)
+  status           String    @default("not_configured") @db.VarChar(30)
+  lastCheckAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, provider])
   @@index([tenantId, enabled, status])
   @@map("deliveryproviderconfig")
+}
+
+/**
+ * @summary Perfil operativo del repartidor. Complementa a User sin duplicar identidad.
+ */
+model DriverProfile {
+  id            Int                      @id @default(autoincrement())
+  tenantId      Int
+  userId        Int?
+  name          String                   @db.VarChar(160)
+  phone         String                   @db.VarChar(60)
+  status        String                   @default("AVAILABLE") @db.VarChar(24)
+  active        Boolean                  @default(true)
+  vehicleType   String?                  @db.VarChar(80)
+  plate         String?                  @db.VarChar(20)
+  color         String?                  @db.VarChar(60)
+  capacity      Int?
+  notes         String?                  @db.Text
+  deactivatedAt DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  branches      DriverBranch[]
+  incidents     DriverIncident[]
+  positions     DriverPosition[]
+  deliveries    OrderDelivery[]
+  statusLogs    OrderDeliveryStatusLog[]
+
+  @@index([tenantId, userId])
+  @@index([tenantId, active, status])
+  @@map("driverprofile")
+}
+
+/**
+ * @summary Relación repartidor-sucursal habilitada.
+ */
+model DriverBranch {
+  id        Int           @id @default(autoincrement())
+  tenantId  Int
+  driverId  Int
+  branchId  Int
+  createdAt DateTime      @default(now())
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driver    DriverProfile @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, driverId, branchId])
+  @@index([tenantId, branchId])
+  @@map("driverbranch")
+}
+
+/**
+ * @summary Incidencia registrada durante una entrega.
+ */
+model DriverIncident {
+  id           Int            @id @default(autoincrement())
+  tenantId     Int
+  driverId     Int
+  deliveryId   Int?
+  type         String         @db.VarChar(80)
+  description  String         @db.Text
+  reportedAt   DateTime       @default(now())
+  reportedById Int?
+  resolved     Boolean        @default(false)
+  resolvedAt   DateTime?
+  resolution   String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driver       DriverProfile  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  delivery     OrderDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  reportedBy   User?          @relation(fields: [reportedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, driverId, reportedAt])
+  @@index([tenantId, deliveryId])
+  @@index([tenantId, resolved, reportedAt])
+  @@map("driverincident")
+}
+
+/**
+ * @summary Historial de estados de una entrega. No se borra al cambiar el estado.
+ * Permite reconstruir asignaciones, retiros, viajes, entregas e incidencias con timestamps reales.
+ */
+model OrderDeliveryStatusLog {
+  id              Int            @id @default(autoincrement())
+  tenantId        Int
+  deliveryId      Int
+  driverProfileId Int?
+  status          String         @db.VarChar(24)
+  previousStatus  String?        @db.VarChar(24)
+  reason          String?        @db.VarChar(500)
+  changedById     Int?
+  changedAt       DateTime       @default(now())
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  delivery        OrderDelivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  driverProfile   DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+  changedBy       User?          @relation("DeliveryStatusLogChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, deliveryId, changedAt])
+  @@index([tenantId, driverProfileId, status, changedAt])
+  @@map("orderdeliverystatuslog")
 }

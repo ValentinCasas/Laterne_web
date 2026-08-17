@@ -8,7 +8,12 @@
 import type { Route } from "next";
 
 export type RouteSurface =
-  "platform-public" | "platform-admin" | "tenant-public" | "tenant-admin" | "unknown";
+  | "platform-public"
+  | "platform-admin"
+  | "tenant-public"
+  | "tenant-admin"
+  | "tenant-driver"
+  | "unknown";
 
 export type CanonicalRouteContext = {
   surface: RouteSurface;
@@ -104,6 +109,25 @@ export function tenantBranchPublicPath(tenantSlug: string, branchSlug: string, p
 export function tenantAdminPath(tenantSlug: string, path = ""): Route {
   const suffix = normalizedSuffix(path).replace(/^\/admin(?=\/|$)/, "");
   return `/t/${encodedSlug(tenantSlug)}/admin${suffix}` as Route;
+}
+
+/**
+ * @summary Construye la ruta canónica de la vista personal del repartidor.
+ * @param path Ruta lógica como `/driver/entregas` o `/entregas`.
+ */
+export function tenantDriverPath(tenantSlug: string, path = ""): Route {
+  const suffix = normalizedSuffix(path).replace(/^\/driver(?=\/|$)/, "");
+  return `/t/${encodedSlug(tenantSlug)}/driver${suffix}` as Route;
+}
+
+/**
+ * @summary Construye la ruta canónica de la vista personal del repartidor
+ * (identidad por GUID).
+ * @param path Ruta lógica como `/driver/entregas` o `/entregas`.
+ */
+export function tenantDriverGuidPath(guid: string, tenantSlug: string, path = ""): Route {
+  const suffix = normalizedSuffix(path).replace(/^\/driver(?=\/|$)/, "");
+  return `/t/${guid.trim()}/${encodedSlug(tenantSlug)}/driver${suffix}` as Route;
 }
 
 /**
@@ -227,6 +251,27 @@ export function parseCanonicalPath(pathname: string): CanonicalRouteContext {
       surface: "tenant-admin",
       tenantSlug: decodeURIComponent(tenantAdmin[1]),
       logicalPath: `/admin${rest}`,
+    };
+  }
+
+  const tenantDriverGuid = path.match(/^\/t\/([^/]+)\/([^/]+)\/driver(\/.*)?$/);
+  if (tenantDriverGuid) {
+    const rest = tenantDriverGuid[3] || "";
+    return {
+      surface: "tenant-driver",
+      tenantGuid: decodeURIComponent(tenantDriverGuid[1]),
+      tenantSlug: decodeURIComponent(tenantDriverGuid[2]),
+      logicalPath: `/driver${rest}`,
+    };
+  }
+
+  const tenantDriver = path.match(/^\/t\/([^/]+)\/driver(\/.*)?$/);
+  if (tenantDriver) {
+    const rest = tenantDriver[2] || "";
+    return {
+      surface: "tenant-driver",
+      tenantSlug: decodeURIComponent(tenantDriver[1]),
+      logicalPath: `/driver${rest}`,
     };
   }
 
@@ -406,6 +451,11 @@ export function scopedApiPath(pathname: string, apiPath: string): Route {
     return `/api/t/${tenant}/admin${branch}/${apiPath.slice("/api/admin/".length)}` as Route;
   }
   if (apiPath === "/api/admin") return `/api/t/${tenant}/admin${branch}` as Route;
+
+  if (apiPath.startsWith("/api/driver/")) {
+    return `/api/t/${tenant}/driver/${apiPath.slice("/api/driver/".length)}` as Route;
+  }
+  if (apiPath === "/api/driver") return `/api/t/${tenant}/driver` as Route;
 
   if (apiPath.startsWith("/api/auth/")) {
     return `/api/t/${tenant}/auth/${apiPath.slice("/api/auth/".length)}` as Route;

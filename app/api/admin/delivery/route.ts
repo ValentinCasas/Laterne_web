@@ -14,6 +14,9 @@ export async function GET(request: Request) {
   const status = url.searchParams.get("status") || undefined;
   const branchId = url.searchParams.get("branchId") ? Number(url.searchParams.get("branchId")) : null;
   const driverId = url.searchParams.get("driverId") ? Number(url.searchParams.get("driverId")) : null;
+  const driverProfileId = url.searchParams.get("driverProfileId")
+    ? Number(url.searchParams.get("driverProfileId"))
+    : null;
   const provider = url.searchParams.get("provider") || undefined;
   const q = url.searchParams.get("q") || undefined;
   const limit = Number(url.searchParams.get("limit") ?? 60);
@@ -25,6 +28,7 @@ export async function GET(request: Request) {
   if (branchId && accessibleBranchIds.includes(branchId)) where.branchId = branchId;
   if (!branchId && accessibleBranchIds.length > 0) where.branchId = { in: accessibleBranchIds };
   if (driverId) where.driverId = driverId;
+  if (driverProfileId) where.driverProfileId = driverProfileId;
   if (provider) where.provider = provider;
   if (q) {
     where.OR = [
@@ -42,6 +46,7 @@ export async function GET(request: Request) {
         order: { select: { id: true, reference: true, status: true, orderType: true, channel: true, source: true, total: true, customerName: true } },
         branch: { select: { id: true, name: true } },
         driver: { select: { id: true, name: true } },
+        driverProfile: { select: { id: true, name: true, phone: true } },
         items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true } },
       },
       orderBy: { createdAt: "desc" },

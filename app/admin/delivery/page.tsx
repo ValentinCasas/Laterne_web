@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** @summary Centro de delivery: lista de entregas, mapa abstracto y detalle. */
+/** @summary Centro de delivery: cola de entregas, repartidores activos y detalle. */
 export default async function AdminDeliveryPage() {
   const context = await requirePermission("order.manage");
   const accessibleBranchIds = context.branches.map((branch) => branch.id);
@@ -17,15 +17,17 @@ export default async function AdminDeliveryPage() {
         order: { select: { id: true, reference: true, status: true, orderType: true, channel: true, source: true, total: true, customerName: true } },
         branch: { select: { id: true, name: true } },
         driver: { select: { id: true, name: true } },
+        driverProfile: { select: { id: true, name: true, phone: true } },
         items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
     prisma.branch.findMany({ where: { tenantId: context.tenant.id, active: true }, select: { id: true, name: true, slug: true } }),
-    prisma.user.findMany({
-      where: { memberships: { some: { tenantId: context.tenant.id, status: "active", allBranches: true } } },
-      select: { id: true, name: true, email: true },
+    prisma.driverProfile.findMany({
+      where: { tenantId: context.tenant.id, active: true },
+      select: { id: true, name: true, phone: true, status: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 

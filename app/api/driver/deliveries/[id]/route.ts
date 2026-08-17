@@ -1,0 +1,117 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { recordAudit, toAuditValue } from "@/lib/audit";
+import { authorize } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { serialize } from "@/lib/format";
+import { deliveryStatusTimestamps } from "@/lib/delivery-drivers";
+
+const driverUpdateStatusInput = z.object({
+  status: z.enum(["PICKED_UP", "ON_THE_WAY", "DELIVERED"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+/**
+ * @summary Permite al repartidor avanzar su entrega en el flujo personal:
+ * RETIRADO → EN CAMINO → ENTREGADO. Las incidencias se reportan por su propia ruta.
+ * Registra el histórico con el timestamp real.
+ */
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("driver.self");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  const driverProfile = await prisma.driverProfile.findFirst({
+    where: { tenantId: auth.tenant.id, userId: auth.session.userId, active: true },
+  });
+  if (!driverProfile) {
+    return NextResponse.json({ error: "No tenés un perfil de repartidor activo vinculado" }, { status: 403 });
+  }
+
+  const deliveryId = Number((await context.params).id);
+  if (!Number.isInteger(deliveryId)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
+  const parsed = driverUpdateStatusInput.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
+
+  const { status, note } = parsed.data;
+
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      // Compra optimista: solo avanza si la entrega sigue asignada a este repartidor
+      // y en el estado previo correcto.
+      const change = await tx.orderDelivery.updateMany({
+        where: {
+          id: deliveryId,
+          tenantId: auth.tenant.id,
+          driverProfileId: driverProfile.id,
+          status: { in: ["ASSIGNED", "PICKED_UP", "ON_THE_WAY"] },
+        },
+        data: {
+          status,
+          ...deliveryStatusTimestamps(status),
+          ...(note ? { notes: note } : {}),
+        },
+      });
+      if (change.count !== 1) {
+        const current = await tx.orderDelivery.findFirst({
+          where: { id: deliveryId, tenantId: auth.tenant.id },
+          select: { status: true, driverProfileId: true },
+        });
+        if (!current || current.driverProfileId !== driverProfile.id) {
+          throw new Error("NOT_MINE");
+        }
+        throw new Error("INVALID_TRANSITION");
+      }
+
+      const reloaded = await tx.orderDelivery.findFirstOrThrow({
+        where: { id: deliveryId, tenantId: auth.tenant.id },
+        include: {
+          branch: { select: { id: true, name: true } },
+          order: { select: { id: true, reference: true, customerName: true } },
+          driverProfile: { select: { id: true, name: true } },
+        },
+      });
+
+      await tx.orderDeliveryStatusLog.create({
+        data: {
+          tenantId: auth.tenant.id,
+          deliveryId,
+          driverProfileId: driverProfile.id,
+          status: reloaded.status,
+          previousStatus: currentStatusFor(reloaded),
+          reason: note ?? null,
+          changedById: auth.session.userId,
+        },
+      });
+
+      return reloaded;
+    });
+
+    await recordAudit({
+      context: auth,
+      action: "delivery-driver-status-update",
+      entityType: "order-delivery",
+      entityId: deliveryId,
+      newValues: toAuditValue(updated),
+      request,
+    });
+
+    return NextResponse.json({ delivery: serialize(updated) });
+  } catch (error) {
+    if (error instanceof Error && (error.message === "INVALID_TRANSITION" || error.message === "NOT_MINE")) {
+      return NextResponse.json(
+        { error: error.message === "NOT_MINE" ? "La entrega no está asignada a vos" : "No podés saltar pasos: avanzá en orden" },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json({ error: "No se pudo actualizar la entrega" }, { status: 500 });
+  }
+}
+
+/** @summary Devuelve el estado anterior basado en el estado actual del flujo personal. */
+function currentStatusFor(delivery: { status: string }) {
+  if (delivery.status === "PICKED_UP") return "ASSIGNED";
+  if (delivery.status === "ON_THE_WAY") return "PICKED_UP";
+  if (delivery.status === "DELIVERED") return "ON_THE_WAY";
+  return delivery.status;
+}
