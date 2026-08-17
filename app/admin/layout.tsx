@@ -20,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <AdminShell
       permissions={context.permissions}
+      roleKey={context.membership.role.key}
       tenantName={context.tenant.name}
       tenantSlug={context.tenant.slug}
       tenantGuid={context.tenant.publicGuid}

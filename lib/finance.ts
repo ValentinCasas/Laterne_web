@@ -1116,7 +1116,7 @@ export async function reverseFinancialMovement(
   tenantId: number,
   userId: number | null,
   id: number,
-  reason: string,
+  _reason: string,
 ) {
   const movement = await prisma.financialMovement.findFirst({
     where: { id, tenantId },
@@ -1554,7 +1554,7 @@ export async function reverseReceivablePayment(
   tenantId: number,
   userId: number | null,
   id: number,
-  reason: string,
+  _reason: string,
 ) {
   const payment = await prisma.receivablePayment.findFirst({
     where: { id, tenantId },

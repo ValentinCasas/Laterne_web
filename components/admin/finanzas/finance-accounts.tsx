@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
 
@@ -37,12 +37,6 @@ const ACCOUNT_TYPES = [
   { value: "banco", label: "Banco" },
   { value: "billetera", label: "Billetera virtual" },
   { value: "otro", label: "Otro" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "active", label: "Activa" },
-  { value: "inactive", label: "Inactiva" },
-  { value: "closed", label: "Cerrada" },
 ];
 
 /** @summary Formatea un importe. */
@@ -238,7 +232,7 @@ export function FinanceAccountsClient({ initial }: { initial: AccountsInitial })
               {accounts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay cuentas registradas
+                    No hay cuentas financieras todavía
                   </td>
                 </tr>
               ) : (

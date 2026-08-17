@@ -8,8 +8,9 @@ import { listFinancialMovements, createFinancialMovement } from "@/lib/finance";
 const listSchema = z.object({
   accountId: z.coerce.number().int().positive().optional().nullable(),
   type: z.string().optional().nullable(),
-  dateFrom: z.string().optional().nullable(),
-  dateTo: z.string().optional().nullable(),
+  direction: z.string().optional().nullable(),
+  from: z.string().optional().nullable(),
+  to: z.string().optional().nullable(),
   branchId: z.coerce.number().int().positive().optional().nullable(),
   q: z.string().optional().nullable(),
   limit: z.coerce.number().int().positive().max(200).default(60),
@@ -35,8 +36,9 @@ export async function GET(request: Request) {
   const parsed = listSchema.safeParse({
     accountId: url.searchParams.get("accountId"),
     type: url.searchParams.get("type"),
-    dateFrom: url.searchParams.get("dateFrom"),
-    dateTo: url.searchParams.get("dateTo"),
+    direction: url.searchParams.get("direction"),
+    from: url.searchParams.get("from"),
+    to: url.searchParams.get("to"),
     branchId: url.searchParams.get("branchId"),
     q: url.searchParams.get("q"),
     limit: url.searchParams.get("limit"),

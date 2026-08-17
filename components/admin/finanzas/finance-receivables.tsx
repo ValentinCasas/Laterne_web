@@ -254,7 +254,7 @@ export function FinanceReceivablesClient({ initial }: { initial: ReceivablesInit
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay documentos registrados
+                    No hay cuentas a cobrar registradas
                   </td>
                 </tr>
               ) : (

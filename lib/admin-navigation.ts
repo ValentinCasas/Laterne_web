@@ -509,12 +509,16 @@ export function adminNavLinks(): AdminNavItem[] {
   return ADMIN_NAVIGATION.flatMap((group) => group.sections.flatMap((section) => [...section.items]));
 }
 
-export function adminGroupsForPermissions(permissions: readonly string[]): AdminNavGroup[] {
+export function adminGroupsForPermissions(permissions: readonly string[], roleKey?: string): AdminNavGroup[] {
+  const privilegedFinance = roleKey === "owner" || roleKey === "administrator";
   return ADMIN_NAVIGATION.flatMap((group) => {
     const sections = group.sections
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => permissions.includes(item.permission)),
+        items: section.items.filter((item) => {
+          if (privilegedFinance && item.permission.startsWith("finance.")) return true;
+          return permissions.includes(item.permission);
+        }),
       }))
       .filter((section) => section.items.length > 0);
     return sections.length > 0 ? [{ ...group, sections }] : [];

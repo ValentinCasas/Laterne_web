@@ -1,9 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import Swal from "sweetalert2";
-import { scopedFetch } from "@/lib/client-routing";
-
+import { useMemo, useState } from "react";
 export type DashboardInitial = {
   tenantId: number;
   currency: string;
@@ -47,17 +44,6 @@ function dateLabel(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/** @summary Ejecuta una petición de API. */
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await scopedFetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
-  return body;
 }
 
 /** @summary Tarjeta KPI del dashboard. */
@@ -126,7 +112,7 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
               {dashboard.recentMovements.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay movimientos recientes
+                    No hay movimientos registrados. Creá una cuenta y empezá a operar.
                   </td>
                 </tr>
               ) : (

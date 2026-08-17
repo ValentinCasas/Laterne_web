@@ -303,7 +303,17 @@ export async function authorize(permission?: string): Promise<AuthorizationConte
   const permissions = membership.role.permissions
     .map((item) => item.permission.key)
     .filter((permissionKey) => !["plan.manage", "lead.manage"].includes(permissionKey));
-  if (permission && !permissions.includes(permission)) return null;
+
+  const roleKey = membership.role.key;
+  const isPrivilegedFinance = roleKey === "owner" || roleKey === "administrator";
+
+  if (permission && !permissions.includes(permission)) {
+    if (isPrivilegedFinance && permission.startsWith("finance.")) {
+      permissions.push(permission);
+    } else {
+      return null;
+    }
+  }
 
   const branches = membership.branchAccess.map(({ branch }) => {
     const licenseStatus = branch.licenses[0]?.status ?? null;

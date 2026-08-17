@@ -84,7 +84,6 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
     from: "",
     to: "",
   });
-  const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const currency = initial.currency ?? "ARS";
   const pageSize = 20;
@@ -321,7 +320,7 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
               {movements.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay movimientos registrados
+                    No hay movimientos financieros todavía
                   </td>
                 </tr>
               ) : (

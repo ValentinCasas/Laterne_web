@@ -3,7 +3,7 @@ import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
-import { listReceivables, createReceivableDocument } from "@/lib/finance";
+import { listReceivables, createReceivableDocument, getReceivablesAging } from "@/lib/finance";
 
 const listSchema = z.object({
   customerId: z.coerce.number().int().positive().optional().nullable(),
@@ -14,6 +14,7 @@ const listSchema = z.object({
   q: z.string().optional().nullable(),
   limit: z.coerce.number().int().positive().max(200).default(60),
   offset: z.coerce.number().int().nonnegative().default(0),
+  aging: z.coerce.number().int().positive().optional().nullable(),
 });
 
 const createSchema = z.object({
@@ -41,15 +42,21 @@ export async function GET(request: Request) {
     q: url.searchParams.get("q"),
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
+    aging: url.searchParams.get("aging"),
   });
 
   if (!parsed.success) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
 
-  const cleaned = Object.fromEntries(
-    Object.entries(parsed.data).filter(([, value]) => value !== null),
-  ) as Parameters<typeof listReceivables>[1];
+  const { aging, ...rest } = parsed.data;
+  const cleaned = (Object.fromEntries(
+    Object.entries(rest).filter(([, value]) => value !== null),
+  ) as Parameters<typeof listReceivables>[1]) ?? {};
   const data = await listReceivables(auth.tenant.id, cleaned);
-  return NextResponse.json(serialize(data));
+  const response: Record<string, unknown> = serialize(data);
+  if (aging) {
+    response.aging = serialize(await getReceivablesAging(auth.tenant.id, cleaned.branchId ?? null));
+  }
+  return NextResponse.json(response);
 }
 
 export async function POST(request: Request) {

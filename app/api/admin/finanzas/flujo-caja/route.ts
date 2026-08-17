@@ -5,9 +5,10 @@ import { serialize } from "@/lib/format";
 import { getCashFlow } from "@/lib/finance";
 
 const schema = z.object({
-  dateFrom: z.string().min(1),
-  dateTo: z.string().min(1),
+  period: z.enum(["day", "week", "month", "custom"]).default("month"),
   branchId: z.coerce.number().int().positive().optional().nullable(),
+  from: z.string().optional().nullable(),
+  to: z.string().optional().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -16,13 +17,17 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const parsed = schema.safeParse({
-    dateFrom: url.searchParams.get("dateFrom"),
-    dateTo: url.searchParams.get("dateTo"),
+    period: url.searchParams.get("period") || undefined,
     branchId: url.searchParams.get("branchId"),
+    from: url.searchParams.get("from"),
+    to: url.searchParams.get("to"),
   });
 
   if (!parsed.success) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
 
-  const data = await getCashFlow(auth.tenant.id, parsed.data);
+  const cleaned = Object.fromEntries(
+    Object.entries(parsed.data).filter(([, value]) => value !== null),
+  ) as Parameters<typeof getCashFlow>[1];
+  const data = await getCashFlow(auth.tenant.id, cleaned);
   return NextResponse.json(serialize(data));
 }

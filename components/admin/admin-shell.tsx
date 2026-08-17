@@ -398,6 +398,7 @@ function normalizedAdminPath(pathname: string) {
 export function AdminShell({
   children,
   permissions,
+  roleKey,
   tenantName,
   tenantSlug,
   tenantGuid,
@@ -415,6 +416,7 @@ export function AdminShell({
 }: {
   children: React.ReactNode;
   permissions: string[];
+  roleKey?: string;
   tenantName: string;
   tenantSlug: string;
   tenantGuid?: string;
@@ -465,7 +467,10 @@ export function AdminShell({
     () => adminNavLinks().filter((link) => permissions.includes(link.permission)),
     [permissions],
   );
-  const accessibleGroups = useMemo(() => adminGroupsForPermissions(permissions), [permissions]);
+  const accessibleGroups = useMemo(() => adminGroupsForPermissions(permissions, roleKey), [
+    permissions,
+    roleKey,
+  ]);
   const activeLink = useMemo(
     () => findActiveAdminLink(accessibleGroups, clearPath),
     [accessibleGroups, clearPath],

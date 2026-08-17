@@ -158,7 +158,7 @@ export function FinancePayablesClient({ initial }: { initial: PayablesInitial })
         });
       }
     },
-    [currency, loadItems],
+    [currency],
   );
 
   const statusLabel = (status: string) => {
