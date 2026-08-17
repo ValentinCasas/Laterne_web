@@ -1,0 +1,56 @@
+export type OrderDeliveryData = {
+  id: number;
+  tenantId: number;
+  orderId: number;
+  number: string;
+  deliveryDate: string;
+  branchId: number | null;
+  customerId: number | null;
+  customerName: string;
+  deliveryAddress: string | null;
+  deliveryType: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  createdById: number | null;
+  reversedAt: string | null;
+  reversedById: number | null;
+  items: Array<{
+    id: number;
+    deliveryId: number;
+    orderItemId: number;
+    productId: number | null;
+    productName: string;
+    quantityDelivered: number;
+    unitPrice: string | number;
+    notes: string | null;
+    createdAt: string;
+    product?: { name: string; imageUrl: string | null } | null;
+  }>;
+  customer?: { name: string; email: string | null; phone: string | null } | null;
+  branch?: { name: string } | null;
+  createdBy?: { name: string } | null;
+  order?: { reference: string; status: string } | null;
+};
+
+export type CustomerPaymentData = {
+  id: number;
+  tenantId: number;
+  customerId: number;
+  orderId: number | null;
+  deliveryId: number | null;
+  number: string;
+  amount: string | number;
+  method: string;
+  paidAt: string;
+  notes: string | null;
+  status: string;
+  createdById: number | null;
+  createdAt: string;
+  reversedAt: string | null;
+  reversedById: number | null;
+  customer?: { name: string; email: string | null; phone: string | null; currentBalance: string | number; currency: string } | null;
+  order?: { reference: string } | null;
+  delivery?: { number: string } | null;
+  createdBy?: { name: string } | null;
+};

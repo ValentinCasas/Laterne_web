@@ -235,7 +235,7 @@ export async function POST(request: Request) {
     for (const branch of parsed.data.data.branches) {
       const slug = slugify(branch.slug || branch.name) || "sucursal";
       await transaction.branch.upsert({
-        where: { tenantId_slug: { tenantId: auth.tenant.id, slug } },
+        where: { tenantId_slug: { tenantId: auth.tenant.id, slug } } as never,
         create: { tenantId: auth.tenant.id, ...branch, slug, isPrimary: false },
         update: { ...branch, slug, isPrimary: branch.isPrimary },
       });

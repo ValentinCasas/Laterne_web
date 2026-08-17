@@ -167,6 +167,7 @@ model Product {
   purchaseOrderItems   PurchaseOrderItem[]
   purchaseReceiptItems PurchaseReceiptItem[]
   purchaseInvoiceItems PurchaseInvoiceItem[]
+  deliveryItems        OrderDeliveryItem[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -206,36 +207,40 @@ model Testimonial {
 }
 
 model User {
-  id                      Int                     @id @default(autoincrement())
-  name                    String                  @db.VarChar(255)
-  email                   String                  @db.VarChar(255)
-  password                String                  @db.VarChar(255)
-  role                    Int
-  imageUrl                String                  @db.VarChar(255)
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  memberships             TenantMembership[]
-  sessions                AuthSession[]
-  auditLogs               AuditLog[]
-  assignedLeads           SalesLead[]             @relation("AssignedSalesLeads")
-  isSuperAdmin            Boolean                 @default(false)
-  platformRole            String?                 @db.VarChar(40)
-  mediaAssets             MediaAsset[]
-  platformPayments        PlatformPayment[]       @relation("PlatformPaymentCreatedBy")
-  authHandoffs            AuthHandoff[]
-  tableSessionsWaited     TableSession[]          @relation("WaiterTableSessions")
-  tableSessionsClosed     TableSession[]          @relation("CloserTableSessions")
-  tableSessionEvents      TableSessionEvent[]
-  transfersCreated        StockTransfer[]         @relation("TransferCreatedBy")
-  countSessionsStarted    InventoryCountSession[] @relation("CountStartedBy")
-  countSessionsCompleted  InventoryCountSession[] @relation("CountCompletedBy")
-  stockMovements          StockMovement[]
-  purchaseOrdersCreated   PurchaseOrder[]         @relation("PurchaseOrderCreatedBy")
-  purchaseReceiptsCreated PurchaseReceipt[]       @relation("PurchaseReceiptCreatedBy")
-  purchaseInvoicesCreated PurchaseInvoice[]       @relation("PurchaseInvoiceCreatedBy")
-  purchasePaymentsCreated PurchasePayment[]       @relation("PurchasePaymentCreatedBy")
-  expensesCreated         Expense[]               @relation("ExpenseCreatedBy")
-  supplierLedgerEntries   SupplierLedgerEntry[]   @relation("SupplierLedgerCreatedBy")
+  id                       Int                     @id @default(autoincrement())
+  name                     String                  @db.VarChar(255)
+  email                    String                  @db.VarChar(255)
+  password                 String                  @db.VarChar(255)
+  role                     Int
+  imageUrl                 String                  @db.VarChar(255)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  memberships              TenantMembership[]
+  sessions                 AuthSession[]
+  auditLogs                AuditLog[]
+  assignedLeads            SalesLead[]             @relation("AssignedSalesLeads")
+  isSuperAdmin             Boolean                 @default(false)
+  platformRole             String?                 @db.VarChar(40)
+  mediaAssets              MediaAsset[]
+  platformPayments         PlatformPayment[]       @relation("PlatformPaymentCreatedBy")
+  authHandoffs             AuthHandoff[]
+  tableSessionsWaited      TableSession[]          @relation("WaiterTableSessions")
+  tableSessionsClosed      TableSession[]          @relation("CloserTableSessions")
+  tableSessionEvents       TableSessionEvent[]
+  transfersCreated         StockTransfer[]         @relation("TransferCreatedBy")
+  countSessionsStarted     InventoryCountSession[] @relation("CountStartedBy")
+  countSessionsCompleted   InventoryCountSession[] @relation("CountCompletedBy")
+  stockMovements           StockMovement[]
+  purchaseOrdersCreated    PurchaseOrder[]         @relation("PurchaseOrderCreatedBy")
+  purchaseReceiptsCreated  PurchaseReceipt[]       @relation("PurchaseReceiptCreatedBy")
+  purchaseInvoicesCreated  PurchaseInvoice[]       @relation("PurchaseInvoiceCreatedBy")
+  purchasePaymentsCreated  PurchasePayment[]       @relation("PurchasePaymentCreatedBy")
+  expensesCreated          Expense[]               @relation("ExpenseCreatedBy")
+  supplierLedgerEntries    SupplierLedgerEntry[]   @relation("SupplierLedgerCreatedBy")
+  deliveriesCreated        OrderDelivery[]         @relation("OrderDeliveryCreatedBy")
+  deliveriesReversed       OrderDelivery[]         @relation("OrderDeliveryReversedBy")
+  customerPaymentsCreated  CustomerPayment[]       @relation("CustomerPaymentCreatedBy")
+  customerPaymentsReversed CustomerPayment[]       @relation("CustomerPaymentReversedBy")
 
   @@unique([email])
   @@map("user")
@@ -336,6 +341,8 @@ model Tenant {
   purchasePayments       PurchasePayment[]
   expenses               Expense[]
   recurringExpenses      RecurringExpense[]
+  orderDeliveries        OrderDelivery[]
+  customerPayments       CustomerPayment[]
 
   @@map("tenant")
 }
@@ -1342,6 +1349,8 @@ model CustomerOrder {
   idempotencies   OrderIdempotency[]
   promotionUsage  PromotionUsage?
   printJobs       PrintJob[]
+  deliveries      OrderDelivery[]
+  payments        CustomerPayment[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, tableId, createdAt])
@@ -1371,20 +1380,23 @@ model OrderIdempotency {
 }
 
 model OrderItem {
-  id           Int           @id @default(autoincrement())
-  orderId      Int
-  productId    Int?
-  productName  String        @db.VarChar(180)
-  quantity     Int
-  unitPrice    Decimal       @db.Decimal(12, 2)
-  variantName  String?       @db.VarChar(120)
-  variantPrice Decimal       @default(0) @db.Decimal(12, 2)
-  extras       Json?
-  extrasTotal  Decimal       @default(0) @db.Decimal(12, 2)
-  notes        String?       @db.VarChar(500)
-  lineTotal    Decimal       @db.Decimal(12, 2)
-  order        CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id                Int                 @id @default(autoincrement())
+  orderId           Int
+  productId         Int?
+  productName       String              @db.VarChar(180)
+  quantity          Int
+  unitPrice         Decimal             @db.Decimal(12, 2)
+  variantName       String?             @db.VarChar(120)
+  variantPrice      Decimal             @default(0) @db.Decimal(12, 2)
+  extras            Json?
+  extrasTotal       Decimal             @default(0) @db.Decimal(12, 2)
+  notes             String?             @db.VarChar(500)
+  lineTotal         Decimal             @db.Decimal(12, 2)
+  deliveredQuantity Int                 @default(0)
+  pendingQuantity   Int?
+  order             CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
+  deliveries        OrderDeliveryItem[]
 
   @@index([orderId])
   @@index([productId])
@@ -1403,6 +1415,99 @@ model OrderStatusHistory {
 
   @@index([orderId, createdAt])
   @@map("orderstatushistory")
+}
+
+/**
+ * @summary Remito/entrega histórica e inmutable generada a partir de un pedido.
+ * Cada entrega registra las cantidades efectivamente despachadas y sirve como
+ * documento de referencia para cobros y auditoría.
+ */
+model OrderDelivery {
+  id              Int                 @id @default(autoincrement())
+  tenantId        Int
+  orderId         Int
+  number          String              @db.VarChar(24)
+  deliveryDate    DateTime            @default(now())
+  branchId        Int?
+  customerId      Int?
+  customerName    String              @db.VarChar(160)
+  deliveryAddress String?             @db.VarChar(500)
+  deliveryType    String              @default("full") @db.VarChar(20)
+  status          String              @default("delivered") @db.VarChar(24)
+  notes           String?             @db.Text
+  createdAt       DateTime            @default(now())
+  createdById     Int?
+  reversedAt      DateTime?
+  reversedById    Int?
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order           CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branch          Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customer        LoyaltyCustomer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy       User?               @relation("OrderDeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reversedBy      User?               @relation("OrderDeliveryReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+  items           OrderDeliveryItem[]
+  payments        CustomerPayment[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, orderId, createdAt])
+  @@index([tenantId, customerId, createdAt])
+  @@map("orderdelivery")
+}
+
+/**
+ * @summary Línea de un remito/entrega con la cantidad efectivamente despachada.
+ */
+model OrderDeliveryItem {
+  id                Int           @id @default(autoincrement())
+  deliveryId        Int
+  orderItemId       Int
+  productId         Int?
+  productName       String        @db.VarChar(180)
+  quantityDelivered Int
+  unitPrice         Decimal       @db.Decimal(12, 2)
+  notes             String?       @db.VarChar(500)
+  createdAt         DateTime      @default(now())
+  delivery          OrderDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  orderItem         OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  product           Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([deliveryId])
+  @@index([orderItemId])
+  @@map("orderdeliveryitem")
+}
+
+/**
+ * @summary Pago registrado contra un pedido o una entrega.
+ * Permite cobros parciales y conserva el historial de pagos del cliente.
+ */
+model CustomerPayment {
+  id           Int             @id @default(autoincrement())
+  tenantId     Int
+  customerId   Int
+  orderId      Int?
+  deliveryId   Int?
+  number       String          @db.VarChar(24)
+  amount       Decimal         @db.Decimal(12, 2)
+  method       String          @default("efectivo") @db.VarChar(40)
+  paidAt       DateTime        @default(now())
+  notes        String?         @db.VarChar(240)
+  status       String          @default("confirmed") @db.VarChar(24)
+  createdById  Int?
+  createdAt    DateTime        @default(now())
+  reversedAt   DateTime?
+  reversedById Int?
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     LoyaltyCustomer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order        CustomerOrder?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  delivery     OrderDelivery?  @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  createdBy    User?           @relation("CustomerPaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reversedBy   User?           @relation("CustomerPaymentReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, number])
+  @@index([tenantId, customerId, paidAt])
+  @@index([tenantId, orderId])
+  @@index([tenantId, deliveryId])
+  @@map("customerpayment")
 }
 
 model AnalyticsEvent {
@@ -1646,10 +1751,16 @@ model LoyaltyCustomer {
   deletedAt       DateTime?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
+  address         String?              @db.VarChar(255)
+  paymentTerms    String?              @db.VarChar(80)
+  currentBalance  Decimal              @default(0) @db.Decimal(12, 2)
+  currency        String               @default("ARS") @db.VarChar(3)
   tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders          CustomerOrder[]
   transactions    LoyaltyTransaction[]
   branchLinks     LoyaltyBranchLink[]
+  payments        CustomerPayment[]
+  deliveries      OrderDelivery[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -1771,17 +1882,16 @@ model Branch {
   printAreas         PrintArea[]
   printDestinations  PrintDestination[]
   printJobs          PrintJob[]
-  transfersOut       StockTransfer[]         @relation("TransferFrom")
-  transfersIn        StockTransfer[]         @relation("TransferTo")
-  countSessions      InventoryCountSession[]
+  orderDeliveries    OrderDelivery[]
+  supplierBranches   SupplierBranch[]
   purchaseOrders     PurchaseOrder[]
   purchaseReceipts   PurchaseReceipt[]
   purchaseInvoices   PurchaseInvoice[]
   expenses           Expense[]
-  supplierBranches   SupplierBranch[]
+  transfersFrom      StockTransfer[]         @relation("TransferFrom")
+  transfersTo        StockTransfer[]         @relation("TransferTo")
+  countSessions      InventoryCountSession[]
 
-  @@unique([tenantId, slug])
-  @@index([tenantId, active, isPrimary])
   @@map("branch")
 }
 
@@ -1964,27 +2074,27 @@ model InventorySettings {
  * Incluye datos de contacto, condiciones, cuenta corriente y sucursales habilitadas.
  */
 model Supplier {
-  id               Int               @id @default(autoincrement())
+  id               Int                   @id @default(autoincrement())
   tenantId         Int
-  code             String?           @db.VarChar(40)
-  name             String            @db.VarChar(180)
-  taxId            String?           @db.VarChar(60)
-  contactName      String?           @db.VarChar(120)
-  phone            String?           @db.VarChar(40)
-  email            String?           @db.VarChar(160)
-  address          String?           @db.VarChar(240)
-  paymentTerms     String?           @db.VarChar(80)
-  currency         String            @default("ARS") @db.VarChar(3)
-  status           String            @default("active") @db.VarChar(20)
-  category         String?           @db.VarChar(80)
-  creditLimit      Decimal?          @db.Decimal(14, 2)
-  currentBalance   Decimal           @default(0) @db.Decimal(14, 2)
+  code             String?               @db.VarChar(40)
+  name             String                @db.VarChar(180)
+  taxId            String?               @db.VarChar(60)
+  contactName      String?               @db.VarChar(120)
+  phone            String?               @db.VarChar(40)
+  email            String?               @db.VarChar(160)
+  address          String?               @db.VarChar(240)
+  paymentTerms     String?               @db.VarChar(80)
+  currency         String                @default("ARS") @db.VarChar(3)
+  status           String                @default("active") @db.VarChar(20)
+  category         String?               @db.VarChar(80)
+  creditLimit      Decimal?              @db.Decimal(14, 2)
+  currentBalance   Decimal               @default(0) @db.Decimal(14, 2)
   blockedAt        DateTime?
-  blockedReason    String?           @db.VarChar(300)
-  notes            String?           @db.Text
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  blockedReason    String?               @db.VarChar(300)
+  notes            String?               @db.Text
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   purchaseOrders   PurchaseOrder[]
   purchaseReceipts PurchaseReceipt[]
   purchaseInvoices PurchaseInvoice[]
@@ -2003,14 +2113,14 @@ model Supplier {
  * @summary Sucursales habilitadas para un proveedor (maestro N:M).
  */
 model SupplierBranch {
-  id         Int       @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   tenantId   Int
   supplierId Int
   branchId   Int
-  createdAt  DateTime  @default(now())
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@unique([supplierId, branchId])
   @@index([tenantId, branchId])

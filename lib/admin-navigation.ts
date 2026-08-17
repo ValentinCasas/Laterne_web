@@ -117,11 +117,11 @@ export const ADMIN_NAVIGATION = [
         label: "Clientes",
         items: [
           {
-            href: "/admin/clientes-frecuentes",
-            label: "Clientes frecuentes",
-            icon: "CF",
+            href: "/admin/clientes",
+            label: "Clientes",
+            icon: "CL",
             permission: "customer.manage",
-            description: "Base de clientes y puntos",
+            description: "Base maestra de clientes",
           },
           {
             href: "/admin/fidelizacion",
@@ -142,6 +142,32 @@ export const ADMIN_NAVIGATION = [
             icon: "RS",
             permission: "reservation.manage",
             description: "Confirmá y organizá reservas",
+          },
+        ],
+      },
+      {
+        id: "entregas",
+        label: "Entregas",
+        items: [
+          {
+            href: "/admin/entregas",
+            label: "Remitos y entregas",
+            icon: "RE",
+            permission: "order.manage",
+            description: "Documento histórico de entregas",
+          },
+        ],
+      },
+      {
+        id: "cobros",
+        label: "Cobros",
+        items: [
+          {
+            href: "/admin/cobros",
+            label: "Cuenta corriente",
+            icon: "CC",
+            permission: "customer.manage",
+            description: "Pagos y saldo de clientes",
           },
         ],
       },
