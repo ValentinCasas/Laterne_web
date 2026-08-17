@@ -149,6 +149,23 @@ function SearchIcon() {
   );
 }
 
+function HelpIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="17" r=".5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function ExternalIcon() {
   return (
     <svg
@@ -209,6 +226,7 @@ function ProfileMenu({
   tenantName,
   adminHref,
   onLogout,
+  helpHref,
 }: {
   userName?: string;
   userEmail?: string;
@@ -216,6 +234,7 @@ function ProfileMenu({
   tenantName: string;
   adminHref: (href: string) => Route;
   onLogout: () => void;
+  helpHref?: Route;
 }) {
   const [open, setOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
@@ -223,6 +242,7 @@ function ProfileMenu({
   const itemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
   const displayName = userName?.trim() || tenantName;
   const menuItems: Array<{ key: string; label: string; danger?: boolean }> = [
+    ...(helpHref ? [{ key: "help", label: "Soporte" }] : []),
     { key: "profile", label: "Mi perfil" },
     { key: "logout", label: "Cerrar sesión", danger: true },
   ];
@@ -296,6 +316,29 @@ function ProfileMenu({
           <div className="my-1 h-px bg-white/[.07]" />
           {menuItems.map((entry, index) => {
             const tabIndex = focusIndex === -1 || focusIndex === index ? 0 : -1;
+            if (entry.key === "help" && helpHref) {
+              return (
+                <Link
+                  key={entry.key}
+                  role="menuitem"
+                  ref={(element) => {
+                    itemRefs.current[index] = element;
+                  }}
+                  href={helpHref}
+                  tabIndex={tabIndex}
+                  onClick={() => {
+                    setOpen(false);
+                    setFocusIndex(-1);
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                >
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/[.05] text-[10px] font-black text-zinc-400">
+                    <HelpIcon />
+                  </span>
+                  Soporte
+                </Link>
+              );
+            }
             if (entry.key === "profile") {
               return (
                 <Link
@@ -861,6 +904,18 @@ export function AdminShell({
               </Link>
             )}
 
+            {permissions.includes("support.manage") && (
+              <Link
+                href={adminHref("/admin/soporte")}
+                aria-label="Soporte"
+                title="Soporte"
+                className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
+              >
+                <HelpIcon />
+                <span className="hidden xl:inline">Soporte</span>
+              </Link>
+            )}
+
             <ProfileMenu
               userName={userName}
               userEmail={userEmail}
@@ -868,6 +923,7 @@ export function AdminShell({
               tenantName={tenantName}
               adminHref={adminHref}
               onLogout={logout}
+              helpHref={permissions.includes("support.manage") ? adminHref("/admin/soporte") : undefined}
             />
           </div>
         </div>
@@ -876,7 +932,7 @@ export function AdminShell({
       {activeGroup && (
         <div
           ref={megaPanelRef}
-          className="fixed inset-x-0 top-16 z-40 print:hidden"
+          className="fixed inset-x-0 top-16 z-40 flex justify-center print:hidden"
           role="region"
           aria-label={`Secciones de ${activeGroup.label}`}
           onMouseEnter={cancelCloseGroup}
@@ -889,7 +945,7 @@ export function AdminShell({
           }
           onBlur={handlePanelBlur}
         >
-          <div className="admin-shell-inner overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
+          <div className="admin-shell-inner w-full overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
             <div className="flex items-baseline gap-3 border-b border-white/[.06] px-8 py-5">
               <h2 className="text-sm font-bold text-white">{activeGroup.label}</h2>
               <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
@@ -1133,6 +1189,19 @@ export function AdminShell({
                     SA
                   </span>
                   Plataforma
+                </Link>
+              )}
+
+              {permissions.includes("support.manage") && (
+                <Link
+                  href={adminHref("/admin/soporte")}
+                  onClick={() => setMobileMenuPath(null)}
+                  className="flex items-center gap-3 rounded-xl border border-white/[.08] bg-white/[.03] px-3 py-3 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                >
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[.05] text-[9px] font-black text-zinc-500">
+                    <HelpIcon />
+                  </span>
+                  Soporte
                 </Link>
               )}
             </nav>

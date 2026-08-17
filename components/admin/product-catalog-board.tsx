@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageHelp } from "@/components/admin/admin-page-help";
 import { ProductEditor } from "@/components/admin/product-editor";
@@ -150,14 +150,18 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
   const [columnFilter, setColumnFilter] = useState<ColumnKey | null>(null);
   const [sort, setSort] = useState<SortKey>("name-asc");
   const [view, setView] = useViewMode("productos");
-  const [density, setDensity] = useState<"comfortable" | "compact">(() => {
-    if (typeof window === "undefined") return "comfortable";
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
+  useEffect(() => {
     try {
-      return window.localStorage.getItem("productos:density") === "compact" ? "compact" : "comfortable";
+      const stored = window.localStorage.getItem("productos:density");
+      if (stored === "compact" || stored === "comfortable") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDensity(stored);
+      }
     } catch {
-      return "comfortable";
+      /* almacenamiento no disponible */
     }
-  });
+  }, []);
   const applyDensity = useCallback((next: "comfortable" | "compact") => {
     setDensity(next);
     try {

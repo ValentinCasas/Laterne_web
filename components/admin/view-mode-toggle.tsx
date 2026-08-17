@@ -1,19 +1,28 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type ViewMode = "list" | "cards";
 
 /** @summary Persiste la preferencia de vista (Lista/Tarjetas) por pantalla en localStorage. */
 export function useViewMode(key: string): [ViewMode, (next: ViewMode) => void] {
-  const [mode, setMode] = useState<ViewMode>(() => {
-    if (typeof window === "undefined") return "list";
+  const [mode, setMode] = useState<ViewMode>("list");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
     try {
-      return (window.localStorage.getItem(`viewmode:${key}`) as ViewMode) || "list";
+      const stored = window.localStorage.getItem(`viewmode:${key}`) as ViewMode | null;
+      if (stored === "list" || stored === "cards") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMode(stored);
+      }
     } catch {
-      return "list";
+      /* almacenamiento no disponible */
+    } finally {
+      setHydrated(true);
     }
-  });
+  }, [key]);
+
   const apply = useCallback(
     (next: ViewMode) => {
       setMode(next);
@@ -25,7 +34,8 @@ export function useViewMode(key: string): [ViewMode, (next: ViewMode) => void] {
     },
     [key],
   );
-  return [mode, apply];
+
+  return [hydrated ? mode : "list", apply];
 }
 
 /** @summary Selector Lista/Tarjetas reutilizable para colecciones. */

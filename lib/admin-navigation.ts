@@ -1,11 +1,15 @@
 /**
  * Navegación administrativa centralizada de MenuClick.
  *
- * Única fuente de verdad para el menú del panel: cada entrada declara su ruta
- * lógica, su ícono, el permiso real que habilita su visibilidad y una
- * descripción breve para los paneles amplios. El layout (AdminShell) solo
- * consume esta definición, la filtra por permisos y la convierte a URLs
- * canónicas del tenant/sucursal.
+ * Estructura por áreas funcionales:
+ * - Inicio
+ * - Operación
+ * - Productos
+ * - Administración
+ *
+ * Cada entrada declara su ruta lógica, ícono, permiso y descripción breve.
+ * El layout (AdminShell) consume esta definición, filtra por permisos y
+ * convierte a URLs canónicas del tenant/sucursal.
  *
  * Solo se listan opciones cuya funcionalidad/ruta existe hoy en `app/admin`.
  */
@@ -62,14 +66,14 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
-    id: "ventas",
-    label: "Ventas",
-    icon: "VE",
+    id: "operacion",
+    label: "Operación",
+    icon: "OP",
     description: "Pedidos, atención, clientes y facturación del día a día",
     sections: [
       {
-        id: "atencion",
-        label: "Atención",
+        id: "ventas",
+        label: "Ventas y atención",
         items: [
           {
             href: "/admin/pedidos",
@@ -142,6 +146,26 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
+        id: "compras",
+        label: "Compras",
+        items: [
+          {
+            href: "/admin/compras",
+            label: "Compras",
+            icon: "CO",
+            permission: "purchase.manage",
+            description: "Pedidos, recepciones y facturas de proveedores",
+          },
+          {
+            href: "/admin/gastos",
+            label: "Gastos",
+            icon: "GA",
+            permission: "purchase.manage",
+            description: "Gastos sin inventario y previsiones",
+          },
+        ],
+      },
+      {
         id: "facturacion",
         label: "Facturación",
         items: [
@@ -164,73 +188,10 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
-    id: "compras",
-    label: "Compras",
-    icon: "CO",
-    description: "Pedidos, recepciones, facturas y gastos con proveedores",
-    sections: [
-      {
-        id: "compras",
-        label: "Operación",
-        items: [
-          {
-            href: "/admin/compras",
-            label: "Compras",
-            icon: "CO",
-            permission: "purchase.manage",
-            description: "Pedidos, recepciones y facturas de proveedores",
-          },
-          {
-            href: "/admin/gastos",
-            label: "Gastos",
-            icon: "GA",
-            permission: "purchase.manage",
-            description: "Gastos sin inventario y previsiones",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "inventario",
-    label: "Inventario",
-    icon: "IN",
-    description: "Stock, movimientos, ingredientes y recetas",
-    sections: [
-      {
-        id: "inventario",
-        label: "Operación",
-        items: [
-          {
-            href: "/admin/inventario",
-            label: "Inventario",
-            icon: "IV",
-            permission: "product.manage",
-            description: "Stock, movimientos y conteos",
-          },
-          {
-            href: "/admin/ingredientes",
-            label: "Ingredientes",
-            icon: "IG",
-            permission: "product.manage",
-            description: "Costo, unidad y stock de la materia prima",
-          },
-          {
-            href: "/admin/recetas",
-            label: "Recetas",
-            icon: "RE",
-            permission: "product.manage",
-            description: "Costos de recetas y ficha técnica imprimible",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "carta",
-    label: "Carta",
-    icon: "CA",
-    description: "Catálogo, precios y variantes de productos",
+    id: "productos",
+    label: "Productos",
+    icon: "PR",
+    description: "Catálogo, precios, producción e inventario",
     sections: [
       {
         id: "catalogo",
@@ -252,17 +213,50 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+      {
+        id: "produccion",
+        label: "Producción",
+        items: [
+          {
+            href: "/admin/ingredientes",
+            label: "Ingredientes",
+            icon: "IG",
+            permission: "product.manage",
+            description: "Costo, unidad y stock de la materia prima",
+          },
+          {
+            href: "/admin/recetas",
+            label: "Recetas",
+            icon: "RE",
+            permission: "product.manage",
+            description: "Costos de recetas y ficha técnica imprimible",
+          },
+        ],
+      },
+      {
+        id: "inventario",
+        label: "Inventario",
+        items: [
+          {
+            href: "/admin/inventario",
+            label: "Inventario",
+            icon: "IV",
+            permission: "product.manage",
+            description: "Stock, movimientos y conteos",
+          },
+        ],
+      },
     ],
   },
   {
-    id: "marca",
-    label: "Marca",
-    icon: "BR",
-    description: "Identidad, presencia pública e integraciones",
+    id: "administracion",
+    label: "Administración",
+    icon: "AD",
+    description: "Configuración, análisis y datos del negocio",
     sections: [
       {
-        id: "identidad",
-        label: "Identidad",
+        id: "negocio",
+        label: "Negocio",
         items: [
           {
             href: "/admin/marca",
@@ -285,25 +279,12 @@ export const ADMIN_NAVIGATION = [
             permission: "brand.manage",
             description: "Vista pública de la carta",
           },
-        ],
-      },
-      {
-        id: "presencia",
-        label: "Presencia",
-        items: [
           {
             href: "/admin/integraciones",
             label: "Integraciones",
             icon: "IG",
             permission: "business.manage",
             description: "Servicios y conexiones externas",
-          },
-          {
-            href: "/admin/configuracion/comprobantes/plantillas",
-            label: "Plantillas de documentos",
-            icon: "PL",
-            permission: "order.manage",
-            description: "Diseño de comprobantes",
           },
           {
             href: "/admin/testimonios",
@@ -314,14 +295,19 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
-    ],
-  },
-  {
-    id: "gestion",
-    label: "Gestión",
-    icon: "GE",
-    description: "Análisis, equipo y datos del negocio",
-    sections: [
+      {
+        id: "configuracion",
+        label: "Configuración",
+        items: [
+          {
+            href: "/admin/notificaciones",
+            label: "Notificaciones",
+            icon: "NO",
+            permission: "notification.manage",
+            description: "Configuración de avisos",
+          },
+        ],
+      },
       {
         id: "analisis",
         label: "Análisis",
@@ -373,53 +359,6 @@ export const ADMIN_NAVIGATION = [
             icon: "BS",
             permission: "admin.access",
             description: "Buscar en todo el negocio",
-          },
-        ],
-      },
-      {
-        id: "equipo",
-        label: "Equipo",
-        items: [
-          {
-            href: "/admin/notificaciones",
-            label: "Notificaciones",
-            icon: "NO",
-            permission: "notification.manage",
-            description: "Configuración de avisos",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "ayuda",
-    label: "Ayuda",
-    icon: "AY",
-    description: "Asistencia, soporte y cuenta",
-    sections: [
-      {
-        id: "asistencia",
-        label: "Asistencia",
-        items: [
-          {
-            href: "/admin/soporte",
-            label: "Soporte",
-            icon: "SO",
-            permission: "support.manage",
-            description: "Consultas y tickets de ayuda",
-          },
-        ],
-      },
-      {
-        id: "cuenta",
-        label: "Cuenta",
-        items: [
-          {
-            href: "/admin/cuenta",
-            label: "Mi cuenta",
-            icon: "MC",
-            permission: "admin.access",
-            description: "Tu perfil y seguridad",
           },
         ],
       },

@@ -10,7 +10,19 @@ export const dynamic = "force-dynamic";
 
 type SearchPageProps = { searchParams: Promise<{ q?: string }> };
 
-/** @summary Busca de forma consolidada en la carta, clientes, pedidos y reservas del negocio. */
+type SearchResultItem = {
+  id: number;
+  title: string;
+  description?: string;
+  href: Route;
+};
+
+type SearchGroup = {
+  title: string;
+  items: SearchResultItem[];
+};
+
+/** @summary Busca de forma consolidada en productos, categorías, clientes, pedidos, reservas, gastos, compras, promociones, eventos y plantillas. */
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const context = await requirePermission("admin.access");
   const { q } = await searchParams;
@@ -25,89 +37,371 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       context.tenant.publicGuid,
     ) as Route;
 
-  let products: Array<{ id: number; name: string; price: string | null; status: string }> = [];
-  let categories: Array<{ id: number; name: string }> = [];
-  let customers: Array<{
-    id: number;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    points: number;
-  }> = [];
-  let orders: Array<{
-    id: number;
-    reference: string;
-    customerName: string;
-    status: string;
-    orderType: string;
-  }> = [];
-  let reservations: Array<{ id: number; reference: string; customerName: string; status: string }> = [];
+  const tenantId = context.tenant.id;
+
+  const safe = <T,>(promise: Promise<T>): Promise<T> =>
+    promise.catch(() => [] as T);
 
   if (query) {
-    const contains = { contains: query, mode: "insensitive" as const };
-    const tenantId = context.tenant.id;
-    const [foundProducts, foundCategories, foundCustomers, foundOrders, foundReservations] =
-      await Promise.all([
-        context.permissions.includes("product.manage")
-          ? prisma.product
-              .findMany({
-                where: { ...branchProductWhere(tenantId, context.activeBranchId), name: contains },
-                select: { id: true, name: true, price: true, status: true },
-                take: 12,
-              })
-              .then((items) =>
-                items.map((item) => ({
-                  id: item.id,
-                  name: item.name,
-                  price: item.price === null ? null : item.price.toString(),
-                  status: item.status,
-                })),
-              )
-          : Promise.resolve([]),
-        context.permissions.includes("product.manage")
-          ? prisma.category.findMany({
-              where: { tenantId, name: contains },
+    const [
+      foundProducts,
+      foundCategories,
+      foundCustomers,
+      foundOrders,
+      foundReservations,
+      foundExpenses,
+      foundPurchases,
+      foundPromotions,
+      foundEvents,
+      foundTemplates,
+    ] = await Promise.all([
+      context.permissions.includes("product.manage")
+        ? safe(
+            prisma.product.findMany({
+              where: { ...branchProductWhere(tenantId, context.activeBranchId), name: { contains: query } },
+              select: { id: true, name: true, price: true, status: true },
+              take: 12,
+            })
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("product.manage")
+        ? safe(
+            prisma.category.findMany({
+              where: { tenantId, name: { contains: query } },
               select: { id: true, name: true },
               take: 8,
             })
-          : Promise.resolve([]),
-        context.permissions.includes("customer.manage")
-          ? prisma.loyaltyCustomer.findMany({
-              where: { tenantId, OR: [{ name: contains }, { email: contains }, { phone: contains }] },
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("customer.manage")
+        ? safe(
+            prisma.loyaltyCustomer.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { name: { contains: query } },
+                  { email: { contains: query } },
+                  { phone: { contains: query } },
+                ],
+              },
               select: { id: true, name: true, email: true, phone: true, points: true },
               take: 12,
             })
-          : Promise.resolve([]),
-        context.permissions.includes("order.manage")
-          ? prisma.customerOrder.findMany({
-              where: { tenantId, OR: [{ reference: contains }, { customerName: contains }] },
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("order.manage")
+        ? safe(
+            prisma.customerOrder.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { reference: { contains: query } },
+                  { customerName: { contains: query } },
+                ],
+              },
               select: { id: true, reference: true, customerName: true, status: true, orderType: true },
               take: 12,
             })
-          : Promise.resolve([]),
-        context.permissions.includes("reservation.manage")
-          ? prisma.reservation.findMany({
-              where: { tenantId, OR: [{ reference: contains }, { customerName: contains }] },
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("reservation.manage")
+        ? safe(
+            prisma.reservation.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { reference: { contains: query } },
+                  { customerName: { contains: query } },
+                ],
+              },
               select: { id: true, reference: true, customerName: true, status: true },
               take: 8,
             })
-          : Promise.resolve([]),
-      ]);
-    products = foundProducts;
-    categories = foundCategories;
-    customers = foundCustomers;
-    orders = foundOrders;
-    reservations = foundReservations;
-  }
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("purchase.manage")
+        ? safe(
+            prisma.expense.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { number: { contains: query } },
+                  { notes: { contains: query } },
+                ],
+              },
+              select: { id: true, number: true, notes: true, total: true, status: true },
+              take: 10,
+            })
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("purchase.manage")
+        ? safe(
+            prisma.purchaseOrder.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { number: { contains: query } },
+                  { externalReference: { contains: query } },
+                  { notes: { contains: query } },
+                ],
+              },
+              select: { id: true, number: true, externalReference: true, status: true },
+              take: 10,
+            })
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("promotion.manage")
+        ? safe(
+            prisma.promotion.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { name: { contains: query } },
+                  { code: { contains: query } },
+                  { description: { contains: query } },
+                ],
+              },
+              select: { id: true, name: true, code: true, description: true, status: true },
+              take: 10,
+            })
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("event.manage")
+        ? safe(
+            prisma.event.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { name: { contains: query } },
+                  { description: { contains: query } },
+                  { location: { contains: query } },
+                ],
+              },
+              select: { id: true, name: true, description: true, date: true, status: true },
+              take: 10,
+            })
+          )
+        : Promise.resolve([]),
+      context.permissions.includes("order.manage")
+        ? safe(
+            prisma.documentTemplate.findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { name: { contains: query } },
+                  { originalFilename: { contains: query } },
+                ],
+              },
+              select: { id: true, name: true, originalFilename: true, documentType: true, active: true },
+              take: 10,
+            })
+          )
+        : Promise.resolve([]),
+    ]);
 
-  const total = products.length + categories.length + customers.length + orders.length + reservations.length;
+    const groups: SearchGroup[] = [
+      {
+        title: "Productos",
+        items: (foundProducts as Array<{ id: number; name: string; price: string | null; status: string }>).map(
+          (item) => ({
+            id: item.id,
+            title: item.name,
+            description: `${item.price ? `$${Number(item.price).toLocaleString("es-AR")}` : "Sin precio"} · ${item.status}`,
+            href: adminHref(`/admin/productos?id=${item.id}`),
+          })
+        ),
+      },
+      {
+        title: "Categorías",
+        items: (foundCategories as Array<{ id: number; name: string }>).map((item) => ({
+          id: item.id,
+          title: item.name,
+          href: adminHref(`/admin/categorias?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Clientes frecuentes",
+        items: (foundCustomers as Array<{
+          id: number;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          points: number;
+        }>).map((item) => ({
+          id: item.id,
+          title: item.name,
+          description: `${item.email || item.phone || "Sin contacto"} · ${item.points} puntos`,
+          href: adminHref(`/admin/clientes-frecuentes?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Pedidos",
+        items: (foundOrders as Array<{
+          id: number;
+          reference: string;
+          customerName: string;
+          status: string;
+          orderType: string;
+        }>).map((item) => ({
+          id: item.id,
+          title: `${item.reference} · ${item.customerName}`,
+          description: `${item.orderType.replaceAll("_", " ")} · ${item.status.replaceAll("_", " ")}`,
+          href: adminHref(`/admin/pedidos?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Reservas",
+        items: (foundReservations as Array<{
+          id: number;
+          reference: string;
+          customerName: string;
+          status: string;
+        }>).map((item) => ({
+          id: item.id,
+          title: `${item.reference} · ${item.customerName}`,
+          description: item.status.replaceAll("_", " "),
+          href: adminHref(`/admin/reservas?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Gastos",
+        items: (foundExpenses as Array<{
+          id: number;
+          number: string;
+          notes: string | null;
+          total: unknown;
+          status: string;
+        }>).map((item) => ({
+          id: item.id,
+          title: `${item.number}${item.notes ? ` · ${item.notes}` : ""}`,
+          description: `$${item.total ? Number(item.total).toLocaleString("es-AR") : "0"} · ${item.status.replaceAll("_", " ")}`,
+          href: adminHref(`/admin/gastos?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Compras",
+        items: (foundPurchases as Array<{
+          id: number;
+          number: string;
+          externalReference: string | null;
+          status: string;
+        }>).map((item) => ({
+          id: item.id,
+          title: `${item.number}${item.externalReference ? ` · ${item.externalReference}` : ""}`,
+          description: item.status.replaceAll("_", " "),
+          href: adminHref(`/admin/compras?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Promociones",
+        items: (foundPromotions as Array<{
+          id: number;
+          name: string;
+          code: string | null;
+          description: string | null;
+          status: string;
+        }>).map((item) => ({
+          id: item.id,
+          title: item.name,
+          description: `${item.code || ""} · ${item.status.replaceAll("_", " ")}`,
+          href: adminHref(`/admin/promociones?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Eventos",
+        items: (foundEvents as Array<{
+          id: number;
+          name: string;
+          description: string | null;
+          date: string | null;
+          status: string;
+        }>).map((item) => ({
+          id: item.id,
+          title: item.name,
+          description: `${item.description || ""} · ${item.date ? new Date(item.date).toLocaleDateString("es-AR") : ""}`.trim(),
+          href: adminHref(`/admin/eventos?id=${item.id}`),
+        })),
+      },
+      {
+        title: "Plantillas de documentos",
+        items: (foundTemplates as Array<{
+          id: number;
+          name: string;
+          originalFilename: string;
+          documentType: string;
+          active: boolean;
+        }>).map((item) => ({
+          id: item.id,
+          title: item.name,
+          description: `${item.documentType} · ${item.originalFilename} · ${item.active ? "Activa" : "Inactiva"}`,
+          href: adminHref(`/admin/configuracion/comprobantes/plantillas?id=${item.id}`),
+        })),
+      },
+    ].filter((group) => group.items.length > 0);
+
+    const total = groups.reduce((sum, group) => sum + group.items.length, 0);
+
+    return (
+      <section>
+        <AdminPageHeader
+          eyebrow="Búsqueda global"
+          title="Encontrá lo que necesitás"
+          description="Buscá en la carta, los clientes, los pedidos, las reservas y más desde un solo lugar."
+          section="busqueda"
+        />
+        <form className="card mt-6 p-4" action={adminHref("/admin/busqueda")} role="search">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <input
+              className="input"
+              name="q"
+              defaultValue={query}
+              autoFocus
+              type="search"
+              placeholder="Ej. café, mesa 4, Ana, PED-123…"
+            />
+            <button className="btn">Buscar</button>
+          </div>
+        </form>
+
+        {total === 0 ? (
+          <div className="card mt-6 p-12 text-center text-[var(--admin-muted)]">
+            No se encontraron resultados para “{query}”.
+          </div>
+        ) : (
+          <div className="mt-6 space-y-8">
+            {groups.map((group) => (
+              <section key={group.title}>
+                <h2 className="mb-3 text-sm font-black uppercase tracking-widest text-[var(--admin-muted)]">
+                  {group.title} <span className="text-zinc-600">({group.items.length})</span>
+                </h2>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {group.items.map((item) => (
+                    <Link
+                      className="rounded-2xl border border-white/10 bg-white/[.03] p-4 transition hover:border-pink-500/40 hover:bg-white/[.06]"
+                      href={item.href}
+                      key={item.id}
+                    >
+                      <strong className="block truncate">{item.title}</strong>
+                      {item.description && (
+                        <span className="mt-0.5 block truncate text-xs text-zinc-500">{item.description}</span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section>
       <AdminPageHeader
         eyebrow="Búsqueda global"
         title="Encontrá lo que necesitás"
-        description="Buscá en la carta, los clientes, los pedidos y las reservas desde un solo lugar."
+        description="Buscá en la carta, los clientes, los pedidos, las reservas y más desde un solo lugar."
         section="busqueda"
       />
       <form className="card mt-6 p-4" action={adminHref("/admin/busqueda")} role="search">
@@ -115,7 +409,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <input
             className="input"
             name="q"
-            defaultValue={query}
             autoFocus
             type="search"
             placeholder="Ej. café, mesa 4, Ana, PED-123…"
@@ -123,106 +416,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <button className="btn">Buscar</button>
         </div>
       </form>
-
-      {!query ? (
-        <div className="card mt-6 p-12 text-center text-[var(--admin-muted)]">
-          Escribí un término para buscar en todo tu negocio.
-        </div>
-      ) : total === 0 ? (
-        <div className="card mt-6 p-12 text-center text-[var(--admin-muted)]">
-          No se encontraron resultados para “{query}”.
-        </div>
-      ) : (
-        <div className="mt-6 space-y-8">
-          {[
-            {
-              title: "Productos",
-              items: products,
-              href: (item: { id: number }) => `/admin/productos?id=${item.id}`,
-              render: (item: (typeof products)[number]) => (
-                <>
-                  <strong className="block truncate">{item.name}</strong>
-                  <span className="mt-0.5 block text-xs text-zinc-500">
-                    {item.price ? `$${Number(item.price).toLocaleString("es-AR")}` : "Sin precio"} ·{" "}
-                    {item.status}
-                  </span>
-                </>
-              ),
-            },
-            {
-              title: "Categorías",
-              items: categories,
-              href: (item: { id: number }) => `/admin/categorias?id=${item.id}`,
-              render: (item: (typeof categories)[number]) => (
-                <strong className="block truncate">{item.name}</strong>
-              ),
-            },
-            {
-              title: "Clientes frecuentes",
-              items: customers,
-              href: (item: { id: number }) => `/admin/clientes-frecuentes?id=${item.id}`,
-              render: (item: (typeof customers)[number]) => (
-                <>
-                  <strong className="block truncate">{item.name}</strong>
-                  <span className="mt-0.5 block truncate text-xs text-zinc-500">
-                    {item.email || item.phone || "Sin contacto"} · {item.points} puntos
-                  </span>
-                </>
-              ),
-            },
-            {
-              title: "Pedidos",
-              items: orders,
-              href: (item: { id: number }) => `/admin/pedidos?id=${item.id}`,
-              render: (item: (typeof orders)[number]) => (
-                <>
-                  <strong className="block truncate">
-                    {item.reference} · {item.customerName}
-                  </strong>
-                  <span className="mt-0.5 block text-xs text-zinc-500">
-                    {item.orderType.replaceAll("_", " ")} · {item.status.replaceAll("_", " ")}
-                  </span>
-                </>
-              ),
-            },
-            {
-              title: "Reservas",
-              items: reservations,
-              href: (item: { id: number }) => `/admin/reservas?id=${item.id}`,
-              render: (item: (typeof reservations)[number]) => (
-                <>
-                  <strong className="block truncate">
-                    {item.reference} · {item.customerName}
-                  </strong>
-                  <span className="mt-0.5 block text-xs text-zinc-500">
-                    {item.status.replaceAll("_", " ")}
-                  </span>
-                </>
-              ),
-            },
-          ].map(
-            (group) =>
-              group.items.length > 0 && (
-                <section key={group.title}>
-                  <h2 className="mb-3 text-sm font-black uppercase tracking-widest text-[var(--admin-muted)]">
-                    {group.title} <span className="text-zinc-600">({group.items.length})</span>
-                  </h2>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {group.items.map((item) => (
-                      <Link
-                        className="rounded-2xl border border-white/10 bg-white/[.03] p-4 transition hover:border-pink-500/40 hover:bg-white/[.06]"
-                        href={adminHref(group.href(item))}
-                        key={item.id}
-                      >
-                        {group.render(item as never)}
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              ),
-          )}
-        </div>
-      )}
+      <div className="card mt-6 p-12 text-center text-[var(--admin-muted)]">
+        Escribí un término para buscar en todo tu negocio.
+      </div>
     </section>
   );
 }

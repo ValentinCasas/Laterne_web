@@ -75,10 +75,12 @@ describe("definición centralizada de navegación administrativa", () => {
   });
 
   it("localiza el grupo correcto de una ruta", () => {
-    expect(adminGroupIdForHref("/admin/pedidos")).toBe("ventas");
-    expect(adminGroupIdForHref("/admin/productos")).toBe("carta");
-    expect(adminGroupIdForHref("/admin/compras")).toBe("compras");
-    expect(adminGroupIdForHref("/admin/inventario")).toBe("inventario");
+    expect(adminGroupIdForHref("/admin/pedidos")).toBe("operacion");
+    expect(adminGroupIdForHref("/admin/productos")).toBe("productos");
+    expect(adminGroupIdForHref("/admin/compras")).toBe("operacion");
+    expect(adminGroupIdForHref("/admin/inventario")).toBe("productos");
+    expect(adminGroupIdForHref("/admin/marca")).toBe("administracion");
+    expect(adminGroupIdForHref("/admin/estadisticas")).toBe("administracion");
   });
 });
 

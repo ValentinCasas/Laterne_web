@@ -17,7 +17,6 @@ const password = `nav-${Date.now()}`;
 const email = `nav-check-${Date.now()}@example.com`;
 
 let tenantSlug = "";
-let branchSlugs: string[] = [];
 
 /** @summary Hash privado idéntico al que usa el login para limpiar sus intentos. */
 function privateHash(value: string) {
@@ -36,7 +35,6 @@ async function createTempAdmin() {
     where: { tenantId: tenant.id, active: true },
     select: { id: true, slug: true },
   });
-  branchSlugs = branches.map((branch) => branch.slug);
 
   const role = await prisma.role.findFirst({
     where: { tenantId: tenant.id, permissions: { some: { permission: { key: "product.manage" } } } },
@@ -109,42 +107,13 @@ test.beforeEach(async ({ page }) => {
 // El mega-menú de escritorio no aplica al proyecto mobile (drawer).
 test.skip(({ isMobile }) => isMobile, "El mega-menú es de escritorio");
 
-test("Inventario aparece en el menú y abre el módulo", async ({ page }) => {
+test("Operación agrupa compras y gastos", async ({ page }) => {
   await page.goto(`/t/${tenantSlug}/admin`);
-  await expect(page.getByRole("button", { name: "Inventario" })).toBeVisible();
-  await page.getByRole("button", { name: "Inventario" }).click();
+  await expect(page.getByRole("button", { name: "Operación" })).toBeVisible();
+  await page.getByRole("button", { name: "Operación" }).click();
 
-  const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
-  await expect(inventarioLink).toBeVisible();
-  await expect(page.getByText("Operación", { exact: true }).first()).toBeVisible();
-
-  const href = await inventarioLink.getAttribute("href");
-  expect(href).toMatch(/\/admin\/inventario$/);
-
-  await inventarioLink.click();
-  await expect(page).toHaveURL(/\/admin\/inventario$/);
-  await expect(page.getByRole("heading", { name: "Inventario" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Stock por sucursal" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Movimientos" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Conteos físicos" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Transferencias" })).toBeVisible();
-});
-
-test("con sucursal seleccionada el enlace de Inventario conserva la sucursal", async ({ page }) => {
-  expect(branchSlugs.length).toBeGreaterThan(0);
-  await page.goto(`/t/${tenantSlug}/admin/s/${branchSlugs[0]}`);
-  await page.getByRole("button", { name: "Inventario" }).click();
-
-  const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
-  await expect(inventarioLink).toBeVisible();
-  const href = await inventarioLink.getAttribute("href");
-  expect(href).toMatch(new RegExp(`/admin/s/${branchSlugs[0]}/inventario$`));
-});
-
-test("Compras aparece en el menú y abre el módulo", async ({ page }) => {
-  await page.goto(`/t/${tenantSlug}/admin`);
-  await expect(page.getByRole("button", { name: "Compras" })).toBeVisible();
-  await page.getByRole("button", { name: "Compras" }).click();
+  await expect(page.getByText("Compras", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Gastos", { exact: true }).first()).toBeVisible();
 
   const comprasLink = page.locator('a').filter({ hasText: 'Compras' }).first();
   await expect(comprasLink).toBeVisible();
@@ -156,18 +125,51 @@ test("Compras aparece en el menú y abre el módulo", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Compras" })).toBeVisible();
 });
 
-test("Ventas agrupa pedidos, clientes, reservas y facturacion", async ({ page }) => {
+test("Productos agrupa catálogo, producción e inventario", async ({ page }) => {
   await page.goto(`/t/${tenantSlug}/admin`);
-  await expect(page.getByRole("button", { name: "Ventas" })).toBeVisible();
-  await page.getByRole("button", { name: "Ventas" }).click();
+  await expect(page.getByRole("button", { name: "Productos" })).toBeVisible();
+  await page.getByRole("button", { name: "Productos" }).click();
 
-  await expect(page.getByText("Atención", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Clientes", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Reservas", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Facturación", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Catálogo", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Producción", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Inventario", { exact: true }).first()).toBeVisible();
 
-  const pedidosLink = page.locator('a').filter({ hasText: 'Pedidos' }).first();
-  await expect(pedidosLink).toBeVisible();
-  await pedidosLink.click();
-  await expect(page).toHaveURL(/\/admin\/pedidos$/);
+  const inventarioLink = page.locator('a').filter({ hasText: 'Inventario' }).filter({ hasText: 'Stock' }).first();
+  await expect(inventarioLink).toBeVisible();
+  await inventarioLink.click();
+  await expect(page).toHaveURL(/\/admin\/inventario$/);
+  await expect(page.getByRole("heading", { name: "Inventario" })).toBeVisible();
+});
+
+test("Administración agrupa negocio, configuración, análisis y datos", async ({ page }) => {
+  await page.goto(`/t/${tenantSlug}/admin`);
+  await expect(page.getByRole("button", { name: "Administración" })).toBeVisible();
+  await page.getByRole("button", { name: "Administración" }).click();
+
+  await expect(page.getByText("Negocio", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Análisis", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Datos", { exact: true }).first()).toBeVisible();
+
+  const marcaLink = page.locator('a').filter({ hasText: 'Marca' }).first();
+  await expect(marcaLink).toBeVisible();
+  await marcaLink.click();
+  await expect(page).toHaveURL(/\/admin\/marca$/);
+  await expect(page.getByRole("heading", { name: "Marca" })).toBeVisible();
+});
+
+test("No hay hydration errors en Productos", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
+
+  await page.goto(`/t/${tenantSlug}/admin/productos`);
+  await expect(page.getByRole("heading", { name: "Productos" })).toBeVisible();
+
+  const hydrationErrors = consoleErrors.filter((text) =>
+    /hydrat/i.test(text) || /didn't match/i.test(text),
+  );
+  expect(hydrationErrors).toEqual([]);
 });
