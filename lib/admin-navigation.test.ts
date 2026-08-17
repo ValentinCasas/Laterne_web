@@ -56,6 +56,11 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/finanzas/cuentas-cobrar",
       "/admin/finanzas/cuentas-pagar",
       "/admin/finanzas/estado-resultados",
+      "/admin/reportes",
+      "/admin/reportes/ventas",
+      "/admin/reportes/productos",
+      "/admin/reportes/compras",
+      "/admin/reportes/sucursales",
     ]);
     for (const link of adminNavLinks()) {
       expect(known.has(link.href), `ruta inexistente: ${link.href}`).toBe(true);

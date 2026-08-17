@@ -388,6 +388,79 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
+    id: "reportes",
+    label: "Reportes",
+    icon: "RE",
+    description: "Ventas, productos, compras y sucursales",
+    sections: [
+      {
+        id: "resumen-reportes",
+        label: "Resumen",
+        items: [
+          {
+            href: "/admin/reportes",
+            label: "Resumen",
+            icon: "RE",
+            permission: "analytics.read",
+            description: "KPIs generales y evolución",
+          },
+        ],
+      },
+      {
+        id: "ventas-reportes",
+        label: "Ventas",
+        items: [
+          {
+            href: "/admin/reportes/ventas",
+            label: "Ventas",
+            icon: "VE",
+            permission: "analytics.read",
+            description: "Análisis de ventas, medios de pago y origen",
+          },
+        ],
+      },
+      {
+        id: "productos-reportes",
+        label: "Productos",
+        items: [
+          {
+            href: "/admin/reportes/productos",
+            label: "Productos",
+            icon: "PR",
+            permission: "analytics.read",
+            description: "Popularidad, rentabilidad y CMV",
+          },
+        ],
+      },
+      {
+        id: "compras-reportes",
+        label: "Compras",
+        items: [
+          {
+            href: "/admin/reportes/compras",
+            label: "Compras",
+            icon: "CO",
+            permission: "analytics.read",
+            description: "Evolución de costos y proveedores",
+          },
+        ],
+      },
+      {
+        id: "sucursales-reportes",
+        label: "Sucursales",
+        items: [
+          {
+            href: "/admin/reportes/sucursales",
+            label: "Sucursales",
+            icon: "SU",
+            permission: "analytics.read",
+            description: "Comparativa entre sucursales",
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "administracion",
     label: "Administración",
     icon: "AD",

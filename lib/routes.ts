@@ -53,6 +53,7 @@ export const BRANCH_ADMIN_SECTIONS = new Set([
   "archivos",
   "auditoria",
   "datos",
+  "reportes",
 ]);
 
 /** Rutas públicas que pueden existir dentro del contexto explícito de una sucursal. */
