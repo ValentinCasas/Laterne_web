@@ -1,6 +1,6 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
 import { ReportsKpiCard } from "@/components/admin/reports/reports-kpi-card";
-import { ReportsTable } from "@/components/admin/reports/reports-table";
+import { ReportsVentasTable } from "@/components/admin/reports/reports-ventas-table";
 import { EvolutionBarChart, HorizontalBarList } from "@/components/admin/reports/reports-chart";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { requirePermission } from "@/lib/auth";
@@ -170,32 +170,7 @@ export default async function VentasPage({ searchParams }: VentasPageProps) {
           </div>
         </div>
       </section>
-      <ReportsTable
-        headers={["Referencia", "Fecha", "Estado", "Tipo", "Canal", "Total", "Descuento", "Cliente", "Usuario"]}
-        rows={orders}
-        emptyMessage="No hay ventas para este período."
-        page={page}
-        pageSize={PAGE_SIZE}
-        total={total}
-        onPageChange={(newPage) => {
-          const url = new URL(window.location.href);
-          url.searchParams.set("page", String(newPage));
-          window.location.href = url.toString();
-        }}
-        renderRow={(row: OrderDetail) => (
-          <tr key={row.id} className="hover:bg-white/[0.02]">
-            <td className="px-5 py-3 font-medium">{row.reference}</td>
-            <td className="px-5 py-3">{new Date(row.createdAt).toLocaleString("es-AR")}</td>
-            <td className="px-5 py-3 capitalize">{row.status.replaceAll("_", " ")}</td>
-            <td className="px-5 py-3 capitalize">{row.orderType.replaceAll("_", " ")}</td>
-            <td className="px-5 py-3 capitalize">{row.channel}</td>
-            <td className="px-5 py-3 text-right font-black tabular-nums">{row.total.toLocaleString("es-AR")}</td>
-            <td className="px-5 py-3 text-right text-red-300">{row.discount.toLocaleString("es-AR")}</td>
-            <td className="px-5 py-3">{row.customerName}</td>
-            <td className="px-5 py-3 text-zinc-400">{row.userName || "—"}</td>
-          </tr>
-        )}
-      />
+      <ReportsVentasTable orders={orders} page={page} pageSize={PAGE_SIZE} total={total} />
     </ReportsShell>
   );
 }

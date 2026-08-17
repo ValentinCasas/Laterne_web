@@ -1,12 +1,11 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
 import { ReportsKpiCard } from "@/components/admin/reports/reports-kpi-card";
-import { ReportsTable } from "@/components/admin/reports/reports-table";
+import { ReportsComprasTable } from "@/components/admin/reports/reports-compras-table";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePeriod } from "@/lib/reports/period";
 import { computeComprasKpis, computePurchaseItems } from "@/lib/reports/purchases";
-import type { PurchaseItem } from "@/lib/reports";
 
 const PAGE_SIZE = 50;
 
@@ -63,32 +62,7 @@ export default async function ComprasPage({ searchParams }: ComprasPageProps) {
         <ReportsKpiCard label="Operaciones" value={kpis.operationCount} tone="text-sky-300" />
         <ReportsKpiCard label="Proveedores activos" value={kpis.activeSuppliers} tone="text-amber-300" />
       </div>
-      <ReportsTable
-        headers={["Fecha", "Proveedor", "Documento", "Producto", "Cantidad", "Unidad", "Costo unitario", "Total", "Sucursal"]}
-        rows={items}
-        emptyMessage="No hay compras para este período."
-        page={page}
-        pageSize={PAGE_SIZE}
-        total={total}
-        onPageChange={(newPage) => {
-          const url = new URL(window.location.href);
-          url.searchParams.set("page", String(newPage));
-          window.location.href = url.toString();
-        }}
-        renderRow={(row: PurchaseItem) => (
-          <tr key={`${row.document}-${row.productName}-${row.date}`} className="hover:bg-white/[0.02]">
-            <td className="px-5 py-3">{row.date}</td>
-            <td className="px-5 py-3 font-medium">{row.supplierName}</td>
-            <td className="px-5 py-3 font-mono text-xs">{row.document}</td>
-            <td className="px-5 py-3">{row.productName}</td>
-            <td className="px-5 py-3 text-right tabular-nums">{row.quantity}</td>
-            <td className="px-5 py-3">{row.unit}</td>
-            <td className="px-5 py-3 text-right tabular-nums">{row.unitCost.toLocaleString("es-AR")}</td>
-            <td className="px-5 py-3 text-right font-black tabular-nums">{row.total.toLocaleString("es-AR")}</td>
-            <td className="px-5 py-3">{row.branchName}</td>
-          </tr>
-        )}
-      />
+      <ReportsComprasTable items={items} page={page} pageSize={PAGE_SIZE} total={total} />
     </ReportsShell>
   );
 }
