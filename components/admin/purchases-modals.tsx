@@ -2,77 +2,20 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { scopedFetch } from "@/lib/client-routing";
+import {
+  type BranchOption,
+  type ProductOption,
+  type PurchaseInvoiceDetail,
+  type PurchaseOrderDetail,
+  type ReceiptRow,
+  type Supplier,
+} from "@/lib/purchases-types";
+import { api, showError } from "@/lib/client-helpers";
+import { dateLabel, money } from "@/lib/helpers";
 import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/purchases";
 
-/**
- * Modales del gestor de Compras.
- *
- * Cubren el flujo completo: alta de pedido (proveedor → líneas → revisar),
- * detalle de pedido con recepción física y pendiente en vivo, alta de factura
- * vinculada a recepciones, pagos parciales/totales y proveedores.
- */
-
-type Supplier = { id: number; name: string; code?: string | null; taxId?: string | null; contactName?: string | null; phone?: string | null; email?: string | null; address?: string | null; paymentTerms?: string | null; currency?: string | null; category?: string | null; creditLimit?: number | null; status?: string; notes?: string | null; branches?: Array<{ branch: { id: number; name: string } }> };
-type BranchOption = { id: number; name: string; slug: string; active: boolean };
-type ProductOption = { id: number; name: string; cost?: number | string | null; costUnit?: string | null; imageUrl?: string | null };
-type ReceiptRow = {
-  id: number;
-  number: string;
-  receivedAt: string;
-  supplier: { id: number; name: string };
-  branch: { id: number; name: string };
-  order?: { id: number; number: string } | null;
-  items: Array<{ id: number; quantity: string | number; unit: string; unitCost: string | number; product?: { id: number; name: string } }>;
-};
-type OrderDetail = {
-  id: number;
-  number: string;
-  status: string;
-  orderDate: string;
-  expectedDate?: string | null;
-  externalReference?: string | null;
-  notes?: string | null;
-  supplier: { id: number; name: string; paymentTerms?: string | null };
-  branch: { id: number; name: string };
-  items: Array<{
-    id: number;
-    quantity: string | number;
-    receivedQuantity: string | number;
-    unit: string;
-    unitCost: string | number;
-    discountPercent?: string | number;
-    taxPercent?: string | number;
-    product: ProductOption;
-  }>;
-  receipts: Array<{
-    id: number;
-    number: string;
-    receivedAt: string;
-    createdBy?: { id: number; name: string } | null;
-    items: Array<{ id: number; quantity: string | number; unit: string; unitCost: string | number; product?: { id: number; name: string } }>;
-  }>;
-  invoices: Array<{ id: number; number: string; status: string; total: string | number; documentDate: string; externalNumber?: string | null }>;
-};
-type InvoiceDetail = {
-  id: number;
-  number: string;
-  status: string;
-  documentDate: string;
-  dueDate?: string | null;
-  externalNumber?: string | null;
-  financialCategory?: string | null;
-  notes?: string | null;
-  supplier: { id: number; name: string; paymentTerms?: string | null };
-  branch?: { id: number; name: string } | null;
-  subtotal: string | number;
-  taxAmount: string | number;
-  total: string | number;
-  paidAmount: string | number;
-  items: Array<{ id: number; productId?: number | null; description: string; quantity: string | number; unit: string; unitCost: string | number; discountPercent?: string | number; taxPercent?: string | number }>;
-  payments: Array<{ id: number; number: string; amount: string | number; method: string; paidAt: string; notes?: string | null; createdBy?: { id: number; name: string } | null }>;
-  receipts: Array<{ receipt: ReceiptRow }>;
-};
+type OrderDetail = PurchaseOrderDetail;
+type InvoiceDetail = PurchaseInvoiceDetail;
 
 const ORDER_STATUS_COLORS: Record<string, string> = {
   draft: "bg-zinc-500/15 text-zinc-300",
@@ -91,43 +34,13 @@ const INVOICE_STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-rose-500/15 text-rose-300",
 };
 
-/** @summary Formatea un importe con la moneda del negocio. */
-function money(value: string | number | null | undefined, currency: string) {
-  if (value === null || value === undefined || value === "") return "—";
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "—";
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(number);
-}
-
-/** @summary Formatea una fecha ISO para mostrar. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/** @summary Ejecuta una petición de API y devuelve el cuerpo parseado o lanza el error del servidor. */
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await scopedFetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
-  return body;
-}
-
-/** @summary Muestra un error de operación en el panel sin romper la pantalla. */
-async function showError(title: string, reason: unknown) {
-  await Swal.fire({
-    title,
-    text: reason instanceof Error ? reason.message : "Intentá nuevamente.",
-    icon: "error",
-    background: "#18181b",
-    color: "#fafafa",
-  });
-}
+/**
+ * Modales del gestor de Compras.
+ *
+ * Cubren el flujo completo: alta de pedido (proveedor → líneas → revisar),
+ * detalle de pedido con recepción física y pendiente en vivo, alta de factura
+ * vinculada a recepciones, pagos parciales/totales y proveedores.
+ */
 
 /** @summary Marco base de los modales del módulo. */
 function ModalFrame({

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
 import { PageHeader, KpiCard, DataTable, StatusBadge, ActionMenu, FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
+import { money, dateLabel } from "@/lib/finance-helpers";
 
 export type ReceivablesInitial = {
   tenantId: number;
@@ -33,23 +34,13 @@ export type ReceivablesInitial = {
   };
 };
 
-/** @summary Formatea un importe. */
-function money(value: number | null | undefined, currency: string) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/** @summary Formatea una fecha ISO. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
+const STATUS_OPTIONS = [
+  { value: "", label: "Todos" },
+  { value: "open", label: "Abierto" },
+  { value: "partially_paid", label: "Parcial" },
+  { value: "paid", label: "Pagado" },
+  { value: "cancelled", label: "Cancelado" },
+];
 
 /** @summary Ejecuta una petición de API. */
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -61,14 +52,6 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
   return body;
 }
-
-const STATUS_OPTIONS = [
-  { value: "", label: "Todos" },
-  { value: "open", label: "Abierto" },
-  { value: "partially_paid", label: "Parcial" },
-  { value: "paid", label: "Pagado" },
-  { value: "cancelled", label: "Cancelado" },
-];
 
 /** @summary Gestor de cuentas a cobrar. */
 export function FinanceReceivablesClient({ initial }: { initial: ReceivablesInitial }) {

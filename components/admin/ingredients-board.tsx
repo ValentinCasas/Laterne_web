@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, ActionMenu, EmptyState } from "@/components/admin/ui";
+import { PageHeader, SearchBox, ActionMenu, EmptyState, DataTable, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { unitLabel } from "@/lib/recipe-units";
@@ -13,8 +13,7 @@ import { unitLabel } from "@/lib/recipe-units";
  *
  * Un ingrediente es un producto del catálogo con costo y/o control de
  * inventario. Este panel permite darlo de alta simple (sin pasar por el editor
- * de carta), ajustar su costo (con historial), sus existencias por sucursal y
- * las conversiones de unidades propias del negocio.
+ * de carta), ajustar su costo (con historial), sus existencias por sucursal.
  */
 
 type Branch = { id: number; name: string };
@@ -37,7 +36,7 @@ type IngredientRow = {
   stocks: IngredientStock[];
   lastCost: { cost: string; unit: string; reason: string | null; createdAt: string } | null;
 };
-type ConversionRow = { id?: number; fromUnit: string; toUnit: string; factor: string };
+
 
 type Payload = {
   ingredients: IngredientRow[];
@@ -47,10 +46,8 @@ type Payload = {
 
 type FormMode = "create" | "edit" | null;
 
-/** @summary Estado del formulario de alta/edición de un ingrediente. */
 type StockDraft = { branchId: number; branchName: string; tracked: boolean; current: string; minimum: string; unit: string };
 
-/** @summary Ejecuta una petición de API y devuelve el cuerpo o lanza el error del servidor. */
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await scopedFetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -61,7 +58,6 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   return body;
 }
 
-/** @summary Muestra un error de operación en el panel sin romper la pantalla. */
 async function showError(title: string, reason: unknown) {
   await Swal.fire({
     title,
@@ -72,7 +68,6 @@ async function showError(title: string, reason: unknown) {
   });
 }
 
-/** @summary Convierte las existencias de una fila al borrador del formulario. */
 function stockDraftFrom(stocks: IngredientStock[], branches: Branch[]): StockDraft[] {
   const byBranch = new Map(stocks.map((stock) => [stock.branchId, stock]));
   return branches.map((branch) => {
@@ -88,10 +83,10 @@ function stockDraftFrom(stocks: IngredientStock[], branches: Branch[]): StockDra
   });
 }
 
-/** @summary Tablero de ingredientes con alta simple, costo con historial y conversiones. */
+
+
 export function IngredientsBoard({ initial }: { initial: Payload }) {
   const pathname = usePathname();
-  /** Resuelve rutas administrativas conservando el contexto visible (mismo valor en SSR y cliente). */
   const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
   const [payload, setPayload] = useState<Payload>(initial);
   const [search, setSearch] = useState("");
@@ -105,19 +100,8 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
     reason: "",
   });
   const [stocks, setStocks] = useState<StockDraft[]>(() => stockDraftFrom([], initial.branches));
-  const [conversions, setConversions] = useState<ConversionRow[]>([]);
 
   const currency = payload.currency ?? "ARS";
-
-  /** @summary Carga las conversiones del negocio al abrir el panel. */
-  const loadConversions = async () => {
-    try {
-      const body = await api<{ rows: ConversionRow[] }>("/api/admin/ingredients/conversions");
-      setConversions(body.rows);
-    } catch (reason) {
-      await showError("No se pudieron cargar las conversiones", reason);
-    }
-  };
 
   const openCreate = () => {
     setMode("create");
@@ -147,7 +131,6 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
     }
   };
 
-  /** @summary Guarda el ingrediente (alta o actualización). */
   const saveIngredient = async () => {
     if (!form.name.trim()) {
       await showError("Falta el nombre", new Error("Escribí el nombre del ingrediente"));
@@ -193,7 +176,6 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
     }
   };
 
-  /** @summary Elimina un ingrediente con confirmación (bloqueado si se usa en recetas). */
   const removeIngredient = async (ingredient: IngredientRow) => {
     const result = await Swal.fire({
       title: `¿Eliminar ${ingredient.name}?`,
@@ -218,34 +200,6 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
     }
   };
 
-  /** @summary Guarda las conversiones de unidades del negocio. */
-  const saveConversions = async () => {
-    setBusy(true);
-    try {
-      const valid = conversions.filter((row) => row.fromUnit.trim() && row.toUnit.trim() && Number(row.factor) > 0);
-      await api("/api/admin/ingredients/conversions", {
-        method: "PUT",
-        body: JSON.stringify({ rows: valid }),
-      });
-      await Swal.fire({
-        title: "Conversiones guardadas",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-        background: "#18181b",
-        color: "#fafafa",
-      });
-    } catch (reason) {
-      await showError("No se pudieron guardar las conversiones", reason);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const patchConversion = (index: number, patch: Partial<ConversionRow>) => {
-    setConversions((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
-  };
-
   const patchStock = (index: number, patch: Partial<StockDraft>) => {
     setStocks((current) => current.map((stock, stockIndex) => (stockIndex === index ? { ...stock, ...patch } : stock)));
   };
@@ -259,8 +213,87 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
 
   const money = (value: string | null | undefined) => {
     if (value === null || value === undefined || value === "") return "—";
-    return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(
-      Number(value),
+    return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(value));
+  };
+
+  const columns = useMemo(() => [
+    { key: "name", label: "Ingrediente", hideOnMobile: false } as const,
+    { key: "cost", label: "Costo", align: "right" as const, hideOnMobile: false } as const,
+    { key: "unit", label: "Unidad base", align: "right" as const, hideOnMobile: true } as const,
+    { key: "stock", label: "Stock", hideOnMobile: true } as const,
+    { key: "usedIn", label: "Usado en", align: "left" as const, hideOnMobile: true },
+    { key: "lastUpdate", label: "Última actualización", hideOnMobile: true } as const,
+    { key: "status", label: "Estado", hideOnMobile: true } as const,
+  ], []);
+
+  const data = useMemo(() =>
+    filtered.map((ingredient) => ({
+      id: ingredient.id,
+      name: (
+        <div className="min-w-0">
+          <p className="truncate font-bold">
+            {ingredient.name}
+            {ingredient.hasRecipe && (
+              <span className="ml-2 rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                preparación
+              </span>
+            )}
+          </p>
+          {ingredient.lastCost && ingredient.cost === ingredient.lastCost.cost && (
+            <p className="truncate text-xs text-[var(--admin-muted)]">
+              {ingredient.lastCost.reason ? `${ingredient.lastCost.reason} · ` : ""}
+              {new Intl.DateTimeFormat("es-AR", { dateStyle: "short" }).format(new Date(ingredient.lastCost.createdAt))}
+            </p>
+          )}
+        </div>
+      ),
+      cost: <span className="font-bold">{money(ingredient.cost)}</span>,
+      unit: unitLabel(ingredient.costUnit),
+      stock: ingredient.stocks.length === 0 ? (
+        <span className="text-[var(--admin-muted)]">Sin existencias</span>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {ingredient.stocks.map((stock) => (
+            <span
+              key={stock.branchId}
+              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                stock.tracked ? "bg-white/5" : "bg-white/[0.02] text-[var(--admin-muted)]"
+              }`}
+            >
+              {stock.tracked ? `${stock.current} ${unitLabel(stock.unit)}` : "sin control"}
+            </span>
+          ))}
+        </div>
+      ),
+      usedIn: ingredient.usedInCount > 0 ? (
+        <span className="font-semibold">{ingredient.usedInCount}</span>
+      ) : (
+        <span className="text-[var(--admin-muted)]">—</span>
+      ),
+      lastUpdate: ingredient.lastCost ? (
+        <span className="text-xs">
+          {new Intl.DateTimeFormat("es-AR", { dateStyle: "short" }).format(new Date(ingredient.lastCost.createdAt))}
+        </span>
+      ) : (
+        <span className="text-[var(--admin-muted)]">—</span>
+      ),
+      status: <StatusBadge status={ingredient.status} />,
+    })),
+    [filtered, currency, money],
+  );
+
+  const rowActions = (row: Record<string, unknown>) => {
+    const ingredient = filtered.find((i) => i.id === row.id as number);
+    if (!ingredient) return null;
+    return (
+      <ActionMenu
+        align="right"
+        items={[
+          { label: "Editar", onClick: () => openEdit(ingredient) },
+          { label: "Ficha", onClick: () => { window.location.href = adminHref(`/admin/ingredientes/${ingredient.id}`); } },
+          { label: "Eliminar", tone: "danger", onClick: () => removeIngredient(ingredient) },
+        ]}
+      />
     );
   };
 
@@ -283,7 +316,6 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
         }
       />
 
-      {/* Formulario de alta/edición */}
       {mode && (
         <div className="mb-5 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-xl shadow-black/10">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -410,170 +442,22 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
         </p>
       </div>
 
-      {/* Listado */}
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--admin-border)] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
-                <th className="px-4 py-3 font-semibold">Ingrediente</th>
-                <th className="px-4 py-3 font-semibold text-right">Costo</th>
-                <th className="px-4 py-3 font-semibold text-right">Unidad</th>
-                <th className="px-4 py-3 font-semibold text-center">Usado en</th>
-                <th className="px-4 py-3 font-semibold">Stock por sucursal</th>
-                <th className="px-4 py-3 font-semibold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((ingredient) => (
-                <tr key={ingredient.id} className="border-b border-[var(--admin-border)]/60 last:border-0 hover:bg-white/[0.02]">
-                  <td className="px-4 py-3">
-                    <p className="font-bold">
-                      {ingredient.name}
-                      {ingredient.hasRecipe && (
-                        <span className="ml-2 rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                          preparación
-                        </span>
-                      )}
-                    </p>
-                    {ingredient.lastCost && ingredient.cost === ingredient.lastCost.cost && (
-                      <p className="text-xs text-[var(--admin-muted)]">
-                        Últ. cambio {new Intl.DateTimeFormat("es-AR", { dateStyle: "short" }).format(new Date(ingredient.lastCost.createdAt))}
-                        {ingredient.lastCost.reason ? ` · ${ingredient.lastCost.reason}` : ""}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold">{money(ingredient.cost)}</td>
-                  <td className="px-4 py-3 text-right">{unitLabel(ingredient.costUnit)}</td>
-                  <td className="px-4 py-3 text-center">
-                    {ingredient.usedInCount > 0 ? (
-                      <span className="font-semibold">{ingredient.usedInCount}</span>
-                    ) : (
-                      <span className="text-[var(--admin-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {ingredient.stocks.length === 0 ? (
-                      <span className="text-[var(--admin-muted)]">Sin existencias</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {ingredient.stocks.map((stock) => (
-                          <span
-                            key={stock.branchId}
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              stock.tracked ? "bg-white/5" : "bg-white/[0.02] text-[var(--admin-muted)]"
-                            }`}
-                            title={`${stock.branchName}`}
-                          >
-                            {stock.branchName}: {stock.tracked ? `${stock.current} ${unitLabel(stock.unit)}` : "sin control"}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ActionMenu
-                      align="right"
-                      items={[
-                        { label: "Editar", onClick: () => openEdit(ingredient) },
-                        ...(ingredient.hasRecipe ? [{ label: "Ver ficha", onClick: () => { window.location.href = adminHref(`/admin/recetas/${ingredient.id}/ficha`); } }] : []),
-                        { label: "Eliminar", tone: "danger", onClick: () => removeIngredient(ingredient) },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center">
-                    <EmptyState title="No hay ingredientes cargados todavía" description="Creá el primero para comenzar a administrar costos y stock." action={
-                      <button type="button" onClick={openCreate} className="btn">+ Nuevo ingrediente</button>
-                    } />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {filtered.length === 0 ? (
+        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-10 text-center shadow-xl shadow-black/10">
+          <EmptyState title="No hay ingredientes cargados todavía" description="Creá el primero para comenzar a administrar costos y stock." action={
+            <button type="button" onClick={openCreate} className="btn">+ Nuevo ingrediente</button>
+          } />
         </div>
-      </div>
-
-      {/* Conversiones de unidades */}
-      <div className="mt-8 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-xl shadow-black/10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-black">Conversiones de unidades</h2>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">
-              Reglas propias del negocio, por ejemplo 1 bolsa = 25 kg. El factor indica cuántas unidades de
-              destino hay en una unidad de origen.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => { setConversions([...conversions, { fromUnit: "", toUnit: "", factor: "1" }]); }}
-          >
-            + Agregar conversión
-          </button>
-        </div>
-
-        <button
-          type="button"
-          className="mt-3 text-sm font-semibold text-[var(--admin-muted)] underline"
-          onClick={async () => {
-            if (conversions.length === 0) await loadConversions();
-            else setConversions([]);
-          }}
-        >
-          {conversions.length === 0 ? "Mostrar conversiones configuradas" : "Ocultar conversiones"}
-        </button>
-
-        {conversions.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {conversions.map((row, index) => (
-              <div key={index} className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-3 py-2">
-                <input
-                  className="input w-32"
-                  value={row.fromUnit}
-                  onChange={(event) => patchConversion(index, { fromUnit: event.target.value })}
-                  placeholder="1 (origen)"
-                  aria-label="Unidad de origen"
-                />
-                <span className="text-sm text-[var(--admin-muted)]">=</span>
-                <input
-                  className="input w-24"
-                  type="number"
-                  min={0.000000001}
-                  step="0.000000001"
-                  value={row.factor}
-                  onChange={(event) => patchConversion(index, { factor: event.target.value })}
-                  aria-label="Factor"
-                />
-                <input
-                  className="input w-32"
-                  value={row.toUnit}
-                  onChange={(event) => patchConversion(index, { toUnit: event.target.value })}
-                  placeholder="unidad de destino"
-                  aria-label="Unidad de destino"
-                />
-                <span className="text-xs text-[var(--admin-muted)]">1 {row.fromUnit || "?"} = {row.factor} {row.toUnit || "?"}</span>
-                <button
-                  type="button"
-                  onClick={() => setConversions((current) => current.filter((_, rowIndex) => rowIndex !== index))}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--admin-border)] bg-white/5 text-rose-400 hover:bg-white/10"
-                  aria-label="Quitar conversión"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-            <div className="flex justify-end">
-              <button type="button" onClick={saveConversions} className="btn" disabled={busy}>
-                Guardar conversiones
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      ) : (
+        <DataTable
+          viewStorageKey="ingredientes"
+          columns={columns}
+          data={data}
+          keyExtractor={(row) => row.id as number}
+          rowActions={rowActions}
+          emptyMessage="No hay ingredientes cargados todavía."
+        />
+      )}
     </div>
   );
 }

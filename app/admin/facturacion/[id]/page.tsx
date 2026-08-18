@@ -13,6 +13,7 @@ import {
   SectionHeader,
   StatusBadge,
 } from "@/components/admin/ui";
+import { Icon } from "@/components/admin/ui/icons";
 import { requirePermission } from "@/lib/auth";
 import { resolveInvoiceDesign } from "@/lib/invoice-design";
 import { prisma } from "@/lib/prisma";
@@ -173,9 +174,22 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           section="facturacion"
           actions={
             <>
-              <Link className="btn btn-secondary" href={adminHref(`/admin/pedidos?id=${invoice.orderId}`)}>
-                Ver pedido
+              <Link
+                className="btn btn-secondary flex items-center gap-1"
+                href={adminHref(`/admin/pedidos?id=${invoice.orderId}`)}
+              >
+                <Icon name="arrow-left" className="h-4 w-4" />
+                Volver al pedido
               </Link>
+              {invoice.delivery && (
+                <Link
+                  className="btn btn-secondary flex items-center gap-1"
+                  href={adminHref(`/admin/entregas/${invoice.delivery.id}`)}
+                >
+                  <Icon name="arrow-left" className="h-4 w-4" />
+                  Volver al remito
+                </Link>
+              )}
               <PrintButton />
             </>
           }

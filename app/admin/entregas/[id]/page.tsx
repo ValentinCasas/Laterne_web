@@ -10,15 +10,12 @@ import {
   SectionHeader,
   StatusBadge,
 } from "@/components/admin/ui";
+import { Icon } from "@/components/admin/ui/icons";
 import { requirePermission } from "@/lib/auth";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 import { prisma } from "@/lib/prisma";
 import { adminHrefForContext } from "@/lib/routes";
-
-/** @summary Formatea un importe con la moneda del pedido. */
-function formatMoney(value: number | string, currency: string) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(Number(value));
-}
+import { formatMoney } from "@/lib/helpers";
 
 /** @summary Presenta la ficha de un remito/entrega con sus líneas despachadas y documentos relacionados. */
 export default async function DeliveryDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -70,10 +67,11 @@ export default async function DeliveryDetailPage({ params }: { params: Promise<{
           actions={
             <>
               <Link
-                className="btn btn-secondary"
+                className="btn btn-secondary flex items-center gap-1"
                 href={adminHref(`/admin/pedidos?id=${delivery.orderId}`)}
               >
-                Ver pedido
+                <Icon name="arrow-left" className="h-4 w-4" />
+                Volver al pedido
               </Link>
               <Link className="btn btn-secondary" href={adminHref("/admin/entregas")}>
                 Lista de remitos

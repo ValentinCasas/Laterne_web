@@ -3,7 +3,8 @@
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
-import { PageHeader, DataTable, StatusBadge, FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
+import { PageHeader, DataTable, StatusBadge, FiltersBar, ActiveFilterChip, FactBox } from "@/components/admin/ui";
+import { money, dateLabel } from "@/lib/finance-helpers";
 
 export type MovementsInitial = {
   tenantId: number;
@@ -27,35 +28,6 @@ export type MovementsInitial = {
   total: number;
 };
 
-/** @summary Formatea un importe. */
-function money(value: number | null | undefined, currency: string) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/** @summary Formatea una fecha ISO. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/** @summary Ejecuta una petición de API. */
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await scopedFetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
-  return body;
-}
-
 const MOVEMENT_TYPES = [
   { value: "", label: "Todos" },
   { value: "sale", label: "Venta" },
@@ -72,6 +44,17 @@ const DIRECTION_OPTIONS = [
   { value: "in", label: "Ingreso" },
   { value: "out", label: "Egreso" },
 ];
+
+/** @summary Ejecuta una petición de API. */
+async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await scopedFetch(path, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
+  if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
+  return body;
+}
 
 /** @summary Gestor de movimientos financieros. */
 export function FinanceMovementsClient({ initial }: { initial: MovementsInitial }) {
@@ -326,20 +309,22 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
                 </option>
               ))}
             </select>
-            <input
-              type="date"
-              className="input w-full"
-              value={filters.from}
-              onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-              aria-label="Fecha desde"
-            />
-            <input
-              type="date"
-              className="input w-full"
-              value={filters.to}
-              onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-              aria-label="Fecha hasta"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="date"
+                className="input w-full"
+                value={filters.from}
+                onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
+                aria-label="Fecha desde"
+              />
+              <input
+                type="date"
+                className="input w-full"
+                value={filters.to}
+                onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
+                aria-label="Fecha hasta"
+              />
+            </div>
             <button
               type="button"
               className="btn btn-secondary w-full"
@@ -359,8 +344,10 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
         )}
       </div>
 
-      <div className="shadow-xl shadow-black/10">
-        <DataTable
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="shadow-xl shadow-black/10">
+            <DataTable
           viewStorageKey="movimientos"
           columns={[
             { key: "fecha", label: "Fecha" },
@@ -398,6 +385,25 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
           emptyMessage="No hay movimientos financieros todavía"
           density="compact"
         />
+          </div>
+        </div>
+        <div className="lg:col-span-1">
+          <FactBox title="Resumen del período">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[var(--admin-muted)]">Total movimientos</span>
+                <span className="text-sm font-black">{total}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[var(--admin-muted)]">Página actual</span>
+                <span className="text-sm font-black">{page + 1} de {pageCount}</span>
+              </div>
+              <div className="border-t border-[var(--admin-border)] pt-2">
+                <p className="text-xs text-zinc-500">Los filtros aplicados se muestran arriba. Usá la tabla para navegar por los registros.</p>
+              </div>
+            </div>
+          </FactBox>
+        </div>
       </div>
 
       {pageCount > 1 && (

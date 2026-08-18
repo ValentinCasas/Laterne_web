@@ -8,11 +8,79 @@ import { removeProductEntirely } from "@/lib/product-catalog";
 import { recordIngredientCostHistory } from "@/lib/recipes";
 
 /**
- * @summary Actualización y baja de un ingrediente.
+ * @summary Actualización, baja y detalle de un ingrediente.
  *
+ * GET devuelve el detalle completo para la ficha.
  * PATCH ajusta costo (con historial), unidad base y existencias por sucursal.
  * DELETE elimina el producto maestro solo si no se usa en recetas ni pedidos.
  */
+
+/** @summary Detalle de ingrediente para la ficha. */
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("product.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Ingrediente inválido" }, { status: 404 });
+
+  const [product, stocks, costHistory, conversions, usedIn] = await Promise.all([
+    prisma.product.findFirst({
+      where: { id, tenantId: auth.tenant.id },
+      select: { id: true, name: true, status: true, cost: true, costUnit: true },
+    }),
+    prisma.inventoryStock.findMany({
+      where: { tenantId: auth.tenant.id, productId: id },
+      include: { branch: { select: { id: true, name: true } } },
+    }),
+    prisma.ingredientCostHistory.findMany({
+      where: { tenantId: auth.tenant.id, productId: id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    prisma.unitConversion.findMany({
+      where: { tenantId: auth.tenant.id },
+      select: { fromUnit: true, toUnit: true, factor: true },
+      orderBy: [{ fromUnit: "asc" }, { toUnit: "asc" }],
+    }),
+    prisma.recipeIngredient.findMany({
+      where: { tenantId: auth.tenant.id, ingredientProductId: id },
+      select: { product: { select: { id: true, name: true, status: true } } },
+      distinct: ["productId"],
+    }),
+  ]);
+
+  if (!product) return NextResponse.json({ error: "Ingrediente no encontrado" }, { status: 404 });
+
+  const branchIds = auth.branches.map((branch) => branch.id);
+  const accessibleStocks = stocks
+    .filter((stock) => branchIds.includes(stock.branchId))
+    .map((stock) => ({
+      branchId: stock.branchId,
+      branchName: stock.branch.name,
+      current: String(Number(stock.current)),
+      minimum: String(Number(stock.minimum)),
+      tracked: stock.tracked,
+      unit: stock.unit,
+    }));
+
+  return NextResponse.json({
+    product: {
+      id: product.id,
+      name: product.name,
+      status: product.status,
+      cost: product.cost === null || product.cost === undefined ? null : String(Number(product.cost)),
+      costUnit: product.costUnit,
+    },
+    stocks: accessibleStocks,
+    costHistory: costHistory.map((entry) => ({
+      cost: String(Number(entry.cost)),
+      unit: entry.unit,
+      reason: entry.reason,
+      createdAt: entry.createdAt.toISOString(),
+    })),
+    conversions: conversions.map((row) => ({ ...row, factor: String(Number(row.factor)) })),
+    usedIn: usedIn.map((entry) => ({ id: entry.product.id, name: entry.product.name, status: entry.product.status })),
+  });
+}
 
 const updateInput = z.object({
   cost: z.coerce.number().min(0).max(100_000_000).optional().nullable(),

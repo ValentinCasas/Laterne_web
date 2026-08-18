@@ -2,17 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { PageHeader, SearchBox, StatusBadge, EmptyState } from "@/components/admin/ui";
+import { PageHeader, SearchBox, StatusBadge, EmptyState, DataTable } from "@/components/admin/ui";
 import { adminHrefFromPathname } from "@/lib/routes";
 import type { RecipeBoardPayload } from "@/lib/recipe-data";
-
-/**
- * Tablero de recetas: costo calculado, margen y estado de cada preparación.
- *
- * Permite filtrar, abrir el editor visual de receta y ver la ficha técnica
- * imprimible de cada producto. El costo de receta se calcula en el servidor
- * expandiendo subrecetas, mermas y conversiones de unidades.
- */
 
 const statusLabels: Record<string, string> = {
   published: "Publicado",
@@ -31,23 +23,17 @@ const filterLabels: Record<RecipeFilter, string> = {
   incomplete: "Incompletas",
 };
 
-/** @summary Formatea un importe con la moneda del negocio. */
 function money(value: string | null | undefined, currency: string) {
   if (value === null || value === undefined || value === "") return "—";
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(
-    Number(value),
-  );
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(value));
 }
 
-/** @summary Formatea un porcentaje o devuelve "—" cuando no hay datos. */
 function percent(value: number | null) {
   return value === null || value === undefined ? "—" : `${value}%`;
 }
 
-/** @summary Tablero de recetas con costo en vivo y acceso a la ficha técnica. */
 export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
   const pathname = usePathname();
-  /** Resuelve rutas administrativas conservando el contexto visible (mismo valor en SSR y cliente). */
   const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<RecipeFilter>("all");
@@ -77,6 +63,74 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
   const inBranchLabel = initial.activeBranch
     ? ` · ${initial.activeBranch.name}`
     : " · todas las sucursales";
+
+  const columns = useMemo(() => [
+    { key: "name", label: "Receta", hideOnMobile: false } as const,
+    { key: "cost", label: "Costo", align: "right" as const, hideOnMobile: false } as const,
+    { key: "margin", label: "Margen", align: "right" as const, hideOnMobile: true } as const,
+    { key: "ingredients", label: "Cant. ingredientes", align: "left" as const, hideOnMobile: true },
+    { key: "status", label: "Estado", hideOnMobile: true } as const,
+  ], []);
+
+  const data = useMemo(() =>
+    filtered.map((product) => ({
+      id: product.id,
+      name: (
+        <div className="min-w-0">
+          <p className="truncate font-bold">{product.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <StatusBadge status={product.status} />
+            {product.hasRecipe && product.incomplete && (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                Falta completar
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+      cost: product.hasRecipe ? (
+        <span className="font-bold">{money(product.recipeCost, currency)}</span>
+      ) : (
+        <span className="text-[var(--admin-muted)]">{money(product.cost, currency)}</span>
+      ),
+      margin: percent(product.margin),
+      ingredients: product.hasRecipe ? (
+        <span className="font-semibold">
+          {product.ingredientCount}
+          {product.subrecipeCount > 0 && (
+            <span className="ml-1 text-[var(--admin-muted)]">· {product.subrecipeCount} sub.</span>
+          )}
+        </span>
+      ) : (
+        <span className="text-[var(--admin-muted)]">—</span>
+      ),
+      status: <StatusBadge status={product.status} />,
+    })),
+    [filtered, currency],
+  );
+
+  const rowActions = (row: Record<string, unknown>) => {
+    const product = filtered.find((p) => p.id === row.id as number);
+    if (!product) return null;
+    return (
+      <div className="flex justify-end gap-2">
+        <a
+          href={adminHref(`/admin/recetas/${product.id}`)}
+          className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
+        >
+          Editar
+        </a>
+        {product.hasRecipe && (
+          <a
+            href={adminHref(`/admin/recetas/${product.id}/ficha`)}
+            className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
+          >
+            Ficha
+          </a>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -128,89 +182,20 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--admin-border)] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
-                <th className="px-4 py-3 font-semibold">Producto</th>
-                <th className="px-4 py-3 font-semibold">Receta</th>
-                <th className="px-4 py-3 font-semibold text-right">Costo</th>
-                <th className="px-4 py-3 font-semibold text-right">Precio</th>
-                <th className="px-4 py-3 font-semibold text-right">Margen</th>
-                <th className="px-4 py-3 font-semibold text-right">Markup</th>
-                <th className="px-4 py-3 font-semibold text-right">Stock</th>
-                <th className="px-4 py-3 font-semibold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((product) => (
-                <tr key={product.id} className="border-b border-[var(--admin-border)]/60 last:border-0 hover:bg-white/[0.02]">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-bold">{product.name}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <StatusBadge status={product.status} />
-                           {product.hasRecipe && product.incomplete && (
-                             <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                               Falta completar
-                             </span>
-                           )}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {product.hasRecipe ? (
-                      <span className="font-semibold">
-                        {product.ingredientCount} ingrediente{product.ingredientCount === 1 ? "" : "s"}
-                        {product.subrecipeCount > 0 && (
-                          <span className="ml-1 text-[var(--admin-muted)]">· {product.subrecipeCount} subreceta{product.subrecipeCount === 1 ? "" : "s"}</span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="text-[var(--admin-muted)]">Sin receta</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold">
-                    {product.hasRecipe ? money(product.recipeCost, currency) : money(product.cost, currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right">{money(product.price, currency)}</td>
-                  <td className="px-4 py-3 text-right">{percent(product.margin)}</td>
-                  <td className="px-4 py-3 text-right">{percent(product.markup)}</td>
-                  <td className="px-4 py-3 text-right">{product.stock ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <a
-                        href={adminHref(`/admin/recetas/${product.id}`)}
-                        className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-                      >
-                        Editar
-                      </a>
-                      {product.hasRecipe && (
-                        <a
-                          href={adminHref(`/admin/recetas/${product.id}/ficha`)}
-                          className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-                        >
-                          Ficha
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center">
-                    <EmptyState title="No se encontraron productos con esos filtros" description="Probá modificar la búsqueda o los filtros aplicados." />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {filtered.length === 0 ? (
+        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-10 text-center shadow-xl shadow-black/10">
+          <EmptyState title="No se encontraron productos con esos filtros" description="Probá modificar la búsqueda o los filtros aplicados." />
         </div>
-      </div>
+      ) : (
+        <DataTable
+          viewStorageKey="recetas"
+          columns={columns}
+          data={data}
+          keyExtractor={(row) => row.id as number}
+          rowActions={rowActions}
+          emptyMessage="No se encontraron productos con esos filtros."
+        />
+      )}
 
       <p className="mt-4 text-sm text-[var(--admin-muted)]">
         El costo de receta se calcula por unidad del producto, expandiendo subrecetas y aplicando merma y

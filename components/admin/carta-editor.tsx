@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { PageHeader } from "@/components/admin/ui";
+import { PageHeader, FormSection } from "@/components/admin/ui";
 import { ResponsivePreview } from "@/components/admin/responsive-preview";
 import { CartaHeader } from "@/components/menu/carta-header";
 import { MenuProductCard } from "@/components/menu/menu-product-card";
@@ -111,71 +111,73 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(300px,.85fr)_minmax(0,1.15fr)]">
         <div className="card space-y-4 p-5">
-          <label>
-            <span className="label">Texto de arriba (eyebrow)</span>
-            <input
-              className="input"
-              value={config.eyebrow}
-              maxLength={120}
-              onChange={update("eyebrow")}
-              placeholder={CARTA_HEADER_DEFAULTS.eyebrow}
-            />
-          </label>
-          <label>
-            <span className="label">Título principal</span>
-            <input
-              className="input"
-              value={config.title}
-              maxLength={120}
-              onChange={update("title")}
-              placeholder={CARTA_HEADER_DEFAULTS.title}
-            />
-          </label>
-          <label>
-            <span className="label">Palabra destacada</span>
-            <input
-              className="input"
-              value={config.highlight}
-              maxLength={120}
-              onChange={update("highlight")}
-              placeholder={data.businessName}
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              Si la dejás vacía se usa el nombre del negocio ({data.businessName}).
-            </p>
-          </label>
-          <label>
-            <span className="label">Descripción</span>
-            <textarea
-              className="input min-h-24"
-              value={config.description}
-              maxLength={500}
-              onChange={update("description")}
-              placeholder={CARTA_HEADER_DEFAULTS.description}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <FormSection title="Textos de la cabecera">
             <label>
-              <span className="label">Botón principal</span>
+              <span className="label">Texto de arriba (eyebrow)</span>
               <input
                 className="input"
-                value={config.primaryButton}
-                maxLength={60}
-                onChange={update("primaryButton")}
-                placeholder={CARTA_HEADER_DEFAULTS.primaryButton}
+                value={config.eyebrow}
+                maxLength={120}
+                onChange={update("eyebrow")}
+                placeholder={CARTA_HEADER_DEFAULTS.eyebrow}
               />
             </label>
             <label>
-              <span className="label">Botón del pedido</span>
+              <span className="label">Título principal</span>
               <input
                 className="input"
-                value={config.cartButton}
-                maxLength={60}
-                onChange={update("cartButton")}
-                placeholder={CARTA_HEADER_DEFAULTS.cartButton}
+                value={config.title}
+                maxLength={120}
+                onChange={update("title")}
+                placeholder={CARTA_HEADER_DEFAULTS.title}
               />
             </label>
-          </div>
+            <label>
+              <span className="label">Palabra destacada</span>
+              <input
+                className="input"
+                value={config.highlight}
+                maxLength={120}
+                onChange={update("highlight")}
+                placeholder={data.businessName}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Si la dejás vacía se usa el nombre del negocio ({data.businessName}).
+              </p>
+            </label>
+            <label>
+              <span className="label">Descripción</span>
+              <textarea
+                className="input min-h-24"
+                value={config.description}
+                maxLength={500}
+                onChange={update("description")}
+                placeholder={CARTA_HEADER_DEFAULTS.description}
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className="label">Botón principal</span>
+                <input
+                  className="input"
+                  value={config.primaryButton}
+                  maxLength={60}
+                  onChange={update("primaryButton")}
+                  placeholder={CARTA_HEADER_DEFAULTS.primaryButton}
+                />
+              </label>
+              <label>
+                <span className="label">Botón del pedido</span>
+                <input
+                  className="input"
+                  value={config.cartButton}
+                  maxLength={60}
+                  onChange={update("cartButton")}
+                  placeholder={CARTA_HEADER_DEFAULTS.cartButton}
+                />
+              </label>
+            </div>
+          </FormSection>
 
           <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4 text-xs leading-relaxed text-zinc-400">
             <p className="font-black uppercase tracking-widest text-pink-300">Datos dinámicos</p>

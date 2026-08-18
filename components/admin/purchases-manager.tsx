@@ -2,10 +2,20 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, Tabs } from "@/components/admin/ui";
+import { PageHeader, SearchBox, Tabs, DataTable } from "@/components/admin/ui";
 import { InvoiceDetailModal, NewInvoiceModal, NewOrderModal, OrderDetailModal, SupplierModal } from "@/components/admin/purchases-modals";
 import { SupplierDetailModal, type Supplier } from "@/components/admin/supplier-detail-modal";
-import { scopedFetch } from "@/lib/client-routing";
+import {
+  type BranchOption,
+  type InvoiceRow,
+  type OrderRow,
+  type ProductOption,
+  type PurchaseInvoiceDetail,
+  type PurchaseOrderDetail,
+  type ReceiptRow,
+} from "@/lib/purchases-types";
+import { api, showError } from "@/lib/client-helpers";
+import { dateLabel, money } from "@/lib/helpers";
 import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/purchases";
 import { Icon } from "@/components/admin/ui/icons";
 
@@ -17,74 +27,6 @@ import { Icon } from "@/components/admin/ui/icons";
  * inventario, en la sucursal correspondiente. Las facturas se vinculan a una o
  * varias recepciones y los pagos parciales avanzan el estado del documento.
  */
-
-type BranchOption = { id: number; name: string; slug: string; active: boolean };
-type ProductOption = { id: number; name: string; cost?: number | string | null; costUnit?: string | null; imageUrl?: string | null };
-type OrderRow = {
-  id: number;
-  number: string;
-  status: string;
-  orderDate: string;
-  expectedDate?: string | null;
-  externalReference?: string | null;
-  supplier: { id: number; name: string };
-  branch: { id: number; name: string };
-  items: Array<{ quantity: string | number; receivedQuantity: string | number }>;
-  createdBy?: { id: number; name: string } | null;
-};
-type ReceiptRow = {
-  id: number;
-  number: string;
-  receivedAt: string;
-  notes?: string | null;
-  supplier: { id: number; name: string };
-  branch: { id: number; name: string };
-  order?: { id: number; number: string } | null;
-  items: Array<{ id: number; quantity: string | number; unit: string; unitCost: string | number; product?: { id: number; name: string } }>;
-  createdBy?: { id: number; name: string } | null;
-};
-type InvoiceRow = {
-  id: number;
-  number: string;
-  status: string;
-  documentDate: string;
-  dueDate?: string | null;
-  externalNumber?: string | null;
-  supplier: { id: number; name: string };
-  branch?: { id: number; name: string } | null;
-  subtotal: string | number;
-  taxAmount: string | number;
-  total: string | number;
-  paidAmount: string | number;
-  receipts?: Array<{ receipt: { id: number; number: string } }>;
-};
-type OrderDetail = OrderRow & {
-  notes?: string | null;
-  items: Array<{
-    id: number;
-    quantity: string | number;
-    receivedQuantity: string | number;
-    unit: string;
-    unitCost: string | number;
-    discountPercent?: string | number;
-    taxPercent?: string | number;
-    product: ProductOption;
-  }>;
-  receipts: Array<{
-    id: number;
-    number: string;
-    receivedAt: string;
-    createdBy?: { id: number; name: string } | null;
-    items: Array<{ id: number; quantity: string | number; unit: string; unitCost: string | number; product?: { id: number; name: string } }>;
-  }>;
-  invoices: Array<{ id: number; number: string; status: string; total: string | number; documentDate: string; externalNumber?: string | null }>;
-};
-type InvoiceDetail = InvoiceRow & {
-  notes?: string | null;
-  items: Array<{ id: number; productId?: number | null; description: string; quantity: string | number; unit: string; unitCost: string | number; discountPercent?: string | number; taxPercent?: string | number }>;
-  payments: Array<{ id: number; number: string; amount: string | number; method: string; paidAt: string; notes?: string | null; createdBy?: { id: number; name: string } | null }>;
-  receipts: Array<{ receipt: ReceiptRow }>;
-};
 
 type PurchasesPayload = {
   tenantId: number;
@@ -98,9 +40,11 @@ type PurchasesPayload = {
   invoices: InvoiceRow[];
 };
 
-const TAB_LABELS: Array<{ key: "pedidos" | "recepciones" | "facturas" | "proveedores"; label: string }> = [
+type OrderDetail = PurchaseOrderDetail;
+type InvoiceDetail = PurchaseInvoiceDetail;
+
+const TAB_LABELS: Array<{ key: "pedidos" | "facturas" | "proveedores"; label: string }> = [
   { key: "pedidos", label: "Pedidos" },
-  { key: "recepciones", label: "Recepciones" },
   { key: "facturas", label: "Facturas" },
   { key: "proveedores", label: "Proveedores" },
 ];
@@ -122,48 +66,10 @@ const INVOICE_STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-rose-500/15 text-rose-300",
 };
 
-/** @summary Formatea un importe con la moneda del negocio. */
-function money(value: string | number | null | undefined, currency: string) {
-  if (value === null || value === undefined || value === "") return "—";
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "—";
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(number);
-}
-
-/** @summary Formatea una fecha ISO para mostrar. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/** @summary Ejecuta una petición de API y devuelve el cuerpo parseado o lanza el error del servidor. */
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await scopedFetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
-  return body;
-}
-
-/** @summary Muestra un error de operación en el panel sin romper la pantalla. */
-async function showError(title: string, reason: unknown) {
-  await Swal.fire({
-    title,
-    text: reason instanceof Error ? reason.message : "Intentá nuevamente.",
-    icon: "error",
-    background: "#18181b",
-    color: "#fafafa",
-  });
-}
-
 /** @summary Gestor de compras con pestañas de pedidos, recepciones, facturas y proveedores. */
 export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
   const [payload, setPayload] = useState<PurchasesPayload>(initial);
-  const [tab, setTab] = useState<"pedidos" | "recepciones" | "facturas" | "proveedores">("pedidos");
+  const [tab, setTab] = useState<"pedidos" | "facturas" | "proveedores">("pedidos");
   const [orderQuery, setOrderQuery] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
   const [orderSupplier, setOrderSupplier] = useState("");
@@ -262,7 +168,7 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
         </div>
       } />
 
-      <Tabs tabs={TAB_LABELS.map((item) => ({ key: item.key, label: item.label }))} defaultTab={tab} onChange={(key) => setTab(key as "pedidos" | "recepciones" | "facturas" | "proveedores")} />
+      <Tabs tabs={TAB_LABELS.map((item) => ({ key: item.key, label: item.label }))} defaultTab={tab} onChange={(key) => setTab(key as "pedidos" | "facturas" | "proveedores")} />
 
       {/* Toolbar de filtros */}
       {(tab === "pedidos" || tab === "facturas") && (
@@ -305,7 +211,7 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
           setBusy={setBusy}
         />
       )}
-      {tab === "recepciones" && <ReceiptsTable receipts={payload.receipts} currency={currency} onOpenOrder={openOrderDetail} />}
+      {/* Recepciones tab removed */}
       {tab === "facturas" && (
         <InvoicesTable invoices={filteredInvoices} currency={currency} onOpen={openInvoiceDetail} onRefresh={refresh} setBusy={setBusy} />
       )}

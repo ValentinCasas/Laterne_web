@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
 import { PageHeader, KpiCard, DataTable, StatusBadge, FiltersBar } from "@/components/admin/ui";
+import { money, dateLabel } from "@/lib/finance-helpers";
 
 export type CashflowInitial = {
   tenantId: number;
@@ -35,23 +36,12 @@ export type CashflowInitial = {
   branches: Array<{ id: number; name: string; slug: string; active: boolean }>;
 };
 
-/** @summary Formatea un importe. */
-function money(value: number | null | undefined, currency: string) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/** @summary Formatea una fecha ISO. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
+const PERIOD_OPTIONS = [
+  { value: "day", label: "Hoy" },
+  { value: "week", label: "Esta semana" },
+  { value: "month", label: "Este mes" },
+  { value: "custom", label: "Personalizado" },
+];
 
 /** @summary Ejecuta una petición de API. */
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -63,13 +53,6 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
   return body;
 }
-
-const PERIOD_OPTIONS = [
-  { value: "day", label: "Hoy" },
-  { value: "week", label: "Esta semana" },
-  { value: "month", label: "Este mes" },
-  { value: "custom", label: "Personalizado" },
-];
 
 /** @summary Gestor de flujo de caja. */
 export function FinanceCashflowClient({ initial }: { initial: CashflowInitial }) {

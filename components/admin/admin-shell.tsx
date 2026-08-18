@@ -815,7 +815,7 @@ export function AdminShell({
                       }
                     }}
                   >
-                    <span className="truncate">{group.label}</span>
+                    <span className="truncate hidden md:inline">{group.label}</span>
                     <ChevronDownIcon open={expanded} className="text-zinc-600" />
                   </button>
                 </div>
@@ -823,16 +823,14 @@ export function AdminShell({
             })}
           </nav>
 
-           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
-             {branchNavigationAvailable && (
-               <BranchSwitcher
-                 branches={branches}
-                 activeBranchId={activeBranchId}
-                 activeBranchName={activeBranch?.name}
-                 consolidatedAvailable={allBranches}
-                 compact
-               />
-             )}
+<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
+                <BranchSwitcher
+                  branches={branches}
+                  activeBranchId={activeBranchId}
+                  activeBranchName={activeBranch?.name}
+                  consolidatedAvailable={allBranches}
+                  compact
+                />
 
             <button
               type="button"
@@ -845,7 +843,7 @@ export function AdminShell({
               title="Buscar (Ctrl K)"
             >
               <SearchIcon />
-              <span className="hidden xl:inline">Buscar</span>
+              <span className="hidden lg:inline">Buscar</span>
               <kbd className="hidden h-5 items-center rounded border border-white/10 bg-white/[.04] px-1.5 font-sans text-[10px] font-medium text-zinc-500 2xl:flex">
                 Ctrl K
               </kbd>
@@ -862,7 +860,7 @@ export function AdminShell({
               className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
             >
               <ExternalIcon />
-              <span className="hidden xl:inline">Ver sitio</span>
+              <span className="hidden lg:inline">Ver sitio</span>
             </a>
 
             {isSuperAdmin && (
@@ -875,7 +873,7 @@ export function AdminShell({
                 <span className="grid h-5 w-5 place-items-center rounded-md bg-amber-500/15 text-[8px] font-black text-amber-300">
                   SA
                 </span>
-                <span className="hidden xl:inline">Plataforma</span>
+                <span className="hidden lg:inline">Plataforma</span>
               </Link>
             )}
 
@@ -887,7 +885,7 @@ export function AdminShell({
                 className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
               >
                 <HelpIcon />
-                <span className="hidden xl:inline">Soporte</span>
+                <span className="hidden lg:inline">Soporte</span>
               </Link>
             )}
 

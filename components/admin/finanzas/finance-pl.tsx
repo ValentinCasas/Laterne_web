@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { PageHeader, DataTable } from "@/components/admin/ui";
+import { money, percent, variation } from "@/lib/finance-helpers";
 
 export type PlInitial = {
   tenantId: number;
@@ -37,31 +38,6 @@ export type PlInitial = {
     }>;
   };
 };
-
-/** @summary Formatea un importe. */
-function money(value: number | null | undefined, currency: string) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/** @summary Formatea un porcentaje. */
-function percent(value: number, total: number) {
-  if (!total || total === 0) return "—";
-  const pct = (value / total) * 100;
-  return `${pct.toFixed(1)}%`;
-}
-
-/** @summary Formatea variación. */
-function variation(current: number, previous: number) {
-  if (!previous || previous === 0) return current > 0 ? "Nuevo" : "—";
-  const var_ = ((current - previous) / Math.abs(previous)) * 100;
-  const sign = var_ >= 0 ? "+" : "";
-  return `${sign}${var_.toFixed(1)}%`;
-}
 
 /** @summary Estado de resultados. */
 export function FinancePlClient({ initial }: { initial: PlInitial }) {

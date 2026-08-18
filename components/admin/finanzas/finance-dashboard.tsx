@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PageHeader, KpiCard, DataTable, StatusBadge } from "@/components/admin/ui";
+import { money, dateLabel } from "@/lib/finance-helpers";
 export type DashboardInitial = {
   tenantId: number;
   currency: string;
@@ -28,26 +29,6 @@ export type DashboardInitial = {
     }>;
   };
 };
-
-/** @summary Formatea un importe con la moneda del negocio. */
-function money(value: number | null | undefined, currency: string) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/** @summary Formatea una fecha ISO. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/** @summary Gestor del dashboard financiero. */
 export function FinanceDashboardClient({ initial }: { initial: DashboardInitial }) {
   const [dashboard] = useState(initial.dashboard);
   const currency = initial.currency ?? "ARS";
@@ -55,13 +36,19 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
   const kpis = useMemo(
     () => [
       { label: "Saldo total", value: money(dashboard.totalBalance, currency), tone: "text-emerald-300" },
+      { label: "Vencido cobrar", value: money(dashboard.receivablesOverdue, currency), tone: "text-rose-300" },
+      { label: "Vencido pagar", value: money(dashboard.payablesOverdue, currency), tone: "text-red-300" },
+      { label: "Resultado operativo", value: money(dashboard.operatingResult, currency), tone: "text-violet-300" },
+    ],
+    [dashboard, currency],
+  );
+
+  const detailRows = useMemo(
+    () => [
       { label: "Cajas", value: money(dashboard.cashBalance, currency), tone: "text-sky-300" },
       { label: "Bancos", value: money(dashboard.bankBalance, currency), tone: "text-indigo-300" },
       { label: "Cuentas a cobrar", value: money(dashboard.receivablesTotal, currency), tone: "text-amber-300" },
-      { label: "Vencido cobrar", value: money(dashboard.receivablesOverdue, currency), tone: "text-rose-300" },
       { label: "Cuentas a pagar", value: money(dashboard.payablesTotal, currency), tone: "text-orange-300" },
-      { label: "Vencido pagar", value: money(dashboard.payablesOverdue, currency), tone: "text-red-300" },
-      { label: "Resultado operativo", value: money(dashboard.operatingResult, currency), tone: "text-violet-300" },
     ],
     [dashboard, currency],
   );
@@ -104,7 +91,22 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
         ))}
       </div>
 
-      <div className="shadow-xl shadow-black/10">
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h3 className="mb-3 text-sm font-black uppercase tracking-wider text-[var(--admin-muted)]">Detalle</h3>
+            <div className="space-y-2">
+              {detailRows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between">
+                  <span className="text-sm text-[var(--admin-muted)]">{row.label}</span>
+                  <span className={`text-sm font-black tabular-nums ${row.tone}`}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="lg:col-span-2">
+          <div className="shadow-xl shadow-black/10">
         <div className="px-5 py-4">
           <h2 className="text-lg font-black">Movimientos recientes</h2>
         </div>
@@ -124,6 +126,8 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
           emptyMessage="No hay movimientos registrados. Creá una cuenta y empezá a operar."
           density="compact"
         />
+          </div>
+        </div>
       </div>
     </div>
   );

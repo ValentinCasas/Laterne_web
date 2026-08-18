@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 /** @summary Marca de tiempo para calcular vencimientos sin llamadas impuras en el render. */
 const now = Date.now();
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, Tabs } from "@/components/admin/ui";
+import { PageHeader, SearchBox, Tabs, KpiCard } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { expenseStatusLabels } from "@/lib/expenses";
 import { Icon } from "@/components/admin/ui/icons";
@@ -251,9 +251,9 @@ export function ExpensesManager({ initial }: { initial: ExpensesPayload }) {
       } />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Pendiente este mes" value={money(payload.summary?.pendingMonth, currency)} tone="amber" />
-        <KpiCard label="Pagado este mes" value={money(payload.summary?.paidMonth, currency)} tone="emerald" />
-        <KpiCard label="Vencido" value={money(payload.summary?.overdue, currency)} tone="rose" />
+        <KpiCard label="Pendiente este mes" value={money(payload.summary?.pendingMonth, currency)} tone="text-amber-300" />
+        <KpiCard label="Pagado este mes" value={money(payload.summary?.paidMonth, currency)} tone="text-emerald-300" />
+        <KpiCard label="Vencido" value={money(payload.summary?.overdue, currency)} tone="text-rose-300" />
         <KpiCard
           label="Próximos vencimientos"
           value={
@@ -261,7 +261,7 @@ export function ExpensesManager({ initial }: { initial: ExpensesPayload }) {
               ? `${payload.summary.upcoming.length} · ${money(payload.summary.upcoming.reduce((sum, item) => sum + item.amount, 0), currency)}`
               : "—"
           }
-          tone="sky"
+          tone="text-sky-300"
         />
       </div>
 
@@ -376,22 +376,6 @@ export function ExpensesManager({ initial }: { initial: ExpensesPayload }) {
           setBusy={setBusy}
         />
       )}
-    </div>
-  );
-}
-
-/** @summary Tarjeta KPI pequeña de la cabecera de Gastos. */
-function KpiCard({ label, value, tone }: { label: string; value: string; tone: "amber" | "emerald" | "rose" | "sky" }) {
-  const tones: Record<string, string> = {
-    amber: "text-amber-300",
-    emerald: "text-emerald-300",
-    rose: "text-rose-300",
-    sky: "text-sky-300",
-  };
-  return (
-    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">{label}</p>
-      <p className={`mt-1 truncate text-lg font-black tabular-nums ${tones[tone]}`}>{value}</p>
     </div>
   );
 }

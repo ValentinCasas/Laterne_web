@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, StatusBadge, FormSection } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type SessionData = {
@@ -77,50 +77,52 @@ export function AccountSecurity() {
         section="cuenta"
       />
       <div className="grid gap-6 xl:grid-cols-2">
-        <form className="card p-5 sm:p-7" onSubmit={changePassword}>
-          <h2 className="text-2xl font-black">Cambiar contraseña</h2>
-          <div className="mt-5 space-y-4">
-            <label>
-              <span className="label">Contraseña actual</span>
-              <input className="input" name="currentPassword" type="password" required />
-            </label>
-            <label>
-              <span className="label">Nueva contraseña</span>
-              <input className="input" name="newPassword" type="password" minLength={10} required />
-            </label>
-            <label>
-              <span className="label">Repetir contraseña</span>
-              <input className="input" name="confirmation" type="password" minLength={10} required />
-            </label>
-          </div>
-          <p className="mt-3 text-xs text-zinc-500">
-            Mínimo 10 caracteres, mayúscula, minúscula y número. Se cerrarán las demás sesiones.
-          </p>
-          <button className="btn mt-5 w-full">Actualizar contraseña</button>
+        <form className="max-w-4xl" onSubmit={changePassword}>
+          <FormSection title="Cambiar contraseña" description="Actualizá tu credencial de acceso. Se cerrarán las demás sesiones abiertas.">
+            <div className="space-y-4">
+              <label>
+                <span className="label">Contraseña actual</span>
+                <input className="input" name="currentPassword" type="password" required />
+                <p className="mt-1 text-xs text-zinc-500">Ingresá tu contraseña actual para confirmar el cambio.</p>
+              </label>
+              <label>
+                <span className="label">Nueva contraseña</span>
+                <input className="input" name="newPassword" type="password" minLength={10} required />
+                <p className="mt-1 text-xs text-zinc-500">Mínimo 10 caracteres, mayúscula, minúscula y número.</p>
+              </label>
+              <label>
+                <span className="label">Repetir contraseña</span>
+                <input className="input" name="confirmation" type="password" minLength={10} required />
+                <p className="mt-1 text-xs text-zinc-500">Repetí la nueva contraseña para verificar.</p>
+              </label>
+            </div>
+            <button className="btn mt-5 w-full">Actualizar contraseña</button>
+          </FormSection>
         </form>
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Sesiones activas</h2>
-          <div className="mt-5 space-y-3">
-            {sessions.map((session) => (
-              <article
-                className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 p-4"
-                key={session.id}
-              >
+        <section className="max-w-4xl">
+          <FormSection title="Sesiones activas" description="Dispositivos conectados a tu cuenta.">
+            <div className="space-y-3">
+              {sessions.map((session) => (
+                <article
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 p-4"
+                  key={session.id}
+                >
                   <div>
                     <StatusBadge status={session.id === currentId ? "Esta sesión" : session.membership.tenant.name} tone={session.id === currentId ? "success" : "default"} />
                     <p className="text-xs text-zinc-500">
                     Iniciada {new Date(session.createdAt).toLocaleString("es-AR")} · vence{" "}
                     {new Date(session.expiresAt).toLocaleString("es-AR")}
                   </p>
-                </div>
-                {session.id !== currentId && (
-                  <button className="text-sm font-bold text-red-300" onClick={() => revoke(session.id)}>
-                    Cerrar
-                  </button>
-                )}
-              </article>
-            ))}
-          </div>
+                  </div>
+                  {session.id !== currentId && (
+                    <button className="text-sm font-bold text-red-300" onClick={() => revoke(session.id)}>
+                      Cerrar
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          </FormSection>
         </section>
       </div>
     </section>

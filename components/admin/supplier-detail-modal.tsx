@@ -2,32 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { scopedFetch } from "@/lib/client-routing";
-
-/**
- * Ficha detallada de proveedor con cuenta corriente, sucursales y ledger.
- */
-
-export type Supplier = {
-  id: number;
-  code?: string | null;
-  name: string;
-  taxId?: string | null;
-  contactName?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  address?: string | null;
-  paymentTerms?: string | null;
-  currency?: string | null;
-  status: string;
-  category?: string | null;
-  creditLimit?: number | null;
-  currentBalance?: number | null;
-  blockedAt?: string | null;
-  blockedReason?: string | null;
-  notes?: string | null;
-  branches?: Array<{ branch: { id: number; name: string } }>;
-};
+import {
+  type BranchOption,
+  type Supplier,
+} from "@/lib/purchases-types";
+export { Supplier };
+import { api, showError } from "@/lib/client-helpers";
+import { dateLabel, money } from "@/lib/helpers";
 
 type LedgerEntry = {
   id: number;
@@ -53,8 +34,6 @@ type Statement = {
   recent: LedgerEntry[];
 };
 
-type BranchOption = { id: number; name: string };
-
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-500/15 text-emerald-300",
   blocked: "bg-rose-500/15 text-rose-300",
@@ -71,43 +50,6 @@ const TYPE_LABELS: Record<string, string> = {
   adjustment: "Ajuste",
   return: "Devolución",
 };
-
-/** @summary Formatea importe con moneda. */
-function money(value: number, currency: string) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
-}
-
-/** @summary Formatea fecha ISO. */
-function dateLabel(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/** @summary Petición API. */
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await scopedFetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body?.error ?? "No se pudo completar la operación");
-  return body;
-}
-
-/** @summary Error en panel. */
-async function showError(title: string, reason: unknown) {
-  await Swal.fire({
-    title,
-    text: reason instanceof Error ? reason.message : "Intentá nuevamente.",
-    icon: "error",
-    background: "#18181b",
-    color: "#fafafa",
-  });
-}
-
-/** @summary Ficha de proveedor. */
 export function SupplierDetailModal({
   supplier,
   branches,

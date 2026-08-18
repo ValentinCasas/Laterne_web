@@ -2,7 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, ActionMenu, EmptyState } from "@/components/admin/ui";
+import { PageHeader, SearchBox, ActionMenu, EmptyState, FormSection } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type ModerationStatus = "approved" | "pending" | "rejected";
@@ -348,27 +348,31 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
                 ×
               </button>
             </div>
-            <label className="mt-6 block text-sm font-bold">
-              Comentario
-              <textarea
-                className="input mt-2 min-h-36 resize-y"
-                name="description"
-                required
-                defaultValue={editing.description}
-              />
-            </label>
-            <label className="mt-4 block text-sm font-bold">
-              Estado
-              <select
-                className="input mt-2"
-                name="moderationStatus"
-                defaultValue={testimonialStatus(editing)}
-              >
-                <option value="pending">Pendiente</option>
-                <option value="approved">Aprobado</option>
-                <option value="rejected">Rechazado</option>
-              </select>
-            </label>
+            <FormSection title="Edición" className="mt-6">
+              <label className="block text-sm font-bold">
+                Comentario
+                <textarea
+                  className="input mt-2 min-h-36 resize-y"
+                  name="description"
+                  required
+                  defaultValue={editing.description}
+                />
+                <p className="mt-1 text-xs text-zinc-500">Texto que verán los clientes en la página pública.</p>
+              </label>
+              <label className="mt-4 block text-sm font-bold">
+                Estado
+                <select
+                  className="input mt-2"
+                  name="moderationStatus"
+                  defaultValue={testimonialStatus(editing)}
+                >
+                  <option value="pending">Pendiente</option>
+                  <option value="approved">Aprobado</option>
+                  <option value="rejected">Rechazado</option>
+                </select>
+                <p className="mt-1 text-xs text-zinc-500">Solo los aprobados se muestran en el inicio.</p>
+              </label>
+            </FormSection>
             <div className="mt-6 flex gap-3">
               <button className="btn">Guardar cambios</button>
               <button className="btn btn-secondary" onClick={() => setEditing(null)} type="button">

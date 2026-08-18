@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, StatusBadge, FormSection } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type Integration = {
@@ -112,41 +112,47 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                   <h2 className="text-xl font-black">{details.name}</h2>
                   <p className="mt-2 text-sm text-zinc-500">{details.description}</p>
                 </div>
-                <StatusBadge
-                  status={integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
-                  tone={integration.secretConfigured ? "success" : "warning"}
-                />
-                {upcoming && (
-                  <StatusBadge status="Próximamente" tone="default" />
-                )}
-              </div>
-              <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">
-                <label className="min-w-0">
-                  <span className="label">Modo</span>
-                  <select className="input" name="mode" defaultValue={integration.mode} disabled={payment}>
-                    <option value="disabled">Desactivado</option>
-                    <option value="sandbox">Pruebas</option>
-                    <option value="live">Producción</option>
-                  </select>
-                </label>
-                <label className="min-w-0">
-                  <span className="label">Cuenta visible</span>
-                  <input
-                    className="input"
-                    name="accountLabel"
-                    defaultValue={integration.publicConfig?.accountLabel ?? ""}
-                    placeholder="Nombre interno"
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge
+                    status={integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
+                    tone={integration.secretConfigured ? "success" : "warning"}
                   />
-                </label>
-                <label className="min-w-0 sm:col-span-2">
-                  <span className="label">Identificador público</span>
-                  <input
-                    className="input"
-                    name="publicIdentifier"
-                    defaultValue={integration.publicConfig?.publicIdentifier ?? ""}
-                  />
-                </label>
+                  {upcoming && (
+                    <StatusBadge status="Próximamente" tone="default" />
+                  )}
+                </div>
               </div>
+              <FormSection title="Configuración" className="mt-5">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  <label className="min-w-0">
+                    <span className="label">Modo</span>
+                    <select className="input" name="mode" defaultValue={integration.mode} disabled={payment}>
+                      <option value="disabled">Desactivado</option>
+                      <option value="sandbox">Pruebas</option>
+                      <option value="live">Producción</option>
+                    </select>
+                    <p className="mt-1 text-xs text-zinc-500">Entorno de operación.</p>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="label">Cuenta visible</span>
+                    <input
+                      className="input"
+                      name="accountLabel"
+                      defaultValue={integration.publicConfig?.accountLabel ?? ""}
+                      placeholder="Nombre interno"
+                    />
+                    <p className="mt-1 text-xs text-zinc-500">Nombre que verá el equipo.</p>
+                  </label>
+                  <label className="min-w-0 sm:col-span-2">
+                    <span className="label">Identificador público</span>
+                    <input
+                      className="input"
+                      name="publicIdentifier"
+                      defaultValue={integration.publicConfig?.publicIdentifier ?? ""}
+                    />
+                  </label>
+                </div>
+              </FormSection>
               <p className="mt-3 min-w-0 break-words rounded-xl bg-white/[.03] p-3 font-mono text-xs text-zinc-500">
                 Variable requerida: {details.env}
               </p>
