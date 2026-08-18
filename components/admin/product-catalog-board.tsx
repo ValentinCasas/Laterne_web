@@ -9,6 +9,7 @@ import { handleImageError, productImageSrc } from "@/lib/image-fallback";
 import { marginPercent } from "@/lib/product-catalog";
 import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
 import type { ProductCatalogPayload, CatalogProductRow } from "@/lib/product-catalog-data";
+import { Icon } from "@/components/admin/ui/icons";
 
 /**
  * Gestor visual del catálogo de productos de MenuClick.
@@ -143,6 +144,10 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
   const [sort, setSort] = useState<SortKey>("name-asc");
   const [view, setView] = useViewMode("productos");
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
+  const isListView = view === "list" || view === "list-compact";
+  const isCardsView = view === "cards" || view === "cards-compact";
+  const compactCards = view === "cards-compact";
+  const effectiveDensity: "comfortable" | "compact" = view === "list-compact" ? "compact" : density;
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem("productos:density");
@@ -492,7 +497,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
           ))}
         </select>
         <ViewModeToggle value={view} onChange={setView} />
-        {view === "list" && (
+        {isListView && (
           <select
             value={density}
             onChange={(event) => applyDensity(event.target.value as "comfortable" | "compact")}
@@ -508,7 +513,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
       {/* Filtros rápidos */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {([
-          { key: "favorite", label: "★ Favoritos", active: filters.favorite === "yes", onClick: () => patch({ favorite: filters.favorite === "yes" ? "any" : "yes" }) },
+          { key: "favorite", label: "Favoritos", active: filters.favorite === "yes", onClick: () => patch({ favorite: filters.favorite === "yes" ? "any" : "yes" }) },
           { key: "availability", label: "Disponible", active: filters.availability === "disponible", onClick: () => patch({ availability: filters.availability === "disponible" ? "any" : "disponible" }) },
           { key: "agotado", label: "Agotado", active: filters.availability === "agotado", onClick: () => patch({ availability: filters.availability === "agotado" ? "any" : "agotado" }) },
           { key: "stock-low", label: "Bajo stock", active: filters.stock === "low", onClick: () => patch({ stock: filters.stock === "low" ? "any" : "low" }) },
@@ -622,8 +627,8 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
             </button>
           }
         />
-      ) : view === "cards" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      ) : isCardsView ? (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 ${compactCards ? "gap-2.5" : "gap-4"}`}>
           {sorted.map((product) => (
             <ProductCard
               key={product.id}
@@ -643,7 +648,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
         <ListTable
           products={sorted}
           currency={currency}
-          density={density}
+          density={effectiveDensity}
           selected={selected}
           allSelected={allSelected}
           onToggleAll={toggleAll}
@@ -728,7 +733,7 @@ function buildFilterChips(
   if (filters.status) {
     chips.push({ label: `Estado: ${statusLabels[filters.status] ?? filters.status}`, onRemove: () => patch({ status: "" }) });
   }
-  if (filters.favorite === "yes") chips.push({ label: "★ Favoritos", onRemove: () => patch({ favorite: "any" }) });
+  if (filters.favorite === "yes") chips.push({ label: "Favoritos", onRemove: () => patch({ favorite: "any" }) });
   if (filters.favorite === "no") chips.push({ label: "Sin favorito", onRemove: () => patch({ favorite: "any" }) });
   if (filters.availability === "disponible") chips.push({ label: "Disponible", onRemove: () => patch({ availability: "any" }) });
   if (filters.availability === "agotado") chips.push({ label: "Agotado", onRemove: () => patch({ availability: "any" }) });
@@ -826,8 +831,8 @@ function ProductCard({
           )}
         </span>
         {product.favorite && (
-          <span className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-sm text-amber-400 backdrop-blur-sm" title="Favorito">
-            ★
+          <span className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-amber-400 backdrop-blur-sm" title="Favorito">
+            <Icon name="star-filled" className="h-4 w-4" />
           </span>
         )}
       </button>
@@ -1014,7 +1019,7 @@ function ListTable({
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-center gap-1.5">
                           <span className="text-sm font-bold leading-snug">{product.name}</span>
-                          {product.favorite && <span className="text-amber-400" title="Favorito">★</span>}
+                          {product.favorite && <span title="Favorito"><Icon name="star-filled" className="h-3.5 w-3.5 text-amber-400" /></span>}
                           {(product.hasRecipe || product.hasCombo || product.hasModifiers) && (
                             <span className="flex gap-0.5">
                               {product.hasRecipe && <span className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-emerald-300" title="Con receta">R</span>}
@@ -1155,7 +1160,7 @@ function ColumnHeader({
           aria-label={`Filtrar por ${label}`}
           title="Filtrar"
         >
-          ⚲
+          <Icon name="filter" className="h-3.5 w-3.5" />
         </button>
       </div>
       {columnFilter === column && (

@@ -17,6 +17,11 @@ import {
   orderTimeText,
 } from "@/lib/order-scheduling";
 import { ensureDeliveryForOrder, requiresDelivery } from "@/lib/delivery-orders";
+import {
+  GEOFENCE_OUTSIDE_MESSAGE,
+  GEOFENCE_UNVERIFIED_MESSAGE,
+  isLocationWithinGeofence,
+} from "@/lib/geofence";
 
 /**
  * @summary Valida la entrada relacionada con los pedidos.
@@ -39,6 +44,13 @@ const orderInput = z.object({
   loyaltyToken: z.string().max(100).optional(),
   paymentMethod: z.enum(["on_delivery", "cash", "card_on_delivery", "transfer"]).default("on_delivery"),
   idempotencyKey: z.string().trim().min(8).max(120).optional(),
+  geolocation: z
+    .object({
+      latitude: z.coerce.number().min(-90).max(90),
+      longitude: z.coerce.number().min(-180).max(180),
+      accuracy: z.coerce.number().min(0).max(10_000).optional(),
+    })
+    .optional(),
   items: z
     .array(
       z.object({
@@ -161,6 +173,24 @@ export async function POST(request: Request) {
   }
   if (parsed.data.orderType === "dine_in" && parsed.data.tableCode && !table) {
     return NextResponse.json({ error: "La mesa indicada no existe o no está disponible" }, { status: 409 });
+  }
+  // Geofencing de pedidos de mesa: el servidor valida la ubicación contra el
+  // radio configurado en la sucursal. Nunca se confía en validación del cliente.
+  if (parsed.data.orderType === "dine_in" && branch.geofenceEnabled) {
+    const geofenceResult = isLocationWithinGeofence(
+      {
+        enabled: branch.geofenceEnabled,
+        latitude: branch.latitude === null ? null : Number(branch.latitude),
+        longitude: branch.longitude === null ? null : Number(branch.longitude),
+        radiusMeters: branch.geofenceRadius,
+      },
+      parsed.data.geolocation,
+    );
+    if (!geofenceResult.ok) {
+      const message =
+        geofenceResult.reason === "outside" ? GEOFENCE_OUTSIDE_MESSAGE : GEOFENCE_UNVERIFIED_MESSAGE;
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
   }
   if (parsed.data.orderType === "delivery" && !parsed.data.address) {
     return NextResponse.json({ error: "Ingresá la dirección de entrega" }, { status: 400 });

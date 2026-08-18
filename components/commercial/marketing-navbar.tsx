@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
+import { Icon } from "@/components/admin/ui/icons";
 import { useState } from "react";
 
 const productLinks = [
@@ -99,7 +100,7 @@ export function MarketingNavbar({ name, logoUrl }: { name: string; logoUrl: stri
           onClick={() => setMobileOpen((value) => !value)}
           type="button"
         >
-          {mobileOpen ? "×" : "☰"}
+          {mobileOpen ? <Icon name="x" className="h-5 w-5" /> : <Icon name="menu" className="h-5 w-5" />}
         </button>
       </nav>
       {mobileOpen && (

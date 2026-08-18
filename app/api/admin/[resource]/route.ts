@@ -197,6 +197,10 @@ async function normalize(
       longitude: input.longitude ? Number(input.longitude) : null,
       deliveryFee: Math.max(0, Number(input.deliveryFee || 0)),
       minimumOrder: Math.max(0, Number(input.minimumOrder || 0)),
+      geofenceEnabled: booleanValue(input.geofenceEnabled),
+      geofenceRadius: input.geofenceRadius
+        ? Math.min(Math.max(Number(input.geofenceRadius), 25), 2000)
+        : null,
       orderPrefix: input.orderPrefix?.trim().toUpperCase().slice(0, 12) || "PED",
       isPrimary: firstBranch || booleanValue(input.isPrimary),
       active: booleanValue(input.active),

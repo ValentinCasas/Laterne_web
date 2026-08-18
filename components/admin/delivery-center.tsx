@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
 import { PageHeader, SearchBox, StatusBadge, DocumentHeader, DocumentLines, FactBox, SplitView, SectionHeader, ActionMenu, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 import { canRetireDelivery } from "@/lib/delivery-drivers";
 import { orderStatusLabel } from "@/lib/orders";
 import { normalizeDeliveryDetail, type DeliveryDetail } from "@/lib/delivery-detail";
@@ -67,6 +69,7 @@ function awaitingKitchen(orderStatus: string | null | undefined) {
 
 /** @summary Centro de delivery con lista, panel de detalle y filtros compactos. */
 export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProviders }: DeliveryCenterProps) {
+  const pathname = usePathname();
   const [deliveries, setDeliveries] = useState<Delivery[]>(initialDeliveries);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterBranch, setFilterBranch] = useState("");
@@ -242,7 +245,11 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
                   <ActionMenu
                     align="right"
                     items={[
-                      { label: "Ver pedido origen", onClick: () => window.open(`/admin/orders/${selected.order?.id ?? ""}`, "_blank") },
+                      { label: "Ver pedido origen", onClick: () => window.open(adminHrefFromPathname(pathname, `/admin/pedidos?id=${selected.order?.id ?? ""}`), "_blank") },
+                      {
+                        label: "Ver remito",
+                        onClick: () => window.open(adminHrefFromPathname(pathname, `/admin/entregas/${selected.id}`), "_blank"),
+                      },
                       { label: "Anular entrega", tone: "danger", onClick: () => {} },
                     ]}
                   />

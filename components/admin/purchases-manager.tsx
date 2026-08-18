@@ -7,6 +7,7 @@ import { InvoiceDetailModal, NewInvoiceModal, NewOrderModal, OrderDetailModal, S
 import { SupplierDetailModal, type Supplier } from "@/components/admin/supplier-detail-modal";
 import { scopedFetch } from "@/lib/client-routing";
 import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/purchases";
+import { Icon } from "@/components/admin/ui/icons";
 
 /**
  * Gestor de Compras de MenuClick.
@@ -474,7 +475,7 @@ function OrdersTable({
   if (!orders.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">📦</span>
+        <Icon name="package" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no tenés pedidos de compra</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Creá el primero para pedir mercadería a un proveedor.</p>
       </div>
@@ -581,7 +582,7 @@ function ReceiptsTable({
   if (!receipts.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">🚚</span>
+        <Icon name="truck" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no hay recepciones</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Abrí un pedido y usá el botón «Recibir» cuando llegue la mercadería.</p>
       </div>
@@ -677,7 +678,7 @@ function InvoicesTable({
   if (!invoices.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">🧾</span>
+        <Icon name="receipt" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no hay facturas de proveedor</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Creá una factura y vincúlala a las recepciones del proveedor.</p>
       </div>
@@ -831,7 +832,7 @@ function SuppliersTable({
   if (!suppliers.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">🤝</span>
+        <Icon name="users" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no tenés proveedores</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Cargá a tus proveedores para crear pedidos y gastos.</p>
       </div>

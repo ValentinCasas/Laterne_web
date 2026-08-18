@@ -1,6 +1,7 @@
 "use client";
 
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
+import { Icon } from "@/components/admin/ui/icons";
 
 type Delivery = {
   id: number;
@@ -48,7 +49,7 @@ export function DriverDeliveriesHistory({ deliveries }: { deliveries: Delivery[]
                 <p className="mt-1 text-sm font-bold text-white">{delivery.order?.customerName ?? delivery.customerName}</p>
                 <p className="text-xs text-zinc-500">{delivery.order?.reference ?? "—"}</p>
               </div>
-              {hasIncident && <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-black text-orange-300">⚠ Incidencia</span>}
+              {hasIncident && <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-black text-orange-300"><Icon name="warning" className="h-3 w-3" /> Incidencia</span>}
             </div>
 
             {delivery.statusLogs && delivery.statusLogs.length > 0 && (

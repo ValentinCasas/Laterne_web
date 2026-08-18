@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import { trackEvent } from "@/components/analytics-tracker";
 import { copyBrowserText, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
+import { Icon } from "@/components/admin/ui/icons";
 
 type ProductActionData = {
   id: number;
@@ -144,12 +145,13 @@ export function ProductActions({ product }: { product: ProductActionData }) {
           {soldOut ? "Temporalmente agotado" : "Agregar al pedido"}
         </button>
         <button
-          className="btn btn-secondary min-h-12"
+          className="btn btn-secondary flex min-h-12 items-center gap-1.5"
           onClick={toggleFavorite}
           type="button"
           aria-pressed={favorite}
         >
-          {favorite ? "♥ Guardado" : "♡ Favorito"}
+          <Icon name={favorite ? "heart-filled" : "heart"} className="h-4 w-4" />
+          {favorite ? "Guardado" : "Favorito"}
         </button>
         <button className="btn btn-secondary min-h-12" onClick={shareProduct} type="button">
           Compartir

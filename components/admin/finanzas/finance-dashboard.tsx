@@ -104,11 +104,12 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-        <div className="border-b border-[var(--admin-border)] px-5 py-4">
+      <div className="shadow-xl shadow-black/10">
+        <div className="px-5 py-4">
           <h2 className="text-lg font-black">Movimientos recientes</h2>
         </div>
         <DataTable
+          viewStorageKey="dashboard-cuentas"
           columns={[
             { key: "fecha", label: "Fecha" },
             { key: "cuenta", label: "Cuenta" },

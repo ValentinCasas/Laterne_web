@@ -390,7 +390,7 @@ export function SupplierDetailModal({
                 </div>
                 {!editing && (
                   <button type="button" className="mt-3 text-sm font-bold text-pink-300 hover:underline" onClick={() => setEditing(true)}>
-                    ✎ Editar datos
+                    Editar datos
                   </button>
                 )}
               </div>

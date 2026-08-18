@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { ViewModeToggle, type ViewMode } from "@/components/admin/view-mode-toggle";
 
-/** @summary Grid de cards con toggle Lista/Tarjetas y estado vacío. */
+/**
+ * @summary Grid de cards con las cuatro vistas (tarjeta, tarjeta compacta, lista, lista compacta)
+ *          y estado vacío.
+ */
 export function CardGrid<T>({
   items,
   renderCard,
@@ -31,6 +34,8 @@ export function CardGrid<T>({
   const [internalMode, setInternalMode] = useState<ViewMode>(defaultViewMode);
   const viewMode = controlledViewMode ?? internalMode;
   const applyMode = onViewModeChange ?? setInternalMode;
+  const isCards = viewMode === "cards" || viewMode === "cards-compact";
+  const compact = viewMode === "cards-compact" || viewMode === "list-compact";
 
   if (items.length === 0) {
     return (
@@ -42,19 +47,19 @@ export function CardGrid<T>({
 
   return (
     <div className={className}>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3">
         {listHeader}
         <ViewModeToggle value={viewMode} onChange={applyMode} />
       </div>
-      {viewMode === "cards" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {isCards ? (
+        <div className={`grid ${compact ? "grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"}`}>
           {items.map((item, index) => (
             <div key={keyExtractor(item, index)}>{renderCard(item)}</div>
           ))}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]">
-          <table className="w-full text-left text-sm">
+          <table className={`w-full text-left ${compact ? "text-xs" : "text-sm"}`}>
             <tbody className="divide-y divide-[var(--admin-border)]">{items.map((item, index) => <tr key={keyExtractor(item, index)}>{renderListRow?.(item)}</tr>)}</tbody>
           </table>
         </div>

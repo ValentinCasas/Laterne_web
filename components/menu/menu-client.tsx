@@ -12,6 +12,7 @@ import type { CartaHeaderConfig } from "@/lib/carta-content";
 import { CARTA_HEADER_DEFAULTS } from "@/lib/carta-content";
 import { copyBrowserText, createBrowserId, readBrowserJson, writeBrowserJson } from "@/lib/browser-compat";
 import { CATEGORY_IMAGE_FALLBACK, handleImageError, PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
+import { Icon } from "@/components/admin/ui/icons";
 import { publicHrefForVisiblePath } from "@/lib/routes";
 import { usePathname } from "next/navigation";
 
@@ -407,12 +408,12 @@ export function MenuClient({
               />
             </label>
             <button
-              className="min-h-12 shrink-0 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black lg:hidden"
+              className="flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black lg:hidden"
               onClick={openFilters}
               type="button"
               aria-haspopup="dialog"
             >
-              ⚙ Filtros{activeFilterCount ? ` (${activeFilterCount})` : ""}
+              <Icon name="gear" className="h-4 w-4" /> Filtros{activeFilterCount ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
           {activeFilterCount > 0 && (
@@ -570,7 +571,7 @@ export function MenuClient({
         ))}
         {!shownCategories.length && (
           <section className="card p-12 text-center">
-            <span className="text-5xl">🍺</span>
+            <Icon name="beer" className="mx-auto text-5xl text-zinc-600" />
             <h2 className="mt-4 text-2xl font-black">No encontramos productos</h2>
             <p className="mt-2 text-zinc-500">Probá con otra búsqueda.</p>
           </section>
@@ -582,8 +583,8 @@ export function MenuClient({
         onClick={() => setCartOpen(true)}
         aria-label={`Ver pedido con ${quantity} ${quantity === 1 ? "producto" : "productos"}`}
       >
-        <span className="text-lg" aria-hidden="true">
-          🛒
+        <span aria-hidden="true">
+          <Icon name="cart" className="h-6 w-6" />
         </span>
         <span className="text-sm text-white sm:text-left">
           <small className="hidden text-[10px] uppercase tracking-wider sm:block">Pedido</small>

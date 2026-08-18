@@ -3,6 +3,7 @@
 import { createElement, useEffect, useRef, useState } from "react";
 import { scopedFetch } from "@/lib/client-routing";
 import { modelPublicUrl, productImageSrc } from "@/lib/image-fallback";
+import { Icon } from "@/components/admin/ui/icons";
 
 /**
  * Zona de carga por arrastre o selección para el editor de productos.
@@ -111,8 +112,8 @@ export function FileDropzone({
           )}
           {preview === "model" && value.trim() && <EditorModelPreview modelUrl={previewUrl("model", value)} />}
           {preview === "file" && (
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl border border-[var(--admin-border)] bg-white/5 text-xl">
-              📄
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl border border-[var(--admin-border)] bg-white/5">
+              <Icon name="file" className="h-6 w-6 text-zinc-500" />
             </span>
           )}
           <div className="min-w-0">
@@ -163,7 +164,7 @@ export function FileDropzone({
               : "border-[var(--admin-border)] bg-white/[.03] hover:border-pink-500/40 hover:bg-white/5"
           }`}
         >
-          <span className="text-2xl">{resource === "product-model" ? "🧊" : "🖼️"}</span>
+          <Icon name={resource === "product-model" ? "cube" : "image"} className="mx-auto h-8 w-8 text-zinc-500" />
           <span className="mt-2 block text-sm font-bold text-zinc-200">
             {uploading ? "Subiendo…" : emptyLabel}
           </span>
@@ -218,7 +219,7 @@ export function EditorModelPreview({ modelUrl }: { modelUrl: string }) {
           exposure="1"
         />
       ) : (
-        <div className="grid h-full w-full place-items-center text-lg">{failed ? "⚠️" : "⏳"}</div>
+        <div className="grid h-full w-full place-items-center"><Icon name={failed ? "alert-triangle" : "loader"} className="h-8 w-8 text-zinc-400" /></div>
       )}
     </div>
   );

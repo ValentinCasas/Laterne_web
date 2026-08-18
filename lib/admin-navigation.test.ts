@@ -44,6 +44,9 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/testimonios",
       "/admin/soporte",
       "/admin/cuenta",
+      "/admin/sucursales",
+      "/admin/usuarios",
+      "/admin/planes",
       "/admin/entregas",
       "/admin/delivery",
       "/admin/repartidores",
@@ -61,6 +64,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/reportes/productos",
       "/admin/reportes/compras",
       "/admin/reportes/sucursales",
+      "/admin/reportes/consolidado",
       "/admin/reportes/ingenieria-menu",
     ]);
     for (const link of adminNavLinks()) {
@@ -95,9 +99,12 @@ describe("definición centralizada de navegación administrativa", () => {
   it("localiza el grupo correcto de una ruta", () => {
     expect(adminGroupIdForHref("/admin/pedidos")).toBe("operacion");
     expect(adminGroupIdForHref("/admin/productos")).toBe("productos");
-    expect(adminGroupIdForHref("/admin/compras")).toBe("operacion");
+    expect(adminGroupIdForHref("/admin/compras")).toBe("compras");
     expect(adminGroupIdForHref("/admin/inventario")).toBe("productos");
     expect(adminGroupIdForHref("/admin/marca")).toBe("administracion");
+    expect(adminGroupIdForHref("/admin/sucursales")).toBe("administracion");
+    expect(adminGroupIdForHref("/admin/usuarios")).toBe("administracion");
+    expect(adminGroupIdForHref("/admin/planes")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/estadisticas")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/finanzas")).toBe("finanzas");
     expect(adminGroupIdForHref("/admin/finanzas/cuentas")).toBe("finanzas");

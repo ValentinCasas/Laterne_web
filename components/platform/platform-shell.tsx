@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Icon } from "@/components/admin/ui/icons";
 import { isPlatformLinkActive } from "@/lib/navigation-active";
 
 const groups = [
@@ -109,7 +110,7 @@ export function PlatformShell({
               onClick={() => setMobileOpen((open) => !open)}
               type="button"
             >
-              {mobileOpen ? "×" : "☰"}
+              {mobileOpen ? <Icon name="x" className="h-5 w-5" /> : <Icon name="menu" className="h-5 w-5" />}
             </button>
           </div>
         </div>

@@ -3,19 +3,23 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SectionHeader, StatusBadge, EmptyState, FormSection } from "@/components/admin/ui";
+import { PageHeader, SectionHeader, StatusBadge, EmptyState, FormSection, DocumentLines, RelatedDocuments } from "@/components/admin/ui";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 import { usePathname } from "next/navigation";
+import { Icon } from "@/components/admin/ui/icons";
 import { CopyTrackingLink } from "@/components/orders/copy-tracking-link";
 
 export type AdminOrderItem = {
   id: number;
   productName: string;
   quantity: number;
+  deliveredQuantity: number;
+  pendingQuantity: number | null;
+  unitPrice: string | number;
   variantName: string | null;
   extras: unknown;
   notes: string | null;
@@ -62,6 +66,7 @@ export type AdminOrder = {
     status: string;
     driverProfile?: { name: string } | null;
   } | null;
+  _count: { deliveries: number; payments: number };
 };
 
 const statusStyle: Record<string, string> = {
@@ -306,7 +311,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                 placeholder="Buscar referencia, cliente o teléfono"
                 className="w-64 rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
               />
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">🔎</span>
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500"><Icon name="search" className="h-4 w-4" /></span>
             </div>
           </div>
         }
@@ -566,21 +571,31 @@ function OrderDetail({
 
               <section>
                 <SectionHeader title="Productos" description={`${order.items.reduce((sum, item) => sum + item.quantity, 0)} productos en el pedido.`} />
-                <div className="mt-4 space-y-3">
-                  {order.items.map((item) => {
-                    const extras = extrasText(item.extras);
-                    return (
-                      <div className="rounded-2xl bg-white/5 p-4" key={item.id}>
-                        <div className="flex justify-between gap-4">
-                          <strong>{item.quantity} × {item.productName}</strong>
-                          <strong className="shrink-0 tabular-nums">{formatPrice(item.lineTotal, order.currency)}</strong>
-                        </div>
-                        {item.variantName && <p className="mt-1 text-sm text-zinc-300">{item.variantName}</p>}
-                        {extras && <p className="mt-1 text-sm text-zinc-400">+ {extras}</p>}
-                        {item.notes && <p className="mt-1 text-sm italic text-zinc-500">{item.notes}</p>}
-                      </div>
-                    );
-                  })}
+                <div className="mt-3">
+                  <DocumentLines headers={["Producto", "Pedido", "Entregado", "Pendiente", "Importe"]}>
+                    {order.items.map((item) => {
+                      const extras = extrasText(item.extras);
+                      const pending = item.pendingQuantity ?? Math.max(0, item.quantity - item.deliveredQuantity);
+                      return (
+                        <tr key={item.id}>
+                          <td className="px-4 py-2 text-sm text-zinc-200">
+                            {item.productName}
+                            {item.variantName && <span className="ml-1 text-xs text-zinc-500">· {item.variantName}</span>}
+                            {extras && <span className="ml-1 text-xs text-zinc-500">+ {extras}</span>}
+                            {item.notes && <span className="ml-1 text-xs italic text-zinc-600">{item.notes}</span>}
+                          </td>
+                          <td className="px-4 py-2 text-right text-sm tabular-nums text-zinc-200">x{item.quantity}</td>
+                          <td className="px-4 py-2 text-right text-sm tabular-nums text-emerald-300">x{item.deliveredQuantity}</td>
+                          <td className="px-4 py-2 text-right text-sm tabular-nums text-zinc-400">
+                            {pending > 0 ? `x${pending}` : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-zinc-200">
+                            {formatPrice(item.lineTotal, order.currency)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </DocumentLines>
                 </div>
               </section>
 
@@ -625,6 +640,32 @@ function OrderDetail({
                 </div>
               </section>
 
+              <RelatedDocuments
+                title="Documentos relacionados"
+                items={[
+                  {
+                    href: adminHrefFromPathname(pathname, `/admin/entregas?orderId=${order.id}`),
+                    label: "Remitos y entregas",
+                    count: order._count.deliveries,
+                  },
+                  ...(order.invoice
+                    ? [
+                        {
+                          href: adminHrefFromPathname(pathname, `/admin/facturacion/${order.invoice.id}`),
+                          label: `Comprobante ${order.invoice.number ?? `#${order.invoice.id}`}`,
+                          count: 1,
+                          tone: (order.invoice.status === "cancelled" ? "danger" : "success") as "danger" | "success",
+                        },
+                      ]
+                    : []),
+                  {
+                    href: adminHrefFromPathname(pathname, "/admin/cobros"),
+                    label: "Pagos y cuenta corriente",
+                    count: order._count.payments,
+                  },
+                ]}
+              />
+
               <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
                 <SectionHeader title="Acciones" description="Cambios de estado y comprobantes." />
                 <div className="mt-4 flex flex-col gap-2">
@@ -640,7 +681,7 @@ function OrderDetail({
                   )}
                   <div className="flex flex-col gap-2 pt-2">
                     {order.phone && (
-                      <a className="btn btn-secondary w-full" href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName} 👋\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`} target="_blank" rel="noreferrer">
+                      <a className="btn btn-secondary w-full" href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName}!\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`} target="_blank" rel="noreferrer">
                         WhatsApp
                       </a>
                     )}

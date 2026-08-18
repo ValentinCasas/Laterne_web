@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDefaultTenant } from "@/lib/tenant";
 import { publicHrefForVisiblePath } from "@/lib/routes";
 import { requestRouteContext } from "@/lib/request-route-context";
+import { Icon } from "@/components/admin/ui/icons";
 
 /** @summary Explica el estado sin conexión y conserva el contexto tenant/branch en los enlaces. */
 export default async function OfflinePage() {
@@ -11,7 +12,7 @@ export default async function OfflinePage() {
   return (
     <main className="shell grid min-h-[70vh] place-items-center py-12">
       <section className="card max-w-xl p-8 text-center">
-        <span className="text-5xl">↯</span>
+        <Icon name="wifi-off" className="mx-auto text-5xl text-zinc-500" />
         <p className="section-eyebrow mt-5">Sin conexión</p>
         <h1 className="mt-2 text-4xl font-black">La red se tomó una pausa.</h1>
         <p className="mt-4 text-zinc-400">

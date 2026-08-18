@@ -214,11 +214,14 @@ export function FormField({
   const value = inputValue(item?.[field.key], field.type);
 
   if (field.control === "location") {
+    const rawRadius = item?.geofenceRadius;
+    const radius = rawRadius == null || rawRadius === "" ? undefined : Number(rawRadius);
     return (
       <LocationPicker
         key={`${item?.id ?? "new"}-location`}
         initialLatitude={inputValue(item?.latitude)}
         initialLongitude={inputValue(item?.longitude)}
+        radiusMeters={Number.isFinite(radius) ? radius : undefined}
       />
     );
   }

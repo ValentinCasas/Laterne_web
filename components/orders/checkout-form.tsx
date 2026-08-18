@@ -37,7 +37,12 @@ type BranchOption = {
   address: string;
   deliveryFee: number;
   minimumOrder: number;
+  geofenceEnabled?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceRadius?: number | null;
   openingHours: OrderOpeningHourInput[];
+  tables?: Array<{ id: number; name: string; code: string }>;
 };
 
 type CheckoutStep = "details" | "payment" | "review";
@@ -142,6 +147,29 @@ export function CheckoutForm({
     return idempotencyKeyRef.current;
   }
 
+  /**
+   * @summary Pide la ubicación del navegador para validar el geofence del local.
+   * Resuelve `null` si el navegador no la soporta, el usuario la deniega o expira.
+   */
+  function requestGeolocation(): Promise<{ latitude: number; longitude: number; accuracy: number } | null> {
+    return new Promise((resolve) => {
+      if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) =>
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 },
+      );
+    });
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const table = searchParams.get("mesa") || readBrowserText("laterne_mesa") || "";
@@ -218,7 +246,7 @@ export function CheckoutForm({
     if (phone.trim().length < 6) return "Escribí un teléfono o WhatsApp válido.";
     if (email && !/^\S+@\S+\.\S+$/.test(email.trim())) return "Revisá el email ingresado.";
     if (orderType === "delivery" && address.trim().length < 5) return "Ingresá la dirección de entrega.";
-    if (orderType === "dine_in" && !tableCode.trim()) return "Ingresá el código de mesa.";
+    if (orderType === "dine_in" && !tableCode.trim()) return "Elegí la mesa desde la que vas a pedir.";
     if (orderType !== "dine_in" && !effectiveRequestedTime) {
       return "No hay horarios disponibles para esta modalidad. Elegí otra sucursal o consultá al local.";
     }
@@ -250,6 +278,25 @@ export function CheckoutForm({
     }
     setSubmitting(true);
     setError("");
+    const needsGeofence =
+      orderType === "dine_in" && Boolean(selectedBranch?.geofenceEnabled) && selectedBranch?.latitude != null;
+    let geolocation: { latitude: number; longitude: number; accuracy: number } | null = null;
+    if (needsGeofence) {
+      geolocation = await requestGeolocation();
+      if (!geolocation) {
+        setSubmitting(false);
+        await Swal.fire({
+          title: "Verificá tu ubicación",
+          text: "No pudimos verificar tu ubicación. Para realizar un pedido desde una mesa necesitamos confirmar que estás en el establecimiento.",
+          icon: "warning",
+          confirmButtonText: "Volver a intentar",
+          background: "#18181b",
+          color: "#fafafa",
+          confirmButtonColor: "#ec4899",
+        });
+        return;
+      }
+    }
     const deliveryAddress =
       orderType === "delivery"
         ? `${address.trim()}${deliveryReference.trim() ? ` · Referencia: ${deliveryReference.trim()}` : ""}`
@@ -270,6 +317,7 @@ export function CheckoutForm({
       website: "",
       loyaltyToken: readBrowserText("laterne_cliente_token") || undefined,
       idempotencyKey: idempotencyKey(),
+      ...(geolocation ? { geolocation } : {}),
       items: items.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
@@ -365,13 +413,28 @@ export function CheckoutForm({
 
               {orderType === "dine_in" && (
                 <label className="mt-5 block">
-                  <span className="mb-2 block text-sm font-bold text-zinc-400">Código de mesa</span>
-                  <input
-                    className="input"
-                    onChange={(event) => setTableCode(event.target.value)}
-                    placeholder="Ejemplo: MESA-01"
-                    value={tableCode}
-                  />
+                  <span className="mb-2 block text-sm font-bold text-zinc-400">Mesa</span>
+                  {selectedBranch?.tables?.length ? (
+                    <select
+                      className="input"
+                      value={tableCode}
+                      onChange={(event) => setTableCode(event.target.value)}
+                    >
+                      <option value="">Elegí tu mesa…</option>
+                      {selectedBranch.tables.map((table) => (
+                        <option value={table.code} key={table.id}>
+                          {table.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="input"
+                      onChange={(event) => setTableCode(event.target.value)}
+                      placeholder="Escribí el código de la mesa"
+                      value={tableCode}
+                    />
+                  )}
                 </label>
               )}
 
@@ -707,6 +770,11 @@ export function CheckoutForm({
                   El pedido real se crea recién ahora. El servidor recalcula productos, precios, promociones,
                   stock, horario y total.
                 </p>
+                {orderType === "dine_in" && selectedBranch?.geofenceEnabled && (
+                  <p className="mt-2 rounded-xl bg-pink-500/10 p-3 text-xs leading-relaxed text-pink-200">
+                    Confirmaremos que estás dentro del área del local antes de generar el pedido.
+                  </p>
+                )}
                 <button
                   className="btn mt-3 min-h-12 w-full disabled:cursor-not-allowed disabled:opacity-40"
                   disabled={!items.length || submitting}

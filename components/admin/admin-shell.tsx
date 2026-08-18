@@ -17,6 +17,7 @@ import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
 import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
 import { SearchBox } from "@/components/admin/ui";
+import { Icon } from "@/components/admin/ui/icons";
 import {
   adminHrefForContext,
   isBranchAdminLogicalPath,
@@ -468,10 +469,10 @@ export function AdminShell({
     () => adminNavLinks().filter((link) => permissions.includes(link.permission)),
     [permissions],
   );
-  const accessibleGroups = useMemo(() => adminGroupsForPermissions(permissions, roleKey), [
-    permissions,
-    roleKey,
-  ]);
+  const accessibleGroups = useMemo(
+    () => adminGroupsForPermissions(permissions, roleKey, isSuperAdmin),
+    [permissions, roleKey, isSuperAdmin],
+  );
   const activeLink = useMemo(
     () => findActiveAdminLink(accessibleGroups, clearPath),
     [accessibleGroups, clearPath],
@@ -760,7 +761,7 @@ export function AdminShell({
               }
             }}
           >
-            <span aria-hidden="true">{mobileMenuOpen ? "×" : "☰"}</span>
+            <span aria-hidden="true">{mobileMenuOpen ? <Icon name="x" className="h-5 w-5" /> : <Icon name="menu" className="h-5 w-5" />}</span>
           </button>
 
           <Link

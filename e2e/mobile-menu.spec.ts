@@ -69,7 +69,7 @@ test.describe("carta pública responsive", () => {
     await categories.nth(1).click();
     await expect(categories.nth(1)).toHaveAttribute("aria-current", "true");
 
-    await page.getByRole("button", { name: /^⚙ Filtros/ }).click();
+    await page.getByRole("button", { name: /^Filtros/ }).click();
     const filters = page.getByRole("dialog", { name: "Filtros" });
     await expect(filters).toBeVisible();
     await filters.getByLabel("Preferencias").selectOption("glutenFree");
@@ -77,7 +77,7 @@ test.describe("carta pública responsive", () => {
     await filters.getByLabel("Ordenar por").selectOption("name");
     await filters.getByRole("button", { name: "Ver resultados" }).click();
     await expect(filters).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "⚙ Filtros (3)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Filtros (3)" })).toBeVisible();
 
     let addButton = page.getByRole("button", { name: /^Agregar / }).first();
     if (!(await addButton.isVisible().catch(() => false))) {

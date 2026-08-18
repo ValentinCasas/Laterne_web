@@ -10,6 +10,7 @@ import { MenuProductCard } from "@/components/menu/menu-product-card";
 import type { MenuCategory } from "@/components/menu/menu-client";
 import { SiteHeader } from "@/components/site-header";
 import type { CartaHeaderConfig } from "@/lib/carta-content";
+import { Icon } from "@/components/admin/ui/icons";
 import { CARTA_HEADER_DEFAULTS } from "@/lib/carta-content";
 import { scopedFetch } from "@/lib/client-routing";
 import { CATEGORY_IMAGE_FALLBACK, handleImageError } from "@/lib/image-fallback";
@@ -267,10 +268,10 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
                         aria-label="Buscador de la carta (vista previa)"
                       />
                       <button
-                        className="min-h-12 shrink-0 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black lg:hidden"
+                        className="flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black lg:hidden"
                         type="button"
                       >
-                        ⚙ Filtros
+                        <Icon name="gear" className="h-4 w-4" /> Filtros
                       </button>
                     </div>
                   </div>

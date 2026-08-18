@@ -31,6 +31,7 @@ export default async function AdminOrdersPage() {
       invoice: { select: { id: true, number: true, status: true } },
       history: { orderBy: { createdAt: "asc" } },
       idempotencies: { select: { token: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { deliveries: true, payments: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 500,

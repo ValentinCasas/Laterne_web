@@ -4,6 +4,7 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
 import { deliveryStatusMeta, nextDriverStatus } from "@/lib/delivery-drivers";
+import { Icon } from "@/components/admin/ui/icons";
 
 type Delivery = {
   id: number;
@@ -145,10 +146,16 @@ export function DriverActiveDeliveries({ deliveries }: { deliveries: Delivery[] 
                 <p className="mt-1 text-base font-black text-white">{delivery.customerName}</p>
                 <p className="text-xs text-zinc-400">{delivery.order?.reference ?? "—"}</p>
                 {(delivery.order?.deliveryAddress ?? delivery.deliveryAddress) && (
-                  <p className="mt-1 text-sm text-zinc-300">📍 {(delivery.order?.deliveryAddress ?? delivery.deliveryAddress)}</p>
+                  <p className="mt-1 flex items-start gap-1.5 text-sm text-zinc-300">
+                    <Icon name="map-pin" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                    {delivery.order?.deliveryAddress ?? delivery.deliveryAddress}
+                  </p>
                 )}
                 {(delivery.order?.phone ?? delivery.contactPhone) && (
-                  <p className="text-sm text-zinc-400">📞 {(delivery.order?.phone ?? delivery.contactPhone)}</p>
+                  <p className="flex items-center gap-1.5 text-sm text-zinc-400">
+                    <Icon name="phone" className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                    {delivery.order?.phone ?? delivery.contactPhone}
+                  </p>
                 )}
               </div>
             </div>
@@ -186,7 +193,7 @@ export function DriverActiveDeliveries({ deliveries }: { deliveries: Delivery[] 
                   disabled={workingId === delivery.id}
                   onClick={() => advance(delivery)}
                 >
-                  ✅ Marcar {deliveryStatusMeta(next).label}
+                  <Icon name="check-circle" className="h-4 w-4" /> Marcar {deliveryStatusMeta(next).label}
                 </button>
               )}
               <button
@@ -195,7 +202,7 @@ export function DriverActiveDeliveries({ deliveries }: { deliveries: Delivery[] 
                 disabled={workingId === delivery.id}
                 onClick={() => reportIncident(delivery)}
               >
-                ⚠️ Reportar incidencia
+                <Icon name="warning" className="h-4 w-4" /> Reportar incidencia
               </button>
             </div>
           </div>

@@ -59,6 +59,7 @@ Docker NO obligatorio para desarrollo.
 | Operación (Pedidos, Cocina, Salón, Mesas, Reservas, Entregas, Delivery, Repartidores, Cobros) | FUNCIONAL |
 | Productos (Catálogo, Producción, Inventario) | FUNCIONAL |
 | Compras (Pedidos, Recepciones, Facturas, Gastos) | FUNCIONAL |
+| Geofencing de pedidos de mesa | FUNCIONAL |
 | Finanzas (Cuentas, Movimientos, Flujo de caja, Cuentas a cobrar/pagar, Estado de resultados) | FUNCIONAL |
 | Facturación | PARCIAL |
 | Fidelización | FUNCIONAL |
@@ -70,6 +71,7 @@ Docker NO obligatorio para desarrollo.
 - **Tenant / Branch / TenantMembership / AuthSession**: multi-tenancy, sucursales, acceso.
 - **CustomerOrder / OrderItem / OrderStatusHistory**: pedidos, líneas, trazabilidad.
 - **OrderDelivery / OrderDeliveryItem / CustomerPayment**: entregas y pagos de clientes.
+- **InvoiceRecord / InvoiceRecordItem**: comprobantes (facturas) y sus líneas snapshot inmutables.
 - **Product / Category / ProductPrice / ProductVariant / ProductExtra**: catálogo y precios.
 - **RecipeIngredient / IngredientCostHistory / UnitConversion**: recetas y costos históricos.
 - **PurchaseOrder / PurchaseReceipt / PurchaseInvoice / PurchaseInvoiceItem**: ciclo de compras.
@@ -94,7 +96,7 @@ Docker NO obligatorio para desarrollo.
 - Capacidad de sucursal = suma de cupos de licencias activas vigentes.
 
 ## Migraciones
-- 49 migraciones incrementales en `prisma/migrations/`.
+- 52 migraciones incrementales en `prisma/migrations/`.
 - Estrategia: incremental, nunca `prisma migrate reset`.
 - `prisma/bootstrap.sql` es dump histórico (phpMyAdmin, 2023); NO usado por migraciones actuales.
 - Para modificar schema: migración incremental segura + `prisma generate`.
@@ -102,7 +104,7 @@ Docker NO obligatorio para desarrollo.
 ## Inventario de vistas admin (tipología)
 - Dashboard: `/admin` (inicio), `/admin/finanzas` (dashboard financiero), `/admin/estadisticas` (analytics)
 - Lista: `/admin/clientes` (DataTable), `/admin/entregas` (DataTable), `/admin/auditoria`, `/admin/errores`, `/admin/repartidores`, `/admin/facturacion`, `/admin/oportunidades`, `/admin/planes`, `/admin/recetas`, `/admin/testimonios`, `/admin/archivos`, `/admin/gastos`, `/admin/impresion`, `/admin/integraciones`, `/admin/notificaciones`, `/admin/cuenta`, `/admin/datos`, `/admin/marca`, `/admin/landing`, `/admin/carta`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`, `/admin/mesas`
-- Ficha/Documento: `/admin/recetas/[id]`, `/admin/recetas/[id]/ficha`, `/admin/facturacion/[id]`, modales de compras (`OrderDetailModal`, `InvoiceDetailModal`, `SupplierDetailModal`), ficha de cliente (`CustomerMaster` detail)
+- Ficha/Documento: `/admin/recetas/[id]`, `/admin/recetas/[id]/ficha`, `/admin/facturacion/[id]` (ficha tipo BC con líneas propias), `/admin/entregas/[id]` (remito tipo BC), modales de compras (`OrderDetailModal`, `InvoiceDetailModal`, `SupplierDetailModal`), ficha de cliente (`CustomerMaster` detail)
 - Board operativo: `/admin/pedidos` (kanban), `/admin/cocina` (KDS), `/admin/salon` (mesas), `/admin/delivery` (seguimiento), `/admin/reservas` (kanban/estados), `/admin/productos` (grid/lista)
 - Configuración: `/admin/integraciones`, `/admin/notificaciones`, `/admin/marca`, `/admin/landing`, `/admin/cuenta`, `/admin/datos`, `/admin/impresion`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`
 - Reporte: `/admin/reportes` (shell multi-tab), `/admin/reportes/ventas`, `/admin/reportes/productos`, `/admin/reportes/compras`, `/admin/reportes/sucursales`, `/admin/reportes/consolidado`, `/admin/reportes/ingenieria-menu`
@@ -116,7 +118,12 @@ Docker NO obligatorio para desarrollo.
 - Finanzas: dashboard, cuentas, movimientos, flujo de caja, cuentas cobrar/pagar, estado de resultados
 - Reportes: shell, tabla genérica, filtros
 - Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, admin-shell (parcial)
-- Pendiente: Navbar completo, Geofencing/Prisma, Modelo documental (InvoiceRecordItem)
+- Modelo documental: ficha de pedido (cantidades pedida/entregada/pendiente + documentos relacionados), ficha de remito (`/admin/entregas/[id]`), ficha de factura con líneas snapshot (`/admin/facturacion/[id]`), vínculo factura↔remito.
+- Geofencing: validación server-side (Haversine) en `/api/orders` para pedidos de mesa, geolocalización client-side en checkout y config por sucursal (radio + mapa) en `sucursales`. El mapa (`LocationPicker`) dibuja el radio como círculo azul proyectado a píxeles cuando la sucursal tiene `geofenceRadius`.
+- Checkout de mesa: el formulario de pedido carga las mesas activas de la sucursal y las ofrece en un `<select>` (por `code`, etiqueta = nombre); si no hay mesas, cae a input libre. Valida con "Elegí la mesa desde la que vas a pedir.".
+- Iconografía: set SVG `components/admin/ui/icons.tsx` (`Icon` + `IconName`) reemplaza todos los emoticonos/emojis de la UI.
+- Vista de listas: sistema de 4 vistas (tarjeta, tarjeta compacta, lista, lista compacta) persistido por pantalla (`useViewMode`/`ViewModeToggle`), integrado en `DataTable` (con `viewStorageKey`), `CardGrid`, catálogo de productos, inventario y clientes frecuentes.
+- Navegación: grupos por proceso (Inicio, Operación, Productos, Compras, Finanzas, Reportes, Administración); Administración incluye Sucursales/Usuarios/Licencias (superadmin).
 
 ## Decisiones arquitectónicas
 - URLs canónicas con tenant slug/GUID; el host solo es para superficies públicas.
@@ -127,17 +134,17 @@ Docker NO obligatorio para desarrollo.
 - Impresión declarativa: `PrintArea` + `PrintDestination` + `PrintJob`.
 - Finanzas: movimientos inmutables; corrección por reversión.
 - Reportes: `ReportsShell` es Client Component y maneja filtros URL-driven internamente; las páginas Server Components solo pasan defaults serializables y datos iniciales. No se pasan callbacks desde Server a Client.
-- Navegación admin: `adminLinkMatchScore` compara segmentos desde el final para soportar URLs canónicas con GUID/slug.
+- Navegación admin: `adminLinkMatchScore` compara por prefijo de segmentos (límites `/`) y soporta URLs canónicas con GUID/slug.
 - Multi-sucursal: `ConsolidadoShell` y `MultiBranchSelector` en `components/admin/multi-branch/`. La página `/admin/reportes/consolidado` carga KPIs, comparativa, stock crítico, promociones, usuarios/acceso y licencias. Reutiliza `computeBranchComparison`, `computeVentasKpis`, `computeEvolution`, `computeByChannel`, `computeBySource` desde `lib/reports/`. No duplica lógica de analytics.
-- Sistema visual común: componentes base en `components/admin/ui/` (`PageHeader`, `SectionHeader`, `Toolbar`, `FiltersBar`, `SearchBox`, `ActionMenu`, `DataTable` con densidad y columnas configurables, `CardGrid`, `KanbanBoard`, `EmptyState`, `StatusBadge`, `KpiCard`, `Tabs`, `confirmModal`, `FormSection`, `ViewOptions`, `DocumentHeader`, `DocumentLines`, `RelatedDocuments`, `FactBox`, `SplitView`, `Drawer`, `ActiveFilterChip`, `FilterPanel`). Se aplicó de forma consistente en Pedidos, Entregas, Clientes, Delivery y resto de secciones admin reemplazando `AdminPageHeader` por `PageHeader`.
+- Sistema visual común: componentes base en `components/admin/ui/` (`PageHeader`, `SectionHeader`, `Toolbar`, `FiltersBar`, `SearchBox`, `ActionMenu`, `DataTable` con densidad y columnas configurables, `CardGrid`, `KanbanBoard`, `EmptyState`, `StatusBadge`, `KpiCard`, `Tabs`, `confirmModal`, `FormSection`, `ViewOptions`, `DocumentHeader`, `DocumentLines`, `RelatedDocuments`, `FactBox`, `SplitView`, `Drawer`, `ActiveFilterChip`, `FilterPanel`, `Icon`). Se aplicó de forma consistente en Pedidos, Entregas, Clientes, Delivery y resto de secciones admin reemplazando `AdminPageHeader` por `PageHeader`.
 - Filtros compactos: barra de comandos con `SearchBox` + selects compactos + filtros avanzados en `Drawer`/panel. Filtros activos como `ActiveFilterChip`.
 - AdminShell: `BranchSwitcher` siempre visible (no oculto en mobile) para que el contexto de sucursal sea siempre claro.
-- Documentos tipo BC: Pedidos y Entregas usan `DocumentHeader` + secciones (`FormSection`/`FactBox`) + `DocumentLines` + `RelatedDocuments` en lugar de modales chios.
-- Listas tipo BC: se prioriza `DataTable` con densidad (compacta/normal/cómoda), columnas configurables, orden y vista Card/List donde corresponda.
+- Documentos tipo BC: Pedidos, Remitos y Facturas usan `DocumentHeader` + secciones (`FormSection`/`FactBox`) + `DocumentLines` + `RelatedDocuments` en lugar de modales chios.
+- Listas tipo BC: se prioriza `DataTable` con densidad (compacta/normal/cómoda), columnas configurables, orden y las cuatro vistas (tarjeta, tarjeta compacta, lista, lista compacta) donde corresponda. En celular, `DataTable` en modo lista apila cada fila como tarjeta (label:valor); las tablas densas usan scroll horizontal (`overflow-x-auto`).
 - Board operativo: `KanbanBoard` para estados; `SplitView` para lista+detalle; `Drawer` para edición lateral.
-- Modelo documental: Pedido → OrderDelivery (remito) → InvoiceRecord (factura). OrderDeliveryItem es la línea de remito. Se agregará InvoiceRecordItem como línea de factura para snapshots históricos.
-- Geofencing: se agregará modelo `BranchGeofence` por sucursal con lat/lng/radio y validación server-side en pedidos tipo mesa.
-- Sin emojis en UI: se usa iconografía SVG profesional en `SearchBox`, `ActionMenu`, etc.
+- Modelo documental: Pedido → OrderDelivery (remito) → InvoiceRecord (factura). `OrderDeliveryItem` es la línea de remito; `InvoiceRecordItem` es la línea snapshot de factura (vinculable a orderItem o deliveryItem). La API de facturas permite emitir desde un remito (`deliveryId`) usando las cantidades efectivamente despachadas.
+- Geofencing: campos en `Branch` (`latitude`/`longitude` Decimal, `geofenceRadius` default 150, `geofenceEnabled` default false) + `lib/geofence.ts` (Haversine y tolerancia por precisión GPS acotada a 500 m). El servidor valida en `/api/orders` para `dine_in` con geofence habilitado; el checkout solicita `getCurrentPosition` y el formulario de sucursales permite configurar radio y ubicación.
+- Sin emojis en UI: se usa iconografía SVG profesional (`Icon` desde `components/admin/ui/icons.tsx`) en `SearchBox`, `ActionMenu`, tablas, estados vacíos, repartidor, carta pública, checkout y demás superficies.
 
 ## Pendientes
 - Migración de analítica hacia dashboards de gestión comercial.

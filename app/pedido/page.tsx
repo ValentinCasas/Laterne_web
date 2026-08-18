@@ -26,6 +26,10 @@ export default async function OrderPage() {
       address: true,
       deliveryFee: true,
       minimumOrder: true,
+      geofenceEnabled: true,
+      latitude: true,
+      longitude: true,
+      geofenceRadius: true,
       openingHours: {
         select: {
           dayOfWeek: true,
@@ -34,6 +38,11 @@ export default async function OrderPage() {
           eveningStartTime: true,
           eveningEndTime: true,
         },
+      },
+      tables: {
+        where: { active: true },
+        select: { id: true, name: true, code: true },
+        orderBy: { name: "asc" },
       },
     },
     orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
@@ -52,6 +61,9 @@ export default async function OrderPage() {
           ...branch,
           deliveryFee: Number(branch.deliveryFee),
           minimumOrder: Number(branch.minimumOrder),
+          latitude: branch.latitude === null ? null : Number(branch.latitude),
+          longitude: branch.longitude === null ? null : Number(branch.longitude),
+          geofenceRadius: branch.geofenceRadius,
           openingHours: branch.openingHours.map((opening) => ({
             dayOfWeek: opening.dayOfWeek,
             morningStartTime: orderTimeText(opening.morningStartTime),
@@ -59,6 +71,7 @@ export default async function OrderPage() {
             eveningStartTime: orderTimeText(opening.eveningStartTime),
             eveningEndTime: orderTimeText(opening.eveningEndTime),
           })),
+          tables: branch.tables.map((table) => ({ id: table.id, name: table.name, code: table.code })),
         }))}
         currency={tenant.defaultCurrency}
         locale={tenant.locale}

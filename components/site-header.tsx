@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/admin/ui/icons";
 import { createPortal } from "react-dom";
 import { parseCanonicalPath, publicHrefForVisiblePath } from "@/lib/routes";
 
@@ -208,7 +209,7 @@ export function SiteHeader({
           aria-controls="mobile-navigation"
           aria-label={mobileOpen ? "Cerrar navegación" : "Abrir navegación"}
         >
-          <span>{mobileOpen ? "×" : "☰"}</span>
+          <span>{mobileOpen ? <Icon name="x" className="h-5 w-5" /> : <Icon name="menu" className="h-5 w-5" />}</span>
         </button>
       </nav>
 

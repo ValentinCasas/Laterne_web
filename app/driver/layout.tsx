@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireDriver } from "@/lib/auth";
 import { tenantDriverGuidPath } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
+import { Icon, type IconName } from "@/components/admin/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,9 @@ export default async function DriverLayout({ children }: { children: ReactNode }
 
   const driverHome = tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug);
   const nav = [
-    { href: driverHome, label: "Entregas", icon: "🛵", active: false },
-    { href: tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug, "/entregas"), label: "Historial", icon: "📋", active: false },
-    { href: tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug, "/incidencias"), label: "Incidencias", icon: "⚠️", active: false },
+    { href: driverHome, label: "Entregas", icon: "truck" as IconName },
+    { href: tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug, "/entregas"), label: "Historial", icon: "file" as IconName },
+    { href: tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug, "/incidencias"), label: "Incidencias", icon: "warning" as IconName },
   ];
 
   return (
@@ -26,7 +27,7 @@ export default async function DriverLayout({ children }: { children: ReactNode }
       <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <Link href={driverHome} className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-pink-600 text-sm font-black">🛵</span>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-pink-600"><Icon name="truck" className="h-4 w-4" /></span>
             <span>
               <p className="text-sm font-black leading-tight">{profile?.name ?? context.user.name}</p>
               <p className="text-[10px] text-zinc-400">{context.tenant.name}</p>
@@ -56,7 +57,7 @@ export default async function DriverLayout({ children }: { children: ReactNode }
               href={item.href}
               className="flex flex-1 flex-col items-center gap-0.5 py-3 text-[10px] font-bold text-zinc-400 transition hover:text-white"
             >
-              <span className="text-lg leading-none">{item.icon}</span>
+              <span className="text-lg leading-none"><Icon name={item.icon} className="h-5 w-5" /></span>
               {item.label}
             </Link>
           ))}

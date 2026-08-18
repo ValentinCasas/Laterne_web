@@ -5,13 +5,45 @@ import * as maplibregl from "maplibre-gl";
 
 const defaultLocation = { latitude: -33.3017, longitude: -66.3378 };
 
+/** @summary Distancia aproximada entre dos puntos usando la fórmula de Haversine (en metros). */
+function distanceMeters(
+  longitudeA: number,
+  latitudeA: number,
+  longitudeB: number,
+  latitudeB: number,
+) {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const deltaLatitude = toRadians(latitudeB - latitudeA);
+  const deltaLongitude = toRadians(longitudeB - longitudeA);
+  const a =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(toRadians(latitudeA)) * Math.cos(toRadians(latitudeB)) * Math.sin(deltaLongitude / 2) ** 2;
+  return 6_371_000 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/** @summary Convierte un radio en metros a píxeles para el nivel de zoom actual del mapa. */
+function radiusPixels(map: maplibregl.Map, longitude: number, latitude: number, meters: number) {
+  const center = map.project([longitude, latitude]);
+  const eastPixel = map.unproject([center.x + 1, center.y]);
+  const metersPerPixel = distanceMeters(
+    longitude,
+    latitude,
+    eastPixel.lng,
+    eastPixel.lat,
+  );
+  if (!Number.isFinite(metersPerPixel) || metersPerPixel <= 0) return 0;
+  return meters / metersPerPixel;
+}
+
 /** @summary Permite seleccionar las coordenadas del negocio haciendo clic o moviendo el marcador. */
 export function LocationPicker({
   initialLatitude,
   initialLongitude,
+  radiusMeters,
 }: {
   initialLatitude: string;
   initialLongitude: string;
+  radiusMeters?: number | string | null;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -26,6 +58,8 @@ export function LocationPicker({
   }, [initialLatitude, initialLongitude]);
   const [latitude, setLatitude] = useState(startLocation.latitude);
   const [longitude, setLongitude] = useState(startLocation.longitude);
+  const parsedRadius = Number(radiusMeters);
+  const hasRadius = Number.isFinite(parsedRadius) && parsedRadius > 0;
 
   useEffect(() => {
     if (!container.current) return;
@@ -49,13 +83,57 @@ export function LocationPicker({
       setLongitude(Number(position.lng.toFixed(7)));
     }
 
+    /** @summary Dibuja el círculo del área habilitada alrededor de la ubicación actual. */
+    function drawRadius() {
+      if (!hasRadius) return;
+      const position = point.getLngLat();
+      if (!instance.getSource("geofence-radius")) {
+        instance.addSource("geofence-radius", {
+          type: "geojson",
+          data: { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [position.lng, position.lat] } },
+        });
+        instance.addLayer({
+          id: "geofence-radius-fill",
+          type: "circle",
+          source: "geofence-radius",
+          paint: {
+            "circle-radius": 0,
+            "circle-color": "rgba(59, 130, 246, 0.18)",
+            "circle-stroke-color": "#3b82f6",
+            "circle-stroke-width": 2,
+            "circle-stroke-opacity": 0.9,
+          },
+        });
+      }
+      const source = instance.getSource("geofence-radius");
+      if (source) {
+        (source as maplibregl.GeoJSONSource).setData({
+          type: "Feature",
+          properties: {},
+          geometry: { type: "Point", coordinates: [position.lng, position.lat] },
+        });
+      }
+      instance.setPaintProperty(
+        "geofence-radius-fill",
+        "circle-radius",
+        radiusPixels(instance, position.lng, position.lat, parsedRadius),
+      );
+    }
+
     instance.addControl(new maplibregl.NavigationControl(), "top-right");
     instance.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), "top-right");
+    instance.on("load", drawRadius);
+    instance.on("move", drawRadius);
+    instance.on("zoom", drawRadius);
     instance.on("click", (event) => {
       point.setLngLat(event.lngLat);
       syncMarker();
+      drawRadius();
     });
-    point.on("dragend", syncMarker);
+    point.on("dragend", () => {
+      syncMarker();
+      drawRadius();
+    });
     map.current = instance;
     marker.current = point;
 
@@ -64,7 +142,7 @@ export function LocationPicker({
       map.current = null;
       instance.remove();
     };
-  }, [startLocation]);
+  }, [hasRadius, parsedRadius, startLocation]);
 
   /** @summary Actualiza manualmente una coordenada y reposiciona el mapa y su marcador. */
   function updateCoordinates(nextLatitude: number, nextLongitude: number) {
@@ -73,11 +151,26 @@ export function LocationPicker({
     if (!Number.isFinite(nextLatitude) || !Number.isFinite(nextLongitude)) return;
     marker.current?.setLngLat([nextLongitude, nextLatitude]);
     map.current?.easeTo({ center: [nextLongitude, nextLatitude], duration: 450 });
+    if (hasRadius && map.current) {
+      const position = marker.current?.getLngLat();
+      if (position) {
+        map.current.setPaintProperty(
+          "geofence-radius-fill",
+          "circle-radius",
+          radiusPixels(map.current, position.lng, position.lat, parsedRadius),
+        );
+      }
+    }
   }
 
   return (
     <fieldset className="min-w-0 md:col-span-2">
       <legend className="text-sm font-bold text-zinc-200">Ubicación en el mapa</legend>
+      {hasRadius && (
+        <p className="mt-1 text-sm text-zinc-500">
+          El círculo azul marca el área de {Math.round(parsedRadius)} m alrededor del local para pedidos de mesa.
+        </p>
+      )}
       <p className="mt-1 text-sm text-zinc-500">
         Hacé clic sobre el mapa o arrastrá el marcador rosa hasta la entrada del local.
       </p>

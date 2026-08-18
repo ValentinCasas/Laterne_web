@@ -657,7 +657,6 @@ export function ProductEditor({
                       <option value="">Sin estación</option>
                       {options.stations.map((station) => (
                         <option key={station.id} value={String(station.id)}>
-                          {station.type === "BAR" ? "🍸 " : station.type === "COFFEE" ? "☕ " : "🍳 "}
                           {station.name}
                         </option>
                       ))}
@@ -684,7 +683,7 @@ export function ProductEditor({
                   <span className="block text-sm font-semibold text-[var(--admin-muted)]">Etiquetas y opciones</span>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {[
-                      { key: "favorite", label: "★ Favorito (operación/POS)" },
+                      { key: "favorite", label: "Favorito (operación/POS)" },
                       { key: "featured", label: "Destacado en la carta" },
                       { key: "isNew", label: "Nuevo" },
                       { key: "recommended", label: "Recomendado" },

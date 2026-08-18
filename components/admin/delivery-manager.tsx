@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
 import { PageHeader, StatusBadge, DataTable, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
+import { adminHrefFromPathname } from "@/lib/routes";
 import type { OrderDeliveryData } from "@/lib/delivery-types";
+import { Icon } from "@/components/admin/ui/icons";
 
 type DeliveryManagerProps = {
   initialDeliveries: OrderDeliveryData[];
@@ -37,6 +41,7 @@ const DELIVERY_COLUMNS = [
 
 /** @summary Gestor visual de remitos/entregas con tabla filtrable, opciones de vista y acciones operativas. */
 export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerProps) {
+  const pathname = usePathname();
   const [deliveries, setDeliveries] = useState<OrderDeliveryData[]>(initialDeliveries);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -122,7 +127,7 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
             onChange={(event) => setQuery(event.target.value)}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
           />
-          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">🔎</span>
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500"><Icon name="search" className="h-4 w-4" /></span>
         </div>
         <select
           className="input w-auto"
@@ -144,6 +149,7 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
         <EmptyState title="No hay entregas registradas" description="Las entregas que generes desde los pedidos aparecerán acá." />
       ) : (
         <DataTable
+          viewStorageKey="entregas"
           columns={DELIVERY_COLUMNS}
           data={visible.map((delivery) => ({
             id: delivery.id,
@@ -159,11 +165,21 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
           emptyMessage="No hay entregas registradas."
           rowActions={(row) => {
             const delivery = visible.find((d) => d.id === row.id as number);
-            if (!delivery || delivery.status === "reversed") return null;
+            if (!delivery) return null;
             return (
-              <button type="button" className="btn btn-secondary" onClick={() => reverseDelivery(delivery)}>
-                Anular
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  className="btn btn-secondary"
+                  href={adminHrefFromPathname(pathname, `/admin/entregas/${delivery.id}`)}
+                >
+                  Ver remito
+                </Link>
+                {delivery.status !== "reversed" && (
+                  <button type="button" className="btn btn-secondary" onClick={() => reverseDelivery(delivery)}>
+                    Anular
+                  </button>
+                )}
+              </div>
             );
           }}
         />

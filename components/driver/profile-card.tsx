@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
+import { Icon } from "@/components/admin/ui/icons";
 
 type DriverProfile = {
   id: number;
@@ -53,8 +54,8 @@ export function DriverProfileCard({
     <div className="card flex flex-wrap items-center justify-between gap-4 p-4">
       <div>
         <p className="text-lg font-black text-white">{driver.name}</p>
-        <p className="text-sm text-zinc-400">📞 {driver.phone}</p>
-        {driver.vehicleType && <p className="text-sm text-zinc-400">🚚 {driver.vehicleType}{driver.plate ? ` · ${driver.plate}` : ""}</p>}
+        <p className="flex items-center gap-1.5 text-sm text-zinc-400"><Icon name="phone" className="h-3.5 w-3.5 text-zinc-500" /> {driver.phone}</p>
+        {driver.vehicleType && <p className="flex items-center gap-1.5 text-sm text-zinc-400"><Icon name="truck" className="h-3.5 w-3.5 text-zinc-500" /> {driver.vehicleType}{driver.plate ? ` · ${driver.plate}` : ""}</p>}
         <p className="mt-2 text-xs text-zinc-500">
           Entregadas hoy: <span className="font-black text-emerald-300">{deliveredToday}</span>
         </p>

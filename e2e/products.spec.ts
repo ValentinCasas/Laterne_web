@@ -257,7 +257,7 @@ test("filtros rápidos, drawer avanzado y chips activos", async ({ page }) => {
   await page.goto(`/t/${tenantSlug}/admin/productos`);
 
   // Chip rápido de favoritos.
-  const favoriteChip = page.getByRole("button", { name: "★ Favoritos", exact: true });
+  const favoriteChip = page.getByRole("button", { name: "Favoritos", exact: true });
   await favoriteChip.click();
   await expect(favoriteChip).toHaveClass(/bg-pink-500\/20/);
   await favoriteChip.click();

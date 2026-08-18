@@ -218,14 +218,15 @@ export function FinanceCashflowClient({ initial }: { initial: CashflowInitial })
           </div>
         </div>
 
-        <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-          <div className="border-b border-[var(--admin-border)] px-5 py-4">
+        <div className="lg:col-span-2 shadow-xl shadow-black/10">
+          <div className="px-5 py-4">
             <h2 className="text-lg font-black">Detalle del período</h2>
             <p className="text-xs text-[var(--admin-muted)]">
               {dateLabel(cashFlow.startDate)} — {dateLabel(cashFlow.endDate)}
             </p>
           </div>
           <DataTable
+            viewStorageKey="flujo-caja"
             columns={[
               { key: "fecha", label: "Fecha" },
               { key: "cuenta", label: "Cuenta" },

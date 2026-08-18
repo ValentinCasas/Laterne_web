@@ -20,6 +20,8 @@ export type AdminNavItem = {
   icon: string;
   permission: string;
   description?: string;
+  /** @summary Oculta la opción para usuarios que no son súper admin (plataforma). */
+  superAdminOnly?: boolean;
 };
 
 export type AdminNavSection = {
@@ -186,26 +188,6 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
-        id: "compras",
-        label: "Compras",
-        items: [
-          {
-            href: "/admin/compras",
-            label: "Compras",
-            icon: "CO",
-            permission: "purchase.manage",
-            description: "Pedidos, recepciones y facturas de proveedores",
-          },
-          {
-            href: "/admin/gastos",
-            label: "Gastos",
-            icon: "GA",
-            permission: "purchase.manage",
-            description: "Gastos sin inventario y previsiones",
-          },
-        ],
-      },
-      {
         id: "facturacion",
         label: "Facturación",
         items: [
@@ -283,6 +265,34 @@ export const ADMIN_NAVIGATION = [
             icon: "IV",
             permission: "product.manage",
             description: "Stock, movimientos y conteos",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "compras",
+    label: "Compras",
+    icon: "CO",
+    description: "Compras a proveedores y gastos del negocio",
+    sections: [
+      {
+        id: "compras-proveedores",
+        label: "Compras",
+        items: [
+          {
+            href: "/admin/compras",
+            label: "Compras",
+            icon: "CO",
+            permission: "purchase.manage",
+            description: "Pedidos, recepciones y facturas de proveedores",
+          },
+          {
+            href: "/admin/gastos",
+            label: "Gastos",
+            icon: "GA",
+            permission: "purchase.manage",
+            description: "Gastos sin inventario y previsiones",
           },
         ],
       },
@@ -534,6 +544,34 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
+        id: "sucursales-acceso",
+        label: "Sucursales y acceso",
+        items: [
+          {
+            href: "/admin/sucursales",
+            label: "Sucursales",
+            icon: "SU",
+            permission: "business.manage",
+            description: "Ubicación, geofencing y costos por local",
+          },
+          {
+            href: "/admin/usuarios",
+            label: "Usuarios",
+            icon: "US",
+            permission: "user.manage",
+            description: "Equipo, roles y permisos",
+          },
+          {
+            href: "/admin/planes",
+            label: "Licencias",
+            icon: "LI",
+            permission: "admin.access",
+            superAdminOnly: true,
+            description: "Planes y licencias de la plataforma",
+          },
+        ],
+      },
+      {
         id: "configuracion",
         label: "Configuración",
         items: [
@@ -608,13 +646,18 @@ export function adminNavLinks(): AdminNavItem[] {
   return ADMIN_NAVIGATION.flatMap((group) => group.sections.flatMap((section) => [...section.items]));
 }
 
-export function adminGroupsForPermissions(permissions: readonly string[], roleKey?: string): AdminNavGroup[] {
+export function adminGroupsForPermissions(
+  permissions: readonly string[],
+  roleKey?: string,
+  isSuperAdmin = false,
+): AdminNavGroup[] {
   const privilegedFinance = roleKey === "owner" || roleKey === "administrator";
   return ADMIN_NAVIGATION.flatMap((group) => {
     const sections = group.sections
       .map((section) => ({
         ...section,
         items: section.items.filter((item) => {
+          if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin) return false;
           if (privilegedFinance && item.permission.startsWith("finance.")) return true;
           return permissions.includes(item.permission);
         }),
@@ -632,18 +675,19 @@ export function adminGroupIdForHref(href: string): string {
 }
 
 export function adminLinkMatchScore(pathname: string, href: string): number {
-  const pathSegments = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
-  const hrefSegments = href.replace(/\/+$/, "").split("/").filter(Boolean);
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+  const normalizedHref = href.replace(/\/+$/, "") || "/";
+  const hrefSegments = normalizedHref.split("/").filter(Boolean);
   if (hrefSegments.length === 1 && hrefSegments[0] === "admin") {
+    const pathSegments = normalizedPath.split("/").filter(Boolean);
     const last = pathSegments[pathSegments.length - 1];
     const prev = pathSegments[pathSegments.length - 2];
     return last === "admin" && prev !== "s" ? 1 : 0;
   }
-  if (pathSegments.length < hrefSegments.length) return 0;
-  for (let index = 0; index < hrefSegments.length; index++) {
-    const pathIndex = pathSegments.length - hrefSegments.length + index;
-    if (pathSegments[pathIndex] !== hrefSegments[index]) return 0;
-  }
+  // El enlace se activa cuando es un prefijo completo del pathname (límites de segmento).
+  if (normalizedPath === normalizedHref) return hrefSegments.length;
+  if (!normalizedPath.startsWith(normalizedHref)) return 0;
+  if (normalizedPath.charAt(normalizedHref.length) !== "/") return 0;
   return hrefSegments.length;
 }
 

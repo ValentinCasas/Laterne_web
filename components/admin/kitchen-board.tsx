@@ -7,6 +7,7 @@ import { scopedFetch } from "@/lib/client-routing";
 import type { KdsOrder, KdsPayload, KdsStation } from "@/lib/kds-data";
 import { allowedTransitions, asOrderType, type OrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
+import { Icon, type IconName } from "@/components/admin/ui/icons";
 
 /**
  * Monitor de cocina (KDS) de MenuClick.
@@ -83,10 +84,10 @@ const modalityLabel: Record<string, string> = {
   delivery: "Delivery",
 };
 
-const modalityIcon: Record<string, string> = {
-  dine_in: "🍽",
-  takeaway: "🛍",
-  delivery: "🛵",
+const modalityIcon: Record<string, IconName> = {
+  dine_in: "plate",
+  takeaway: "package",
+  delivery: "truck",
 };
 
 /** @summary Etiquetas legibles para los tipos de estación de cocina. */
@@ -97,11 +98,11 @@ const stationTypeLabel: Record<string, string> = {
   OTHER: "Otra",
 };
 
-const stationTypeIcon: Record<string, string> = {
-  KITCHEN: "🍳",
-  BAR: "🍸",
-  COFFEE: "☕",
-  OTHER: "🧰",
+const stationTypeIcon: Record<string, IconName> = {
+  KITCHEN: "chef-hat",
+  BAR: "glass",
+  COFFEE: "coffee",
+  OTHER: "tools",
 };
 
 const sourceLabel: Record<string, string> = {
@@ -550,7 +551,7 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
                 <option value="none">Sin estación</option>
                 {activeStations.map((station) => (
                   <option key={station.id} value={station.name}>
-                    {stationTypeIcon[station.type] ?? ""} {station.name}
+                    {station.name}
                   </option>
                 ))}
               </select>
@@ -716,8 +717,9 @@ function KitchenCard({
         </header>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-400">
-          <span className="font-bold text-zinc-200">
-            {modalityIcon[order.orderType] ?? ""} {modality}
+          <span className="inline-flex items-center gap-1.5 font-bold text-zinc-200">
+            <Icon name={modalityIcon[order.orderType] ?? "plate"} className="h-4 w-4 shrink-0" />
+            {modality}
             {order.table ? ` · ${order.table.name}` : ""}
           </span>
           {order.table?.sector && <span>{order.table.sector}</span>}
@@ -747,11 +749,8 @@ function KitchenCard({
           {stations.length > 0 && (
             <p className="flex flex-wrap gap-1.5 pt-0.5">
               {stations.map((station) => (
-                <span
-                  className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold text-zinc-400"
-                  key={station}
-                >
-                  ⚙ {station}
+                <span key={station} className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
+                  <Icon name="gear" className="h-3 w-3" /> {station}
                 </span>
               ))}
             </p>
@@ -768,8 +767,9 @@ function KitchenCard({
         </p>
 
         {importantNote && (
-          <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1.5 text-sm font-bold text-amber-200">
-            ⚠ {importantNote.slice(0, 90)}
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1.5 text-sm font-bold text-amber-200">
+            <Icon name="warning" className="h-4 w-4 shrink-0" />
+            {importantNote.slice(0, 90)}
             {importantNote.length > 90 ? "…" : ""}
           </p>
         )}
@@ -876,7 +876,7 @@ function OrderDetailModal({
                     {extras && <p className="mt-1 text-sm text-zinc-400">+ {extras}</p>}
                     {item.notes && <p className="mt-1 text-sm italic text-amber-200/80">{item.notes}</p>}
                     {item.stationName && (
-                      <p className="mt-1 text-xs font-bold text-zinc-500">⚙ {item.stationName}</p>
+                      <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-zinc-500"><Icon name="gear" className="h-3 w-3" /> {item.stationName}</p>
                     )}
                   </div>
                 );
@@ -1364,8 +1364,8 @@ function StationsModal({
                 }`}
                 key={station.id}
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/5 text-xl">
-                  {stationTypeIcon[station.type] ?? "🧰"}
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/5">
+                  <Icon name={stationTypeIcon[station.type] ?? "tools"} className="h-5 w-5 text-zinc-400" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-black">{station.name}</p>

@@ -171,6 +171,9 @@ export function InventoryManager({
   const [control, setControl] = useState<ControlFilter>("all");
   const [onlyLow, setOnlyLow] = useState(false);
   const [view, setView] = useViewMode("inventario");
+  const isListView = view === "list" || view === "list-compact";
+  const compactList = view === "list-compact";
+  const compactCards = view === "cards-compact";
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [movementsFor, setMovementsFor] = useState<Product | null>(null);
@@ -498,7 +501,7 @@ export function InventoryManager({
                   </li>
                 ))}
                 {dashboard.lowStocks.length === 0 && (
-                  <p className="text-sm text-[var(--admin-muted)]">No hay productos bajo el mínimo. 👍</p>
+                  <p className="text-sm text-[var(--admin-muted)]">No hay productos bajo el mínimo.</p>
                 )}
               </ul>
             </div>
@@ -665,7 +668,7 @@ export function InventoryManager({
                     </span>
                   </button>
                   {!isCollapsed &&
-                    (view === "list" ? (
+                    (isListView ? (
                       <div className="divide-y divide-white/10">
                         {groupProducts.map((product) => {
                           const { stock, state } = stockState(product);
@@ -680,7 +683,7 @@ export function InventoryManager({
                           const available = stock ? Number(stock.current) - Number(stock.reserved ?? 0) : 0;
                           return (
                             <div
-                              className={`px-5 py-3 ${state === "low" ? "bg-amber-500/[.06]" : ""} ${state === "out" ? "bg-red-500/[.05]" : ""}`}
+                              className={`${compactList ? "px-3 py-2" : "px-5 py-3"} ${state === "low" ? "bg-amber-500/[.06]" : ""} ${state === "out" ? "bg-red-500/[.05]" : ""}`}
                               key={`${branchId}-${product.id}`}
                             >
                               {editing ? (
@@ -766,7 +769,7 @@ export function InventoryManager({
                         })}
                       </div>
                     ) : (
-                      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className={`grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 ${compactCards ? "gap-2.5" : "gap-3"}`}>
                         {groupProducts.map((product) => {
                           const { stock, state } = stockState(product);
                           const label = !stock?.tracked

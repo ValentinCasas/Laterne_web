@@ -8,6 +8,7 @@ import Swal from "sweetalert2";
 import { PageHeader, SearchBox, Tabs } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { expenseStatusLabels } from "@/lib/expenses";
+import { Icon } from "@/components/admin/ui/icons";
 
 /**
  * Gestor de Gastos de MenuClick.
@@ -300,7 +301,7 @@ export function ExpensesManager({ initial }: { initial: ExpensesPayload }) {
             href={`/api/admin/gastos/export?${new URLSearchParams({ status, categoryId, supplierId, branchId, q: query }).toString()}`}
             className="btn btn-secondary"
           >
-            ⬇ CSV
+            <Icon name="download" className="h-3.5 w-3.5" /> CSV
           </a>
           <span className="ml-auto text-sm text-[var(--admin-muted)]">{filtered.length} resultados</span>
         </div>
@@ -438,7 +439,7 @@ function ExpensesTable({
   if (!expenses.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">💸</span>
+        <Icon name="money" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no hay gastos</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Registrá alquiler, servicios, software y otros gastos del negocio.</p>
       </div>
@@ -473,7 +474,7 @@ function ExpensesTable({
                     <button type="button" className="font-black text-pink-300 hover:underline" onClick={() => onOpen(expense.id)}>
                       {expense.number}
                     </button>
-                    {expense.recurring?.name && <p className="text-xs text-[var(--admin-muted)]">↻ {expense.recurring.name}</p>}
+                    {expense.recurring?.name && <p className="inline-flex items-center gap-1 text-xs text-[var(--admin-muted)]"><Icon name="repeat" className="h-3 w-3" /> {expense.recurring.name}</p>}
                   </td>
                   <td className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(expense.expenseDate)}</td>
                   <td className="px-4 py-3">
@@ -569,7 +570,7 @@ function RecurringTable({
   if (!items.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">📅</span>
+        <Icon name="calendar" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no hay previsiones</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Definí gastos recurrentes (alquiler, servicios…) y el sistema te los sugiere antes de convertirlos en gasto.</p>
       </div>
@@ -657,7 +658,7 @@ function CategoriesTable({
   if (!categories.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <span className="text-4xl">🏷️</span>
+        <Icon name="tag" className="mx-auto text-4xl text-zinc-600" />
         <h3 className="mt-3 text-xl font-black">Todavía no hay categorías</h3>
         <p className="mt-2 text-sm text-[var(--admin-muted)]">Creá categorías para clasificar los gastos del negocio.</p>
       </div>
@@ -1071,7 +1072,7 @@ function ExpenseDetailModal({
         {!expense.payments.length && expense.status !== "cancelled" && (
           <div className="rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4">
             <button type="button" className="text-sm font-bold text-pink-300 hover:underline" onClick={() => setEditing((value) => !value)}>
-              {editing ? "✕ Ocultar edición" : "✎ Editar datos"}
+              {editing ? "Ocultar edición" : "Editar datos"}
             </button>
             {editing && (
               <div className="mt-3 space-y-3">

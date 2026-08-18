@@ -213,6 +213,7 @@ export function FinanceAccountsClient({ initial }: { initial: AccountsInitial })
       />
 
       <DataTable
+        viewStorageKey="cuentas"
         columns={[
           { key: "nombre", label: "Nombre" },
           { key: "codigo", label: "Código" },

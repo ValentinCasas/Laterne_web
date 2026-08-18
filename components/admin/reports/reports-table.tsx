@@ -16,6 +16,7 @@ export function ReportsTable<T>({
   csvFilename,
   renderRow,
   density = "normal",
+  viewStorageKey = "reporte",
 }: {
   headers: string[];
   rows: T[];
@@ -28,6 +29,7 @@ export function ReportsTable<T>({
   csvFilename?: string;
   renderRow?: (row: T, index: number) => ReactNode;
   density?: "compact" | "normal" | "comfortable";
+  viewStorageKey?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasMore = page < totalPages;
@@ -73,6 +75,7 @@ export function ReportsTable<T>({
           )}
         </div>
         <DataTable
+          viewStorageKey={viewStorageKey}
           columns={columns}
           data={data}
           keyExtractor={(row) => row.id as number}

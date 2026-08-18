@@ -225,6 +225,7 @@ model Product {
   purchaseReceiptItems PurchaseReceiptItem[]
   purchaseInvoiceItems PurchaseInvoiceItem[]
   deliveryItems        OrderDeliveryItem[]
+  invoiceRecordItems   InvoiceRecordItem[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, featured])
@@ -1483,6 +1484,7 @@ model OrderItem {
   order             CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product           Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
   deliveries        OrderDeliveryItem[]
+  invoiceItems      InvoiceRecordItem[]
 
   @@index([orderId])
   @@index([productId])
@@ -1554,6 +1556,7 @@ model OrderDelivery {
   positions         DriverPosition[]
   incidents         DriverIncident[]
   statusLogs        OrderDeliveryStatusLog[]
+  invoices          InvoiceRecord[]         @relation("OrderDeliveryInvoices")
 
   @@unique([tenantId, number])
   @@index([tenantId, orderId, createdAt])
@@ -1581,6 +1584,7 @@ model OrderDeliveryItem {
   delivery          OrderDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
   orderItem         OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
   product           Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  invoiceItems      InvoiceRecordItem[]
 
   @@index([deliveryId])
   @@index([orderItemId])
@@ -2689,6 +2693,7 @@ model InvoiceRecord {
   tenantId      Int
   branchId      Int?
   orderId       Int                      @unique
+  deliveryId    Int?
   status        String                   @default("draft") @db.VarChar(24)
   documentType  String                   @default("internal_receipt") @db.VarChar(40)
   number        String?                  @db.VarChar(80)
@@ -2706,11 +2711,53 @@ model InvoiceRecord {
   tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch        Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   order         CustomerOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  delivery      OrderDelivery?           @relation("OrderDeliveryInvoices", fields: [deliveryId], references: [id], onDelete: SetNull)
+  items         InvoiceRecordItem[]
   document      InvoiceDocumentArtifact?
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, number])
+  @@index([tenantId, deliveryId])
   @@map("invoicerecord")
+}
+
+/**
+ * @summary Línea de una factura/recibo con snapshots históricos e inmutables.
+ * Una factura histórica no depende de las líneas actuales del pedido: conserva
+ * producto, descripción, cantidad, precio, descuento, impuestos, importe y
+ * costo del momento de la emisión. `deliveryItemId` la vincula a la línea de un
+ * remito cuando la factura se genera desde una entrega específica.
+ */
+model InvoiceRecordItem {
+  id                 Int             @id @default(autoincrement())
+  invoiceId          Int
+  deliveryItemId     Int?
+  orderItemId        Int?
+  productId          Int?
+  productName        String          @db.VarChar(180)
+  descriptionSnapshot String?        @db.VarChar(500)
+  quantity           Int
+  unitPrice          Decimal         @db.Decimal(12, 2)
+  variantName        String?         @db.VarChar(120)
+  variantPrice       Decimal         @default(0) @db.Decimal(12, 2)
+  extras             Json?
+  extrasTotal        Decimal         @default(0) @db.Decimal(12, 2)
+  notes              String?         @db.VarChar(500)
+  discount           Decimal         @default(0) @db.Decimal(12, 2)
+  tax                Decimal         @default(0) @db.Decimal(12, 2)
+  lineTotal          Decimal         @db.Decimal(12, 2)
+  costSnapshot       Decimal?        @db.Decimal(14, 4)
+  createdAt          DateTime        @default(now())
+  invoice            InvoiceRecord   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  deliveryItem       OrderDeliveryItem? @relation(fields: [deliveryItemId], references: [id], onDelete: SetNull)
+  orderItem          OrderItem?      @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  product            Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([orderItemId])
+  @@index([deliveryItemId])
+  @@index([productId])
+  @@map("invoicerecorditem")
 }
 
 /**

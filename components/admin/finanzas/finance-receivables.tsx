@@ -243,8 +243,9 @@ export function FinanceReceivablesClient({ initial }: { initial: ReceivablesInit
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+      <div className="shadow-xl shadow-black/10">
         <DataTable
+          viewStorageKey="cuentas-a-cobrar"
           columns={[
             { key: "documento", label: "Documento" },
             { key: "cliente", label: "Cliente" },

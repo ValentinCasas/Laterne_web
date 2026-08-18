@@ -13,6 +13,7 @@ import {
 } from "@/components/resource-form";
 import { useDragToScroll } from "@/components/use-carousel-drag";
 import { scopedFetch } from "@/lib/client-routing";
+import { Icon } from "@/components/admin/ui/icons";
 import { handleImageError } from "@/lib/image-fallback";
 import {
   readBrowserJson,
@@ -564,7 +565,7 @@ export function ResourceManager({
                   onClick={() => toggleFavorite(item.id)}
                   aria-label={favoriteIds.has(item.id) ? "Quitar favorito" : "Marcar favorito"}
                 >
-                  {favoriteIds.has(item.id) ? "★" : "☆"}
+                  <Icon name={favoriteIds.has(item.id) ? "star-filled" : "star"} className="h-4 w-4" />
                 </button>
               </div>
               {image ? (

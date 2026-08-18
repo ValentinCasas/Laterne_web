@@ -359,8 +359,9 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+      <div className="shadow-xl shadow-black/10">
         <DataTable
+          viewStorageKey="movimientos"
           columns={[
             { key: "fecha", label: "Fecha" },
             { key: "cuenta", label: "Cuenta" },

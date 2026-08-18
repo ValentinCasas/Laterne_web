@@ -51,6 +51,8 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [view, setView] = useViewMode("clientes-frecuentes");
+  const isCards = view === "cards" || view === "cards-compact";
+  const compactCards = view === "cards-compact";
 
   /** @summary Carga la ficha completa del cliente con sus pedidos y movimientos. */
   async function openDetail(customer: LoyaltyCustomerData) {
@@ -138,25 +140,25 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
           <ViewModeToggle value={view} onChange={setView} />
         </div>
       </PageHeader>
-      {view === "cards" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {isCards ? (
+        <div className={`grid sm:grid-cols-2 xl:grid-cols-3 ${compactCards ? "gap-2.5" : "gap-4"}`}>
           {visible.map((customer) => (
-            <article className="card p-5" key={customer.id}>
+            <article className={`card ${compactCards ? "p-3" : "p-5"}`} key={customer.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wider text-pink-300">
+                  <p className={`font-black uppercase tracking-wider text-pink-300 ${compactCards ? "text-[10px]" : "text-xs"}`}>
                     Nivel {customer.tier}
                   </p>
-                  <h2 className="mt-1 text-xl font-black">{customer.name}</h2>
+                  <h2 className={`mt-1 font-black ${compactCards ? "text-base" : "text-xl"}`}>{customer.name}</h2>
                   <p className="text-sm text-zinc-500">{customer.email || customer.phone}</p>
                 </div>
-                <strong className="text-3xl text-pink-300">{customer.points}</strong>
+                <strong className={`text-pink-300 ${compactCards ? "text-xl" : "text-3xl"}`}>{customer.points}</strong>
               </div>
               <div className="mt-4 flex gap-3 text-xs text-zinc-500">
                 <span>{customer._count.orders} pedidos</span>
                 <span>{customer._count.transactions} movimientos</span>
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <div className={`grid gap-2 sm:grid-cols-2 ${compactCards ? "mt-3" : "mt-4"}`}>
                 <button className="btn btn-secondary w-full" onClick={() => void openDetail(customer)}>
                   Ver ficha 360
                 </button>

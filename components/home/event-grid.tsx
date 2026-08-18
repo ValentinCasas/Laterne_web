@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/admin/ui/icons";
 
 export type PublicEvent = {
   id: number;
@@ -44,7 +45,7 @@ export function EventGrid({ events }: { events: PublicEvent[] }) {
                     className="object-cover transition duration-500 group-hover:scale-105"
                   />
                 ) : (
-                  <span className="grid h-full place-items-center text-5xl">🎵</span>
+                  <span className="grid h-full place-items-center text-zinc-700"><Icon name="music" className="h-10 w-10" /></span>
                 )}
               </button>
               <div className="p-6">
@@ -56,7 +57,7 @@ export function EventGrid({ events }: { events: PublicEvent[] }) {
                 </p>
                 <h3 className="mt-2 text-2xl font-black">{event.name}</h3>
                 <p className="mt-2 line-clamp-3 text-zinc-400">{event.description}</p>
-                <p className="mt-4 text-sm font-semibold">📍 {event.location}</p>
+                <p className="mt-4 flex items-center gap-1.5 text-sm font-semibold"><Icon name="map-pin" className="h-4 w-4 text-pink-400" /> {event.location}</p>
               </div>
             </article>
           ))

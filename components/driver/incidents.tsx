@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
+import { Icon } from "@/components/admin/ui/icons";
 
 type Incident = {
   id: number;
@@ -99,7 +100,7 @@ export function DriverIncidentsPanel({
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-black">Incidencias</h1>
         <button type="button" className="btn bg-orange-600 px-4 py-3 text-sm font-black text-white hover:bg-orange-500" disabled={saving} onClick={reportIncident}>
-          ⚠️ Reportar incidencia
+          <Icon name="warning" className="h-4 w-4" /> Reportar incidencia
         </button>
       </div>
 

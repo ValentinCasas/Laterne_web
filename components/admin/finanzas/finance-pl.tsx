@@ -93,11 +93,12 @@ export function FinancePlClient({ initial }: { initial: PlInitial }) {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-          <div className="border-b border-[var(--admin-border)] px-5 py-4">
+        <div className="lg:col-span-2 shadow-xl shadow-black/10">
+          <div className="px-5 py-4">
             <h2 className="text-lg font-black">Resultado del período</h2>
           </div>
           <DataTable
+            viewStorageKey="resultado"
             columns={[
               { key: "concepto", label: "Concepto" },
               { key: "importe", label: "Importe", align: "right" },

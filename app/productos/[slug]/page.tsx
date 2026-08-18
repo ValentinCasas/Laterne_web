@@ -6,6 +6,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { ProductActions } from "@/components/menu/product-actions";
 import { ModelExperience } from "@/components/product-model-experience";
+import { Icon } from "@/components/admin/ui/icons";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
 import { productAvailableAt } from "@/lib/product-availability";
@@ -181,7 +182,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {product.spiceLevel > 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
                 <span className="block text-xs uppercase text-zinc-500">Nivel de picante</span>
-                <strong className="mt-1 block">{"🌶️".repeat(product.spiceLevel)}</strong>
+                <span className="mt-1 flex items-center gap-1" aria-label={`Picante nivel ${product.spiceLevel}`}>
+                  {Array.from({ length: product.spiceLevel }).map((_, index) => (
+                    <Icon key={index} name="flame" className="h-5 w-5 text-red-400" />
+                  ))}
+                </span>
               </div>
             )}
           </div>
