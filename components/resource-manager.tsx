@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   FormField,
   fieldVisible,
@@ -22,6 +21,7 @@ import {
   writeBrowserJson,
   writeBrowserText,
 } from "@/lib/browser-compat";
+import { PageHeader, SearchBox } from "@/components/admin/ui";
 
 export type { ResourceField, ResourceOption } from "@/components/resource-form";
 
@@ -357,19 +357,26 @@ export function ResourceManager({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Administración"
         title={title}
         description={description}
         section={resource}
         actions={
-          <button
-            className="btn"
-            onClick={() => openForm(singular ? (items[0] ?? null) : null)}
-            type="button"
-          >
-            {singular && items.length ? "Editar información" : `+ Crear ${title.toLocaleLowerCase("es")}`}
-          </button>
+          <>
+            <SearchBox
+              value={query}
+              onChange={setQuery}
+              placeholder={`Buscar ${title.toLocaleLowerCase("es")}…`}
+            />
+            <button
+              className="btn"
+              onClick={() => openForm(singular ? (items[0] ?? null) : null)}
+              type="button"
+            >
+              {singular && items.length ? "Editar información" : `+ Crear ${title.toLocaleLowerCase("es")}`}
+            </button>
+          </>
         }
       />
 

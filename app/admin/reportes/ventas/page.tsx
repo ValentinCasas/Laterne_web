@@ -1,8 +1,7 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
-import { ReportsKpiCard } from "@/components/admin/reports/reports-kpi-card";
 import { ReportsVentasTable } from "@/components/admin/reports/reports-ventas-table";
 import { EvolutionBarChart, HorizontalBarList } from "@/components/admin/reports/reports-chart";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, KpiCard } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePeriod, periodGranularity } from "@/lib/reports/period";
@@ -111,19 +110,14 @@ export default async function VentasPage({ searchParams }: VentasPageProps) {
       channels={["SALON", "MOSTRADOR", "DELIVERY", "ONLINE"]}
       sources={["ADMIN", "MENUCLICK_WEB", "TABLE_QR", "POS", "EXTERNAL_INTEGRATOR", "API"]}
     >
-      <AdminPageHeader
-        eyebrow="Reportes"
-        title="Ventas"
-        description="Análisis de ventas, medios de pago y origen"
-        section="reportes"
-      />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <ReportsKpiCard label="Ventas brutas" value={kpis.grossSales} tone="text-white" />
-        <ReportsKpiCard label="Descuentos" value={kpis.discounts} tone="text-red-300" />
-        <ReportsKpiCard label="Ventas netas" value={kpis.netSales} tone="text-emerald-300" />
-        <ReportsKpiCard label="Pedidos" value={kpis.orderCount} tone="text-sky-300" />
-        <ReportsKpiCard label="Ticket promedio" value={kpis.averageTicket} tone="text-amber-300" />
-        <ReportsKpiCard
+      <PageHeader eyebrow="Reportes" title="Ventas" description="Análisis de ventas, medios de pago y origen." section="reportes" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard label="Ventas brutas" value={kpis.grossSales} tone="text-white" />
+        <KpiCard label="Descuentos" value={kpis.discounts} tone="text-red-300" />
+        <KpiCard label="Ventas netas" value={kpis.netSales} tone="text-emerald-300" />
+        <KpiCard label="Pedidos" value={kpis.orderCount} tone="text-sky-300" />
+        <KpiCard label="Ticket promedio" value={kpis.averageTicket} tone="text-amber-300" />
+        <KpiCard
           label="Variación ventas"
           value={`${kpis.netSalesChange >= 0 ? "+" : ""}${kpis.netSalesChange.toFixed(1)}%`}
           tone={kpis.netSalesChange >= 0 ? "text-emerald-300" : "text-red-300"}
@@ -131,13 +125,13 @@ export default async function VentasPage({ searchParams }: VentasPageProps) {
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-          <h2 className="text-lg font-black">Evolución temporal</h2>
+          <SectionHeader title="Evolución temporal" description="Ventas netas a lo largo del período." />
           <div className="mt-4">
             <EvolutionBarChart data={evolution.map((p) => ({ label: p.date.slice(5), value: p.netSales }))} height={140} />
           </div>
         </section>
         <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-          <h2 className="text-lg font-black">Medios de pago</h2>
+          <SectionHeader title="Medios de pago" description="Distribución por método de cobro." />
           <div className="mt-4">
             <HorizontalBarList data={byPaymentMethod.map((m) => ({ label: m.method, value: m.netSales }))} />
           </div>
@@ -145,20 +139,20 @@ export default async function VentasPage({ searchParams }: VentasPageProps) {
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-          <h2 className="text-lg font-black">Ventas por día de semana</h2>
+          <SectionHeader title="Ventas por día de semana" description="Distribución semanal." />
           <div className="mt-4">
             <HorizontalBarList data={byWeekday.map((d) => ({ label: d.label, netSales: d.netSales }))} maxKey="netSales" />
           </div>
         </section>
         <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-          <h2 className="text-lg font-black">Ventas por hora</h2>
+          <SectionHeader title="Ventas por hora" description="Distribución horaria." />
           <div className="mt-4">
             <HorizontalBarList data={byHour.map((d) => ({ label: `${String(d.hour).padStart(2, "0")}:00`, netSales: d.netSales }))} maxKey="netSales" />
           </div>
         </section>
       </div>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Origen y canal</h2>
+        <SectionHeader title="Origen y canal" description="De dónde vienen los pedidos y por qué canal entran." />
         <div className="mt-4 grid gap-6 md:grid-cols-2">
           <div>
             <h3 className="mb-2 text-sm font-bold text-zinc-400">Por origen</h3>
@@ -170,7 +164,12 @@ export default async function VentasPage({ searchParams }: VentasPageProps) {
           </div>
         </div>
       </section>
-      <ReportsVentasTable orders={orders} page={page} pageSize={PAGE_SIZE} total={total} />
+      <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
+        <SectionHeader title="Pedidos" description="Detalle de pedidos del período." />
+        <div className="mt-4">
+          <ReportsVentasTable orders={orders} page={page} pageSize={PAGE_SIZE} total={total} />
+        </div>
+      </section>
     </ReportsShell>
   );
 }

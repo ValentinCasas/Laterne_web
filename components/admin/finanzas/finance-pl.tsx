@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { PageHeader, DataTable } from "@/components/admin/ui";
 
 export type PlInitial = {
   tenantId: number;
@@ -85,63 +86,49 @@ export function FinancePlClient({ initial }: { initial: PlInitial }) {
 
   return (
     <div>
-      <div className="mb-4">
-        <p className="section-eyebrow">Finanzas</p>
-        <h1 className="text-2xl font-black tracking-tight">Estado de resultados</h1>
-        <p className="mt-1 text-sm text-[var(--admin-muted)]">
-          Rentabilidad, gastos y comparación con el período anterior
-        </p>
-      </div>
+      <PageHeader
+        section="Finanzas"
+        title="Estado de resultados"
+        description="Rentabilidad, gastos y comparación con el período anterior"
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
           <div className="border-b border-[var(--admin-border)] px-5 py-4">
             <h2 className="text-lg font-black">Resultado del período</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                  <th className="px-5 py-3 font-bold">Concepto</th>
-                  <th className="px-5 py-3 font-bold text-right">Importe</th>
-                  <th className="px-5 py-3 font-bold text-right">% sobre ventas</th>
-                  <th className="px-5 py-3 font-bold text-right">Período anterior</th>
-                  <th className="px-5 py-3 font-bold text-right">Variación</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--admin-border)]">
-                {rows.map((row) => (
-                  <tr key={row.label} className={`hover:bg-white/[0.02] ${row.bold ? "bg-white/[0.02]" : ""}`}>
-                    <td className={`px-5 py-3 ${row.bold ? "font-black" : "font-medium"}`}>{row.label}</td>
-                    <td
-                      className={`px-5 py-3 text-right tabular-nums ${
-                        row.value >= 0 ? "text-emerald-300" : "text-rose-300"
-                      } ${row.bold ? "font-black text-base" : ""}`}
-                    >
-                      {money(Math.abs(row.value), currency)}
-                    </td>
-                    <td className="px-5 py-3 text-right text-[var(--admin-muted)]">
-                      {percent(Math.abs(row.value), pl.netSales)}
-                    </td>
-                    <td
-                      className={`px-5 py-3 text-right tabular-nums ${
-                        row.prev >= 0 ? "text-emerald-300" : "text-rose-300"
-                      }`}
-                    >
-                      {money(Math.abs(row.prev), currency)}
-                    </td>
-                    <td
-                      className={`px-5 py-3 text-right tabular-nums font-bold ${
-                        row.prev <= row.value ? "text-emerald-300" : "text-rose-300"
-                      }`}
-                    >
-                      {variation(row.value, row.prev)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { key: "concepto", label: "Concepto" },
+              { key: "importe", label: "Importe", align: "right" },
+              { key: "porcentaje", label: "% sobre ventas", align: "right" },
+              { key: "anterior", label: "Período anterior", align: "right" },
+              { key: "variacion", label: "Variación", align: "right" },
+            ]}
+            data={useMemo(() => rows.map((row) => ({
+              id: row.label,
+              concepto: <span className={row.bold ? "font-black" : "font-medium"}>{row.label}</span>,
+              importe: (
+                <span className={`text-right tabular-nums block ${row.value >= 0 ? "text-emerald-300" : "text-rose-300"} ${row.bold ? "font-black text-base" : ""}`}>
+                  {money(Math.abs(row.value), currency)}
+                </span>
+              ),
+              porcentaje: <span className="text-right text-[var(--admin-muted)] block">{percent(Math.abs(row.value), pl.netSales)}</span>,
+              anterior: (
+                <span className={`text-right tabular-nums block ${row.prev >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                  {money(Math.abs(row.prev), currency)}
+                </span>
+              ),
+              variacion: (
+                <span className={`text-right tabular-nums font-bold block ${row.prev <= row.value ? "text-emerald-300" : "text-rose-300"}`}>
+                  {variation(row.value, row.prev)}
+                </span>
+              ),
+            })), [pl, currency, rows])}
+            keyExtractor={(row) => row.id as string}
+            emptyMessage=""
+            density="normal"
+          />
         </div>
 
         <div className="space-y-4">

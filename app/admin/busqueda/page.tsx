@@ -1,6 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { branchProductWhere } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
@@ -343,7 +343,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
     return (
       <section>
-        <AdminPageHeader
+        <PageHeader
           eyebrow="Búsqueda global"
           title="Encontrá lo que necesitás"
           description="Buscá en la carta, los clientes, los pedidos, las reservas y más desde un solo lugar."
@@ -398,12 +398,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   return (
     <section>
-      <AdminPageHeader
-        eyebrow="Búsqueda global"
-        title="Encontrá lo que necesitás"
-        description="Buscá en la carta, los clientes, los pedidos, las reservas y más desde un solo lugar."
-        section="busqueda"
-      />
+        <PageHeader
+          eyebrow="Búsqueda global"
+          title="Encontrá lo que necesitás"
+          description="Buscá en la carta, los clientes, los pedidos, las reservas y más desde un solo lugar."
+          section="busqueda"
+        />
       <form className="card mt-6 p-4" action={adminHref("/admin/busqueda")} role="search">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <input

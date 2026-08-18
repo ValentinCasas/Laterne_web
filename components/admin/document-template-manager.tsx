@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge, SectionHeader, ActionMenu } from "@/components/admin/ui";
 import { apiPath, scopedFetch } from "@/lib/client-routing";
 import { copyBrowserText } from "@/lib/browser-compat";
 import {
@@ -165,7 +165,7 @@ export function DocumentTemplateManager({ initialTemplates }: { initialTemplates
 
   return (
     <section className="min-w-0">
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Configuración · Comprobantes"
         title="Plantillas de documentos"
         description="Diseñá libremente en Word, agregá los campos de MenuClick y cargá el .docx."
@@ -191,72 +191,71 @@ export function DocumentTemplateManager({ initialTemplates }: { initialTemplates
         </p>
       )}
 
-      <section className="grid min-w-0 gap-4 lg:grid-cols-3">
-        {documentTypes.map((type) => {
-          const template = currentByType.get(type);
-          return (
-            <article className="card min-w-0 p-5" key={type}>
-              <p className="text-xs font-black uppercase tracking-wider text-[var(--admin-primary)]">
-                {documentTypeLabels[type]}
-              </p>
-              {template ? (
-                <>
-                  <h2 className="mt-3 break-words text-xl font-black">{template.name}</h2>
-                  <p className="mt-1 break-all text-sm text-[var(--admin-muted)]">
-                    {template.originalFilename}
-                  </p>
+        <section className="grid min-w-0 gap-4 lg:grid-cols-3">
+          {documentTypes.map((type) => {
+            const template = currentByType.get(type);
+            return (
+              <article className="card min-w-0 p-5" key={type}>
+                <p className="text-xs font-black uppercase tracking-wider text-[var(--admin-primary)]">
+                  {documentTypeLabels[type]}
+                </p>
+                {template ? (
+                  <>
+                    <h2 className="mt-3 break-words text-xl font-black">{template.name}</h2>
+                    <p className="mt-1 break-all text-sm text-[var(--admin-muted)]">
+                      {template.originalFilename}
+                    </p>
                   <p className="mt-2 text-xs text-[var(--admin-muted)]">
                     Versión {template.version} · {sizeLabel(template.sizeBytes)}
-                    {template.isDefault ? " · Predeterminada" : ""}
+                    {template.isDefault ? " · " : ""}
+                    {template.isDefault && <StatusBadge status="Predeterminada" tone="success" />}
                   </p>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <a
-                      className="btn btn-secondary !px-3 !py-2 text-sm"
-                      href={apiPath(`/api/admin/document-templates/${template.id}`)}
-                    >
-                      Descargar
-                    </a>
-                    <label className="btn btn-secondary cursor-pointer !px-3 !py-2 text-sm">
-                      Reemplazar
-                      <input
-                        className="sr-only"
-                        type="file"
-                        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        disabled={busy}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (file) void upload(file, { documentType: type, replaceId: template.id });
-                          event.currentTarget.value = "";
-                        }}
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <a
+                        className="btn btn-secondary !px-3 !py-2 text-sm"
+                        href={apiPath(`/api/admin/document-templates/${template.id}`)}
+                      >
+                        Descargar
+                      </a>
+                      <label className="btn btn-secondary cursor-pointer !px-3 !py-2 text-sm">
+                        Reemplazar
+                        <input
+                          className="sr-only"
+                          type="file"
+                          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          disabled={busy}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) void upload(file, { documentType: type, replaceId: template.id });
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                      <button
+                        className="btn btn-secondary !px-3 !py-2 text-sm"
+                        disabled={busy || template.isDefault}
+                        onClick={() => void update(template, { isDefault: true })}
+                        type="button"
+                      >
+                        Predeterminada
+                      </button>
+                      <ActionMenu
+                        align="right"
+                        items={[
+                          { label: "Eliminar", onClick: () => void remove(template), tone: "danger" },
+                        ]}
                       />
-                    </label>
-                    <button
-                      className="btn btn-secondary !px-3 !py-2 text-sm"
-                      disabled={busy || template.isDefault}
-                      onClick={() => void update(template, { isDefault: true })}
-                      type="button"
-                    >
-                      Predeterminada
-                    </button>
-                    <button
-                      className="rounded-xl px-3 py-2 text-sm font-bold text-red-300 hover:bg-red-500/10"
-                      disabled={busy}
-                      onClick={() => void remove(template)}
-                      type="button"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="mt-4 text-sm leading-relaxed text-[var(--admin-muted)]">
-                  Sin plantilla propia. Al crear un documento se usa el modelo clásico de MenuClick.
-                </p>
-              )}
-            </article>
-          );
-        })}
-      </section>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-4 text-sm leading-relaxed text-[var(--admin-muted)]">
+                    Sin plantilla propia. Al crear un documento se usa el modelo clásico de MenuClick.
+                  </p>
+                )}
+              </article>
+            );
+          })}
+        </section>
 
       <section className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
         <form ref={uploadForm} className="card min-w-0 p-5 sm:p-7" onSubmit={createTemplate}>
@@ -422,10 +421,10 @@ export function DocumentTemplateManager({ initialTemplates }: { initialTemplates
         </div>
       </section>
 
-      {templates.some((template) => !template.active) && (
-        <section className="card mt-6 min-w-0 p-5 sm:p-7">
-          <h2 className="text-xl font-black">Versiones disponibles</h2>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {templates.some((template) => !template.active) && (
+          <section className="card mt-6 min-w-0 p-5 sm:p-7">
+            <SectionHeader title="Versiones disponibles" />
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {templates
               .filter((template) => !template.active)
               .map((template) => (

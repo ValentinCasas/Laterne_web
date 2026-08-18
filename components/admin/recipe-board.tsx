@@ -1,6 +1,8 @@
-"use client";import { useMemo, useState } from "react";
+"use client";
+
+import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, StatusBadge, EmptyState } from "@/components/admin/ui";
 import { adminHrefFromPathname } from "@/lib/routes";
 import type { RecipeBoardPayload } from "@/lib/recipe-data";
 
@@ -18,14 +20,6 @@ const statusLabels: Record<string, string> = {
   draft: "Borrador",
   hidden: "Oculto",
   archived: "Archivado",
-};
-
-const statusColors: Record<string, string> = {
-  published: "bg-emerald-500/15 text-emerald-300",
-  scheduled: "bg-sky-500/15 text-sky-300",
-  draft: "bg-zinc-500/15 text-zinc-300",
-  hidden: "bg-amber-500/15 text-amber-300",
-  archived: "bg-rose-500/15 text-rose-300",
 };
 
 type RecipeFilter = "all" | "with" | "without" | "incomplete";
@@ -86,7 +80,7 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
 
   return (
     <div>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Costos"
         title="Recetas"
         section="recetas"
@@ -111,22 +105,18 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
             <p className="mt-1 text-2xl font-black text-amber-300">{stats.incomplete}</p>
           </div>
         </div>
-      </AdminPageHeader>
+      </PageHeader>
 
-      <div className="mb-5 grid gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10 sm:grid-cols-2 lg:grid-cols-4">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nombre…"
-          className="input"
-          aria-label="Buscar recetas"
-        />
-        <select value={filter} onChange={(event) => setFilter(event.target.value as RecipeFilter)} className="input" aria-label="Filtrar recetas">
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10">
+        <div className="min-w-52 flex-1">
+          <SearchBox value={search} onChange={setSearch} placeholder="Buscar por nombre…" />
+        </div>
+        <select value={filter} onChange={(event) => setFilter(event.target.value as RecipeFilter)} className="input w-auto" aria-label="Filtrar recetas">
           {Object.entries(filterLabels).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="input" aria-label="Filtrar por estado">
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="input w-auto" aria-label="Filtrar por estado">
           <option value="">Todos los estados</option>
           {Object.entries(statusLabels).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
@@ -161,14 +151,12 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
                       <div className="min-w-0">
                         <p className="truncate font-bold">{product.name}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusColors[product.status] ?? "bg-zinc-500/15 text-zinc-300"}`}>
-                            {statusLabels[product.status] ?? product.status}
-                          </span>
-                          {product.hasRecipe && product.incomplete && (
-                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                              Falta completar
-                            </span>
-                          )}
+                          <StatusBadge status={product.status} />
+                           {product.hasRecipe && product.incomplete && (
+                             <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                               Falta completar
+                             </span>
+                           )}
                         </div>
                       </div>
                     </div>
@@ -214,8 +202,8 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-[var(--admin-muted)]">
-                    No se encontraron productos con esos filtros.
+                  <td colSpan={8} className="px-4 py-10 text-center">
+                    <EmptyState title="No se encontraron productos con esos filtros" description="Probá modificar la búsqueda o los filtros aplicados." />
                   </td>
                 </tr>
               )}

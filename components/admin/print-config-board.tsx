@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import type { PrintAreaView, PrintingPayload } from "@/lib/printing-data";
 import {
@@ -229,7 +229,7 @@ export function PrintConfigBoard({ initial }: { initial: PrintingPayload }) {
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Operación"
         title="Impresión"
         description="Preparación de comandas: áreas de impresión, asociación de la carta y destinos. Todavía no se imprime nada."
@@ -302,12 +302,10 @@ export function PrintConfigBoard({ initial }: { initial: PrintingPayload }) {
                         {area.categoryCount} {area.categoryCount === 1 ? "categoría" : "categorías"}
                       </p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${
-                        area.active ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-zinc-500"
-                      }`}
-                    >
-                      {area.active ? "Activa" : "Inactiva"}
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${
+                      area.active ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-zinc-500"
+                    }`}>
+                      <StatusBadge status={area.active ? "Activa" : "Inactiva"} tone={area.active ? "success" : "default"} />
                     </span>
                   </div>
 
@@ -463,7 +461,10 @@ export function PrintConfigBoard({ initial }: { initial: PrintingPayload }) {
                         )}
                       </div>
                       <span className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-xs font-bold text-zinc-400">
-                        {destinationStatusLabel(destination.status)}
+                        <StatusBadge status={destinationStatusLabel(destination.status)} tone={
+                          destination.status === "available" ? "success" :
+                          destination.status === "unavailable" ? "danger" : "warning"
+                        } />
                       </span>
                     </div>
                     <div className="mt-3 flex gap-2">

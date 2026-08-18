@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type Integration = {
@@ -90,7 +90,7 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Conexiones"
         title="Integraciones"
         description="Las claves privadas se configuran únicamente en el servidor. Nunca se guardan ni se muestran en el panel."
@@ -112,15 +112,12 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                   <h2 className="text-xl font-black">{details.name}</h2>
                   <p className="mt-2 text-sm text-zinc-500">{details.description}</p>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${integration.secretConfigured ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}
-                >
-                  {integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
-                </span>
+                <StatusBadge
+                  status={integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
+                  tone={integration.secretConfigured ? "success" : "warning"}
+                />
                 {upcoming && (
-                  <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-black uppercase text-zinc-400">
-                    Próximamente
-                  </span>
+                  <StatusBadge status="Próximamente" tone="default" />
                 )}
               </div>
               <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">

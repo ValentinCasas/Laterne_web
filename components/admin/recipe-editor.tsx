@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, SearchBox, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { RECIPE_UNITS, convertQuantity, isConvertible, unitLabel, type UnitConversionRow } from "@/lib/recipe-units";
@@ -224,7 +224,7 @@ export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
 
   return (
     <div>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Recetas"
         title={payload.product.name}
         section="recetas"
@@ -256,7 +256,7 @@ export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
             </span>
           )}
         </div>
-      </AdminPageHeader>
+      </PageHeader>
 
       {/* Alertas de receta incompleta */}
       {(live.lineWarnings.length > 0 || live.reasons.length > 0 || payload.incomplete) && (
@@ -279,24 +279,20 @@ export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
       )}
 
       {/* Editor de líneas */}
-      <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-black">Ingredientes</h2>
-          <button type="button" className="btn" onClick={() => { setPickerOpen((open) => !open); setPickerSearch(""); }}>
-            + Agregar ingrediente
-          </button>
-        </div>
+        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10 sm:p-6">
+          <SectionHeader
+            title="Ingredientes"
+            description="Agregá ingredientes o subrecetas con cantidad y unidad. El costo se calcula en vivo."
+            actions={
+              <button type="button" className="btn" onClick={() => { setPickerOpen((open) => !open); setPickerSearch(""); }}>
+                + Agregar ingrediente
+              </button>
+            }
+          />
 
         {pickerOpen && (
           <div className="mb-4 rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4">
-            <input
-              autoFocus
-              value={pickerSearch}
-              onChange={(event) => setPickerSearch(event.target.value)}
-              placeholder="Buscar ingrediente o subreceta…"
-              className="input mb-3"
-              aria-label="Buscar ingrediente"
-            />
+            <SearchBox value={pickerSearch} onChange={setPickerSearch} placeholder="Buscar ingrediente o subreceta…" className="mb-3" />
             <div className="grid max-h-72 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
               {pickerResults.map((candidate) => (
                 <button
@@ -325,12 +321,7 @@ export function RecipeEditor({ initial }: { initial: RecipeEditorPayload }) {
         )}
 
         {lines.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[var(--admin-border)] p-10 text-center">
-            <p className="text-lg font-bold">Receta vacía</p>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">
-              Agregá el primer ingrediente para empezar a calcular el costo.
-            </p>
-          </div>
+          <EmptyState title="Receta vacía" description="Agregá el primer ingrediente para empezar a calcular el costo." />
         ) : (
           <div className="space-y-2">
             {lines.map((line) => {

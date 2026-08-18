@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
+import { PageHeader, KpiCard, DataTable, StatusBadge, ActionMenu, FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
 
 export type ReceivablesInitial = {
   tenantId: number;
@@ -191,134 +192,105 @@ export function FinanceReceivablesClient({ initial }: { initial: ReceivablesInit
     return labels[status] || status;
   };
 
+  const activeFilterCount = useMemo(() => (statusFilter ? 1 : 0), [statusFilter]);
+
   return (
     <div>
-      <div className="mb-4">
-        <p className="section-eyebrow">Finanzas</p>
-        <h1 className="text-2xl font-black tracking-tight">Cuentas a cobrar</h1>
-        <p className="mt-1 text-sm text-[var(--admin-muted)]">
-          Documentos pendientes de cobro a clientes
-        </p>
-      </div>
+      <PageHeader
+        section="Finanzas"
+        title="Cuentas a cobrar"
+        description="Documentos pendientes de cobro a clientes"
+      />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <AgingCard label="Al día" value={money(aging.current, currency)} tone="text-emerald-300" />
-        <AgingCard label="1-30 días" value={money(aging.days1to30, currency)} tone="text-amber-300" />
-        <AgingCard label="31-60 días" value={money(aging.days31to60, currency)} tone="text-orange-300" />
-        <AgingCard label="61-90 días" value={money(aging.days61to90, currency)} tone="text-rose-300" />
-        <AgingCard label="+90 días" value={money(aging.daysOver90, currency)} tone="text-red-300" />
+        <KpiCard label="Al día" value={money(aging.current, currency)} tone="text-emerald-300" />
+        <KpiCard label="1-30 días" value={money(aging.days1to30, currency)} tone="text-amber-300" />
+        <KpiCard label="31-60 días" value={money(aging.days31to60, currency)} tone="text-orange-300" />
+        <KpiCard label="61-90 días" value={money(aging.days61to90, currency)} tone="text-rose-300" />
+        <KpiCard label="+90 días" value={money(aging.daysOver90, currency)} tone="text-red-300" />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
-        <select
-          className="input w-auto"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Filtrar por estado"
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={loadDocuments}
-          disabled={busy}
-        >
-          Filtrar
-        </button>
-        <span className="ml-auto text-sm text-[var(--admin-muted)]">{filtered.length} resultados</span>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FiltersBar title="Filtros" activeCount={activeFilterCount} onClear={() => { setStatusFilter(""); loadDocuments(); }}>
+          <div className="space-y-3">
+            <select
+              className="input w-full"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="Filtrar por estado"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-secondary w-full"
+              onClick={loadDocuments}
+              disabled={busy}
+            >
+              Filtrar
+            </button>
+          </div>
+        </FiltersBar>
+        {statusFilter && (
+          <ActiveFilterChip
+            label={`Estado: ${STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? statusFilter}`}
+            onRemove={() => { setStatusFilter(""); loadDocuments(); }}
+          />
+        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                <th className="px-5 py-3 font-bold">Documento</th>
-                <th className="px-5 py-3 font-bold">Cliente</th>
-                <th className="px-5 py-3 font-bold">Fecha</th>
-                <th className="px-5 py-3 font-bold">Vencimiento</th>
-                <th className="px-5 py-3 font-bold text-right">Original</th>
-                <th className="px-5 py-3 font-bold text-right">Pagado</th>
-                <th className="px-5 py-3 font-bold text-right">Pendiente</th>
-                <th className="px-5 py-3 font-bold">Estado</th>
-                <th className="px-5 py-3 font-bold">Vencimiento</th>
-                <th className="px-5 py-3 font-bold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--admin-border)]">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay cuentas a cobrar registradas
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3 font-medium">{doc.number}</td>
-                    <td className="px-5 py-3">{doc.customerName}</td>
-                    <td className="px-5 py-3">{dateLabel(doc.documentDate)}</td>
-                    <td className="px-5 py-3">{dateLabel(doc.dueDate)}</td>
-                    <td className="px-5 py-3 text-right">{money(doc.originalAmount, currency)}</td>
-                    <td className="px-5 py-3 text-right text-emerald-300">{money(doc.paidAmount, currency)}</td>
-                    <td className="px-5 py-3 text-right font-black tabular-nums">{money(doc.pendingAmount, currency)}</td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                          doc.status === "paid"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : doc.status === "cancelled"
-                              ? "bg-zinc-500/15 text-zinc-300"
-                              : doc.daysOverdue > 0
-                                ? "bg-rose-500/15 text-rose-300"
-                                : "bg-amber-500/15 text-amber-300"
-                        }`}
-                      >
-                        {statusLabel(doc.status)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      {doc.daysOverdue > 0 ? (
-                        <span className="text-rose-300">{doc.daysOverdue} días</span>
-                      ) : (
-                        <span className="text-[var(--admin-muted)]">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end">
-                        {doc.status !== "paid" && doc.status !== "cancelled" && (
-                          <button
-                            type="button"
-                            className="btn btn-secondary py-1 text-xs"
-                            onClick={() => registerPayment(doc)}
-                            disabled={busy}
-                          >
-                            Cobrar
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={[
+            { key: "documento", label: "Documento" },
+            { key: "cliente", label: "Cliente" },
+            { key: "fecha", label: "Fecha" },
+            { key: "vencimiento", label: "Vencimiento" },
+            { key: "original", label: "Original", align: "right" },
+            { key: "pagado", label: "Pagado", align: "right" },
+            { key: "pendiente", label: "Pendiente", align: "right" },
+            { key: "estado", label: "Estado" },
+            { key: "diasVencimiento", label: "Vencimiento" },
+            { key: "acciones", label: "Acciones", align: "right" },
+          ]}
+          data={useMemo(() => filtered.map((doc) => ({
+            id: doc.id,
+            documento: <span className="font-medium">{doc.number}</span>,
+            cliente: doc.customerName,
+            fecha: dateLabel(doc.documentDate),
+            vencimiento: dateLabel(doc.dueDate),
+            original: money(doc.originalAmount, currency),
+            pagado: <span className="text-emerald-300">{money(doc.paidAmount, currency)}</span>,
+            pendiente: <span className="font-black tabular-nums">{money(doc.pendingAmount, currency)}</span>,
+            estado: (
+              <StatusBadge
+                status={statusLabel(doc.status)}
+                tone={
+                  doc.status === "paid" ? "success" : doc.status === "cancelled" ? "danger" : doc.daysOverdue > 0 ? "danger" : "warning"
+                }
+              />
+            ),
+            diasVencimiento: doc.daysOverdue > 0 ? <span className="text-rose-300">{doc.daysOverdue} días</span> : <span className="text-[var(--admin-muted)]">—</span>,
+            acciones: (
+              doc.status !== "paid" && doc.status !== "cancelled" ? (
+                <ActionMenu
+                  align="right"
+                  items={[
+                    { label: "Cobrar", onClick: () => registerPayment(doc), tone: "primary" },
+                  ]}
+                />
+              ) : null
+            ),
+          })), [filtered, currency, registerPayment])}
+          keyExtractor={(row) => row.id as number}
+          emptyMessage="No hay cuentas a cobrar registradas"
+          density="normal"
+        />
       </div>
-    </div>
-  );
-}
-
-function AgingCard({ label, value, tone }: { label: string; value: string; tone: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">{label}</p>
-      <p className={`mt-1 truncate text-lg font-black tabular-nums ${tone}`}>{value}</p>
     </div>
   );
 }

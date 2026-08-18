@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, ActionMenu } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type LeadStatus = "new" | "contacted" | "demo_scheduled" | "quote_sent" | "negotiation" | "won" | "lost";
@@ -87,22 +87,18 @@ export function LeadBoard({ initialLeads }: { initialLeads: Lead[] }) {
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Proceso comercial"
         title="Oportunidades"
         description="Consultas recibidas desde la solicitud de demostración."
         section="oportunidades"
         actions={
-          <label>
-            <span className="sr-only">Buscar oportunidades</span>
-            <input
-              className="input min-w-64"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar negocio o contacto…"
-              type="search"
-            />
-          </label>
+          <SearchBox
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar negocio o contacto…"
+            className="min-w-64"
+          />
         }
       />
 
@@ -149,26 +145,17 @@ export function LeadBoard({ initialLeads }: { initialLeads: Lead[] }) {
                         {lead.plan.name}
                       </span>
                     )}
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        className="flex-1 rounded-lg bg-white/5 px-2 py-2 text-xs font-bold hover:bg-pink-500"
-                        onClick={() => setSelected(lead)}
-                        type="button"
-                      >
-                        Ver detalle
-                      </button>
-                      <select
-                        className="rounded-lg border border-white/10 bg-zinc-900 px-2 text-xs xl:hidden"
-                        value={lead.status}
-                        onChange={(event) => move(lead, event.target.value as LeadStatus)}
-                        aria-label="Cambiar estado"
-                      >
-                        {statuses.map((option) => (
-                          <option value={option.key} key={option.key}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="mt-4 flex justify-end">
+                      <ActionMenu
+                        items={[
+                          { label: "Ver detalle", onClick: () => setSelected(lead) },
+                          {
+                            label: lead.status === "won" ? "Marcar perdida" : "Marcar ganada",
+                            onClick: () => move(lead, lead.status === "won" ? "lost" : "won"),
+                            tone: lead.status === "won" ? "danger" : "primary",
+                          },
+                        ]}
+                      />
                     </div>
                   </article>
                 ))}

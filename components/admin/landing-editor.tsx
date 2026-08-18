@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader } from "@/components/admin/ui";
 import { LandingRenderer } from "@/components/landing-renderer";
 import { ResponsivePreview, type ResponsivePreviewHandle } from "@/components/admin/responsive-preview";
 import type { PublicEvent } from "@/components/home/event-grid";
@@ -768,7 +768,7 @@ export function LandingEditor({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Página pública"
         title="Editor de landing"
         description="Elegí una sección, cargá imágenes o textos y mirá el resultado en vivo."
@@ -782,9 +782,8 @@ export function LandingEditor({
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(300px,.9fr)_minmax(0,1.1fr)]">
         <div className="card space-y-4 p-5">
-          <div>
-            <span className="label">Sección a editar</span>
-            <div className="mt-2 grid gap-2">
+          <SectionHeader title="Sección a editar" />
+          <div className="grid gap-2">
               {(Object.keys(sectionMeta) as SectionKey[]).map((key) => (
                 <button
                   className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-bold transition ${
@@ -801,7 +800,6 @@ export function LandingEditor({
                 </button>
               ))}
             </div>
-          </div>
           <div className="border-t border-white/10 pt-4">{editorFor[selected]}</div>
         </div>
 

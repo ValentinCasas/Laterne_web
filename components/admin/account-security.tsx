@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type SessionData = {
@@ -70,7 +70,7 @@ export function AccountSecurity() {
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Cuenta"
         title="Seguridad personal"
         description="Contraseña robusta y control de sesiones abiertas."
@@ -106,9 +106,9 @@ export function AccountSecurity() {
                 className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 p-4"
                 key={session.id}
               >
-                <div>
-                  <strong>{session.id === currentId ? "Esta sesión" : session.membership.tenant.name}</strong>
-                  <p className="text-xs text-zinc-500">
+                  <div>
+                    <StatusBadge status={session.id === currentId ? "Esta sesión" : session.membership.tenant.name} tone={session.id === currentId ? "success" : "default"} />
+                    <p className="text-xs text-zinc-500">
                     Iniciada {new Date(session.createdAt).toLocaleString("es-AR")} · vence{" "}
                     {new Date(session.expiresAt).toLocaleString("es-AR")}
                   </p>

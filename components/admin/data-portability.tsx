@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, FormSection } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { scopedApiPath } from "@/lib/routes";
 
@@ -139,15 +139,16 @@ export function DataPortability() {
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Portabilidad"
         title="Importar y exportar"
         description="Tus datos pueden salir en formatos abiertos. La importación siempre se valida antes de escribir."
         section="datos"
       />
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Exportaciones CSV</h2>
+        <FormSection
+          title="Exportaciones CSV"
+        >
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {[
               ["products", "Productos"],
@@ -167,9 +168,10 @@ export function DataPortability() {
           <p className="mt-4 text-xs text-zinc-500">
             Incluyen UTF-8 y neutralización de fórmulas para Excel o Google Sheets.
           </p>
-        </section>
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Importar productos</h2>
+        </FormSection>
+        <FormSection
+          title="Importar productos"
+        >
           <Link
             className="mt-3 inline-block text-sm font-bold text-pink-300"
             href={scopedApiPath(pathname, "/api/admin/data/template")}
@@ -216,9 +218,11 @@ export function DataPortability() {
               )}
             </div>
           )}
-        </section>
-        <section className="card p-5 sm:p-7 xl:col-span-2">
-          <h2 className="text-2xl font-black">Copia de seguridad portable</h2>
+        </FormSection>
+        <FormSection
+          title="Copia de seguridad portable"
+          className="xl:col-span-2"
+        >
           <p className="mt-2 text-sm text-zinc-500">
             Exporta categorías, productos, opciones y sucursales. La restauración exige una frase exacta,
             valida el tenant y fusiona sin borrar registros adicionales.
@@ -245,7 +249,7 @@ export function DataPortability() {
               Validar y restaurar esta copia
             </button>
           )}
-        </section>
+        </FormSection>
       </div>
     </section>
   );

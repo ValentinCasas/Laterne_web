@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, ActionMenu } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type DiningTableData = {
@@ -186,7 +186,7 @@ export function TableManager({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Salón y QR"
         title="Mesas"
         description="Cada QR reconoce la mesa y lleva al cliente directamente a la carta."
@@ -269,16 +269,12 @@ export function TableManager({
         </div>
       </form>
 
-      <label className="mb-5 block max-w-md print:hidden">
-        <span className="sr-only">Buscar mesas</span>
-        <input
-          className="input"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          type="search"
-          placeholder="Buscar mesa o sector"
-        />
-      </label>
+      <SearchBox
+        className="mb-5 max-w-md print:hidden"
+        value={query}
+        onChange={setQuery}
+        placeholder="Buscar mesa o sector"
+      />
       <div className="qr-print-grid grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {visibleTables.map((table) => (
           <article
@@ -322,7 +318,6 @@ export function TableManager({
               Escaneá para ver la carta y pedir
             </p>
             <TableActions
-              table={table}
               onDownload={() => download(table)}
               onRegenerate={() => void rotateCode(table)}
               onEdit={() => setEditing(table)}
@@ -337,13 +332,11 @@ export function TableManager({
 
 /** @summary Acciones de una mesa: botones en escritorio y menú ⋯ compacto en móvil. */
 function TableActions({
-  table,
   onDownload,
   onRegenerate,
   onEdit,
   onRemove,
 }: {
-  table: DiningTableData;
   onDownload: () => void;
   onRegenerate: () => void;
   onEdit: () => void;
@@ -359,28 +352,18 @@ function TableActions({
   ];
   return (
     <>
-      <footer className="hidden flex-wrap gap-2 p-3 sm:flex print:hidden">
-        <button className="btn btn-secondary flex-1 px-2 text-xs" onClick={onDownload} type="button">
-          Descargar QR
-        </button>
-        <button className="btn btn-secondary px-2 text-xs" onClick={onRegenerate} type="button">
-          Regenerar
-        </button>
-        <button className="btn btn-secondary px-2 text-xs" onClick={onEdit} type="button">
-          Editar
-        </button>
-        <button className="btn btn-secondary px-2 text-xs" onClick={() => window.print()} type="button">
-          Imprimir
-        </button>
-        <button
-          className="rounded-xl border border-red-500/20 px-2 text-sm text-red-300 hover:bg-red-500/10"
-          onClick={onRemove}
-          type="button"
-          aria-label={`Eliminar ${table.name}`}
-        >
-          ×
-        </button>
-      </footer>
+      <div className="hidden print:hidden sm:flex">
+        <ActionMenu
+          align="right"
+          items={[
+            { label: "Descargar QR", onClick: onDownload },
+            { label: "Regenerar", onClick: onRegenerate },
+            { label: "Editar", onClick: onEdit },
+            { label: "Imprimir", onClick: () => window.print() },
+            { label: "Eliminar", onClick: onRemove, tone: "danger" },
+          ]}
+        />
+      </div>
       <div className="relative p-3 sm:hidden print:hidden">
         <button
           className="btn w-full"

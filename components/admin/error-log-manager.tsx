@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, StatusBadge, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type ErrorEntry = {
@@ -41,18 +41,16 @@ export function ErrorLogManager({ initialErrors }: { initialErrors: ErrorEntry[]
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Observabilidad"
         title="Errores técnicos"
         description="Incidentes reducidos y agrupables, sin trazas privadas ni datos personales enviados desde el navegador."
         section="errores"
       />
       <div className="card mt-6 grid gap-3 p-4 sm:grid-cols-[1fr_auto]">
-        <input
-          className="input"
-          type="search"
+        <SearchBox
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={setQuery}
           placeholder="Buscar mensaje, origen o ruta…"
         />
         <label className="flex items-center gap-2 px-3 text-sm">
@@ -76,7 +74,7 @@ export function ErrorLogManager({ initialErrors }: { initialErrors: ErrorEntry[]
                 </p>
               </div>
               {entry.resolvedAt ? (
-                <span className="text-sm text-emerald-300">Resuelto</span>
+                <StatusBadge status="Resuelto" tone="success" />
               ) : (
                 <button className="btn btn-secondary py-2" onClick={() => void resolve(entry.id)}>
                   Marcar resuelto
@@ -86,7 +84,10 @@ export function ErrorLogManager({ initialErrors }: { initialErrors: ErrorEntry[]
           </article>
         ))}
         {!visible.length && (
-          <p className="card p-10 text-center text-zinc-500">No hay incidentes con esos filtros.</p>
+          <EmptyState
+            title="Sin incidentes"
+            description="No hay errores técnicos que coincidan con los filtros actuales."
+          />
         )}
       </div>
     </section>

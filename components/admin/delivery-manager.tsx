@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge, DataTable, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import type { OrderDeliveryData } from "@/lib/delivery-types";
 
@@ -20,17 +20,22 @@ type DeliveryForm = {
   items: Array<{ orderItemId: number; quantityDelivered: number; notes: string }>;
 };
 
-const statusStyle: Record<string, string> = {
-  delivered: "border-emerald-500/30 bg-emerald-500/5",
-  reversed: "border-red-500/30 bg-red-500/5",
+const statusLabel: Record<string, string> = {
+  delivered: "Entregado",
+  reversed: "Anulado",
 };
 
-const statusBadge: Record<string, string> = {
-  delivered: "bg-emerald-500/15 text-emerald-300",
-  reversed: "bg-red-500/15 text-red-300",
-};
+const DELIVERY_COLUMNS = [
+  { key: "number", label: "Nº" },
+  { key: "deliveryDate", label: "Fecha", align: "right" as const, hideOnMobile: true },
+  { key: "order", label: "Pedido", hideOnMobile: true },
+  { key: "customerName", label: "Cliente" },
+  { key: "branch", label: "Sucursal", hideOnMobile: true },
+  { key: "status", label: "Estado", align: "right" as const },
+  { key: "itemsCount", label: "Productos", align: "right" as const, hideOnMobile: true },
+];
 
-/** @summary Gestor visual de remitos/entregas con filtros y acciones operativas. */
+/** @summary Gestor visual de remitos/entregas con tabla filtrable, opciones de vista y acciones operativas. */
 export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerProps) {
   const [deliveries, setDeliveries] = useState<OrderDeliveryData[]>(initialDeliveries);
   const [query, setQuery] = useState("");
@@ -105,59 +110,64 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
   }
 
   return (
-    <section>
-      <AdminPageHeader eyebrow="Remitos y entregas" title="Entregas confirmadas" description="Documento histórico por cada entrega generada desde tus pedidos." section="entregas" />
-      <div className="card mt-6 space-y-4 p-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-          <input className="input" placeholder="Buscar por número, cliente o pedido…" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <select className="input w-auto" value={form.orderId} onChange={(event) => setForm((current) => ({ ...current, orderId: Number(event.target.value) }))}>
-            <option value="0">Pedido…</option>
-            {Array.from(new Set(deliveries.map((delivery) => delivery.orderId))).map((orderId) => {
-              const ref = deliveries.find((d) => d.orderId === orderId)?.order?.reference ?? `#${orderId}`;
-              return <option key={orderId} value={orderId}>{ref}</option>;
-            })}
-          </select>
-          <button type="button" className="btn" disabled={creating || !form.orderId} onClick={createDelivery}>
-            {creating ? "Generando…" : "Nueva entrega"}
-          </button>
+    <section className="space-y-6">
+      <PageHeader eyebrow="Remitos y entregas" title="Entregas confirmadas" description="Documento histórico por cada entrega generada desde tus pedidos." section="entregas" />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <input
+            type="search"
+            placeholder="Buscar por número, cliente o pedido…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
+          />
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">🔎</span>
         </div>
+        <select
+          className="input w-auto"
+          value={form.orderId}
+          onChange={(event) => setForm((current) => ({ ...current, orderId: Number(event.target.value) }))}
+        >
+          <option value="0">Pedido…</option>
+          {Array.from(new Set(deliveries.map((delivery) => delivery.orderId))).map((orderId) => {
+            const ref = deliveries.find((d) => d.orderId === orderId)?.order?.reference ?? `#${orderId}`;
+            return <option key={orderId} value={orderId}>{ref}</option>;
+          })}
+        </select>
+        <button type="button" className="btn" disabled={creating || !form.orderId} onClick={createDelivery}>
+          {creating ? "Generando…" : "Nueva entrega"}
+        </button>
       </div>
 
-      <div className="mt-6 space-y-4">
-        {visible.length === 0 && <p className="text-center text-[var(--admin-muted)]">No hay entregas registradas.</p>}
-        {visible.map((delivery) => (
-          <div key={delivery.id} className={`card overflow-hidden ${statusStyle[delivery.status] ?? ""}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="text-sm font-black text-white">{delivery.number}</p>
-                <p className="text-xs text-zinc-500">
-                  {new Date(delivery.deliveryDate).toLocaleString("es-AR")} · {delivery.customerName} · {delivery.branch?.name ?? "—"}
-                </p>
-              </div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusBadge[delivery.status] ?? "bg-zinc-500/15 text-zinc-300"}`}>{delivery.status.toUpperCase()}</span>
-            </div>
-            <div className="border-t border-white/[.06] p-4">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {delivery.items.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 rounded-xl bg-white/[.03] p-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">{item.productName}</p>
-                      <p className="text-xs text-zinc-500">Cantidad entregada: {item.quantityDelivered}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {delivery.status !== "reversed" && (
-              <div className="border-t border-white/[.06] p-4">
-                <button type="button" className="btn btn-secondary" onClick={() => reverseDelivery(delivery)}>
-                  Anular entrega
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      {visible.length === 0 ? (
+        <EmptyState title="No hay entregas registradas" description="Las entregas que generes desde los pedidos aparecerán acá." />
+      ) : (
+        <DataTable
+          columns={DELIVERY_COLUMNS}
+          data={visible.map((delivery) => ({
+            id: delivery.id,
+            number: delivery.number,
+            deliveryDate: new Date(delivery.deliveryDate).toLocaleString("es-AR"),
+            order: delivery.order?.reference ?? `#${delivery.orderId}`,
+            customerName: delivery.customerName,
+            branch: delivery.branch?.name ?? "—",
+            status: <StatusBadge status={statusLabel[delivery.status] ?? delivery.status} tone={delivery.status === "delivered" ? "success" : "danger"} />,
+            itemsCount: delivery.items.reduce((sum, item) => sum + item.quantityDelivered, 0),
+          }))}
+          keyExtractor={(row) => row.id as number}
+          emptyMessage="No hay entregas registradas."
+          rowActions={(row) => {
+            const delivery = visible.find((d) => d.id === row.id as number);
+            if (!delivery || delivery.status === "reversed") return null;
+            return (
+              <button type="button" className="btn btn-secondary" onClick={() => reverseDelivery(delivery)}>
+                Anular
+              </button>
+            );
+          }}
+        />
+      )}
     </section>
   );
 }

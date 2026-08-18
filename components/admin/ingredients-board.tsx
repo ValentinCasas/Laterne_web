@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, ActionMenu, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { unitLabel } from "@/lib/recipe-units";
@@ -266,7 +266,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
 
   return (
     <div>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Costos"
         title="Ingredientes"
         section="ingredientes"
@@ -401,14 +401,10 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
         </div>
       )}
 
-      <div className="mb-5 grid gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10 sm:grid-cols-2">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar ingrediente…"
-          className="input"
-          aria-label="Buscar ingredientes"
-        />
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10">
+        <div className="min-w-52 flex-1">
+          <SearchBox value={search} onChange={setSearch} placeholder="Buscar ingrediente…" />
+        </div>
         <p className="flex items-center text-sm text-[var(--admin-muted)]">
           {filtered.length} ingrediente{filtered.length === 1 ? "" : "s"}
         </p>
@@ -476,38 +472,23 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(ingredient)}
-                        className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-                      >
-                        Editar
-                      </button>
-                      {ingredient.hasRecipe && (
-                        <a
-                          href={adminHref(`/admin/recetas/${ingredient.id}/ficha`)}
-                          className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-                        >
-                          Ficha
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeIngredient(ingredient)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--admin-border)] bg-white/5 text-rose-400 hover:bg-white/10"
-                        aria-label={`Eliminar ${ingredient.name}`}
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <ActionMenu
+                      align="right"
+                      items={[
+                        { label: "Editar", onClick: () => openEdit(ingredient) },
+                        ...(ingredient.hasRecipe ? [{ label: "Ver ficha", onClick: () => { window.location.href = adminHref(`/admin/recetas/${ingredient.id}/ficha`); } }] : []),
+                        { label: "Eliminar", tone: "danger", onClick: () => removeIngredient(ingredient) },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-[var(--admin-muted)]">
-                    No hay ingredientes cargados todavía.
+                  <td colSpan={6} className="px-4 py-10 text-center">
+                    <EmptyState title="No hay ingredientes cargados todavía" description="Creá el primero para comenzar a administrar costos y stock." action={
+                      <button type="button" onClick={openCreate} className="btn">+ Nuevo ingrediente</button>
+                    } />
                   </td>
                 </tr>
               )}

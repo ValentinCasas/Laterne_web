@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHelp } from "@/components/admin/admin-page-help";
 import { ProductEditor } from "@/components/admin/product-editor";
+import { PageHeader, SearchBox, StatusBadge, ActionMenu, EmptyState, ActiveFilterChip } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { handleImageError, productImageSrc } from "@/lib/image-fallback";
 import { marginPercent } from "@/lib/product-catalog";
@@ -48,14 +48,6 @@ const statusLabels: Record<string, string> = {
   draft: "Borrador",
   hidden: "Oculto",
   archived: "Archivado",
-};
-
-const statusColors: Record<string, string> = {
-  published: "bg-emerald-500/15 text-emerald-300",
-  scheduled: "bg-sky-500/15 text-sky-300",
-  draft: "bg-zinc-500/15 text-zinc-300",
-  hidden: "bg-amber-500/15 text-amber-300",
-  archived: "bg-rose-500/15 text-rose-300",
 };
 
 const sortOptions: Array<{ key: SortKey; label: string }> = [
@@ -172,8 +164,6 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
   }, []);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editingId, setEditingId] = useState<number | null | "new">(null);
-  const [menuFor, setMenuFor] = useState<number | null>(null);
-  const searchRef = useRef<HTMLInputElement | null>(null);
 
   const currency = payload.currency ?? "ARS";
 
@@ -468,37 +458,21 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
 
   return (
     <div>
-      {/* Cabecera compacta: una fila con título y acción principal. */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="min-w-0">
-            <p className="section-eyebrow">Carta</p>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight">Productos</h1>
-              <AdminPageHelp section="productos" />
-            </div>
-          </div>
-          <p className="hidden max-w-md truncate text-sm text-[var(--admin-muted)] xl:block">
-            Administrá catálogo, precios, costo, stock y preparación.
-          </p>
-        </div>
-        <button onClick={() => setEditingId("new")} className="btn" disabled={busy}>
-          + Nuevo producto
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Carta"
+        title="Productos"
+        section="productos"
+        description="Administrá catálogo, precios, costo, stock y preparación."
+        actions={
+          <button onClick={() => setEditingId("new")} className="btn" disabled={busy}>
+            + Nuevo producto
+          </button>
+        }
+      />
 
-      {/* Toolbar principal */}
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-xl shadow-black/10">
         <div className="relative min-w-52 flex-1">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--admin-muted)]">🔍</span>
-          <input
-            ref={searchRef}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre, descripción o categoría…"
-            className="input w-full pl-9"
-            aria-label="Buscar productos"
-          />
+          <SearchBox value={search} onChange={setSearch} placeholder="Buscar por nombre, descripción o categoría…" />
         </div>
         <button
           type="button"
@@ -563,20 +537,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
       {hasActiveFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {buildFilterChips(filters, payload, patch, () => setFiltersOpen(true)).map((chip) => (
-            <span
-              key={chip.label}
-              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-zinc-200"
-            >
-              {chip.label}
-              <button
-                type="button"
-                aria-label={`Quitar filtro ${chip.label}`}
-                className="text-zinc-400 transition-colors hover:text-white"
-                onClick={chip.onRemove}
-              >
-                ×
-              </button>
-            </span>
+            <ActiveFilterChip key={chip.label} label={chip.label} onRemove={chip.onRemove} />
           ))}
           <button
             type="button"
@@ -652,7 +613,15 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
 
       {/* Contenido: Tarjetas o Lista */}
       {sorted.length === 0 ? (
-        <EmptyState hasProducts={payload.products.length > 0} onClear={clearFilters} onCreate={() => setEditingId("new")} />
+        <EmptyState
+          title={payload.products.length > 0 ? "No encontramos productos con estos filtros" : "Todavía no tenés productos"}
+          description={payload.products.length > 0 ? "Probá quitar algún filtro o cambiar la búsqueda." : "Creá el primero para comenzar a armar tu carta."}
+          action={
+            <button type="button" className={payload.products.length > 0 ? "btn btn-secondary" : "btn"} onClick={payload.products.length > 0 ? clearFilters : () => setEditingId("new")}>
+              {payload.products.length > 0 ? "Limpiar filtros" : "+ Nuevo producto"}
+            </button>
+          }
+        />
       ) : view === "cards" ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {sorted.map((product) => (
@@ -666,9 +635,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
               onToggleFavorite={() => void toggleFavorite(product)}
               onDuplicate={() => void duplicate(product)}
               onChangeStatus={(status) => void changeStatus(product, status)}
-              onRemove={() => void removeMany([product.id], `Se eliminará “${product.name}”.`)}
-              menuOpen={menuFor === product.id}
-              onMenuToggle={() => setMenuFor(menuFor === product.id ? null : product.id)}
+              onRemove={() => void removeMany([product.id], `Se eliminará "${product.name}".`)}
             />
           ))}
         </div>
@@ -693,7 +660,6 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
           onEdit={(id) => setEditingId(id)}
           onToggleFavorite={(product) => void toggleFavorite(product)}
           onDuplicate={(product) => void duplicate(product)}
-          onChangeStatus={(product, status) => void changeStatus(product, status)}
           onRemove={(product) => void removeMany([product.id], `Se eliminará “${product.name}”.`)}
         />
       )}
@@ -807,40 +773,6 @@ function buildFilterChips(
   return chips;
 }
 
-/** @summary Estado vacío según sea el catálogo completo o el resultado de los filtros. */
-function EmptyState({
-  hasProducts,
-  onClear,
-  onCreate,
-}: {
-  hasProducts: boolean;
-  onClear: () => void;
-  onCreate: () => void;
-}) {
-  return (
-    <div className="rounded-[1.5rem] border border-dashed border-white/15 bg-white/[0.02] px-6 py-16 text-center">
-      <div className="text-4xl">🥗</div>
-      {hasProducts ? (
-        <>
-          <h2 className="mt-3 text-lg font-black">No encontramos productos con estos filtros</h2>
-          <p className="mt-1 text-sm text-[var(--admin-muted)]">Probá quitar algún filtro o cambiar la búsqueda.</p>
-          <button type="button" className="btn btn-secondary mt-5" onClick={onClear}>
-            Limpiar filtros
-          </button>
-        </>
-      ) : (
-        <>
-          <h2 className="mt-3 text-lg font-black">Todavía no tenés productos</h2>
-          <p className="mt-1 text-sm text-[var(--admin-muted)]">Creá el primero para comenzar a armar tu carta.</p>
-          <button type="button" className="btn mt-5" onClick={onCreate}>
-            + Nuevo producto
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
 /** @summary Tarjeta visual de catálogo con acciones claras y menú secundario. */
 function ProductCard({
   product,
@@ -852,8 +784,6 @@ function ProductCard({
   onDuplicate,
   onChangeStatus,
   onRemove,
-  menuOpen,
-  onMenuToggle,
 }: {
   product: CatalogProductRow;
   currency: string;
@@ -864,8 +794,6 @@ function ProductCard({
   onDuplicate: () => void;
   onChangeStatus: (status: string) => void;
   onRemove: () => void;
-  menuOpen: boolean;
-  onMenuToggle: () => void;
 }) {
   const stock = stockState(product);
   const price = product.price === null ? null : Number(product.price);
@@ -960,64 +888,27 @@ function ProductCard({
             </span>
           )}
           <span className="text-[var(--admin-muted)]">{product.branchCount} sucursal{product.branchCount === 1 ? "" : "es"}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusColors[product.status] ?? statusColors.draft}`}>
-            {statusLabels[product.status] ?? product.status}
-          </span>
+          <StatusBadge status={product.status} />
         </div>
 
         <div className="mt-auto flex items-center gap-2 pt-2">
           <button type="button" className="btn flex-1 py-2 text-sm" onClick={onEdit}>
             Editar
           </button>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={onMenuToggle}
-              className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--admin-border)] bg-white/5 text-base font-black text-zinc-300 transition-colors hover:bg-white/10"
-              aria-label={`Más acciones de ${product.name}`}
-            >
-              •••
-            </button>
-            {menuOpen && (
-              <>
-                <button
-                  type="button"
-                  aria-hidden
-                  className="fixed inset-0 z-10 cursor-default"
-                  onClick={onMenuToggle}
-                  tabIndex={-1}
-                />
-                <div className="absolute bottom-full right-0 z-20 mb-1 w-52 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl">
-                  {[
-                    { label: "Duplicar", onClick: onDuplicate },
-                    { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: onToggleFavorite },
-                    ...(product.status === "published"
-                      ? [{ label: "Pasar a borrador", onClick: () => onChangeStatus("draft") }]
-                      : product.status === "draft"
-                        ? [{ label: "Publicar", onClick: () => onChangeStatus("published") }]
-                        : [{ label: "Publicar", onClick: () => onChangeStatus("published") }]),
-                  ].map((action) => (
-                    <button
-                      key={action.label}
-                      type="button"
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-zinc-200 transition-colors hover:bg-white/5"
-                      onClick={action.onClick}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                  <div className="my-1 h-px bg-white/10" />
-                  <button
-                    type="button"
-                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-400 transition-colors hover:bg-rose-500/10"
-                    onClick={onRemove}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <ActionMenu
+            align="right"
+            items={[
+              { label: "Editar", onClick: onEdit },
+              { label: "Duplicar", onClick: onDuplicate },
+              { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: onToggleFavorite },
+              ...(product.status === "published"
+                ? [{ label: "Pasar a borrador", onClick: () => onChangeStatus("draft") }]
+                : product.status === "draft"
+                  ? [{ label: "Publicar", onClick: () => onChangeStatus("published") }]
+                  : [{ label: "Publicar", onClick: () => onChangeStatus("published") }]),
+              { label: "Eliminar", tone: "danger", onClick: onRemove },
+            ]}
+          />
         </div>
       </div>
     </article>
@@ -1045,7 +936,6 @@ function ListTable({
   onEdit,
   onToggleFavorite,
   onDuplicate,
-  onChangeStatus,
   onRemove,
 }: {
   products: CatalogProductRow[];
@@ -1067,7 +957,6 @@ function ListTable({
   onEdit: (id: number) => void;
   onToggleFavorite: (product: CatalogProductRow) => void;
   onDuplicate: (product: CatalogProductRow) => void;
-  onChangeStatus: (product: CatalogProductRow, status: string) => void;
   onRemove: (product: CatalogProductRow) => void;
 }) {
   const cell = density === "compact" ? "px-3 py-2" : "px-4 py-3.5";
@@ -1185,49 +1074,21 @@ function ListTable({
                     {product.activeBranchCount} de {product.branchCount}
                   </td>
                   <td className={cell}>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusColors[product.status] ?? statusColors.draft}`}>
-                      {statusLabels[product.status] ?? product.status}
-                    </span>
+                    <StatusBadge status={product.status} />
                   </td>
                   <td className={`${cell} text-right`}>
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-2">
                       <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onEdit(product.id)}>
                         Editar
                       </button>
-                      <select
-                        className="input w-auto py-1.5 text-xs"
-                        value={product.status}
-                        aria-label={`Cambiar estado de ${product.name}`}
-                        onChange={(event) => onChangeStatus(product, event.target.value)}
-                      >
-                        {Object.entries(statusLabels).map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-white/5 text-sm transition-colors hover:bg-white/10"
-                        onClick={() => onToggleFavorite(product)}
-                        title={product.favorite ? "Quitar de favoritos" : "Marcar favorito"}
-                      >
-                        {product.favorite ? <span className="text-amber-400">★</span> : "☆"}
-                      </button>
-                      <button
-                        type="button"
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-white/5 text-sm transition-colors hover:bg-white/10"
-                        onClick={() => onDuplicate(product)}
-                        title="Duplicar"
-                      >
-                        ⧉
-                      </button>
-                      <button
-                        type="button"
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-white/5 text-sm text-rose-400 transition-colors hover:bg-rose-500/10"
-                        onClick={() => onRemove(product)}
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
+                      <ActionMenu
+                        align="right"
+                        items={[
+                          { label: "Duplicar", onClick: () => onDuplicate(product) },
+                          { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: () => onToggleFavorite(product) },
+                          { label: "Eliminar", tone: "danger", onClick: () => onRemove(product) },
+                        ]}
+                      />
                     </div>
                   </td>
                 </tr>

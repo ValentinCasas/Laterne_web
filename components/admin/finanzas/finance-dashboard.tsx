@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PageHeader, KpiCard, DataTable, StatusBadge } from "@/components/admin/ui";
 export type DashboardInitial = {
   tenantId: number;
   currency: string;
@@ -46,16 +47,6 @@ function dateLabel(value?: string | null) {
   return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-/** @summary Tarjeta KPI del dashboard. */
-function KpiCard({ label, value, tone }: { label: string; value: string; tone: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-5 py-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">{label}</p>
-      <p className={`mt-2 truncate text-2xl font-black tabular-nums ${tone}`}>{value}</p>
-    </div>
-  );
-}
-
 /** @summary Gestor del dashboard financiero. */
 export function FinanceDashboardClient({ initial }: { initial: DashboardInitial }) {
   const [dashboard] = useState(initial.dashboard);
@@ -75,15 +66,37 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
     [dashboard, currency],
   );
 
+  const tableData = useMemo(
+    () =>
+      dashboard.recentMovements.map((movement) => ({
+        id: movement.id,
+        fecha: dateLabel(movement.date),
+        cuenta: <span className="font-medium">{movement.accountName}</span>,
+        tipo: <span className="capitalize">{movement.type}</span>,
+        direccion: (
+          <StatusBadge
+            status={movement.direction === "in" ? "Ingreso" : "Egreso"}
+            tone={movement.direction === "in" ? "success" : "danger"}
+          />
+        ),
+        importe: (
+          <span className={`text-right font-black tabular-nums block ${movement.direction === "in" ? "text-emerald-300" : "text-rose-300"}`}>
+            {money(movement.amount, currency)}
+          </span>
+        ),
+        concepto: <span className="max-w-xs truncate block">{movement.concept}</span>,
+        origen: <span className="text-xs text-[var(--admin-muted)]">{movement.origin}</span>,
+      })),
+    [dashboard.recentMovements, currency],
+  );
+
   return (
     <div>
-      <div className="mb-4">
-        <p className="section-eyebrow">Finanzas</p>
-        <h1 className="text-2xl font-black tracking-tight">Resumen financiero</h1>
-        <p className="mt-1 text-sm text-[var(--admin-muted)]">
-          Panorama general de cuentas, cobranzas, pagos y resultado operativo
-        </p>
-      </div>
+      <PageHeader
+        section="Finanzas"
+        title="Resumen financiero"
+        description="Panorama general de cuentas, cobranzas, pagos y resultado operativo"
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((kpi) => (
@@ -91,62 +104,25 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
         ))}
       </div>
 
-      <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
         <div className="border-b border-[var(--admin-border)] px-5 py-4">
           <h2 className="text-lg font-black">Movimientos recientes</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                <th className="px-5 py-3 font-bold">Fecha</th>
-                <th className="px-5 py-3 font-bold">Cuenta</th>
-                <th className="px-5 py-3 font-bold">Tipo</th>
-                <th className="px-5 py-3 font-bold">Dirección</th>
-                <th className="px-5 py-3 font-bold text-right">Importe</th>
-                <th className="px-5 py-3 font-bold">Concepto</th>
-                <th className="px-5 py-3 font-bold">Origen</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--admin-border)]">
-              {dashboard.recentMovements.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay movimientos registrados. Creá una cuenta y empezá a operar.
-                  </td>
-                </tr>
-              ) : (
-                dashboard.recentMovements.map((movement) => (
-                  <tr key={movement.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3">{dateLabel(movement.date)}</td>
-                    <td className="px-5 py-3 font-medium">{movement.accountName}</td>
-                    <td className="px-5 py-3 capitalize">{movement.type}</td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                          movement.direction === "in"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-rose-500/15 text-rose-300"
-                        }`}
-                      >
-                        {movement.direction === "in" ? "Ingreso" : "Egreso"}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-5 py-3 text-right font-black tabular-nums ${
-                        movement.direction === "in" ? "text-emerald-300" : "text-rose-300"
-                      }`}
-                    >
-                      {money(movement.amount, currency)}
-                    </td>
-                    <td className="px-5 py-3 max-w-xs truncate">{movement.concept}</td>
-                    <td className="px-5 py-3 text-xs text-[var(--admin-muted)]">{movement.origin}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={[
+            { key: "fecha", label: "Fecha" },
+            { key: "cuenta", label: "Cuenta" },
+            { key: "tipo", label: "Tipo" },
+            { key: "direccion", label: "Dirección" },
+            { key: "importe", label: "Importe", align: "right" },
+            { key: "concepto", label: "Concepto" },
+            { key: "origen", label: "Origen", hideOnMobile: true },
+          ]}
+          data={tableData}
+          keyExtractor={(row) => row.id as number}
+          emptyMessage="No hay movimientos registrados. Creá una cuenta y empezá a operar."
+          density="compact"
+        />
       </div>
     </div>
   );

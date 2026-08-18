@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, StatusBadge, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import {
   defaultReservationTimeZone,
@@ -569,7 +569,7 @@ export function ReservationBoard({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Operación de salón"
         title="Reservas"
         description="Capacidad, confirmaciones, bloqueos y próximos visitantes."
@@ -581,7 +581,7 @@ export function ReservationBoard({
         }
       >
         <p className="mt-2 text-xs text-zinc-600">Hoy · {todayFormatted}</p>
-      </AdminPageHeader>
+      </PageHeader>
 
       {settingsOpen && (
         <section className="mt-6 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
@@ -796,11 +796,9 @@ export function ReservationBoard({
                 </button>
               ))}
             </div>
-            <input
-              className="input py-2"
-              type="search"
+            <SearchBox
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={setQuery}
               placeholder="Buscar reserva…"
             />
             <select
@@ -879,11 +877,7 @@ export function ReservationBoard({
                           <span className="text-2xl font-black tabular-nums">
                             {hourText(reservation.reservationTime)}
                           </span>
-                          <span
-                            className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
-                          >
-                            {reservationStatusLabel(reservation.status)}
-                          </span>
+                          <StatusBadge status={reservation.status} tone={reservation.status === "pending" ? "warning" : reservation.status === "confirmed" || reservation.status === "completed" ? "success" : reservation.status === "cancelled" || reservation.status === "rejected" ? "danger" : reservation.status === "no_show" ? "danger" : "info"} />
                         </div>
                       </div>
                       <p className="mt-3 text-sm text-zinc-400">
@@ -919,26 +913,11 @@ export function ReservationBoard({
               </section>
             ))}
             {!groupedReservations.length && (
-              <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-                {hasRefinements ? (
-                  <>
-                    <p className="font-bold text-zinc-400">
-                      No hay reservas que coincidan con estos filtros.
-                    </p>
-                    <button className="btn btn-secondary mt-4" onClick={clearFilters} type="button">
-                      Limpiar filtros
-                    </button>
-                  </>
-                ) : (
-                  <p className="text-zinc-500">
-                    {tab === "upcoming" &&
-                      "No hay reservas próximas todavía. Cuando un cliente reserve desde la web, aparecerá acá."}
-                    {tab === "today" && "No hay reservas para hoy todavía."}
-                    {tab === "past" && "Todavía no hay reservas pasadas."}
-                    {tab === "all" && "Todavía no hay reservas registradas."}
-                  </p>
-                )}
-              </div>
+              <EmptyState
+                title={hasRefinements ? "No hay reservas que coincidan con estos filtros." : tab === "upcoming" ? "No hay reservas próximas todavía." : tab === "today" ? "No hay reservas para hoy todavía." : tab === "past" ? "Todavía no hay reservas pasadas." : "Todavía no hay reservas registradas."}
+                description={hasRefinements ? "Probá con otros filtros o limpiá la búsqueda." : "Cuando un cliente reserve desde la web, aparecerá acá."}
+                action={hasRefinements ? <button className="btn btn-secondary" onClick={clearFilters} type="button">Limpiar filtros</button> : undefined}
+              />
             )}
           </div>
         </>
@@ -957,11 +936,7 @@ export function ReservationBoard({
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="section-eyebrow">{selected.reference}</p>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusColors[selected.status]}`}
-                  >
-                    ● {reservationStatusLabel(selected.status)}
-                  </span>
+                  <StatusBadge status={selected.status} tone={selected.status === "pending" ? "warning" : selected.status === "confirmed" || selected.status === "completed" ? "success" : selected.status === "cancelled" || selected.status === "rejected" ? "danger" : selected.status === "no_show" ? "danger" : "info"} />
                 </div>
                 <h2 className="mt-1 text-3xl font-black">{selected.customerName}</h2>
               </div>
@@ -1164,13 +1139,10 @@ function DayReservationsModal({
         </header>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-          <input
-            className="input py-2"
-            type="search"
+          <SearchBox
             value={dayQuery}
-            onChange={(event) => setDayQuery(event.target.value)}
+            onChange={setDayQuery}
             placeholder="Buscar en este día…"
-            autoFocus
           />
           <select
             className="input py-2 sm:max-w-48"
@@ -1205,11 +1177,7 @@ function DayReservationsModal({
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
-                >
-                  {reservationStatusLabel(reservation.status)}
-                </span>
+                  <StatusBadge status={reservation.status} tone={reservation.status === "pending" ? "warning" : reservation.status === "confirmed" || reservation.status === "completed" ? "success" : reservation.status === "cancelled" || reservation.status === "rejected" ? "danger" : reservation.status === "no_show" ? "danger" : "info"} />
                 <select
                   className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1 text-xs"
                   value={reservation.status}
@@ -1242,11 +1210,10 @@ function DayReservationsModal({
             </article>
           ))}
           {!visible.length && (
-            <p className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-500">
-              {sorted.length
-                ? "No hay reservas que coincidan con este filtro."
-                : "No hay reservas para este día."}
-            </p>
+            <EmptyState
+              title={sorted.length ? "No hay reservas que coincidan con este filtro." : "No hay reservas para este día."}
+              description=""
+            />
           )}
         </div>
       </section>
@@ -1437,11 +1404,7 @@ function DayCalendar({
                         {reservation.sector ? ` · ${reservation.sector}` : ""}
                       </span>
                     </span>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${statusColors[reservation.status]}`}
-                    >
-                      {reservationStatusLabel(reservation.status)}
-                    </span>
+                 <StatusBadge status={reservation.status} tone={reservation.status === "pending" ? "warning" : reservation.status === "confirmed" || reservation.status === "completed" ? "success" : reservation.status === "cancelled" || reservation.status === "rejected" ? "danger" : reservation.status === "no_show" ? "danger" : "info"} />
                   </button>
                 ))}
                 {!reservations.length && <p className="py-0.5 text-xs text-zinc-800">—</p>}
@@ -1450,9 +1413,7 @@ function DayCalendar({
           );
         })}
         {!sorted.length && (
-          <p className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-600">
-            No hay reservas para este día.
-          </p>
+          <EmptyState title="No hay reservas para este día." description="" />
         )}
       </div>
     </div>

@@ -1,7 +1,6 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
-import { ReportsKpiCard } from "@/components/admin/reports/reports-kpi-card";
 import { ReportsComprasTable } from "@/components/admin/reports/reports-compras-table";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, KpiCard } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePeriod } from "@/lib/reports/period";
@@ -51,18 +50,18 @@ export default async function ComprasPage({ searchParams }: ComprasPageProps) {
       channels={[]}
       sources={[]}
     >
-      <AdminPageHeader
-        eyebrow="Reportes"
-        title="Compras"
-        description="Evolución de costos y proveedores"
-        section="reportes"
-      />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <ReportsKpiCard label="Total comprado" value={kpis.totalPurchased} tone="text-emerald-300" />
-        <ReportsKpiCard label="Operaciones" value={kpis.operationCount} tone="text-sky-300" />
-        <ReportsKpiCard label="Proveedores activos" value={kpis.activeSuppliers} tone="text-amber-300" />
+      <PageHeader eyebrow="Reportes" title="Compras" description="Evolución de costos y proveedores." section="reportes" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard label="Total comprado" value={kpis.totalPurchased} tone="text-emerald-300" />
+        <KpiCard label="Operaciones" value={kpis.operationCount} tone="text-sky-300" />
+        <KpiCard label="Proveedores activos" value={kpis.activeSuppliers} tone="text-amber-300" />
       </div>
-      <ReportsComprasTable items={items} page={page} pageSize={PAGE_SIZE} total={total} />
+      <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
+        <SectionHeader title="Detalle de compras" description="Registro cronológico de recepciones." />
+        <div className="mt-4">
+          <ReportsComprasTable items={items} page={page} pageSize={PAGE_SIZE} total={total} />
+        </div>
+      </section>
     </ReportsShell>
   );
 }

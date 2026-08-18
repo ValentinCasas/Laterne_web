@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
 import { scopedFetch } from "@/lib/client-routing";
 import { orderStatusLabel } from "@/lib/orders";
@@ -121,7 +121,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Fidelización"
         title="Clientes frecuentes"
         description="Perfiles consentidos, niveles, pedidos y movimientos de puntos."
@@ -137,7 +137,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
           />
           <ViewModeToggle value={view} onChange={setView} />
         </div>
-      </AdminPageHeader>
+      </PageHeader>
       {view === "cards" ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((customer) => (

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type SupportTicketData = {
@@ -19,10 +19,10 @@ export type SupportTicketData = {
   createdAt: string;
 };
 const statuses = [
-  ["open", "Abiertas"],
-  ["in_progress", "En curso"],
-  ["resolved", "Resueltas"],
-  ["closed", "Cerradas"],
+  ["open", "Abiertas", "warning"],
+  ["in_progress", "En curso", "info"],
+  ["resolved", "Resueltas", "success"],
+  ["closed", "Cerradas", "default"],
 ] as const;
 
 /** @summary Escapa contenido recibido antes de insertarlo dentro de un diálogo HTML. */
@@ -76,14 +76,14 @@ export function SupportBoard({ initialTickets }: { initialTickets: SupportTicket
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Atención registrada"
         title="Soporte"
         description="Consultas enviadas desde el centro de ayuda con estado y notas internas."
         section="soporte"
       />
       <div className="flex gap-4 overflow-x-auto pb-5">
-        {statuses.map(([status, label]) => {
+        {statuses.map(([status, label, tone]) => {
           const items = tickets.filter((ticket) => ticket.status === status);
           return (
             <section
@@ -92,7 +92,7 @@ export function SupportBoard({ initialTickets }: { initialTickets: SupportTicket
             >
               <header className="flex justify-between p-2">
                 <h2 className="font-black">{label}</h2>
-                <span>{items.length}</span>
+                <StatusBadge status={String(items.length)} tone={tone as "default" | "success" | "warning" | "danger" | "info"} />
               </header>
               <div className="max-h-[65vh] space-y-3 overflow-y-auto">
                 {items.map((ticket) => (
@@ -110,7 +110,12 @@ export function SupportBoard({ initialTickets }: { initialTickets: SupportTicket
                     </p>
                   </button>
                 ))}
-                {!items.length && <p className="p-6 text-center text-xs text-zinc-600">Sin consultas</p>}
+                {!items.length && (
+                  <EmptyState
+                    title="Sin consultas"
+                    description="No hay tickets en esta columna."
+                  />
+                )}
               </div>
             </section>
           );

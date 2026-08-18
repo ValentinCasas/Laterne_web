@@ -2,7 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, ActionMenu, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type ModerationStatus = "approved" | "pending" | "rejected";
@@ -166,7 +166,7 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Moderación"
         title="Testimonios"
         description="Arrastrá cada opinión entre columnas. En celulares también podés usar sus botones rápidos."
@@ -174,12 +174,9 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
       />
 
       <div className="mt-6 max-w-md">
-        <span className="sr-only">Buscar testimonio</span>
-        <input
-          className="input"
-          type="search"
+        <SearchBox
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={setQuery}
           placeholder="Buscar testimonio…"
         />
       </div>
@@ -280,56 +277,50 @@ export function TestimonialBoard({ initialItems }: { initialItems: TestimonialIt
                       </button>
                     )}
 
-                    <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-3">
-                      {column.status !== "approved" && (
-                        <button
-                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-white"
-                          onClick={() => move(item, "approved")}
-                          type="button"
-                        >
-                          Aprobar
-                        </button>
-                      )}
-                      {column.status !== "rejected" && (
-                        <button
-                          className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500 hover:text-white"
-                          onClick={() => move(item, "rejected")}
-                          type="button"
-                        >
-                          Rechazar
-                        </button>
-                      )}
-                      {column.status !== "pending" && (
-                        <button
-                          className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500 hover:text-black"
-                          onClick={() => move(item, "pending")}
-                          type="button"
-                        >
-                          Pendiente
-                        </button>
-                      )}
-                      <button
-                        className="ml-auto rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold hover:bg-white/10"
-                        onClick={() => setEditing(item)}
-                        type="button"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500 hover:text-white"
-                        onClick={() => remove(item)}
-                        type="button"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                     <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-3">
+                       {column.status !== "approved" && (
+                         <button
+                           className="rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-white"
+                           onClick={() => move(item, "approved")}
+                           type="button"
+                         >
+                           Aprobar
+                         </button>
+                       )}
+                       {column.status !== "rejected" && (
+                         <button
+                           className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500 hover:text-white"
+                           onClick={() => move(item, "rejected")}
+                           type="button"
+                         >
+                           Rechazar
+                         </button>
+                       )}
+                       {column.status !== "pending" && (
+                         <button
+                           className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500 hover:text-black"
+                           onClick={() => move(item, "pending")}
+                           type="button"
+                         >
+                           Pendiente
+                         </button>
+                       )}
+                       <ActionMenu
+                         align="right"
+                         items={[
+                           { label: "Editar", onClick: () => setEditing(item) },
+                           { label: "Eliminar", onClick: () => remove(item), tone: "danger" },
+                         ]}
+                       />
+                     </div>
                   </article>
                 ))}
 
                 {!columnItems.length && (
-                  <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-current/20 p-6 text-center text-sm opacity-50">
-                    No hay testimonios en esta sección.
-                  </div>
+                  <EmptyState
+                    title="No hay testimonios"
+                    description="No hay opiniones en esta sección."
+                  />
                 )}
               </div>
             </section>

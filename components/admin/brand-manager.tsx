@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, FormSection } from "@/components/admin/ui";
 import { PaletteManager, type PaletteRecord } from "@/components/admin/palette-manager";
 import type { PalettePreset } from "@/lib/theme-palettes";
 import { scopedFetch } from "@/lib/client-routing";
@@ -160,15 +160,16 @@ export function BrandManager({
 
   return (
     <form onSubmit={save}>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Identidad centralizada"
         title="Marca y presencia digital"
         description="Una sola configuración controla colores, tipografía, recursos, textos y perfiles sociales."
         section="marca"
       />
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Recursos visuales</h2>
+        <FormSection
+          title="Recursos visuales"
+        >
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {(
               [
@@ -241,10 +242,11 @@ export function BrandManager({
               </select>
             </label>
           </div>
-        </section>
+        </FormSection>
         <PaletteManager initialPalettes={palettes} initialActiveId={activePaletteId} presets={presets} />
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Voz y portada</h2>
+        <FormSection
+          title="Voz y portada"
+        >
           <div className="mt-5 space-y-4">
             <label>
               <span className="label">Título principal</span>
@@ -286,9 +288,11 @@ export function BrandManager({
               />
             </label>
           </div>
-        </section>
-        <section className="card p-5 sm:p-7 xl:col-span-2">
-          <h2 className="text-2xl font-black">Dominio, SEO y medición</h2>
+        </FormSection>
+        <FormSection
+          title="Dominio, SEO y medición"
+          className="xl:col-span-2"
+        >
           <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <label>
               <span className="label">Moneda pública</span>
@@ -354,7 +358,7 @@ export function BrandManager({
             configurar consentimiento de cookies. Cambiar la moneda modifica el formato, no convierte precios
             automáticamente.
           </p>
-        </section>
+        </FormSection>
       </div>
       <div className="sticky bottom-4 mt-6 flex justify-end">
         <button className="btn min-w-48">Guardar marca</button>

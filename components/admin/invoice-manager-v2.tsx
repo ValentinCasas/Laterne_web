@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { documentTypeLabels, documentTypes, type DocumentType } from "@/lib/documents/document-fields";
 import { adminHrefFromPathname } from "@/lib/routes";
@@ -273,7 +273,7 @@ export function InvoiceManagerV2({
 
   return (
     <section className="min-w-0">
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Operación documental"
         title="Comprobantes internos"
         description="Generá documentos trazables desde pedidos y conservá el DOCX/PDF exacto de cada emisión."

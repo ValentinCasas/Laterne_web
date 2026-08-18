@@ -1,7 +1,6 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
-import { ReportsKpiCard } from "@/components/admin/reports/reports-kpi-card";
 import { EvolutionBarChart, HorizontalBarList } from "@/components/admin/reports/reports-chart";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, KpiCard, EmptyState, StatusBadge } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePeriod } from "@/lib/reports/period";
@@ -152,21 +151,21 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
       channels={[]}
       sources={[]}
     >
-      <AdminPageHeader eyebrow="Multi-sucursal" title="Consolidado" description="Vista integral del tenant: ventas, stock, productos, promociones, usuarios y licencias." section="reportes" />
+      <PageHeader eyebrow="Multi-sucursal" title="Consolidado" description="Vista integral del tenant: ventas, stock, productos, promociones, usuarios y licencias." section="reportes" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <ReportsKpiCard label="Ventas netas" value={kpis.netSales} tone="text-emerald-300" />
-        <ReportsKpiCard label="Pedidos" value={kpis.orderCount} tone="text-sky-300" />
-        <ReportsKpiCard label="Ticket promedio" value={kpis.averageTicket} tone="text-amber-300" />
-        <ReportsKpiCard label="Descuentos" value={kpis.previousNetSales} tone="text-red-300" />
+        <KpiCard label="Ventas netas" value={kpis.netSales} tone="text-emerald-300" />
+        <KpiCard label="Pedidos" value={kpis.orderCount} tone="text-sky-300" />
+        <KpiCard label="Ticket promedio" value={kpis.averageTicket} tone="text-amber-300" />
+        <KpiCard label="Descuentos" value={kpis.previousNetSales} tone="text-red-300" />
       </div>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Evolución de ventas netas</h2>
+        <SectionHeader title="Evolución de ventas netas" description="Comparativa con el período anterior." />
         <div className="mt-4">
           <EvolutionBarChart data={evolution.map((point: EvolutionPoint) => ({ label: point.date.slice(5), value: point.netSales }))} height={160} />
         </div>
       </section>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Comparativa por sucursal</h2>
+        <SectionHeader title="Comparativa por sucursal" description="Métricas consolidadas del período seleccionado." />
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -182,7 +181,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
             <tbody className="divide-y divide-[var(--admin-border)]">
               {branchComparison.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-[var(--admin-muted)]">Necesitás acceso a más de una sucursal para ver la comparativa.</td>
+                  <td colSpan={6} className="px-5 py-12 text-center text-[var(--admin-muted)]"><EmptyState title="Necesitás acceso a más de una sucursal" description="Cuando tengas acceso a varias sucursales, vas a ver la comparativa aquí." /></td>
                 </tr>
               ) : (
                 branchComparison.map((row: BranchComparisonItem) => (
@@ -201,7 +200,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
         </div>
       </section>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Origen de ventas por sucursal</h2>
+        <SectionHeader title="Origen de ventas por sucursal" description="Distribución por canal y origen." />
         <div className="mt-4 grid gap-6 xl:grid-cols-2">
           <div>
             <h3 className="mb-2 text-sm font-bold text-zinc-400">Por canal</h3>
@@ -214,7 +213,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
         </div>
       </section>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Stock crítico comparativo</h2>
+        <SectionHeader title="Stock crítico comparativo" description="Productos por debajo del mínimo en las sucursales seleccionadas." />
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -229,7 +228,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
             <tbody className="divide-y divide-[var(--admin-border)]">
               {lowStocks.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-[var(--admin-muted)]">No hay stock crítico en las sucursales seleccionadas.</td>
+                  <td colSpan={5} className="px-5 py-12 text-center text-[var(--admin-muted)]"><EmptyState title="No hay stock crítico" description="Todas las sucursales seleccionadas tienen stock suficiente." /></td>
                 </tr>
               ) : (
                 lowStocks.map((row: LowStockRow, idx: number) => (
@@ -247,7 +246,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
         </div>
       </section>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Promociones activas</h2>
+        <SectionHeader title="Promociones activas" description="Promociones del tenant y por sucursal." />
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -263,7 +262,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
             <tbody className="divide-y divide-[var(--admin-border)]">
               {promotions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-[var(--admin-muted)]">No hay promociones para este período.</td>
+                  <td colSpan={6} className="px-5 py-12 text-center text-[var(--admin-muted)]"><EmptyState title="No hay promociones" description="No hay promociones para este período." /></td>
                 </tr>
               ) : (
                 promotions.map((promo: PromotionRow) => (
@@ -273,7 +272,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
                     <td className="px-5 py-3">{promo.discountValue}</td>
                     <td className="px-5 py-3">{promo.startAt ? new Date(promo.startAt).toISOString().slice(0, 10) : "—"}</td>
                     <td className="px-5 py-3">{promo.endAt ? new Date(promo.endAt).toISOString().slice(0, 10) : "—"}</td>
-                    <td className="px-5 py-3">{promo.status}</td>
+                    <td className="px-5 py-3"><StatusBadge status={promo.status} /></td>
                   </tr>
                 ))
               )}
@@ -282,7 +281,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
         </div>
       </section>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Usuarios y acceso a sucursales</h2>
+        <SectionHeader title="Usuarios y acceso a sucursales" description="Matriz de permisos y alcance por sucursal." />
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -296,7 +295,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
             <tbody className="divide-y divide-[var(--admin-border)]">
               {memberships.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center text-[var(--admin-muted)]">No hay usuarios registrados.</td>
+                  <td colSpan={4} className="px-5 py-12 text-center text-[var(--admin-muted)]"><EmptyState title="No hay usuarios registrados." description="Agregá usuarios para que puedan operar en el panel." /></td>
                 </tr>
               ) : (
                 memberships.map((membership: MembershipRow) => (
@@ -310,9 +309,9 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
                     <td className="px-5 py-3">{membership.role.name}</td>
                     <td className="px-5 py-3">
                       {membership.allBranches ? (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-300">Consolidado</span>
+                        <StatusBadge status="Consolidado" tone="success" />
                       ) : (
-                        <span className="rounded-full bg-white/5 px-2 py-1 text-xs font-bold text-zinc-300">Por sucursal</span>
+                        <StatusBadge status="Por sucursal" tone="default" />
                       )}
                     </td>
                     <td className="px-5 py-3">
@@ -334,7 +333,7 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
         </div>
       </section>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Licencias por sucursal</h2>
+        <SectionHeader title="Licencias por sucursal" description="Estado operativo y cupos de cada local." />
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -344,21 +343,21 @@ export default async function ConsolidadoPage({ searchParams }: ConsolidadoPageP
                 <th className="px-5 py-3 font-bold">Estado</th>
                 <th className="px-5 py-3 font-bold">Inicio</th>
                 <th className="px-5 py-3 font-bold">Fin</th>
-                <th className="px-5 py-3 font-bold">Cupos</th>
-                <th className="px-5 py-3 font-bold">Precio usuario</th>
+                <th className="px-5 py-3 font-bold text-right">Cupos</th>
+                <th className="px-5 py-3 font-bold text-right">Precio usuario</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--admin-border)]">
               {licenses.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-[var(--admin-muted)]">No hay licencias registradas para las sucursales seleccionadas.</td>
+                  <td colSpan={7} className="px-5 py-12 text-center text-[var(--admin-muted)]"><EmptyState title="No hay licencias registradas" description="Las licencias se crean automáticamente al agregar sucursales." /></td>
                 </tr>
               ) : (
                 licenses.map((license: LicenseRow) => (
                   <tr key={license.id} className="hover:bg-white/[0.02]">
                     <td className="px-5 py-3 font-medium">{license.branch.name}</td>
                     <td className="px-5 py-3">{license.plan?.name ?? "—"}</td>
-                    <td className="px-5 py-3">{license.status}</td>
+                    <td className="px-5 py-3"><StatusBadge status={license.status} /></td>
                     <td className="px-5 py-3">{new Date(license.startsAt).toISOString().slice(0, 10)}</td>
                     <td className="px-5 py-3">{license.currentPeriodEnd ? new Date(license.currentPeriodEnd).toISOString().slice(0, 10) : "—"}</td>
                     <td className="px-5 py-3 text-right tabular-nums">{license.usersAllowed}</td>

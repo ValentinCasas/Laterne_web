@@ -1,6 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { activeBranchWhere, branchProductWhere } from "@/lib/branch";
@@ -137,7 +137,7 @@ export default async function Dashboard() {
 
   return (
     <section className="space-y-6">
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Centro de control"
         title="Tu negocio, en un solo lugar."
         description="Actualizá la carta, publicá eventos y moderá opiniones sin tocar código."

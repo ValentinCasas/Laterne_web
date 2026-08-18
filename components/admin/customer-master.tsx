@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, DataTable, EmptyState, SectionHeader, FormSection } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type LoyaltyCustomerData = {
@@ -32,7 +32,14 @@ type CustomerForm = {
 
 const emptyForm: CustomerForm = { name: "", email: "", phone: "", address: "", paymentTerms: "", notes: "" };
 
-/** @summary Maestro de clientes con alta, edición y ficha extendida. */
+const CUSTOMER_COLUMNS = [
+  { key: "name", label: "Cliente" },
+  { key: "contact", label: "Contacto", hideOnMobile: true },
+  { key: "balance", label: "Saldo", align: "right" as const },
+  { key: "activity", label: "Actividad", align: "right" as const, hideOnMobile: true },
+];
+
+/** @summary Maestro de clientes con tabla filtrable, creación rápida y ficha extendida. */
 export function CustomerMaster({ initialCustomers }: { initialCustomers: LoyaltyCustomerData[] }) {
   const [customers, setCustomers] = useState<LoyaltyCustomerData[]>(initialCustomers);
   const [query, setQuery] = useState("");
@@ -115,62 +122,80 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
   }
 
   return (
-    <section>
-      <AdminPageHeader eyebrow="Clientes" title="Base maestra de clientes" description="Altas, modificaciones y ficha completa de tus clientes." section="clientes" />
-      <div className="card mt-6 space-y-4 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <input className="input max-w-md flex-1" placeholder="Buscar por nombre, email, teléfono o dirección…" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <button type="button" className="btn" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Limpiar</button>
+    <section className="space-y-6">
+      <PageHeader eyebrow="Clientes" title="Base maestra de clientes" description="Altas, modificaciones y ficha completa de tus clientes." section="clientes" />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <input
+            type="search"
+            placeholder="Buscar por nombre, email, teléfono o dirección…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
+          />
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">🔎</span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-2xl border border-dashed border-white/10 p-4">
-            <p className="text-xs font-semibold text-zinc-400">Nuevo cliente</p>
-            <input className="input mt-2" placeholder="Nombre / Razón social" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-            <input className="input mt-2" placeholder="Email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-            <input className="input mt-2" placeholder="Teléfono" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} />
-            <input className="input mt-2" placeholder="Dirección" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
-            <input className="input mt-2" placeholder="Condiciones de pago" value={form.paymentTerms} onChange={(event) => setForm((current) => ({ ...current, paymentTerms: event.target.value }))} />
-            <textarea className="input mt-2" placeholder="Notas" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
-            <button type="button" className="btn mt-2 w-full" disabled={saving} onClick={editingId ? updateCustomer : createCustomer}>{saving ? "Guardando…" : editingId ? "Actualizar" : "Crear cliente"}</button>
-          </div>
-        </div>
+        <button type="button" className="btn" onClick={() => { setEditingId(null); setForm(emptyForm); }}>
+          {editingId ? "Cancelar edición" : "+ Nuevo cliente"}
+        </button>
       </div>
 
-      <div className="mt-6 space-y-2">
-        <h2 className="text-sm font-black uppercase tracking-widest text-[var(--admin-muted)]">Clientes ({visible.length})</h2>
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.02]">
-          <div className="hidden grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] gap-4 border-b border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-500 lg:grid">
-            <span>Cliente</span>
-            <span>Contacto</span>
-            <span>Saldo</span>
-            <span>Actividad</span>
-            <span />
-            <span />
+      {(editingId || !editingId) && (
+        <FormSection title={editingId ? "Editar cliente" : "Nuevo cliente"} description={editingId ? "Modificá los datos del cliente seleccionado." : "Completá los datos para crear un cliente nuevo."}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <input className="input" placeholder="Nombre / Razón social" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+            <input className="input" placeholder="Email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+            <input className="input" placeholder="Teléfono" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} />
+            <input className="input" placeholder="Dirección" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
+            <input className="input sm:col-span-2 lg:col-span-4" placeholder="Condiciones de pago" value={form.paymentTerms} onChange={(event) => setForm((current) => ({ ...current, paymentTerms: event.target.value }))} />
+            <textarea className="input sm:col-span-2 lg:col-span-4" placeholder="Notas" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+            <div className="sm:col-span-2 lg:col-span-4">
+              <button type="button" className="btn" disabled={saving} onClick={editingId ? updateCustomer : createCustomer}>{saving ? "Guardando…" : editingId ? "Actualizar" : "Crear cliente"}</button>
+            </div>
           </div>
-          <div className="divide-y divide-white/10">
-            {visible.map((customer) => (
-              <div className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] lg:items-center" key={customer.id}>
-                <div className="min-w-0">
-                  <strong className="block truncate">{customer.name}</strong>
-                  <p className="truncate text-sm text-zinc-500">{customer.address || customer.email || customer.phone || "Sin datos"}</p>
-                </div>
-                <span className="text-sm text-zinc-300">{customer.email ?? customer.phone ?? "—"}</span>
-                <strong className="text-sm tabular-nums">${Number(customer.currentBalance).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong>
-                <span className="text-sm text-zinc-500">{customer._count.orders} pedidos</span>
-                <div className="flex gap-2">
-                  <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => { setEditingId(customer.id); setForm({ name: customer.name, email: customer.email || "", phone: customer.phone || "", address: customer.address || "", paymentTerms: customer.paymentTerms || "", notes: "" }); }} type="button">Editar</button>
-                  <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => openDetail(customer)} type="button">Ficha</button>
-                </div>
+        </FormSection>
+      )}
+
+      {visible.length === 0 ? (
+        <EmptyState title="No hay clientes registrados" description="Creá tu primer cliente para comenzar a operar." />
+      ) : (
+        <DataTable
+          columns={CUSTOMER_COLUMNS}
+          data={visible.map((customer) => ({
+            id: customer.id,
+            name: (
+              <div className="min-w-0">
+                <strong className="block truncate">{customer.name}</strong>
+                <p className="truncate text-xs text-zinc-500">{customer.address || customer.email || customer.phone || "Sin datos"}</p>
               </div>
-            ))}
-            {!visible.length && <p className="p-10 text-center text-zinc-500">No hay clientes registrados.</p>}
-          </div>
-        </div>
-      </div>
+            ),
+            contact: customer.email ?? customer.phone ?? "—",
+            balance: (
+              <strong className="tabular-nums">
+                ${Number(customer.currentBalance).toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              </strong>
+            ),
+            activity: `${customer._count.orders} pedidos`,
+          }))}
+          keyExtractor={(row) => row.id as number}
+          emptyMessage="No hay clientes registrados."
+          rowActions={(row) => {
+            const customer = visible.find((c) => c.id === row.id as number);
+            if (!customer) return null;
+            return (
+              <div className="flex gap-2">
+                <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => { setEditingId(customer.id); setForm({ name: customer.name, email: customer.email || "", phone: customer.phone || "", address: customer.address || "", paymentTerms: customer.paymentTerms || "", notes: "" }); }} type="button">Editar</button>
+                <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10" onClick={() => openDetail(customer)} type="button">Ficha</button>
+              </div>
+            );
+          }}
+        />
+      )}
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setDetail(null)}>
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-black">{detail.name}</h3>
               <button className="btn btn-secondary" onClick={() => setDetail(null)}>Cerrar</button>
@@ -186,34 +211,40 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
               </div>
             </div>
             <div className="mt-4 space-y-2">
-              <h4 className="text-sm font-black uppercase tracking-widest text-zinc-500">Pedidos recientes</h4>
+              <SectionHeader title="Pedidos recientes" description={`${detail.orders.length} pedidos registrados.`} />
               {detail.orders.length === 0 && <p className="text-sm text-zinc-500">Sin pedidos.</p>}
-              {detail.orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between rounded-lg bg-white/[.03] p-3 text-sm">
-                  <span>{order.reference}</span>
-                  <span className="text-zinc-500">{order.status}</span>
-                </div>
-              ))}
+              <div className="space-y-2">
+                {detail.orders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between rounded-lg bg-white/[.03] p-3 text-sm">
+                    <span>{order.reference}</span>
+                    <span className="text-zinc-500">{order.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="mt-4 space-y-2">
-              <h4 className="text-sm font-black uppercase tracking-widest text-zinc-500">Entregas</h4>
+              <SectionHeader title="Entregas" description={`${detail.deliveries.length} entregas.`} />
               {detail.deliveries.length === 0 && <p className="text-sm text-zinc-500">Sin entregas.</p>}
-              {detail.deliveries.map((delivery) => (
-                <div key={delivery.id} className="flex items-center justify-between rounded-lg bg-white/[.03] p-3 text-sm">
-                  <span>{delivery.number}</span>
-                  <span className="text-zinc-500">{delivery.status}</span>
-                </div>
-              ))}
+              <div className="space-y-2">
+                {detail.deliveries.map((delivery) => (
+                  <div key={delivery.id} className="flex items-center justify-between rounded-lg bg-white/[.03] p-3 text-sm">
+                    <span>{delivery.number}</span>
+                    <span className="text-zinc-500">{delivery.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="mt-4 space-y-2">
-              <h4 className="text-sm font-black uppercase tracking-widest text-zinc-500">Pagos</h4>
+              <SectionHeader title="Pagos" description={`${detail.payments.length} pagos.`} />
               {detail.payments.length === 0 && <p className="text-sm text-zinc-500">Sin pagos.</p>}
-              {detail.payments.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between rounded-lg bg-white/[.03] p-3 text-sm">
-                  <span>{payment.number}</span>
-                  <span className="text-zinc-500">${Number(payment.amount).toLocaleString("es-AR")}</span>
-                </div>
-              ))}
+              <div className="space-y-2">
+                {detail.payments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between rounded-lg bg-white/[.03] p-3 text-sm">
+                    <span>{payment.number}</span>
+                    <span className="text-zinc-500">${Number(payment.amount).toLocaleString("es-AR")}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

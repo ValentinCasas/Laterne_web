@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { PageHeader, Tabs } from "@/components/admin/ui";
 import { ReportsFilters } from "./reports-filters";
 
 /** @summary Layout compartido para páginas de reportes: filtros URL-driven y contenido. */
@@ -19,6 +20,10 @@ export function ReportsShell({
   defaultFrom,
   defaultTo,
   periodPreset,
+  title,
+  description,
+  section,
+  tabs,
 }: {
   children: React.ReactNode;
   branches: Array<{ id: number; name: string }>;
@@ -32,6 +37,10 @@ export function ReportsShell({
   defaultFrom?: string;
   defaultTo?: string;
   periodPreset?: string;
+  title?: string;
+  description?: string;
+  section?: string;
+  tabs?: Array<{ key: string; label: string; disabled?: boolean }>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -69,6 +78,14 @@ export function ReportsShell({
 
   return (
     <div className="space-y-6">
+      {title && (
+        <PageHeader
+          section={section ?? "Reportes"}
+          title={title}
+          description={description}
+        />
+      )}
+      {tabs && tabs.length > 0 && <Tabs tabs={tabs} defaultTab={tabs[0]?.key} />}
       <ReportsFilters
         filters={filters}
         onChange={handleFilterChange}

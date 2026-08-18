@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge, FormSection } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type NotificationSettingsData = {
@@ -59,15 +59,16 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
 
   return (
     <form onSubmit={save}>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Avisos"
         title="Notificaciones"
         description="Elegí qué eventos se muestran en el panel. Los canales externos estarán disponibles próximamente."
         section="notificaciones"
       />
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Canales</h2>
+        <FormSection
+          title="Canales"
+        >
           <div className="mt-5 space-y-3">
             <label className="flex justify-between rounded-2xl border border-white/10 p-4">
               <span>
@@ -84,9 +85,7 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
                 </small>
               </span>
               <span className="flex items-center gap-3">
-                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
-                  Próximamente
-                </span>
+                <StatusBadge status="Próximamente" tone="default" />
                 <input name="email" type="checkbox" disabled />
               </span>
             </label>
@@ -96,9 +95,7 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
                 <small className="block text-zinc-500">Próximamente · requiere API oficial autorizada</small>
               </span>
               <span className="flex items-center gap-3">
-                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
-                  Próximamente
-                </span>
+                <StatusBadge status="Próximamente" tone="default" />
                 <input name="whatsapp" type="checkbox" disabled />
               </span>
             </label>
@@ -108,16 +105,15 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
                 <small className="block text-zinc-500">Próximamente · requiere claves VAPID</small>
               </span>
               <span className="flex items-center gap-3">
-                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
-                  Próximamente
-                </span>
+                <StatusBadge status="Próximamente" tone="default" />
                 <input name="webPush" type="checkbox" disabled />
               </span>
             </label>
           </div>
-        </section>
-        <section className="card p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Eventos</h2>
+        </FormSection>
+        <FormSection
+          title="Eventos"
+        >
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             {eventOptions.map(([value, label]) => (
               <label
@@ -137,7 +133,7 @@ export function NotificationSettings({ initialSettings }: { initialSettings: Not
               </label>
             ))}
           </div>
-        </section>
+        </FormSection>
       </div>
       <div className="mt-6 flex justify-end">
         <button className="btn min-w-48">Guardar preferencias</button>

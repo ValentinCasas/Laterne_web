@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
+import { PageHeader, DataTable, StatusBadge, FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
 
 export type MovementsInitial = {
   tenantId: number;
@@ -224,139 +225,178 @@ export function FinanceMovementsClient({ initial }: { initial: MovementsInitial 
     }
   }, [initial.accounts, loadMovements]);
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.accountId) count++;
+    if (filters.type) count++;
+    if (filters.direction) count++;
+    if (filters.from) count++;
+    if (filters.to) count++;
+    return count;
+  }, [filters]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ label: string; onRemove: () => void }> = [];
+    if (filters.accountId) {
+      const account = initial.accounts.find((a) => String(a.id) === filters.accountId);
+      chips.push({
+        label: `Cuenta: ${account?.name ?? filters.accountId}`,
+        onRemove: () => setFilters((f) => ({ ...f, accountId: "" })),
+      });
+    }
+    if (filters.type) {
+      const typeLabel = MOVEMENT_TYPES.find((t) => t.value === filters.type)?.label ?? filters.type;
+      chips.push({
+        label: `Tipo: ${typeLabel}`,
+        onRemove: () => setFilters((f) => ({ ...f, type: "" })),
+      });
+    }
+    if (filters.direction) {
+      const dirLabel = DIRECTION_OPTIONS.find((d) => d.value === filters.direction)?.label ?? filters.direction;
+      chips.push({
+        label: `Dirección: ${dirLabel}`,
+        onRemove: () => setFilters((f) => ({ ...f, direction: "" })),
+      });
+    }
+    if (filters.from) {
+      chips.push({
+        label: `Desde: ${filters.from}`,
+        onRemove: () => setFilters((f) => ({ ...f, from: "" })),
+      });
+    }
+    if (filters.to) {
+      chips.push({
+        label: `Hasta: ${filters.to}`,
+        onRemove: () => setFilters((f) => ({ ...f, to: "" })),
+      });
+    }
+    return chips;
+  }, [filters, initial.accounts]);
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="section-eyebrow">Finanzas</p>
-          <h1 className="text-2xl font-black tracking-tight">Movimientos</h1>
-          <p className="mt-1 text-sm text-[var(--admin-muted)]">Registro de ingresos y egresos financieros</p>
-        </div>
-        <button type="button" className="btn" onClick={handleCreate} disabled={busy}>
-          + Nuevo movimiento
-        </button>
-      </div>
+      <PageHeader
+        section="Finanzas"
+        title="Movimientos"
+        description="Registro de ingresos y egresos financieros"
+        actions={
+          <button type="button" className="btn" onClick={handleCreate} disabled={busy}>
+            + Nuevo movimiento
+          </button>
+        }
+      />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
-        <select
-          className="input w-auto"
-          value={filters.accountId}
-          onChange={(e) => setFilters((f) => ({ ...f, accountId: e.target.value }))}
-          aria-label="Filtrar por cuenta"
-        >
-          <option value="">Todas las cuentas</option>
-          {initial.accounts.map((a) => (
-            <option key={a.id} value={String(a.id)}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input w-auto"
-          value={filters.type}
-          onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
-          aria-label="Filtrar por tipo"
-        >
-          {MOVEMENT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input w-auto"
-          value={filters.direction}
-          onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
-          aria-label="Filtrar por dirección"
-        >
-          {DIRECTION_OPTIONS.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          className="input w-auto"
-          value={filters.from}
-          onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-          aria-label="Fecha desde"
-        />
-        <input
-          type="date"
-          className="input w-auto"
-          value={filters.to}
-          onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-          aria-label="Fecha hasta"
-        />
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => loadMovements(true)}
-          disabled={busy}
-        >
-          Filtrar
-        </button>
-        <span className="ml-auto text-sm text-[var(--admin-muted)]">{filteredTotal} resultados</span>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <FiltersBar title="Filtros" activeCount={activeFilterCount} onClear={() => setFilters({ accountId: "", type: "", direction: "", from: "", to: "" })}>
+          <div className="space-y-3">
+            <select
+              className="input w-full"
+              value={filters.accountId}
+              onChange={(e) => setFilters((f) => ({ ...f, accountId: e.target.value }))}
+              aria-label="Filtrar por cuenta"
+            >
+              <option value="">Todas las cuentas</option>
+              {initial.accounts.map((a) => (
+                <option key={a.id} value={String(a.id)}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input w-full"
+              value={filters.type}
+              onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
+              aria-label="Filtrar por tipo"
+            >
+              {MOVEMENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input w-full"
+              value={filters.direction}
+              onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
+              aria-label="Filtrar por dirección"
+            >
+              {DIRECTION_OPTIONS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              className="input w-full"
+              value={filters.from}
+              onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
+              aria-label="Fecha desde"
+            />
+            <input
+              type="date"
+              className="input w-full"
+              value={filters.to}
+              onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
+              aria-label="Fecha hasta"
+            />
+            <button
+              type="button"
+              className="btn btn-secondary w-full"
+              onClick={() => loadMovements(true)}
+              disabled={busy}
+            >
+              Filtrar
+            </button>
+          </div>
+        </FiltersBar>
+        {activeFilterChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {activeFilterChips.map((chip) => (
+              <ActiveFilterChip key={chip.label} label={chip.label} onRemove={chip.onRemove} />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                <th className="px-5 py-3 font-bold">Fecha</th>
-                <th className="px-5 py-3 font-bold">Cuenta</th>
-                <th className="px-5 py-3 font-bold">Tipo</th>
-                <th className="px-5 py-3 font-bold">Dirección</th>
-                <th className="px-5 py-3 font-bold text-right">Importe</th>
-                <th className="px-5 py-3 font-bold">Concepto</th>
-                <th className="px-5 py-3 font-bold">Referencia</th>
-                <th className="px-5 py-3 font-bold">Origen</th>
-                <th className="px-5 py-3 font-bold">Usuario</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--admin-border)]">
-              {movements.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay movimientos financieros todavía
-                  </td>
-                </tr>
-              ) : (
-                movements.map((movement) => (
-                  <tr key={movement.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3">{dateLabel(movement.date)}</td>
-                    <td className="px-5 py-3 font-medium">{movement.accountName}</td>
-                    <td className="px-5 py-3 capitalize">{movement.type}</td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                          movement.direction === "in"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-rose-500/15 text-rose-300"
-                        }`}
-                      >
-                        {movement.direction === "in" ? "Ingreso" : "Egreso"}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-5 py-3 text-right font-black tabular-nums ${
-                        movement.direction === "in" ? "text-emerald-300" : "text-rose-300"
-                      }`}
-                    >
-                      {money(movement.amount, currency)}
-                    </td>
-                    <td className="px-5 py-3 max-w-xs truncate">{movement.concept}</td>
-                    <td className="px-5 py-3 text-xs text-[var(--admin-muted)]">{movement.reference || "—"}</td>
-                    <td className="px-5 py-3 text-xs text-[var(--admin-muted)]">{movement.origin}</td>
-                    <td className="px-5 py-3 text-xs text-[var(--admin-muted)]">{movement.userName || "—"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={[
+            { key: "fecha", label: "Fecha" },
+            { key: "cuenta", label: "Cuenta" },
+            { key: "tipo", label: "Tipo" },
+            { key: "direccion", label: "Dirección" },
+            { key: "importe", label: "Importe", align: "right" },
+            { key: "concepto", label: "Concepto" },
+            { key: "referencia", label: "Referencia", hideOnMobile: true },
+            { key: "origen", label: "Origen", hideOnMobile: true },
+            { key: "usuario", label: "Usuario", hideOnMobile: true },
+          ]}
+          data={useMemo(() => movements.map((movement) => ({
+            id: movement.id,
+            fecha: dateLabel(movement.date),
+            cuenta: <span className="font-medium">{movement.accountName}</span>,
+            tipo: <span className="capitalize">{movement.type}</span>,
+            direccion: (
+              <StatusBadge
+                status={movement.direction === "in" ? "Ingreso" : "Egreso"}
+                tone={movement.direction === "in" ? "success" : "danger"}
+              />
+            ),
+            importe: (
+              <span className={`text-right font-black tabular-nums block ${movement.direction === "in" ? "text-emerald-300" : "text-rose-300"}`}>
+                {money(movement.amount, currency)}
+              </span>
+            ),
+            concepto: <span className="max-w-xs truncate block">{movement.concept}</span>,
+            referencia: <span className="text-xs text-[var(--admin-muted)]">{movement.reference || "—"}</span>,
+            origen: <span className="text-xs text-[var(--admin-muted)]">{movement.origin}</span>,
+            usuario: <span className="text-xs text-[var(--admin-muted)]">{movement.userName || "—"}</span>,
+          })), [movements, currency])}
+          keyExtractor={(row) => row.id as number}
+          emptyMessage="No hay movimientos financieros todavía"
+          density="compact"
+        />
       </div>
 
       {pageCount > 1 && (

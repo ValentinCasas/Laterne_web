@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { activeBranchWhere } from "@/lib/branch";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +41,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Seguridad y trazabilidad"
         title="Auditoría"
         description={`Quién realizó cambios importantes y cuándo, dentro de ${context.tenant.name}.`}

@@ -1956,6 +1956,8 @@ model Branch {
   whatsapp           String?                 @db.VarChar(60)
   latitude           Decimal?                @db.Decimal(10, 7)
   longitude          Decimal?                @db.Decimal(10, 7)
+  geofenceRadius     Int?                    @default(150)
+  geofenceEnabled    Boolean                 @default(false)
   deliveryFee        Decimal                 @default(0) @db.Decimal(12, 2)
   minimumOrder       Decimal                 @default(0) @db.Decimal(12, 2)
   orderPrefix        String                  @default("PED") @db.VarChar(12)

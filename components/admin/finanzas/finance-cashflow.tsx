@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
+import { PageHeader, KpiCard, DataTable, StatusBadge, FiltersBar } from "@/components/admin/ui";
 
 export type CashflowInitial = {
   tenantId: number;
@@ -118,66 +119,68 @@ export function FinanceCashflowClient({ initial }: { initial: CashflowInitial })
 
   return (
     <div>
-      <div className="mb-4">
-        <p className="section-eyebrow">Finanzas</p>
-        <h1 className="text-2xl font-black tracking-tight">Flujo de caja</h1>
-        <p className="mt-1 text-sm text-[var(--admin-muted)]">
-          Entradas, salidas y saldo del período seleccionado
-        </p>
-      </div>
+      <PageHeader
+        section="Finanzas"
+        title="Flujo de caja"
+        description="Entradas, salidas y saldo del período seleccionado"
+      />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
-        <select
-          className="input w-auto"
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          aria-label="Período"
-        >
-          {PERIOD_OPTIONS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        {period === "custom" && (
-          <>
-            <input
-              type="date"
-              className="input w-auto"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              aria-label="Fecha desde"
-            />
-            <input
-              type="date"
-              className="input w-auto"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              aria-label="Fecha hasta"
-            />
-          </>
-        )}
-        <select
-          className="input w-auto"
-          value={branchId}
-          onChange={(e) => setBranchId(e.target.value)}
-          aria-label="Sucursal"
-        >
-          <option value="">Todas las sucursales</option>
-          {initial.branches.map((b) => (
-            <option key={b.id} value={String(b.id)}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={loadCashFlow}
-          disabled={busy}
-        >
-          Actualizar
-        </button>
+      <div className="mb-4">
+        <FiltersBar title="Filtros" activeCount={period !== "month" || branchId ? 1 : 0} onClear={() => { setPeriod("month"); setBranchId(""); }}>
+          <div className="space-y-3">
+            <select
+              className="input w-full"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              aria-label="Período"
+            >
+              {PERIOD_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            {period === "custom" && (
+              <>
+                <input
+                  type="date"
+                  className="input w-full"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  aria-label="Fecha desde"
+                />
+                <input
+                  type="date"
+                  className="input w-full"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  aria-label="Fecha hasta"
+                />
+              </>
+            )}
+            <select
+              className="input w-full"
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              aria-label="Sucursal"
+            >
+              <option value="">Todas las sucursales</option>
+              {initial.branches.map((b) => (
+                <option key={b.id} value={String(b.id)}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-secondary w-full"
+              onClick={loadCashFlow}
+              disabled={busy}
+            >
+              Actualizar
+            </button>
+          </div>
+        </FiltersBar>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -215,74 +218,46 @@ export function FinanceCashflowClient({ initial }: { initial: CashflowInitial })
           </div>
         </div>
 
-        <div className="lg:col-span-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+        <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
           <div className="border-b border-[var(--admin-border)] px-5 py-4">
             <h2 className="text-lg font-black">Detalle del período</h2>
             <p className="text-xs text-[var(--admin-muted)]">
               {dateLabel(cashFlow.startDate)} — {dateLabel(cashFlow.endDate)}
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                  <th className="px-5 py-3 font-bold">Fecha</th>
-                  <th className="px-5 py-3 font-bold">Cuenta</th>
-                  <th className="px-5 py-3 font-bold">Tipo</th>
-                  <th className="px-5 py-3 font-bold">Categoría</th>
-                  <th className="px-5 py-3 font-bold">Dirección</th>
-                  <th className="px-5 py-3 font-bold text-right">Importe</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--admin-border)]">
-                {cashFlow.details.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                      No hay movimientos en este período
-                    </td>
-                  </tr>
-                ) : (
-                  cashFlow.details.map((detail) => (
-                    <tr key={detail.id} className="hover:bg-white/[0.02]">
-                      <td className="px-5 py-3">{dateLabel(detail.date)}</td>
-                      <td className="px-5 py-3 font-medium">{detail.accountName}</td>
-                      <td className="px-5 py-3 capitalize">{detail.type}</td>
-                      <td className="px-5 py-3">{detail.category}</td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                            detail.direction === "in"
-                              ? "bg-emerald-500/15 text-emerald-300"
-                              : "bg-rose-500/15 text-rose-300"
-                          }`}
-                        >
-                          {detail.direction === "in" ? "Ingreso" : "Egreso"}
-                        </span>
-                      </td>
-                      <td
-                        className={`px-5 py-3 text-right font-black tabular-nums ${
-                          detail.direction === "in" ? "text-emerald-300" : "text-rose-300"
-                        }`}
-                      >
-                        {money(detail.amount, currency)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { key: "fecha", label: "Fecha" },
+              { key: "cuenta", label: "Cuenta" },
+              { key: "tipo", label: "Tipo" },
+              { key: "categoria", label: "Categoría" },
+              { key: "direccion", label: "Dirección" },
+              { key: "importe", label: "Importe", align: "right" },
+            ]}
+            data={useMemo(() => cashFlow.details.map((detail) => ({
+              id: detail.id,
+              fecha: dateLabel(detail.date),
+              cuenta: <span className="font-medium">{detail.accountName}</span>,
+              tipo: <span className="capitalize">{detail.type}</span>,
+              categoria: detail.category,
+              direccion: (
+                <StatusBadge
+                  status={detail.direction === "in" ? "Ingreso" : "Egreso"}
+                  tone={detail.direction === "in" ? "success" : "danger"}
+                />
+              ),
+              importe: (
+                <span className={`text-right font-black tabular-nums block ${detail.direction === "in" ? "text-emerald-300" : "text-rose-300"}`}>
+                  {money(detail.amount, currency)}
+                </span>
+              ),
+            })), [cashFlow.details, currency])}
+            keyExtractor={(row) => row.id as number}
+            emptyMessage="No hay movimientos en este período"
+            density="compact"
+          />
         </div>
       </div>
-    </div>
-  );
-}
-
-function KpiCard({ label, value, tone }: { label: string; value: string; tone: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">{label}</p>
-      <p className={`mt-1 truncate text-lg font-black tabular-nums ${tone}`}>{value}</p>
     </div>
   );
 }

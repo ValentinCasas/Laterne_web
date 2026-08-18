@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, StatusBadge, DocumentHeader, DocumentLines, FactBox, SplitView, SectionHeader, ActionMenu, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { canRetireDelivery } from "@/lib/delivery-drivers";
 import { orderStatusLabel } from "@/lib/orders";
@@ -52,16 +52,6 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-zinc-500/15 text-zinc-300",
 };
 
-const ORDER_STATUS_COLORS: Record<string, string> = {
-  received: "bg-sky-500/15 text-sky-300",
-  confirmed: "bg-indigo-500/15 text-indigo-300",
-  preparing: "bg-amber-500/15 text-amber-300",
-  ready: "bg-pink-500/15 text-pink-300",
-  on_the_way: "bg-violet-500/15 text-violet-300",
-  delivered: "bg-emerald-500/15 text-emerald-300",
-  cancelled: "bg-red-500/15 text-red-300",
-};
-
 function statusColor(status: string) {
   return STATUS_COLORS[status] ?? "bg-zinc-500/15 text-zinc-300";
 }
@@ -70,16 +60,12 @@ function statusLabel(status: string) {
   return STATUS_LABELS[status as DeliveryStatus] ?? status;
 }
 
-function orderStatusColor(status: string) {
-  return ORDER_STATUS_COLORS[status] ?? "bg-zinc-500/15 text-zinc-300";
-}
-
 /** @summary Centros de preparación que todavía no habilitan el retiro. */
 function awaitingKitchen(orderStatus: string | null | undefined) {
   return ["received", "confirmed", "preparing"].includes(orderStatus ?? "");
 }
 
-/** @summary Centro de delivery con lista, mapa abstracto y detalle de entregas. */
+/** @summary Centro de delivery con lista, panel de detalle y filtros compactos. */
 export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProviders }: DeliveryCenterProps) {
   const [deliveries, setDeliveries] = useState<Delivery[]>(initialDeliveries);
   const [filterStatus, setFilterStatus] = useState("");
@@ -91,8 +77,6 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
 
   const hasMap = mapProviders.length > 0;
 
-  // Polling ligero (sin WebSockets): refleja los avances del repartidor y de
-  // cocina en el centro de delivery usando el endpoint de lista existente.
   useEffect(() => {
     const timer = window.setInterval(() => {
       void (async () => {
@@ -169,15 +153,25 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
     }
   }
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const d of deliveries) {
+      counts[d.status] = (counts[d.status] || 0) + 1;
+    }
+    return counts;
+  }, [deliveries]);
+
   return (
-    <section>
-      <AdminPageHeader eyebrow="Delivery" title="Centro de delivery" description="Seguimiento de entregas, repartidores y estado de pedidos." section="delivery" />
+    <section className="space-y-4">
+      <PageHeader eyebrow="Delivery" title="Centro de delivery" description="Seguimiento de entregas, repartidores y estado de pedidos." section="delivery" />
       {!hasMap && (
-        <div className="card mt-4 border border-amber-500/20 bg-amber-500/[0.04] p-4 text-sm text-amber-200">
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-4 text-sm text-amber-200">
           Configurá un proveedor de mapas para habilitar la vista geográfica. La lista de entregas sigue funcionando sin mapa.
         </div>
       )}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchBox value={filterQ} onChange={setFilterQ} placeholder="Buscar por número, pedido o cliente…" className="min-w-[220px] flex-1" />
         <select className="input w-auto" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filtrar por estado">
           <option value="">Todos los estados</option>
           {Object.entries(STATUS_LABELS).map(([key, label]) => (
@@ -196,91 +190,104 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
             <option key={driver.id} value={String(driver.id)}>{driver.name}</option>
           ))}
         </select>
-        <input className="input max-w-xs flex-1" placeholder="Buscar por número, pedido o cliente…" value={filterQ} onChange={(e) => setFilterQ(e.target.value)} />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div className="space-y-2">
-          {visible.length === 0 && <p className="p-6 text-center text-[var(--admin-muted)]">Sin entregas.</p>}
-          {visible.map((delivery) => (
-            <button
-              key={delivery.id}
-              className={`w-full rounded-2xl border p-4 text-left transition hover:bg-white/[.03] ${selected?.id === delivery.id ? "border-pink-500/40 bg-pink-500/[.04]" : "border-white/10 bg-white/[.02]"}`}
-              onClick={() => setSelected(delivery)}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusColor(delivery.status)}`}>{statusLabel(delivery.status)}</span>
-                <span className="text-xs text-[var(--admin-muted)]">{delivery.number}</span>
-                <span className="text-xs text-[var(--admin-muted)]">{delivery.provider}</span>
-              </div>
-              <p className="mt-1 text-sm font-bold text-white">{delivery.customerName}</p>
-              <p className="text-xs text-[var(--admin-muted)]">{delivery.order?.reference ?? "—"} · {delivery.branch?.name ?? "—"}</p>
-              {delivery.driverProfile && <p className="text-xs text-[var(--admin-muted)]">Repartidor: {delivery.driverProfile.name}</p>}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => (
+          <button
+            key={status}
+            type="button"
+            onClick={() => setFilterStatus(filterStatus === status ? "" : status)}
+            className={`rounded-full px-3 py-1.5 text-xs font-black transition-colors ${
+              filterStatus === status ? statusColor(status) : "border border-white/10 bg-white/5 text-zinc-400 hover:text-white"
+            }`}
+          >
+            {STATUS_LABELS[status]} {statusCounts[status] ? `(${statusCounts[status]})` : ""}
+          </button>
+        ))}
+      </div>
 
-        <div>
-          {selected ? (
+      <SplitView
+        primary={
+          <div className="space-y-2">
+            {visible.length === 0 && (
+              <EmptyState title="Sin entregas" description="No hay entregas registradas para los filtros seleccionados." />
+            )}
+            {visible.map((delivery) => (
+              <button
+                key={delivery.id}
+                className={`w-full rounded-2xl border p-4 text-left transition hover:bg-white/[.03] ${selected?.id === delivery.id ? "border-pink-500/40 bg-pink-500/[.04]" : "border-white/10 bg-white/[.02]"}`}
+                onClick={() => setSelected(delivery)}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={statusLabel(delivery.status)} tone={delivery.status === "DELIVERED" ? "success" : delivery.status === "INCIDENT" || delivery.status === "FAILED" ? "danger" : "warning"} />
+                  <span className="text-xs text-[var(--admin-muted)]">{delivery.number}</span>
+                  <span className="text-xs text-[var(--admin-muted)]">{delivery.provider}</span>
+                </div>
+                <p className="mt-1 text-sm font-bold text-white">{delivery.customerName}</p>
+                <p className="text-xs text-[var(--admin-muted)]">{delivery.order?.reference ?? "—"} · {delivery.branch?.name ?? "—"}</p>
+                {delivery.driverProfile && <p className="text-xs text-[var(--admin-muted)]">Repartidor: {delivery.driverProfile.name}</p>}
+              </button>
+            ))}
+          </div>
+        }
+        sidebar={
+          selected ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-black">{selected.number}</h3>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusColor(selected.status)}`}>{statusLabel(selected.status)}</span>
-                </div>
-                <p className="mt-1 text-sm text-[var(--admin-muted)]">{selected.customerName} · {selected.order?.reference ?? "—"}</p>
-                <p className="text-sm text-[var(--admin-muted)]">{selected.deliveryAddress}</p>
-                <p className="text-sm text-[var(--admin-muted)]">{selected.contactPhone} · {selected.contactName}</p>
-                {selected.instructions && <p className="text-xs text-[var(--admin-muted)]">Instrucciones: {selected.instructions}</p>}
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-[var(--admin-muted)]">Lat:</span> {selected.latitude ?? "—"}</div>
-                  <div><span className="text-[var(--admin-muted)]">Lng:</span> {selected.longitude ?? "—"}</div>
-                </div>
-              </div>
+              <DocumentHeader
+                reference={`Entrega ${selected.number}`}
+                title={selected.customerName}
+                status={<StatusBadge status={statusLabel(selected.status)} tone={selected.status === "DELIVERED" ? "success" : selected.status === "INCIDENT" || selected.status === "FAILED" ? "danger" : "warning"} />}
+                actions={
+                  <ActionMenu
+                    align="right"
+                    items={[
+                      { label: "Ver pedido origen", onClick: () => window.open(`/admin/orders/${selected.order?.id ?? ""}`, "_blank") },
+                      { label: "Anular entrega", tone: "danger", onClick: () => {} },
+                    ]}
+                  />
+                }
+              />
 
-              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Pedido</p>
-                <dl className="mt-2 space-y-1 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[var(--admin-muted)]">Estado</dt>
-                    <dd>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${orderStatusColor(selected.order?.status ?? "")}`}>
-                        {orderStatusLabel(selected.order?.status ?? "—")}
-                      </span>
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[var(--admin-muted)]">Modalidad</dt>
-                    <dd className="font-bold">{selected.order?.orderType ?? "—"}</dd>
-                  </div>
-                  {selected.order?.channel && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-[var(--admin-muted)]">Canal</dt>
-                      <dd className="font-bold">{selected.order.channel}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[var(--admin-muted)]">Total</dt>
-                    <dd className="font-bold">{selected.order ? String(selected.order.total) : "—"}</dd>
-                  </div>
+              <FactBox title="Cliente">
+                <p className="text-sm font-semibold text-white">{selected.customerName}</p>
+                <p className="text-xs text-zinc-500">{selected.contactPhone}</p>
+                <p className="text-xs text-zinc-500">{selected.deliveryAddress}</p>
+              </FactBox>
+
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                <SectionHeader title="Pedido" description={`Referencia ${selected.order?.reference ?? "—"}`} />
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-zinc-500">Estado</span><StatusBadge status={orderStatusLabel(selected.order?.status ?? "—")} tone={selected.order?.status === "delivered" ? "success" : "info"} /></div>
+                  <div className="flex justify-between"><span className="text-zinc-500">Modalidad</span><strong>{selected.order?.orderType ?? "—"}</strong></div>
+                  {selected.order?.channel && <div className="flex justify-between"><span className="text-zinc-500">Canal</span><strong>{selected.order.channel}</strong></div>}
+                  <div className="flex justify-between"><span className="text-zinc-500">Total</span><strong className="tabular-nums">{selected.order ? String(selected.order.total) : "—"}</strong></div>
                 </dl>
-              </div>
+              </section>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Preparación</p>
-                <p className={`mt-2 text-sm font-bold ${awaitingKitchen(selected.order?.status) ? "text-amber-300" : "text-emerald-300"}`}>
-                  {awaitingKitchen(selected.order?.status)
-                    ? "Esperando a cocina"
-                    : selected.order?.status === "ready"
-                      ? "Listo para retirar"
-                      : orderStatusLabel(selected.order?.status ?? "—")}
-                </p>
-              </div>
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                <SectionHeader title="Items entregados" description={`${selected.items?.length ?? 0} productos`} />
+                <div className="mt-3">
+                  <DocumentLines headers={["Producto", "Cantidad"]}>
+                    {(selected.items ?? []).map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-2 text-sm text-zinc-200">{item.productName}</td>
+                        <td className="px-4 py-2 text-sm text-right tabular-nums text-zinc-400">x{item.quantityDelivered}</td>
+                      </tr>
+                    ))}
+                  </DocumentLines>
+                </div>
+              </section>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Repartidor</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <select className="input w-auto" defaultValue={selected.driverProfile?.id ? String(selected.driverProfile.id) : ""} onChange={(e) => { const val = e.target.value; if (!val) return; assignDriver(selected.id, Number(val)); }} aria-label="Asignar repartidor">
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                <SectionHeader title="Repartidor" description="Asignación y estado" />
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <select
+                    className="input w-auto"
+                    defaultValue={selected.driverProfile?.id ? String(selected.driverProfile.id) : ""}
+                    onChange={(e) => { const val = e.target.value; if (!val) return; assignDriver(selected.id, Number(val)); }}
+                    aria-label="Asignar repartidor"
+                  >
                     <option value="">Asignar repartidor…</option>
                     {drivers.map((driver) => (
                       <option key={driver.id} value={String(driver.id)}>{driver.name}</option>
@@ -288,11 +295,11 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
                   </select>
                   {selected.driverProfile && <span className="text-sm text-white">{selected.driverProfile.name}</span>}
                 </div>
-              </div>
+              </section>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Estado</p>
-                <div className="mt-2 flex flex-wrap gap-2">
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                <SectionHeader title="Estado" description="Transiciones válidas" />
+                <div className="mt-3 flex flex-wrap gap-2">
                   {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => {
                     const blocked = status === "PICKED_UP" && !canRetireDelivery(selected.order?.status);
                     return (
@@ -314,34 +321,22 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
                     Esperando a cocina: el repartidor solo puede retirar cuando el pedido esté listo.
                   </p>
                 )}
-              </div>
+              </section>
 
               {hasMap && selected.latitude && selected.longitude && (
-                <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                  <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Ubicación</p>
-                  <p className="mt-1 text-sm text-white">Lat: {selected.latitude} · Lng: {selected.longitude}</p>
-                </div>
+                <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                  <SectionHeader title="Ubicación" description="Coordenadas registradas" />
+                  <p className="mt-2 text-sm text-zinc-300">Lat: {selected.latitude} · Lng: {selected.longitude}</p>
+                </section>
               )}
-
-              <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-                <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Items</p>
-                <div className="mt-2 space-y-1">
-                  {(selected.items ?? []).map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span>{item.productName}</span>
-                      <span className="tabular-nums text-[var(--admin-muted)]">x{item.quantityDelivered}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-white/10 p-10 text-center text-[var(--admin-muted)]">
               Seleccioná una entrega para ver el detalle.
             </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
     </section>
   );
 }

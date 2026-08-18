@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
+import { EmptyState } from "@/components/admin/ui";
 
 type AdminNotification = {
   id: string;
@@ -211,11 +212,11 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
           </header>
           <div className="h-px shrink-0 bg-white/[.07]" />
           {items.length === 0 ? (
-            <div className="grid place-items-center gap-2 px-6 py-12 text-center">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[.05] text-zinc-500">
-                <BellIcon />
-              </span>
-              <p className="text-sm text-zinc-500">No hay notificaciones.</p>
+            <div className="grid place-items-center gap-3 px-6 py-12 text-center">
+              <EmptyState
+                title="No hay notificaciones"
+                description="Te avisaremos cuando haya movimientos nuevos."
+              />
             </div>
           ) : (
             <ul className="max-h-[26rem] flex-1 overflow-y-auto overscroll-contain">

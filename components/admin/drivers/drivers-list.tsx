@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, FiltersBar, KpiCard, ActionMenu, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type Driver = {
@@ -167,7 +167,7 @@ export function DriversList({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Operación"
         title="Repartidores"
         description="Perfiles de repartidores, sucursales habilitadas, entregas y KPIs del día."
@@ -182,47 +182,38 @@ export function DriversList({
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Entregas del día</p>
-          <p className="mt-1 text-3xl font-black text-white">{kpis.deliveriesToday}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Sin asignar</p>
-          <p className="mt-1 text-3xl font-black text-amber-300">{kpis.pendingAssignment}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">En camino</p>
-          <p className="mt-1 text-3xl font-black text-violet-300">{kpis.onTheWay}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">Incidencias abiertas</p>
-          <p className="mt-1 text-3xl font-black text-orange-300">{kpis.openIncidents}</p>
-        </div>
+        <KpiCard label="Entregas del día" value={kpis.deliveriesToday} tone="text-white" />
+        <KpiCard label="Sin asignar" value={kpis.pendingAssignment} tone="text-amber-300" />
+        <KpiCard label="En camino" value={kpis.onTheWay} tone="text-violet-300" />
+        <KpiCard label="Incidencias abiertas" value={kpis.openIncidents} tone="text-orange-300" />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <input
-          className="input max-w-xs flex-1"
-          placeholder="Buscar por nombre, teléfono o usuario…"
-          value={filterQ}
-          onChange={(e) => setFilterQ(e.target.value)}
-        />
-        <select className="input w-auto" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filtrar por estado">
+      <FiltersBar
+        title="Filtros"
+        activeCount={[filterQ, filterStatus, filterBranch].filter(Boolean).length}
+        onClear={() => {
+          setFilterQ("");
+          setFilterStatus("");
+          setFilterBranch("");
+        }}
+      >
+        <SearchBox value={filterQ} onChange={setFilterQ} placeholder="Buscar por nombre, teléfono o usuario…" />
+        <select className="input w-full" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filtrar por estado">
           <option value="">Todos los estados</option>
           <option value="AVAILABLE">Disponible</option>
           <option value="UNAVAILABLE">No disponible</option>
           <option value="INACTIVE">Inactivo</option>
         </select>
-        <select className="input w-auto" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} aria-label="Filtrar por sucursal">
+        <select className="input w-full" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} aria-label="Filtrar por sucursal">
           <option value="">Todas las sucursales</option>
           {branches.map((branch) => (
             <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
           ))}
         </select>
-      </div>
+      </FiltersBar>
 
       <div className="mt-4 space-y-2">
-        {visible.length === 0 && <p className="card p-6 text-center text-[var(--admin-muted)]">Sin repartidores para estos filtros.</p>}
+        {visible.length === 0 && <EmptyState title="Sin repartidores para estos filtros." description="" />}
         {visible.map((driver) => {
           const meta = statusMeta(driver.status);
           return (
@@ -266,14 +257,13 @@ export function DriversList({
                   <p className="text-[10px] uppercase tracking-widest text-[var(--admin-muted)]">Tiempo medio</p>
                 </div>
                 {canManage && (
-                  <div className="flex gap-2">
-                    <button type="button" className="btn btn-secondary text-xs" onClick={() => setEditing(driver)}>
-                      Editar
-                    </button>
-                    <button type="button" className="btn btn-secondary text-xs text-red-300" onClick={() => deleteDriver(driver)}>
-                      Eliminar
-                    </button>
-                  </div>
+                  <ActionMenu
+                    align="right"
+                    items={[
+                      { label: "Editar", onClick: () => setEditing(driver) },
+                      { label: "Eliminar", onClick: () => deleteDriver(driver), tone: "danger" },
+                    ]}
+                  />
                 )}
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHelp } from "@/components/admin/admin-page-help";
+import { PageHeader, SearchBox, Tabs } from "@/components/admin/ui";
 import { InvoiceDetailModal, NewInvoiceModal, NewOrderModal, OrderDetailModal, SupplierModal } from "@/components/admin/purchases-modals";
 import { SupplierDetailModal, type Supplier } from "@/components/admin/supplier-detail-modal";
 import { scopedFetch } from "@/lib/client-routing";
@@ -252,66 +252,21 @@ export function PurchasesManager({ initial }: { initial: PurchasesPayload }) {
   }
 
   return (
-    <div>
-      {/* Cabecera compacta */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="min-w-0">
-            <p className="section-eyebrow">Costos</p>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight">Compras</h1>
-              <AdminPageHelp section="compras" />
-            </div>
-          </div>
-          <p className="hidden max-w-md truncate text-sm text-[var(--admin-muted)] xl:block">
-            Pedido → Recepción → Factura → Pago
-          </p>
+    <div className="space-y-6">
+      <PageHeader eyebrow="Costos" title="Compras" description="Pedido → Recepción → Factura → Pago" section="compras" actions={
+        <div className="flex flex-wrap gap-2">
+          {tab === "pedidos" && <button type="button" className="btn" onClick={() => setCreatingOrder(true)} disabled={busy}>+ Nueva compra</button>}
+          {tab === "facturas" && <button type="button" className="btn" onClick={() => setCreatingInvoice(true)} disabled={busy}>+ Nueva factura</button>}
+          {tab === "proveedores" && <button type="button" className="btn" onClick={() => setEditingSupplier("new")} disabled={busy}>+ Nuevo proveedor</button>}
         </div>
-        <div className="flex gap-2">
-          {tab === "pedidos" && (
-            <button type="button" className="btn" onClick={() => setCreatingOrder(true)} disabled={busy}>
-              + Nueva compra
-            </button>
-          )}
-          {tab === "facturas" && (
-            <button type="button" className="btn" onClick={() => setCreatingInvoice(true)} disabled={busy}>
-              + Nueva factura
-            </button>
-          )}
-          {tab === "proveedores" && (
-            <button type="button" className="btn" onClick={() => setEditingSupplier("new")} disabled={busy}>
-              + Nuevo proveedor
-            </button>
-          )}
-        </div>
-      </div>
+      } />
 
-      {/* Pestañas */}
-      <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1">
-        {TAB_LABELS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setTab(item.key)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
-              tab === item.key ? "bg-pink-500 text-white" : "text-[var(--admin-muted)] hover:bg-white/5"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={TAB_LABELS.map((item) => ({ key: item.key, label: item.label }))} defaultTab={tab} onChange={(key) => setTab(key as "pedidos" | "recepciones" | "facturas" | "proveedores")} />
 
       {/* Toolbar de filtros */}
       {(tab === "pedidos" || tab === "facturas") && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
-          <input
-            className="input min-w-48 flex-1"
-            value={orderQuery}
-            onChange={(event) => setOrderQuery(event.target.value)}
-            placeholder="Buscar por número, proveedor o comprobante…"
-            aria-label="Buscar en compras"
-          />
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
+          <SearchBox value={orderQuery} onChange={setOrderQuery} placeholder="Buscar por número, proveedor o comprobante…" className="min-w-[220px] flex-1" />
           {tab === "pedidos" ? (
             <>
               <select className="input w-auto" value={orderStatus} onChange={(event) => setOrderStatus(event.target.value)} aria-label="Filtrar por estado">

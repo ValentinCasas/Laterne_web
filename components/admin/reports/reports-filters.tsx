@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
 
-/** @summary Barra de filtros para reportes con período, sucursal, categoría, producto, proveedor, usuario, medio de pago y origen. */
+/** @summary Filtros compactos para reportes: período y sucursal siempre visibles, resto en panel. */
 export function ReportsFilters({
   filters,
   onChange,
@@ -92,172 +93,163 @@ export function ReportsFilters({
     onChange({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10), period: preset });
   }
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.branchId && filters.branchId > 0) count++;
+    if (filters.categoryId && filters.categoryId > 0) count++;
+    if (filters.productId && filters.productId > 0) count++;
+    if (filters.supplierId && filters.supplierId > 0) count++;
+    if (filters.userId && filters.userId > 0) count++;
+    if (filters.paymentMethod) count++;
+    if (filters.channel) count++;
+    if (filters.source) count++;
+    return count;
+  }, [filters]);
+
+  function clearAll() {
+    onChange({ branchId: null, categoryId: null, productId: null, supplierId: null, userId: null, paymentMethod: null, channel: null, source: null, from: null, to: null, period: null });
+  }
+
+  const activeChips = useMemo(() => {
+    const chips: Array<{ label: string; onRemove: () => void }> = [];
+    if (filters.branchId && filters.branchId > 0) {
+      const branch = branches.find((b) => b.id === filters.branchId);
+      chips.push({ label: `Sucursal: ${branch?.name ?? filters.branchId}`, onRemove: () => onChange({ branchId: null }) });
+    }
+    if (filters.categoryId && filters.categoryId > 0) {
+      const cat = categories.find((c) => c.id === filters.categoryId);
+      chips.push({ label: `Categoría: ${cat?.name ?? filters.categoryId}`, onRemove: () => onChange({ categoryId: null }) });
+    }
+    if (filters.productId && filters.productId > 0) {
+      const prod = products.find((p) => p.id === filters.productId);
+      chips.push({ label: `Producto: ${prod?.name ?? filters.productId}`, onRemove: () => onChange({ productId: null }) });
+    }
+    if (filters.supplierId && filters.supplierId > 0) {
+      const sup = suppliers.find((s) => s.id === filters.supplierId);
+      chips.push({ label: `Proveedor: ${sup?.name ?? filters.supplierId}`, onRemove: () => onChange({ supplierId: null }) });
+    }
+    if (filters.userId && filters.userId > 0) {
+      const user = users.find((u) => u.id === filters.userId);
+      chips.push({ label: `Usuario: ${user?.name ?? filters.userId}`, onRemove: () => onChange({ userId: null }) });
+    }
+    if (filters.paymentMethod) {
+      chips.push({ label: `Medio: ${filters.paymentMethod}`, onRemove: () => onChange({ paymentMethod: null }) });
+    }
+    if (filters.channel) {
+      chips.push({ label: `Canal: ${filters.channel}`, onRemove: () => onChange({ channel: null }) });
+    }
+    if (filters.source) {
+      chips.push({ label: `Origen: ${filters.source}`, onRemove: () => onChange({ source: null }) });
+    }
+    return chips;
+  }, [filters, branches, categories, products, suppliers, users, onChange]);
+
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-      {periodPreset !== undefined && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Período</label>
-          <select
-            className={selectClass}
-            value={periodPreset}
-            onChange={(event) => handlePeriodChange(event.target.value)}
-            disabled={disabled}
-          >
-            <option value="7d">7 días</option>
-            <option value="30d">30 días</option>
-            <option value="3m">3 meses</option>
-            <option value="6m">6 meses</option>
-            <option value="12m">12 meses</option>
-            <option value="custom">Personalizado</option>
-          </select>
-        </div>
-      )}
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Desde</label>
-        <input
-          type="date"
-          className={selectClass}
-          value={filters.from || ""}
-          onChange={(event) => handleFromChange(event.target.value)}
-          disabled={disabled}
-        />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <FiltersBar title="Filtros" activeCount={activeFilterCount} onClear={clearAll}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {periodPreset !== undefined && (
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Período</label>
+                <select className={selectClass} value={periodPreset} onChange={(e) => handlePeriodChange(e.target.value)} disabled={disabled}>
+                  <option value="7d">7 días</option>
+                  <option value="30d">30 días</option>
+                  <option value="3m">3 meses</option>
+                  <option value="6m">6 meses</option>
+                  <option value="12m">12 meses</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Desde</label>
+              <input type="date" className={selectClass} value={filters.from || ""} onChange={(e) => handleFromChange(e.target.value)} disabled={disabled} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Hasta</label>
+              <input type="date" className={selectClass} value={filters.to || ""} onChange={(e) => handleToChange(e.target.value)} disabled={disabled} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sucursal</label>
+              <select className={selectClass} value={filters.branchId ?? ""} onChange={(e) => onChange({ branchId: e.target.value ? Number(e.target.value) : null })} disabled={disabled}>
+                <option value="">Todas</option>
+                {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+              </select>
+            </div>
+            {categories.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoría</label>
+                <select className={selectClass} value={filters.categoryId ?? ""} onChange={(e) => onChange({ categoryId: e.target.value ? Number(e.target.value) : null })} disabled={disabled}>
+                  <option value="">Todas</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+              </div>
+            )}
+            {products.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Producto</label>
+                <select className={selectClass} value={filters.productId ?? ""} onChange={(e) => onChange({ productId: e.target.value ? Number(e.target.value) : null })} disabled={disabled}>
+                  <option value="">Todos</option>
+                  {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+                </select>
+              </div>
+            )}
+            {suppliers.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Proveedor</label>
+                <select className={selectClass} value={filters.supplierId ?? ""} onChange={(e) => onChange({ supplierId: e.target.value ? Number(e.target.value) : null })} disabled={disabled}>
+                  <option value="">Todos</option>
+                  {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+                </select>
+              </div>
+            )}
+            {users.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Usuario / Camarero</label>
+                <select className={selectClass} value={filters.userId ?? ""} onChange={(e) => onChange({ userId: e.target.value ? Number(e.target.value) : null })} disabled={disabled}>
+                  <option value="">Todos</option>
+                  {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </div>
+            )}
+            {paymentMethods.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Medio de pago</label>
+                <select className={selectClass} value={filters.paymentMethod ?? ""} onChange={(e) => onChange({ paymentMethod: e.target.value || null })} disabled={disabled}>
+                  <option value="">Todos</option>
+                  {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                </select>
+              </div>
+            )}
+            {channels.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Canal</label>
+                <select className={selectClass} value={filters.channel ?? ""} onChange={(e) => onChange({ channel: e.target.value || null })} disabled={disabled}>
+                  <option value="">Todos</option>
+                  {channels.map((channel) => <option key={channel} value={channel}>{channel}</option>)}
+                </select>
+              </div>
+            )}
+            {sources.length > 0 && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Origen</label>
+                <select className={selectClass} value={filters.source ?? ""} onChange={(e) => onChange({ source: e.target.value || null })} disabled={disabled}>
+                  <option value="">Todos</option>
+                  {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        </FiltersBar>
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {activeChips.map((chip) => (
+              <ActiveFilterChip key={chip.label} label={chip.label} onRemove={chip.onRemove} />
+            ))}
+          </div>
+        )}
       </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Hasta</label>
-        <input
-          type="date"
-          className={selectClass}
-          value={filters.to || ""}
-          onChange={(event) => handleToChange(event.target.value)}
-          disabled={disabled}
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sucursal</label>
-        <select
-          className={selectClass}
-          value={filters.branchId ?? ""}
-          onChange={(event) => onChange({ branchId: event.target.value ? Number(event.target.value) : null })}
-          disabled={disabled}
-        >
-          <option value="">Todas</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>{branch.name}</option>
-          ))}
-        </select>
-      </div>
-      {categories.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoría</label>
-          <select
-            className={selectClass}
-            value={filters.categoryId ?? ""}
-            onChange={(event) => onChange({ categoryId: event.target.value ? Number(event.target.value) : null })}
-            disabled={disabled}
-          >
-            <option value="">Todas</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {products.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Producto</label>
-          <select
-            className={selectClass}
-            value={filters.productId ?? ""}
-            onChange={(event) => onChange({ productId: event.target.value ? Number(event.target.value) : null })}
-            disabled={disabled}
-          >
-            <option value="">Todos</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>{product.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {suppliers.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Proveedor</label>
-          <select
-            className={selectClass}
-            value={filters.supplierId ?? ""}
-            onChange={(event) => onChange({ supplierId: event.target.value ? Number(event.target.value) : null })}
-            disabled={disabled}
-          >
-            <option value="">Todos</option>
-            {suppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {users.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Usuario / Camarero</label>
-          <select
-            className={selectClass}
-            value={filters.userId ?? ""}
-            onChange={(event) => onChange({ userId: event.target.value ? Number(event.target.value) : null })}
-            disabled={disabled}
-          >
-            <option value="">Todos</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>{user.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {paymentMethods.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Medio de pago</label>
-          <select
-            className={selectClass}
-            value={filters.paymentMethod ?? ""}
-            onChange={(event) => onChange({ paymentMethod: event.target.value || null })}
-            disabled={disabled}
-          >
-            <option value="">Todos</option>
-            {paymentMethods.map((method) => (
-              <option key={method} value={method}>{method}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {channels.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Canal</label>
-          <select
-            className={selectClass}
-            value={filters.channel ?? ""}
-            onChange={(event) => onChange({ channel: event.target.value || null })}
-            disabled={disabled}
-          >
-            <option value="">Todos</option>
-            {channels.map((channel) => (
-              <option key={channel} value={channel}>{channel}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {sources.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Origen</label>
-          <select
-            className={selectClass}
-            value={filters.source ?? ""}
-            onChange={(event) => onChange({ source: event.target.value || null })}
-            disabled={disabled}
-          >
-            <option value="">Todos</option>
-            {sources.map((source) => (
-              <option key={source} value={source}>{source}</option>
-            ))}
-          </select>
-        </div>
-      )}
     </div>
   );
 }

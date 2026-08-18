@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 /** @summary Marca de tiempo para calcular vencimientos sin llamadas impuras en el render. */
 const now = Date.now();
 import Swal from "sweetalert2";
-import { AdminPageHelp } from "@/components/admin/admin-page-help";
+import { PageHeader, SearchBox, Tabs } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { expenseStatusLabels } from "@/lib/expenses";
 
@@ -240,42 +240,16 @@ export function ExpensesManager({ initial }: { initial: ExpensesPayload }) {
   }
 
   return (
-    <div>
-      {/* Cabecera compacta */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="min-w-0">
-            <p className="section-eyebrow">Costos</p>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight">Gastos</h1>
-              <AdminPageHelp section="gastos" />
-            </div>
-          </div>
-          <p className="hidden max-w-md truncate text-sm text-[var(--admin-muted)] xl:block">
-            Gastos sin inventario, con estado de pago y disponibles para Finanzas
-          </p>
+    <div className="space-y-6">
+      <PageHeader eyebrow="Costos" title="Gastos" description="Gastos sin inventario, con estado de pago y disponibles para Finanzas." section="gastos" actions={
+        <div className="flex flex-wrap gap-2">
+          {tab === "gastos" && <button type="button" className="btn" onClick={() => setCreatingExpense(true)} disabled={busy}>+ Nuevo gasto</button>}
+          {tab === "previsiones" && <button type="button" className="btn" onClick={() => setCreatingRecurring(true)} disabled={busy}>+ Nueva previsión</button>}
+          {tab === "categorias" && <button type="button" className="btn" onClick={() => setCreatingCategory(true)} disabled={busy}>+ Nueva categoría</button>}
         </div>
-        <div className="flex gap-2">
-          {tab === "gastos" && (
-            <button type="button" className="btn" onClick={() => setCreatingExpense(true)} disabled={busy}>
-              + Nuevo gasto
-            </button>
-          )}
-          {tab === "previsiones" && (
-            <button type="button" className="btn" onClick={() => setCreatingRecurring(true)} disabled={busy}>
-              + Nueva previsión
-            </button>
-          )}
-          {tab === "categorias" && (
-            <button type="button" className="btn" onClick={() => setCreatingCategory(true)} disabled={busy}>
-              + Nueva categoría
-            </button>
-          )}
-        </div>
-      </div>
+      } />
 
-      {/* KPIs pequeños */}
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Pendiente este mes" value={money(payload.summary?.pendingMonth, currency)} tone="amber" />
         <KpiCard label="Pagado este mes" value={money(payload.summary?.paidMonth, currency)} tone="emerald" />
         <KpiCard label="Vencido" value={money(payload.summary?.overdue, currency)} tone="rose" />
@@ -290,32 +264,12 @@ export function ExpensesManager({ initial }: { initial: ExpensesPayload }) {
         />
       </div>
 
-      {/* Pestañas */}
-      <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1">
-        {TAB_LABELS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setTab(item.key)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
-              tab === item.key ? "bg-pink-500 text-white" : "text-[var(--admin-muted)] hover:bg-white/5"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={TAB_LABELS.map((item) => ({ key: item.key, label: item.label }))} defaultTab={tab} onChange={(key) => setTab(key as "gastos" | "previsiones" | "categorias")} />
 
       {/* Toolbar de filtros */}
       {tab === "gastos" && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
-          <input
-            className="input min-w-48 flex-1"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por número, proveedor o nota…"
-            aria-label="Buscar en gastos"
-          />
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
+          <SearchBox value={query} onChange={setQuery} placeholder="Buscar por número, proveedor o nota…" className="min-w-[220px] flex-1" />
           <select className="input w-auto" value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Filtrar por estado">
             <option value="">Todos los estados</option>
             {Object.entries(expenseStatusLabels).map(([value, label]) => (

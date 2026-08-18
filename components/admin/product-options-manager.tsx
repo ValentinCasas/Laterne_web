@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, Tabs, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type ProductOption = {
@@ -288,7 +288,7 @@ export function ProductOptionsManager({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Carta avanzada"
         title="Opciones de producto"
         description="Organizá cada producto en grupos de selección claros, con reglas y opciones reutilizables."
@@ -308,41 +308,20 @@ export function ProductOptionsManager({
             ))}
           </select>
         </label>
-      </AdminPageHeader>
+      </PageHeader>
 
       {!selectedProduct ? (
-        <div className="card p-12 text-center text-[var(--admin-muted)]">
-          Creá un producto antes de configurar opciones.
-        </div>
+        <EmptyState title="Creá un producto antes de configurar opciones" description="Las variantes y agregados se asignan sobre productos existentes de la carta." />
       ) : (
         <>
-          <div
-            className="mb-5 flex gap-2 border-b border-[var(--admin-border)]"
-            role="tablist"
-            aria-label="Tipo de opciones"
-          >
-            {(["variant", "extra"] as const).map((candidate) => (
-              <button
-                className={`border-b-2 px-4 py-3 text-sm font-black ${
-                  kind === candidate
-                    ? "border-[var(--admin-primary)] text-white"
-                    : "border-transparent text-[var(--admin-muted)]"
-                }`}
-                key={candidate}
-                onClick={() => setKind(candidate)}
-                role="tab"
-                aria-selected={kind === candidate}
-                type="button"
-              >
-                {candidate === "variant" ? "Variantes" : "Agregados"}
-                <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs">
-                  {candidate === "variant"
-                    ? variants.filter((option) => option.productId === productId).length
-                    : extras.filter((option) => option.productId === productId).length}
-                </span>
-              </button>
-            ))}
-          </div>
+          <Tabs
+            tabs={[
+              { key: "variant", label: `Variantes (${variants.filter((option) => option.productId === productId).length})` },
+              { key: "extra", label: `Agregados (${extras.filter((option) => option.productId === productId).length})` },
+            ]}
+            defaultTab={kind}
+            onChange={(key) => setKind(key as "variant" | "extra")}
+          />
 
           <div className="grid gap-6 xl:grid-cols-[minmax(280px,.75fr)_minmax(0,1.5fr)]">
             <section className="space-y-6">
@@ -584,11 +563,11 @@ export function ProductOptionsManager({
                         onRemove={() => void removeOption(option)}
                       />
                     ))}
-                    {!group.options.length && (
-                      <p className="p-6 text-sm text-[var(--admin-muted)]">
-                        No hay opciones todavía. Agregá la primera desde el panel.
-                      </p>
-                    )}
+                     {!group.options.length && (
+                       <div className="p-6">
+                         <EmptyState title="No hay opciones todavía" description="Agregá la primera desde el panel lateral." />
+                       </div>
+                     )}
                   </div>
                 </article>
               ))}
@@ -609,9 +588,9 @@ export function ProductOptionsManager({
                     />
                   ))}
                   {!ungrouped.length && (
-                    <p className="p-6 text-sm text-[var(--admin-muted)]">
-                      Todas las opciones están organizadas.
-                    </p>
+                    <div className="p-6">
+                      <EmptyState title="Todas las opciones están organizadas" description="Cada opción pertenece a un grupo de selección." />
+                    </div>
                   )}
                 </div>
               </article>

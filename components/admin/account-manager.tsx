@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import type { CustomerPaymentData } from "@/lib/delivery-types";
 
@@ -103,10 +103,14 @@ export function AccountManager({ initialCustomer, initialPayments, customersWith
 
   return (
     <section>
-      <AdminPageHeader eyebrow="Cuenta corriente" title="Cobros y saldo de clientes" description="Registrá pagos y consultá el saldo pendiente de tus clientes." section="cobros" />
+      <PageHeader eyebrow="Cuenta corriente" title="Cobros y saldo de clientes" description="Registrá pagos y consultá el saldo pendiente de tus clientes." section="cobros" />
       <div className="card mt-6 space-y-4 p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <input className="input" placeholder="Buscar cliente por nombre, email o teléfono…" value={customerQuery} onChange={(event) => setCustomerQuery(event.target.value)} />
+        <SearchBox
+          value={customerQuery}
+          onChange={setCustomerQuery}
+          placeholder="Buscar cliente por nombre, email o teléfono…"
+        />
           <button type="button" className="btn" onClick={searchCustomer}>Buscar</button>
         </div>
         {customer && (
@@ -151,6 +155,9 @@ export function AccountManager({ initialCustomer, initialPayments, customersWith
             </div>
           </div>
         </div>
+      )}
+      {!customer && customersList.length === 0 && (
+        <EmptyState title="Sin clientes con saldo pendiente" description="Cuando un cliente tenga saldo, aparecerá acá." />
       )}
 
       <div className="mt-6 space-y-2">

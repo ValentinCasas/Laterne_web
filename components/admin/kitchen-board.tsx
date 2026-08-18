@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, EmptyState, Drawer, FilterPanel, StatusBadge, ActionMenu, ActiveFilterChip } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import type { KdsOrder, KdsPayload, KdsStation } from "@/lib/kds-data";
 import { allowedTransitions, asOrderType, type OrderType } from "@/lib/order-status";
@@ -281,6 +281,7 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
   const [selected, setSelected] = useState<KdsOrder | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showStations, setShowStations] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const { chime } = useChime(settings.sound);
   const knownIds = useRef<Set<number>>(new Set(initial.orders.map((order) => order.id)));
@@ -431,7 +432,7 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
 
   return (
     <section className="flex min-h-0 flex-col">
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Operación"
         title="Cocina"
         description="Monitor de preparaciones: avanzá los pedidos por estado, seguí los tiempos y filtrá por sector, estación o canal."
@@ -459,74 +460,44 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <select
-          className="input w-full sm:w-44"
-          value={sectorFilter}
-          onChange={(event) => setSectorFilter(event.target.value)}
-          aria-label="Filtrar por sector"
+        <button
+          className="btn btn-secondary"
+          onClick={() => setShowFilters(true)}
+          type="button"
+          aria-label="Filtros avanzados"
         >
-          <option value="all">Todos los sectores</option>
-          <option value="none">Sin mesa</option>
-          {data.sectors.map((sector) => (
-            <option key={sector} value={sector}>
-              {sector}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input w-full sm:w-48"
-          value={stationFilter}
-          onChange={(event) => setStationFilter(event.target.value)}
-          aria-label="Filtrar por estación"
-        >
-          <option value="all">Todas las estaciones</option>
-          <option value="none">Sin estación</option>
-          {activeStations.map((station) => (
-            <option key={station.id} value={station.name}>
-              {stationTypeIcon[station.type] ?? ""} {station.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input w-full sm:w-40"
-          value={channelFilter}
-          onChange={(event) => setChannelFilter(event.target.value)}
-          aria-label="Filtrar por canal"
-        >
-          <option value="all">Todos los canales</option>
-          <option value="dine_in">Mesa</option>
-          <option value="takeaway">Retiro</option>
-          <option value="delivery">Delivery</option>
-        </select>
-        <select
-          className="input w-full sm:w-40"
-          value={sourceFilter}
-          onChange={(event) => setSourceFilter(event.target.value)}
-          aria-label="Filtrar por origen"
-        >
-          <option value="all">Todos los orígenes</option>
-          {data.sources.map((source) => (
-            <option key={source} value={source}>
-              {sourceName(source)}
-            </option>
-          ))}
-        </select>
+          Filtros
+        </button>
         {(sectorFilter !== "all" ||
           stationFilter !== "all" ||
           channelFilter !== "all" ||
           sourceFilter !== "all") && (
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setSectorFilter("all");
-              setStationFilter("all");
-              setChannelFilter("all");
-              setSourceFilter("all");
-            }}
-            type="button"
-          >
-            Limpiar filtros
-          </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {sectorFilter !== "all" && (
+              <ActiveFilterChip label={`Sector: ${sectorFilter === "none" ? "Sin mesa" : sectorFilter}`} onRemove={() => setSectorFilter("all")} />
+            )}
+            {stationFilter !== "all" && (
+              <ActiveFilterChip label={`Estación: ${stationFilter === "none" ? "Sin estación" : stationFilter}`} onRemove={() => setStationFilter("all")} />
+            )}
+            {channelFilter !== "all" && (
+              <ActiveFilterChip label={`Canal: ${modalityLabel[channelFilter] ?? channelFilter}`} onRemove={() => setChannelFilter("all")} />
+            )}
+            {sourceFilter !== "all" && (
+              <ActiveFilterChip label={`Origen: ${sourceName(sourceFilter)}`} onRemove={() => setSourceFilter("all")} />
+            )}
+            <button
+              className="text-xs font-bold text-zinc-400 hover:text-white"
+              onClick={() => {
+                setSectorFilter("all");
+                setStationFilter("all");
+                setChannelFilter("all");
+                setSourceFilter("all");
+              }}
+              type="button"
+            >
+              Limpiar
+            </button>
+          </div>
         )}
         <div className="ml-auto flex items-center gap-2 text-sm text-zinc-500">
           {delayedCount > 0 && (
@@ -540,14 +511,89 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
         </div>
       </div>
 
+      <Drawer open={showFilters} onClose={() => setShowFilters(false)} title="Filtros del monitor">
+        <FilterPanel title="Filtros activos" actions={
+          <button type="button" className="text-xs font-semibold text-zinc-400 hover:text-zinc-200" onClick={() => {
+            setSectorFilter("all");
+            setStationFilter("all");
+            setChannelFilter("all");
+            setSourceFilter("all");
+          }}>Limpiar todo</button>
+        }>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-bold text-zinc-300">Sector</label>
+              <select
+                className="input mt-1 w-full"
+                value={sectorFilter}
+                onChange={(event) => setSectorFilter(event.target.value)}
+                aria-label="Filtrar por sector"
+              >
+                <option value="all">Todos los sectores</option>
+                <option value="none">Sin mesa</option>
+                {data.sectors.map((sector) => (
+                  <option key={sector} value={sector}>
+                    {sector}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-bold text-zinc-300">Estación</label>
+              <select
+                className="input mt-1 w-full"
+                value={stationFilter}
+                onChange={(event) => setStationFilter(event.target.value)}
+                aria-label="Filtrar por estación"
+              >
+                <option value="all">Todas las estaciones</option>
+                <option value="none">Sin estación</option>
+                {activeStations.map((station) => (
+                  <option key={station.id} value={station.name}>
+                    {stationTypeIcon[station.type] ?? ""} {station.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-bold text-zinc-300">Canal</label>
+              <select
+                className="input mt-1 w-full"
+                value={channelFilter}
+                onChange={(event) => setChannelFilter(event.target.value)}
+                aria-label="Filtrar por canal"
+              >
+                <option value="all">Todos los canales</option>
+                <option value="dine_in">Mesa</option>
+                <option value="takeaway">Retiro</option>
+                <option value="delivery">Delivery</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-bold text-zinc-300">Origen</label>
+              <select
+                className="input mt-1 w-full"
+                value={sourceFilter}
+                onChange={(event) => setSourceFilter(event.target.value)}
+                aria-label="Filtrar por origen"
+              >
+                <option value="all">Todos los orígenes</option>
+                {data.sources.map((source) => (
+                  <option key={source} value={source}>
+                    {sourceName(source)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </FilterPanel>
+      </Drawer>
+
       {data.orders.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/[.02] p-10 text-center">
-          <p className="text-xl font-black">No hay pedidos para preparar</p>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-500">
-            Los pedidos confirmados aparecerán acá cuando entren. Podés seguir atendiendo desde la vista de
-            Pedidos o el Salón.
-          </p>
-        </div>
+        <EmptyState
+          title="No hay pedidos para preparar"
+          description="Los pedidos confirmados aparecerán acá cuando entren. Podés seguir atendiendo desde la vista de Pedidos o el Salón."
+        />
       ) : (
         <div className="flex min-h-0 flex-1 snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent] lg:h-[calc(100dvh-430px)] lg:min-h-[420px]">
           {COLUMNS.filter((column) => settings.columns[column.id]).map((column) => {
@@ -718,9 +764,7 @@ function KitchenCard({
           <span>{totalItems} {totalItems === 1 ? "ítem" : "ítems"}</span>
           <span>·</span>
           <span>{hourLabel(order.createdAt)}</span>
-          <span className={`rounded-full px-2 py-0.5 font-bold ${statusBadge[order.status]}`}>
-            {orderStatusLabel(order.status)}
-          </span>
+          <StatusBadge status={order.status} tone={order.status === "cancelled" ? "danger" : order.status === "delivered" ? "success" : "warning"} />
         </p>
 
         {importantNote && (
@@ -737,19 +781,15 @@ function KitchenCard({
             {actionLabel}
           </button>
         )}
-        <button className="btn btn-secondary px-4 py-4 text-lg font-bold" onClick={onOpen} type="button">
-          Detalle
-        </button>
-        {order.status !== "cancelled" && order.status !== "delivered" && (
-          <button
-            className="btn btn-secondary px-4 py-4 text-lg font-bold text-red-300"
-            onClick={onCancel}
-            type="button"
-            aria-label={`Cancelar ${order.reference}`}
-          >
-            ✕
-          </button>
-        )}
+        <ActionMenu
+          align="right"
+          items={[
+            { label: "Detalle", onClick: onOpen },
+            ...(order.status !== "cancelled" && order.status !== "delivered"
+              ? [{ label: "Cancelar pedido", tone: "danger" as const, onClick: onCancel }]
+              : []),
+          ]}
+        />
       </div>
     </article>
   );

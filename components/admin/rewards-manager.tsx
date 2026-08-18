@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge, KpiCard } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type LoyaltyRewardData = {
@@ -162,7 +162,7 @@ export function RewardsManager({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Fidelización"
         title="Recompensas"
         description="Definí qué beneficios canjean tus clientes frecuentes y desde cuántos puntos."
@@ -173,17 +173,16 @@ export function RewardsManager({
             Nueva recompensa
           </button>
         </div>
-      </AdminPageHeader>
+      </PageHeader>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => (
-          <article
-            className="card flex min-w-0 flex-wrap items-baseline justify-between gap-3 p-5"
+          <KpiCard
             key={kpi.label}
-          >
-            <span className="text-sm font-bold text-[var(--admin-muted)]">{kpi.label}</span>
-            <strong className={`shrink-0 text-3xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</strong>
-          </article>
+            label={kpi.label}
+            value={kpi.value}
+            tone={kpi.color}
+          />
         ))}
       </div>
 
@@ -194,7 +193,11 @@ export function RewardsManager({
               <p
                 className={`rounded-full px-2.5 py-1 text-xs font-black ${benefitColors[reward.benefitType] ?? benefitColors.other}`}
               >
-                {benefitLabels[reward.benefitType] ?? reward.benefitType}
+                <StatusBadge status={benefitLabels[reward.benefitType] ?? reward.benefitType} tone={
+                  reward.benefitType === "discount" ? "info" :
+                  reward.benefitType === "product" ? "warning" :
+                  reward.benefitType === "free" ? "success" : "default"
+                } />
               </p>
               <span className="text-xs text-zinc-600">#{reward.sortOrder}</span>
             </div>

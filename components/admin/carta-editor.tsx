@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { ResponsivePreview } from "@/components/admin/responsive-preview";
 import { CartaHeader } from "@/components/menu/carta-header";
 import { MenuProductCard } from "@/components/menu/menu-product-card";
@@ -91,7 +91,7 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Página pública"
         title="Editor de carta"
         description="Configurá los textos de la cabecera de la carta virtual. El fondo, los colores y el diseño dependen de tu marca."

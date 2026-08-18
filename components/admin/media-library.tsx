@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SearchBox, ActionMenu, EmptyState } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type MediaAssetData = {
@@ -152,18 +152,16 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Recursos del negocio"
         title="Biblioteca multimedia"
         description="Archivos nuevos, modelos 3D, formatos, pesos, autores y textos alternativos."
         section="archivos"
       >
         <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_220px_auto]">
-          <input
-            className="input"
+          <SearchBox
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            type="search"
+            onChange={setQuery}
             placeholder="Buscar archivo o descripción"
           />
           <select className="input" value={folder} onChange={(event) => setFolder(event.target.value)}>
@@ -179,7 +177,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
             {view === "grid" ? "Ver lista" : "Ver grilla"}
           </button>
         </div>
-      </AdminPageHeader>
+      </PageHeader>
       <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
         {visible.map((asset) => (
           <article
@@ -231,18 +229,26 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
                     Recortar copia
                   </button>
                 )}
-                <button
-                  className="rounded-xl border border-red-500/20 px-3 text-xs text-red-300"
-                  onClick={() => remove(asset)}
-                >
-                  Eliminar
-                </button>
+                <ActionMenu
+                  align="left"
+                  items={[
+                    { label: "Editar texto", onClick: () => edit(asset) },
+                    {
+                      label: "Eliminar",
+                      onClick: () => remove(asset),
+                      tone: "danger",
+                    },
+                  ]}
+                />
               </div>
             </div>
           </article>
         ))}
         {!visible.length && (
-          <p className="card p-10 text-center text-zinc-500">No hay archivos registrados con esos filtros.</p>
+          <EmptyState
+            title="Sin archivos"
+            description="No hay recursos registrados con esos filtros."
+          />
         )}
       </div>
     </section>

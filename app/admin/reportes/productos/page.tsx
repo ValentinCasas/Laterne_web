@@ -1,6 +1,5 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
-import { ReportsKpiCard } from "@/components/admin/reports/reports-kpi-card";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, KpiCard } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePeriod } from "@/lib/reports/period";
@@ -47,23 +46,15 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
       channels={[]}
       sources={[]}
     >
-      <AdminPageHeader
-        eyebrow="Reportes"
-        title="Productos"
-        description="Popularidad, rentabilidad y CMV"
-        section="reportes"
-      />
+      <PageHeader eyebrow="Reportes" title="Productos" description="Popularidad, rentabilidad y CMV." section="reportes" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <ReportsKpiCard label="Unidades vendidas" value={kpis.unitsSold} tone="text-sky-300" />
-        <ReportsKpiCard label="Ventas totales" value={kpis.totalSales} tone="text-emerald-300" />
-        <ReportsKpiCard label="CMV total" value={kpis.cmvTotal} tone="text-red-300" />
-        <ReportsKpiCard label="Margen total" value={kpis.marginTotal} tone="text-amber-300" />
+        <KpiCard label="Unidades vendidas" value={kpis.unitsSold} tone="text-sky-300" />
+        <KpiCard label="Ventas totales" value={kpis.totalSales} tone="text-emerald-300" />
+        <KpiCard label="CMV total" value={kpis.cmvTotal} tone="text-red-300" />
+        <KpiCard label="Margen total" value={kpis.marginTotal} tone="text-amber-300" />
       </div>
       <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
-        <h2 className="text-lg font-black">Ranking de productos</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Top {rankingData.ranking.length} = {rankingData.topProductsShare.toFixed(1)}% de las ventas
-        </p>
+        <SectionHeader title="Ranking de productos" description={`Top ${rankingData.ranking.length} = ${rankingData.topProductsShare.toFixed(1)}% de las ventas`} />
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>

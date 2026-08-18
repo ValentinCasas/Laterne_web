@@ -99,6 +99,25 @@ Docker NO obligatorio para desarrollo.
 - `prisma/bootstrap.sql` es dump histórico (phpMyAdmin, 2023); NO usado por migraciones actuales.
 - Para modificar schema: migración incremental segura + `prisma generate`.
 
+## Inventario de vistas admin (tipología)
+- Dashboard: `/admin` (inicio), `/admin/finanzas` (dashboard financiero), `/admin/estadisticas` (analytics)
+- Lista: `/admin/clientes` (DataTable), `/admin/entregas` (DataTable), `/admin/auditoria`, `/admin/errores`, `/admin/repartidores`, `/admin/facturacion`, `/admin/oportunidades`, `/admin/planes`, `/admin/recetas`, `/admin/testimonios`, `/admin/archivos`, `/admin/gastos`, `/admin/impresion`, `/admin/integraciones`, `/admin/notificaciones`, `/admin/cuenta`, `/admin/datos`, `/admin/marca`, `/admin/landing`, `/admin/carta`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`, `/admin/mesas`
+- Ficha/Documento: `/admin/recetas/[id]`, `/admin/recetas/[id]/ficha`, `/admin/facturacion/[id]`, modales de compras (`OrderDetailModal`, `InvoiceDetailModal`, `SupplierDetailModal`), ficha de cliente (`CustomerMaster` detail)
+- Board operativo: `/admin/pedidos` (kanban), `/admin/cocina` (KDS), `/admin/salon` (mesas), `/admin/delivery` (seguimiento), `/admin/reservas` (kanban/estados), `/admin/productos` (grid/lista)
+- Configuración: `/admin/integraciones`, `/admin/notificaciones`, `/admin/marca`, `/admin/landing`, `/admin/cuenta`, `/admin/datos`, `/admin/impresion`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`
+- Reporte: `/admin/reportes` (shell multi-tab), `/admin/reportes/ventas`, `/admin/reportes/productos`, `/admin/reportes/compras`, `/admin/reportes/sucursales`, `/admin/reportes/consolidado`, `/admin/reportes/ingenieria-menu`
+- Entidades genéricas (ResourceManager): categorías, eventos, horarios, testimonios, usuarios, negocio, promociones, legales, ayuda, casos, sucursales, seo, redirecciones
+
+## Módulos rediseñados (parcial)
+- Operación: Pedidos, Cocina, Salón, Mesas, Reservas, Entregas, Delivery Center, Repartidores, Cobros
+- Productos/Inventario: Productos, Ingredientes, Recetas, Inventario, Variantes/Extras
+- Clientes: CustomerMaster (tabla + ficha)
+- Compras/Gastos: ExpensesManager, PurchasesManager (parcial)
+- Finanzas: dashboard, cuentas, movimientos, flujo de caja, cuentas cobrar/pagar, estado de resultados
+- Reportes: shell, tabla genérica, filtros
+- Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, admin-shell (parcial)
+- Pendiente: Navbar completo, Geofencing/Prisma, Modelo documental (InvoiceRecordItem)
+
 ## Decisiones arquitectónicas
 - URLs canónicas con tenant slug/GUID; el host solo es para superficies públicas.
 - Contexto de sucursal en URL cuando aplica; nunca solo por query param.
@@ -110,6 +129,15 @@ Docker NO obligatorio para desarrollo.
 - Reportes: `ReportsShell` es Client Component y maneja filtros URL-driven internamente; las páginas Server Components solo pasan defaults serializables y datos iniciales. No se pasan callbacks desde Server a Client.
 - Navegación admin: `adminLinkMatchScore` compara segmentos desde el final para soportar URLs canónicas con GUID/slug.
 - Multi-sucursal: `ConsolidadoShell` y `MultiBranchSelector` en `components/admin/multi-branch/`. La página `/admin/reportes/consolidado` carga KPIs, comparativa, stock crítico, promociones, usuarios/acceso y licencias. Reutiliza `computeBranchComparison`, `computeVentasKpis`, `computeEvolution`, `computeByChannel`, `computeBySource` desde `lib/reports/`. No duplica lógica de analytics.
+- Sistema visual común: componentes base en `components/admin/ui/` (`PageHeader`, `SectionHeader`, `Toolbar`, `FiltersBar`, `SearchBox`, `ActionMenu`, `DataTable` con densidad y columnas configurables, `CardGrid`, `KanbanBoard`, `EmptyState`, `StatusBadge`, `KpiCard`, `Tabs`, `confirmModal`, `FormSection`, `ViewOptions`, `DocumentHeader`, `DocumentLines`, `RelatedDocuments`, `FactBox`, `SplitView`, `Drawer`, `ActiveFilterChip`, `FilterPanel`). Se aplicó de forma consistente en Pedidos, Entregas, Clientes, Delivery y resto de secciones admin reemplazando `AdminPageHeader` por `PageHeader`.
+- Filtros compactos: barra de comandos con `SearchBox` + selects compactos + filtros avanzados en `Drawer`/panel. Filtros activos como `ActiveFilterChip`.
+- AdminShell: `BranchSwitcher` siempre visible (no oculto en mobile) para que el contexto de sucursal sea siempre claro.
+- Documentos tipo BC: Pedidos y Entregas usan `DocumentHeader` + secciones (`FormSection`/`FactBox`) + `DocumentLines` + `RelatedDocuments` en lugar de modales chios.
+- Listas tipo BC: se prioriza `DataTable` con densidad (compacta/normal/cómoda), columnas configurables, orden y vista Card/List donde corresponda.
+- Board operativo: `KanbanBoard` para estados; `SplitView` para lista+detalle; `Drawer` para edición lateral.
+- Modelo documental: Pedido → OrderDelivery (remito) → InvoiceRecord (factura). OrderDeliveryItem es la línea de remito. Se agregará InvoiceRecordItem como línea de factura para snapshots históricos.
+- Geofencing: se agregará modelo `BranchGeofence` por sucursal con lat/lng/radio y validación server-side en pedidos tipo mesa.
+- Sin emojis en UI: se usa iconografía SVG profesional en `SearchBox`, `ActionMenu`, etc.
 
 ## Pendientes
 - Migración de analítica hacia dashboards de gestión comercial.

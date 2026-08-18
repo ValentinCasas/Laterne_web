@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, Tabs, StatusBadge, EmptyState } from "@/components/admin/ui";
 import { stockMovementTypeLabels } from "@/lib/order-stock";
 import { scopedFetch } from "@/lib/client-routing";
 import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
@@ -424,29 +424,18 @@ export function InventoryManager({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Operación"
         title="Inventario"
         section="inventario"
         description="Stock por sucursal, movimientos trazables, conteos físicos, mermas y transferencias entre locales. El valor del inventario se calcula con el costo de los ingredientes."
       >
-        <nav className="mt-6 flex flex-wrap gap-2">
-          {tabLabels.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                tab === item.id
-                  ? "bg-pink-500/15 text-pink-300 ring-1 ring-pink-500/40"
-                  : "text-[var(--admin-muted)] hover:bg-white/5 hover:text-zinc-300"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </AdminPageHeader>
+        <Tabs
+          tabs={tabLabels.map((item) => ({ key: item.id, label: item.label }))}
+          defaultTab={tab}
+          onChange={(key) => setTab(key as Tab)}
+        />
+      </PageHeader>
 
       {/* ============ RESUMEN (dashboard) ============ */}
       {tab === "resumen" && (
@@ -842,9 +831,7 @@ export function InventoryManager({
               );
             })}
             {!visible.length && (
-              <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-zinc-500">
-                No hay productos que coincidan con estos filtros.
-              </p>
+              <EmptyState title="No hay productos que coincidan con estos filtros" description="Probá modificar la búsqueda o los filtros aplicados." />
             )}
           </div>
         </>
@@ -914,9 +901,7 @@ export function InventoryManager({
                 </article>
               ))}
               {!productMovements(movementsFor).length && (
-                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-500">
-                  Este producto todavía no tiene movimientos registrados.
-                </p>
+                <EmptyState title="Este producto todavía no tiene movimientos registrados" />
               )}
             </div>
           </article>
@@ -1276,9 +1261,7 @@ function MovementsHistory({ branches, products }: { branches: Branch[]; products
                       })}
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-semibold">
-                        {stockMovementTypeLabels[movement.type] ?? movement.type}
-                      </span>
+                      <StatusBadge status={stockMovementTypeLabels[movement.type] ?? movement.type} />
                     </td>
                     <td className="px-4 py-2.5 font-semibold">{movement.stock.product.name}</td>
                     <td className="px-4 py-2.5 text-[var(--admin-muted)]">{movement.stock.branch.name}</td>
@@ -1563,19 +1546,9 @@ function CountSections({
                 <tr key={count.id} className="border-b border-[var(--admin-border)]/60 last:border-0">
                   <td className="px-4 py-2.5 font-semibold">{count.reference}</td>
                   <td className="px-4 py-2.5">{count.branch?.name ?? "—"}</td>
-                  <td className="px-4 py-2.5">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        count.status === "completed"
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : count.status === "cancelled"
-                            ? "bg-red-500/15 text-red-300"
-                            : "bg-sky-500/15 text-sky-300"
-                      }`}
-                    >
-                      {count.status === "completed" ? "Completado" : count.status === "cancelled" ? "Cancelado" : "Abierto"}
-                    </span>
-                  </td>
+                   <td className="px-4 py-2.5">
+                     <StatusBadge status={count.status === "completed" ? "completed" : count.status === "cancelled" ? "cancelled" : "in_progress"} />
+                   </td>
                   <td className="px-4 py-2.5 tabular-nums">{count._count.items}</td>
                   <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                     {new Date(count.startedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
@@ -1588,13 +1561,13 @@ function CountSections({
                   </td>
                 </tr>
               ))}
-              {counts.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-[var(--admin-muted)]">
-                    No hay sesiones de conteo todavía.
-                  </td>
-                </tr>
-              )}
+               {counts.length === 0 && (
+                 <tr>
+                   <td colSpan={6} className="px-4 py-10 text-center">
+                     <EmptyState title="No hay sesiones de conteo todavía" description="Abrí una nueva sesión desde la sección de conteos físicos." />
+                   </td>
+                 </tr>
+               )}
             </tbody>
           </table>
         </div>
@@ -1755,13 +1728,13 @@ function TransfersSection({
                   <td className="px-4 py-2.5 text-[var(--admin-muted)]">{transfer.createdBy?.name ?? "—"}</td>
                 </tr>
               ))}
-              {transfers.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-[var(--admin-muted)]">
-                    No hay transferencias todavía.
-                  </td>
-                </tr>
-              )}
+               {transfers.length === 0 && (
+                 <tr>
+                   <td colSpan={6} className="px-4 py-10 text-center">
+                     <EmptyState title="No hay transferencias todavía" description="Creá la primera para mover stock entre sucursales." />
+                   </td>
+                 </tr>
+               )}
             </tbody>
           </table>
         </div>

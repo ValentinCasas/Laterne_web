@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
-
+import { PageHeader, DataTable, StatusBadge, ActionMenu } from "@/components/admin/ui";
 export type AccountsInitial = {
   tenantId: number;
   currency: string;
@@ -201,90 +201,64 @@ export function FinanceAccountsClient({ initial }: { initial: AccountsInitial })
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="section-eyebrow">Finanzas</p>
-          <h1 className="text-2xl font-black tracking-tight">Cuentas financieras</h1>
-          <p className="mt-1 text-sm text-[var(--admin-muted)]">
-            Cajas, bancos, billeteras y otras cuentas del negocio
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={openCreate} disabled={busy}>
-          + Nueva cuenta
-        </button>
-      </div>
+      <PageHeader
+        section="Finanzas"
+        title="Cuentas financieras"
+        description="Cajas, bancos, billeteras y otras cuentas del negocio"
+        actions={
+          <button type="button" className="btn" onClick={openCreate} disabled={busy}>
+            + Nueva cuenta
+          </button>
+        }
+      />
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                <th className="px-5 py-3 font-bold">Nombre</th>
-                <th className="px-5 py-3 font-bold">Código</th>
-                <th className="px-5 py-3 font-bold">Tipo</th>
-                <th className="px-5 py-3 font-bold">Moneda</th>
-                <th className="px-5 py-3 font-bold text-right">Saldo</th>
-                <th className="px-5 py-3 font-bold">Estado</th>
-                <th className="px-5 py-3 font-bold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--admin-border)]">
-              {accounts.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-[var(--admin-muted)]">
-                    No hay cuentas financieras todavía
-                  </td>
-                </tr>
-              ) : (
-                accounts.map((account) => (
-                  <tr key={account.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3 font-medium">{account.name}</td>
-                    <td className="px-5 py-3 text-[var(--admin-muted)]">{account.code || "—"}</td>
-                    <td className="px-5 py-3 capitalize">{account.type}</td>
-                    <td className="px-5 py-3">{account.currency}</td>
-                    <td className={`px-5 py-3 text-right font-black tabular-nums ${account.balance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                      {money(account.balance, currency)}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                          account.status === "active"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : account.status === "closed"
-                              ? "bg-zinc-500/15 text-zinc-300"
-                              : "bg-amber-500/15 text-amber-300"
-                        }`}
-                      >
-                        {account.status === "active" ? "Activa" : account.status === "closed" ? "Cerrada" : "Inactiva"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-secondary py-1 text-xs"
-                          onClick={() => openEdit(account)}
-                          disabled={busy}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary py-1 text-xs"
-                          onClick={() => toggleStatus(account)}
-                          disabled={busy}
-                        >
-                          {account.status === "active" ? "Desactivar" : "Activar"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={[
+          { key: "nombre", label: "Nombre" },
+          { key: "codigo", label: "Código" },
+          { key: "tipo", label: "Tipo" },
+          { key: "moneda", label: "Moneda" },
+          { key: "saldo", label: "Saldo", align: "right" },
+          { key: "estado", label: "Estado" },
+          { key: "acciones", label: "Acciones", align: "right" },
+        ]}
+        data={useMemo(() => accounts.map((account) => ({
+          id: account.id,
+          nombre: account.name,
+          codigo: account.code || "—",
+          tipo: <span className="capitalize">{account.type}</span>,
+          moneda: account.currency,
+          saldo: (
+            <span className={`text-right font-black tabular-nums block ${account.balance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+              {money(account.balance, currency)}
+            </span>
+          ),
+          estado: (
+            <StatusBadge
+              status={
+                account.status === "active" ? "Activa" : account.status === "closed" ? "Cerrada" : "Inactiva"
+              }
+              tone={account.status === "active" ? "success" : account.status === "closed" ? "danger" : "warning"}
+            />
+          ),
+          acciones: (
+            <ActionMenu
+              align="right"
+              items={[
+                { label: "Editar", onClick: () => openEdit(account) },
+                {
+                  label: account.status === "active" ? "Desactivar" : "Activar",
+                  onClick: () => toggleStatus(account),
+                  tone: account.status === "active" ? "danger" : "primary",
+                },
+              ]}
+            />
+          ),
+        })), [accounts, currency, openEdit, toggleStatus])}
+        keyExtractor={(row) => row.id as number}
+        emptyMessage="No hay cuentas financieras todavía"
+        density="normal"
+      />
 
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">

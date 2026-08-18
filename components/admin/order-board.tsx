@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, StatusBadge, EmptyState, FormSection } from "@/components/admin/ui";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
@@ -72,16 +72,6 @@ const statusStyle: Record<string, string> = {
   on_the_way: "border-violet-500/30 bg-violet-500/5",
   delivered: "border-emerald-500/30 bg-emerald-500/5",
   cancelled: "border-red-500/30 bg-red-500/5",
-};
-
-const statusBadge: Record<string, string> = {
-  received: "bg-sky-500/15 text-sky-300",
-  confirmed: "bg-indigo-500/15 text-indigo-300",
-  preparing: "bg-amber-500/15 text-amber-300",
-  ready: "bg-pink-500/15 text-pink-300",
-  on_the_way: "bg-violet-500/15 text-violet-300",
-  delivered: "bg-emerald-500/15 text-emerald-300",
-  cancelled: "bg-red-500/15 text-red-300",
 };
 
 const modalityStyle: Record<string, string> = {
@@ -297,32 +287,32 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
     );
 
   return (
-    <section>
-      <AdminPageHeader
+    <section className="space-y-6">
+      <PageHeader
         eyebrow="Operación"
         title="Pedidos"
         description="Un pedido es una compra de tus clientes. Mesa, retiro y delivery son solo la forma en que lo reciben."
         section="pedidos"
         actions={
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/cocina")}>
               Cocina
             </Link>
-            <label className="block w-full min-w-[240px]">
-              <span className="sr-only">Buscar pedidos</span>
+            <div className="relative">
               <input
-                className="input"
+                type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Buscar referencia, cliente o teléfono"
-                type="search"
+                className="w-64 rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
               />
-            </label>
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">🔎</span>
+            </div>
           </div>
         }
       />
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {(
           [
             { value: "all", label: "Todos" },
@@ -350,16 +340,11 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
       </div>
 
       {orders.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/[.02] p-10 text-center">
-          <p className="text-xl font-black">Todavía no recibiste pedidos</p>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-500">
-            Los pedidos que hagan tus clientes desde la carta aparecerán acá. También podés probar con una
-            orden de prueba usando el enlace público de tu carta.
-          </p>
-          <Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin")}>
-            Ir al resumen
-          </Link>
-        </div>
+        <EmptyState
+          title="Todavía no recibiste pedidos"
+          description="Los pedidos que hagan tus clientes desde la carta aparecerán acá. También podés probar con una orden de prueba usando el enlace público de tu carta."
+          action={<Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin")}>Ir al resumen</Link>}
+        />
       ) : (
         <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">
           {orderStatuses.map((status) => {
@@ -387,7 +372,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-xs font-black uppercase tracking-wider text-[var(--admin-primary)]">
+                              <p className="text-xs font-black uppercase tracking-wider text-[var(--admin-primary-strong)]">
                                 {order.reference}
                               </p>
                               <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-500">
@@ -396,7 +381,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                             </div>
                             <h3 className="mt-1 truncate text-lg font-black">{order.customerName}</h3>
                           </div>
-                          <strong className="shrink-0">{formatPrice(order.total, order.currency)}</strong>
+                          <strong className="shrink-0 tabular-nums">{formatPrice(order.total, order.currency)}</strong>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <span
@@ -531,26 +516,18 @@ function OrderDetail({
       onClick={onClose}
     >
       <article
-        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl"
+        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={`Pedido ${order.reference}`}
       >
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
+        <header className="sticky top-0 z-10 flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-zinc-950/90 p-6 backdrop-blur">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="section-eyebrow">{order.reference}</p>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusBadge[order.status]}`}
-              >
-                {orderStatusLabel(order.status)}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${modalityStyle[order.orderType]}`}
-              >
-                {orderTypeLabel(order.orderType)}
-              </span>
+              <p className="text-xs font-black uppercase tracking-wider text-pink-300">{order.reference}</p>
+              <StatusBadge status={orderStatusLabel(order.status)} />
+              <StatusBadge status={orderTypeLabel(order.orderType)} tone="info" />
             </div>
             <h2 className="mt-2 text-3xl font-black">{order.customerName}</h2>
             <p className="mt-1 text-sm text-zinc-400">
@@ -558,7 +535,7 @@ function OrderDetail({
             </p>
           </div>
           <button
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/5 text-xl text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
             onClick={onClose}
             aria-label="Cerrar"
           >
@@ -566,215 +543,130 @@ function OrderDetail({
           </button>
         </header>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section>
-            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Cliente</h3>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Nombre</dt>
-                <dd className="text-right font-bold">{order.customerName}</dd>
-              </div>
-              {order.phone && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Teléfono</dt>
-                  <dd className="text-right font-bold">{order.phone}</dd>
+        <div className="p-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              <FormSection title="Cliente" description="Datos del cliente y sucursal.">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between"><span className="text-zinc-500">Nombre</span><strong>{order.customerName}</strong></div>
+                  {order.phone && <div className="flex justify-between"><span className="text-zinc-500">Teléfono</span><strong>{order.phone}</strong></div>}
+                  {order.email && <div className="flex justify-between"><span className="text-zinc-500">Email</span><strong className="text-right">{order.email}</strong></div>}
+                  {order.branch && <div className="flex justify-between"><span className="text-zinc-500">Sucursal</span><strong>{order.branch.name}</strong></div>}
                 </div>
-              )}
-              {order.email && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Email</dt>
-                  <dd className="text-right font-bold">{order.email}</dd>
-                </div>
-              )}
-              {order.branch && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Sucursal</dt>
-                  <dd className="text-right font-bold">{order.branch.name}</dd>
-                </div>
-              )}
-            </dl>
+              </FormSection>
 
-            <h3 className="mt-6 text-xs font-black uppercase tracking-widest text-zinc-500">Entrega</h3>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Modalidad</dt>
-                <dd className="text-right font-bold">
-                  {orderTypeLabel(order.orderType)}
-                  {order.table ? ` · ${order.table.name}` : ""}
-                </dd>
-              </div>
-              {order.deliveryAddress && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Dirección</dt>
-                  <dd className="text-right font-bold">{order.deliveryAddress}</dd>
+              <FormSection title="Entrega" description="Modalidad y estado logístico.">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between"><span className="text-zinc-500">Modalidad</span><strong>{orderTypeLabel(order.orderType)}{order.table ? ` · ${order.table.name}` : ""}</strong></div>
+                  {order.deliveryAddress && <div className="flex justify-between"><span className="text-zinc-500">Dirección</span><strong className="text-right max-w-xs">{order.deliveryAddress}</strong></div>}
+                  {order.delivery && <div className="flex justify-between"><span className="text-zinc-500">Reparto</span><strong>{deliveryStatusMeta(order.delivery.status).label}{order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}{order.delivery.number ? ` · ${order.delivery.number}` : ""}</strong></div>}
+                  {order.requestedAt && <div className="flex justify-between"><span className="text-zinc-500">Para</span><strong>{new Date(order.requestedAt).toLocaleString("es-AR")}</strong></div>}
                 </div>
-              )}
-              {order.delivery && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Reparto</dt>
-                  <dd className="text-right font-bold">
-                    {deliveryStatusMeta(order.delivery.status).label}
-                    {order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}
-                    {order.delivery.number ? ` · ${order.delivery.number}` : ""}
-                  </dd>
-                </div>
-              )}
-              {order.requestedAt && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Para</dt>
-                  <dd className="text-right font-bold">
-                    {new Date(order.requestedAt).toLocaleString("es-AR")}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </section>
+              </FormSection>
 
-          <section>
-            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Avance del pedido</h3>
-            <ol className="mt-3 space-y-0">
-              {timeline.map((entry, index) => (
-                <li className="relative flex gap-3 pb-4 pl-5 last:pb-0" key={`${entry.time}-${index}`}>
-                  <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--admin-primary)]" />
-                  {index < timeline.length - 1 && (
-                    <span className="absolute left-[4px] top-4 h-full w-px bg-white/10" />
+              <section>
+                <SectionHeader title="Productos" description={`${order.items.reduce((sum, item) => sum + item.quantity, 0)} productos en el pedido.`} />
+                <div className="mt-4 space-y-3">
+                  {order.items.map((item) => {
+                    const extras = extrasText(item.extras);
+                    return (
+                      <div className="rounded-2xl bg-white/5 p-4" key={item.id}>
+                        <div className="flex justify-between gap-4">
+                          <strong>{item.quantity} × {item.productName}</strong>
+                          <strong className="shrink-0 tabular-nums">{formatPrice(item.lineTotal, order.currency)}</strong>
+                        </div>
+                        {item.variantName && <p className="mt-1 text-sm text-zinc-300">{item.variantName}</p>}
+                        {extras && <p className="mt-1 text-sm text-zinc-400">+ {extras}</p>}
+                        {item.notes && <p className="mt-1 text-sm italic text-zinc-500">{item.notes}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {order.notes && (
+                <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4 text-sm text-zinc-300">
+                  <strong className="mr-2">Nota del cliente:</strong>{order.notes}
+                </div>
+              )}
+
+              <section>
+                <SectionHeader title="Historial" description="Seguimiento de estados." />
+                <ol className="mt-4 space-y-0">
+                  {timeline.map((entry, index) => (
+                    <li className="relative flex gap-3 pb-4 pl-5 last:pb-0" key={`${entry.time}-${index}`}>
+                      <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--admin-primary-strong)]" />
+                      {index < timeline.length - 1 && (
+                        <span className="absolute left-[4px] top-4 h-full w-px bg-white/10" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold">{entry.label}</p>
+                        <p className="text-xs text-zinc-500">
+                          {new Date(entry.time).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                          {entry.note ? ` · ${entry.note}` : ""}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            </div>
+
+            <div className="space-y-6">
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                <SectionHeader title="Resumen" description="Totales del pedido." />
+                <div className="mt-4 space-y-3 text-sm">
+                  <p className="flex justify-between"><span className="text-zinc-500">Subtotal</span><strong className="tabular-nums">{formatPrice(order.subtotal, order.currency)}</strong></p>
+                  {Number(order.discount) > 0 && <p className="flex justify-between"><span className="text-zinc-500">Descuento</span><strong className="tabular-nums text-emerald-300">-{formatPrice(order.discount, order.currency)}</strong></p>}
+                  {Number(order.deliveryFee) > 0 && <p className="flex justify-between"><span className="text-zinc-500">Envío</span><strong className="tabular-nums">{formatPrice(order.deliveryFee, order.currency)}</strong></p>}
+                  {Number(order.tip) > 0 && <p className="flex justify-between"><span className="text-zinc-500">Propina</span><strong className="tabular-nums">{formatPrice(order.tip, order.currency)}</strong></p>}
+                  <p className="flex justify-between border-t border-white/10 pt-3 text-lg"><span className="text-zinc-400">Total</span><strong className="tabular-nums">{formatPrice(order.total, order.currency)}</strong></p>
+                  <p className="flex justify-between border-t border-white/10 pt-3 text-sm"><span className="text-zinc-500">Pago</span><strong>{order.paymentStatus}</strong></p>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
+                <SectionHeader title="Acciones" description="Cambios de estado y comprobantes." />
+                <div className="mt-4 flex flex-col gap-2">
+                  {next && (
+                    <button className="btn w-full" onClick={() => void onStatusChange(order, next)} type="button">
+                      {next === "confirmed" ? "Confirmar pedido" : next === "preparing" ? "Empezar preparación" : next === "ready" ? "Marcar listo" : next === "on_the_way" ? "Enviar a delivery" : "Marcar entregado"}
+                    </button>
                   )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold">{entry.label}</p>
-                    <p className="text-xs text-zinc-500">
-                      {new Date(entry.time).toLocaleTimeString("es-AR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                      {entry.note ? ` · ${entry.note}` : ""}
-                    </p>
+                  {order.status !== "cancelled" && (
+                    <button className="btn btn-secondary w-full" onClick={() => void onStatusChange(order, "cancelled")} type="button">
+                      Cancelar
+                    </button>
+                  )}
+                  <div className="flex flex-col gap-2 pt-2">
+                    {order.phone && (
+                      <a className="btn btn-secondary w-full" href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName} 👋\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`} target="_blank" rel="noreferrer">
+                        WhatsApp
+                      </a>
+                    )}
+                    {trackingHref && <CopyTrackingLink href={trackingHref} compact />}
+                    {order.invoice ? (
+                      <>
+                        <Link className="btn w-full" href={adminHrefFromPathname(pathname, `/admin/facturacion/${order.invoice.id}`)}>
+                          Ver comprobante
+                        </Link>
+                        {order.invoice.status !== "cancelled" && (
+                          <button className="btn btn-secondary w-full" onClick={() => void onCancelInvoice(order)} type="button">
+                            Anular
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button className="btn w-full" onClick={() => void onCreateInvoice(order)} type="button">
+                        Crear comprobante
+                      </button>
+                    )}
                   </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </div>
-
-        <section className="mt-7">
-          <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Productos</h3>
-          <div className="mt-3 space-y-3">
-            {order.items.map((item) => {
-              const extras = extrasText(item.extras);
-              return (
-                <div className="rounded-2xl bg-white/5 p-4" key={item.id}>
-                  <div className="flex justify-between gap-4">
-                    <strong>
-                      {item.quantity} × {item.productName}
-                    </strong>
-                    <strong className="shrink-0">{formatPrice(item.lineTotal, order.currency)}</strong>
-                  </div>
-                  {item.variantName && <p className="mt-1 text-sm text-zinc-300">{item.variantName}</p>}
-                  {extras && <p className="mt-1 text-sm text-zinc-400">+ {extras}</p>}
-                  {item.notes && <p className="mt-1 text-sm italic text-zinc-500">{item.notes}</p>}
                 </div>
-              );
-            })}
+              </section>
+            </div>
           </div>
-        </section>
-
-        {order.notes && (
-          <div className="mt-5 rounded-2xl border border-white/10 p-4 whitespace-pre-line text-sm text-zinc-300">
-            <strong className="mr-2">Nota del cliente:</strong>
-            {order.notes}
-          </div>
-        )}
-
-        <section className="mt-6 ml-auto max-w-sm space-y-2 border-t border-white/10 pt-5 text-sm">
-          <p className="flex justify-between">
-            <span className="text-zinc-500">Subtotal</span>
-            <strong>{formatPrice(order.subtotal, order.currency)}</strong>
-          </p>
-          {Number(order.discount) > 0 && (
-            <p className="flex justify-between">
-              <span className="text-zinc-500">Descuento</span>
-              <strong className="text-emerald-300">-{formatPrice(order.discount, order.currency)}</strong>
-            </p>
-          )}
-          {Number(order.deliveryFee) > 0 && (
-            <p className="flex justify-between">
-              <span className="text-zinc-500">Envío</span>
-              <strong>{formatPrice(order.deliveryFee, order.currency)}</strong>
-            </p>
-          )}
-          {Number(order.tip) > 0 && (
-            <p className="flex justify-between">
-              <span className="text-zinc-500">Propina</span>
-              <strong>{formatPrice(order.tip, order.currency)}</strong>
-            </p>
-          )}
-          <p className="flex justify-between border-t border-white/10 pt-3 text-lg">
-            <span className="text-zinc-400">Total</span>
-            <strong>{formatPrice(order.total, order.currency)}</strong>
-          </p>
-        </section>
-
-        <footer className="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {next && (
-              <button className="btn" onClick={() => void onStatusChange(order, next)} type="button">
-                {next === "confirmed"
-                  ? "Confirmar pedido"
-                  : next === "preparing"
-                    ? "Empezar preparación"
-                    : next === "ready"
-                      ? "Marcar listo"
-                      : next === "on_the_way"
-                        ? "Enviar a delivery"
-                        : "Marcar entregado"}
-              </button>
-            )}
-            {order.status !== "cancelled" && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => void onStatusChange(order, "cancelled")}
-                type="button"
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-            {order.phone && (
-              <a
-                className="btn btn-secondary"
-                href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName} 👋\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                WhatsApp
-              </a>
-            )}
-            {trackingHref && <CopyTrackingLink href={trackingHref} compact />}
-            {order.invoice ? (
-              <>
-                <Link
-                  className="btn"
-                  href={adminHrefFromPathname(pathname, `/admin/facturacion/${order.invoice.id}`)}
-                >
-                  Ver comprobante
-                </Link>
-                {order.invoice.status !== "cancelled" && (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => void onCancelInvoice(order)}
-                    type="button"
-                  >
-                    Anular
-                  </button>
-                )}
-              </>
-            ) : (
-              <button className="btn" onClick={() => void onCreateInvoice(order)} type="button">
-                Crear comprobante
-              </button>
-            )}
-          </div>
-        </footer>
+        </div>
       </article>
     </div>
   );

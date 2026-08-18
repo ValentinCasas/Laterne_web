@@ -1,6 +1,6 @@
 import { ReportsShell } from "@/components/admin/reports/reports-shell";
 import { ReportsSucursalesTable } from "@/components/admin/reports/reports-sucursales-table";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, SectionHeader, EmptyState } from "@/components/admin/ui";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePeriod } from "@/lib/reports/period";
@@ -38,18 +38,16 @@ export default async function SucursalesPage({ searchParams }: SucursalesPagePro
       channels={["SALON", "MOSTRADOR", "DELIVERY", "ONLINE"]}
       sources={["ADMIN", "MENUCLICK_WEB", "TABLE_QR", "POS", "EXTERNAL_INTEGRATOR", "API"]}
     >
-      <AdminPageHeader
-        eyebrow="Reportes"
-        title="Sucursales"
-        description="Comparativa entre sucursales"
-        section="reportes"
-      />
+      <PageHeader eyebrow="Reportes" title="Sucursales" description="Comparativa entre sucursales." section="reportes" />
       {branches.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 p-12 text-center text-zinc-500">
-          Necesitás acceso a más de una sucursal para ver la comparativa.
-        </div>
+        <EmptyState title="Necesitás acceso a más de una sucursal" description="Cuando tengas acceso a varias sucursales, vas a ver la comparativa aquí." />
       ) : (
-        <ReportsSucursalesTable branches={branches} />
+        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-7">
+          <SectionHeader title="Comparativa por sucursal" description="Métricas consolidadas del período seleccionado." />
+          <div className="mt-4">
+            <ReportsSucursalesTable branches={branches} />
+          </div>
+        </section>
       )}
     </ReportsShell>
   );

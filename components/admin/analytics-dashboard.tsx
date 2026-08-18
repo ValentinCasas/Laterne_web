@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader } from "@/components/admin/ui";
 import { adminHrefFromPathname, scopedApiPath } from "@/lib/routes";
 
 type Metric = { eventType: string; count: number };
@@ -76,7 +76,7 @@ export function AnalyticsDashboard({
   });
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Información para decidir"
         title="Analítica"
         description="Datos propios y anónimos; no dependen de servicios de terceros."

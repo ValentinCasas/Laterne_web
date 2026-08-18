@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import type { Route } from "next";
-import { AdminPageHelp } from "@/components/admin/admin-page-help";
+import { PageHeader, EmptyState, SearchBox, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
@@ -390,40 +390,39 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
 
   return (
     <section>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Salón</h1>
-          <AdminPageHelp section="salon" />
-          <p className="hidden min-w-0 truncate text-sm text-zinc-500 lg:block">
-            Estado del salón en tiempo real{data.activeBranch ? ` · ${data.activeBranch.name}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {view === "map" && (
-            <button
-              className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-bold transition ${
-                layoutMode
-                  ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
-                  : "border-white/10 bg-[var(--admin-surface-elevated)] text-zinc-300 hover:border-white/25 hover:text-white"
-              }`}
-              onClick={() => setLayoutMode((current) => !current)}
-              type="button"
-              aria-pressed={layoutMode}
-            >
-              {layoutMode ? "Finalizar edición" : "Editar plano"}
+      <PageHeader
+        eyebrow="Salón"
+        title="Salón"
+        description="Estado del salón en tiempo real"
+        section="salon"
+        actions={
+          <div className="flex items-center gap-2">
+            {view === "map" && (
+              <button
+                className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-bold transition ${
+                  layoutMode
+                    ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
+                    : "border-white/10 bg-[var(--admin-surface-elevated)] text-zinc-300 hover:border-white/25 hover:text-white"
+                }`}
+                onClick={() => setLayoutMode((current) => !current)}
+                type="button"
+                aria-pressed={layoutMode}
+              >
+                {layoutMode ? "Finalizar edición" : "Editar plano"}
+              </button>
+            )}
+            <button className="btn h-10 px-4" onClick={() => setModal("newTable")} type="button">
+              + Mesa
             </button>
-          )}
-          <button className="btn h-10 px-4" onClick={() => setModal("newTable")} type="button">
-            + Mesa
-          </button>
-          <MoreMenu
-            mesasHref={adminHrefFromPathname(pathname, "/admin/mesas")}
-            onSectors={() => setModal("sectors")}
-            onRefresh={() => void load()}
-            refreshing={loading}
-          />
-        </div>
-      </div>
+            <MoreMenu
+              mesasHref={adminHrefFromPathname(pathname, "/admin/mesas")}
+              onSectors={() => setModal("sectors")}
+              onRefresh={() => void load()}
+              refreshing={loading}
+            />
+          </div>
+        }
+      />
 
       <div className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1">
         {tableStatusOrder.map((status) => {
@@ -461,27 +460,12 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-64">
-          <svg
-            aria-hidden
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-          </svg>
-          <input
-            className="input pl-9"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar mesa…"
-            type="search"
-            aria-label="Buscar mesa"
-          />
-        </div>
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar mesa…"
+          className="w-full sm:w-64"
+        />
         <select
           className="input w-full sm:w-56"
           value={sectorFilter}
@@ -521,83 +505,34 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
 
       {visibleTables.length === 0 ? (
         data.tables.length === 0 ? (
-          <div className="salon-floor flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 p-10 text-center">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/5">
-              <svg
-                aria-hidden
-                className="h-7 w-7 text-zinc-400"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                viewBox="0 0 24 24"
-              >
-                <circle cx="6" cy="6" r="2.2" />
-                <circle cx="18" cy="6" r="2.2" />
-                <circle cx="6" cy="18" r="2.2" />
-                <circle cx="18" cy="18" r="2.2" />
-                <path d="M6 8.2v7.6M18 8.2v7.6M8.2 6h7.6M8.2 18h7.6" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xl font-black">Todavía no hay mesas</p>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
-                Creá tu primera mesa para que aparezca en el plano, o generá las mesas con su QR desde “Mesas y QR”.
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <button className="btn" onClick={() => setModal("newTable")} type="button">
-                + Agregar primera mesa
-              </button>
-              <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/mesas")}>
-                Mesas y QR
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="salon-floor flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 p-10 text-center">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/5">
-              <svg
-                aria-hidden
-                className="h-7 w-7 text-zinc-400"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                viewBox="0 0 24 24"
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xl font-black">
-                {emptySectorId ? "Todavía no hay mesas en este sector" : "No hay mesas que coincidan con esta vista"}
-              </p>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
-                {emptySectorId
-                  ? "Agregá una mesa a este sector o explorá el resto del salón."
-                  : "Probá con otra búsqueda o quitá los filtros para ver todas las mesas."}
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {emptySectorId ? (
+          <EmptyState
+            title="Todavía no hay mesas"
+            description="Creá tu primera mesa para que aparezca en el plano, o generá las mesas con su QR desde 'Mesas y QR'."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
                 <button className="btn" onClick={() => setModal("newTable")} type="button">
-                  + Agregar mesa en este sector
+                  + Agregar primera mesa
                 </button>
-              ) : (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setQuery("");
-                    setSectorFilter("all");
-                    setStatusFilter("all");
-                  }}
-                  type="button"
-                >
-                  Limpiar filtros
-                </button>
-              )}
-            </div>
-          </div>
+                <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/mesas")}>
+                  Mesas y QR
+                </Link>
+              </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            title={emptySectorId ? "Todavía no hay mesas en este sector" : "No hay mesas que coincidan con esta vista"}
+            description={emptySectorId ? "Agregá una mesa a este sector o explorá el resto del salón." : "Probá con otra búsqueda o quitá los filtros para ver todas las mesas."}
+            action={emptySectorId ? (
+              <button className="btn" onClick={() => setModal("newTable")} type="button">
+                + Agregar mesa en este sector
+              </button>
+            ) : (
+              <button className="btn btn-secondary" onClick={() => { setQuery(""); setSectorFilter("all"); setStatusFilter("all"); }} type="button">
+                Limpiar filtros
+              </button>
+            )}
+          />
         )
       ) : view === "map" ? (
         <FloorMap
@@ -1412,18 +1347,7 @@ function eventLabel(eventType: string) {
   return labels[eventType] ?? eventType;
 }
 
-/** @summary Insignia de estado de mesa con su color operativo. */
-function StatusBadge({ status }: { status: string }) {
-  const styles = tableStatusStyles[status] ?? tableStatusStyles.free;
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black uppercase ${styles.chip}`}
-    >
-      <span className={`h-2 w-2 rounded-full ${styles.dot}`} />
-      {tableStatusLabel(status)}
-    </span>
-  );
-}
+
 
 /** @summary Tarjeta de una comanda con sus productos y avance de estado. */
 function ComandaCard({

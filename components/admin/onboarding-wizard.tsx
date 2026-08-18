@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 
@@ -71,7 +71,7 @@ export function OnboardingWizard({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Puesta en marcha"
         title="Tu negocio, paso a paso"
         description="Podés salir, volver y continuar. Los pasos con información real se reconocen automáticamente."
@@ -91,7 +91,7 @@ export function OnboardingWizard({
             Última publicación: {new Date(publishedAt).toLocaleString("es-AR")}
           </p>
         )}
-      </AdminPageHeader>
+      </PageHeader>
       <div className="grid gap-4 sm:grid-cols-2">
         {steps.map(([number, title, description, href]) => {
           const done = completed.includes(number);
@@ -113,11 +113,9 @@ export function OnboardingWizard({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-black">{title}</h2>
-                    {automatic && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-black text-emerald-300">
-                        Detectado
-                      </span>
-                    )}
+                     {automatic && (
+                       <StatusBadge status="Detectado" tone="success" />
+                     )}
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">{description}</p>
                   <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href={stepHref(href)}>

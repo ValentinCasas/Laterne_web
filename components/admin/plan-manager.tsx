@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { PageHeader, StatusBadge, ActionMenu } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type FeatureOption = { id: number; name: string; category: string };
@@ -128,7 +128,7 @@ export function PlanManager({
 
   return (
     <section>
-      <AdminPageHeader
+      <PageHeader
         eyebrow="Oferta comercial"
         title="Planes y precios"
         description="Los cambios se reflejan en la página pública sin modificar componentes."
@@ -155,11 +155,9 @@ export function PlanManager({
                   </p>
                   <h2 className="mt-1 text-xl font-black">{plan.name}</h2>
                 </div>
-                {plan.badge && (
-                  <span className="rounded-full bg-pink-500/15 px-2 py-1 text-[10px] font-black text-pink-300">
-                    {plan.badge}
-                  </span>
-                )}
+                 {plan.badge && (
+                   <StatusBadge status={plan.badge} tone="info" />
+                 )}
               </div>
               <p className="mt-3 line-clamp-3 min-h-16 text-sm leading-relaxed text-zinc-500">
                 {plan.summary}
@@ -180,15 +178,16 @@ export function PlanManager({
                 >
                   Editar
                 </button>
-                {plan.active && (
-                  <button
-                    className="rounded-xl bg-red-500/10 px-3 py-2 text-sm font-bold text-red-300"
-                    onClick={() => archive(plan)}
-                    type="button"
-                  >
-                    Ocultar
-                  </button>
-                )}
+                <ActionMenu
+                  align="right"
+                  items={[
+                    ...(plan.active ? [{
+                      label: "Ocultar",
+                      onClick: () => archive(plan),
+                      tone: "danger" as const,
+                    }] : []),
+                  ]}
+                />
               </div>
             </article>
           );

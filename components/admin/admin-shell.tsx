@@ -16,6 +16,7 @@ import Swal from "sweetalert2";
 import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
 import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
+import { SearchBox } from "@/components/admin/ui";
 import {
   adminHrefForContext,
   isBranchAdminLogicalPath,
@@ -821,18 +822,16 @@ export function AdminShell({
             })}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
-            <div className="hidden md:block">
-              {branchNavigationAvailable && (
-                <BranchSwitcher
-                  branches={branches}
-                  activeBranchId={activeBranchId}
-                  activeBranchName={activeBranch?.name}
-                  consolidatedAvailable={allBranches}
-                  compact
-                />
-              )}
-            </div>
+           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
+             {branchNavigationAvailable && (
+               <BranchSwitcher
+                 branches={branches}
+                 activeBranchId={activeBranchId}
+                 activeBranchName={activeBranch?.name}
+                 consolidatedAvailable={allBranches}
+                 compact
+               />
+             )}
 
             <button
               type="button"
@@ -1214,40 +1213,39 @@ export function AdminShell({
             aria-modal="true"
             aria-label="Búsqueda global"
           >
-            <label className="block border-b border-white/10 p-4">
-              <span className="sr-only">Buscar en todo el panel</span>
-              <input
-                className="w-full bg-transparent text-xl font-bold outline-none"
-                value={commandQuery}
-                onChange={(event) => {
-                  setCommandQuery(event.target.value);
-                  setCommandActive(0);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown") {
-                    event.preventDefault();
-                    setCommandActive((current) =>
-                      commandItems.length ? (current + 1) % commandItems.length : 0,
-                    );
-                  } else if (event.key === "ArrowUp") {
-                    event.preventDefault();
-                    setCommandActive((current) =>
-                      commandItems.length ? (current - 1 + commandItems.length) % commandItems.length : 0,
-                    );
-                  } else if (event.key === "Enter") {
-                    const target = commandItems[commandActive];
-                    if (target) {
-                      event.preventDefault();
-                      router.push(target.href);
-                      closeCommand();
-                    }
-                  } else if (event.key === "Escape") {
-                    closeCommand();
-                  }
-                }}
-                placeholder="Buscá pedidos, clientes, reservas, productos o secciones…"
-                autoFocus
-              />
+             <label className="block border-b border-white/10 p-4">
+               <span className="sr-only">Buscar en todo el panel</span>
+               <SearchBox
+                 value={commandQuery}
+                 onChange={(value) => {
+                   setCommandQuery(value);
+                   setCommandActive(0);
+                 }}
+                 placeholder="Buscá pedidos, clientes, reservas, productos o secciones…"
+                 className="text-xl font-bold"
+                 onKeyDown={(event) => {
+                   if (event.key === "ArrowDown") {
+                     event.preventDefault();
+                     setCommandActive((current) =>
+                       commandItems.length ? (current + 1) % commandItems.length : 0,
+                     );
+                   } else if (event.key === "ArrowUp") {
+                     event.preventDefault();
+                     setCommandActive((current) =>
+                       commandItems.length ? (current - 1 + commandItems.length) % commandItems.length : 0,
+                     );
+                   } else if (event.key === "Enter") {
+                     const target = commandItems[commandActive];
+                     if (target) {
+                       event.preventDefault();
+                       router.push(target.href);
+                       closeCommand();
+                     }
+                   } else if (event.key === "Escape") {
+                     closeCommand();
+                   }
+                 }}
+               />
               {commandQuery.trim().length >= 2 && (
                 <p className="mt-2 text-xs text-zinc-500">
                   {commandLoading ? "Buscando…" : "Resultados de todo el negocio (solo tu sucursal)."}
