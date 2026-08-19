@@ -446,11 +446,15 @@ export function AdminShell({
   const [panelFocusIndex, setPanelFocusIndex] = useState(-1);
   const headerRef = useRef<HTMLElement | null>(null);
   const megaPanelRef = useRef<HTMLDivElement | null>(null);
+  const navContainerRef = useRef<HTMLDivElement | null>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const panelItemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const mobileTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const mobileMenuOpenRef = useRef(false);
+  const [overflowIds, setOverflowIds] = useState<string[]>([]);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement | null>(null);
 
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
@@ -481,16 +485,85 @@ export function AdminShell({
     mobileMenuOpenRef.current = mobileMenuOpen;
   }, [mobileMenuOpen]);
 
+  /** @summary Mide el ancho disponible del nav y calcula qué grupos caben. Los que no caben van a "Más". */
+  useEffect(() => {
+    function measureOverflow() {
+      const container = navContainerRef.current;
+      if (!container) return;
+      const containerWidth = container.clientWidth;
+      // Medir cada grupo individualmente
+      const widths = accessibleGroups.map((group) => {
+        const el = triggerRefs.current[group.id];
+        return { id: group.id, width: el ? el.getBoundingClientRect().width : 120 };
+      });
+      // El botón "Más" ocupa ~60px cuando hay overflow groups
+      const maisButtonWidth = 64;
+      const gap = 4; // gap-1 = 4px entre items
+      let usedWidth = 0;
+      const visible: string[] = [];
+      const overflow: string[] = [];
+      for (const item of widths) {
+        const needed = visible.length === 0 ? item.width : usedWidth + gap + item.width;
+        // Reservar espacio para "Más" si ya hay algo que ocultar
+        const reserveForMais = overflow.length > 0 ? maisButtonWidth + gap : 0;
+        if (needed + reserveForMais <= containerWidth) {
+          visible.push(item.id);
+          usedWidth = needed;
+        } else {
+          overflow.push(item.id);
+        }
+      }
+      setOverflowIds(overflow);
+    }
+    measureOverflow();
+    const observer = new ResizeObserver(measureOverflow);
+    if (navContainerRef.current) observer.observe(navContainerRef.current);
+    window.addEventListener("resize", measureOverflow);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measureOverflow);
+    };
+  }, [accessibleGroups]);
+
+  /** @summary Cierra el dropdown de overflow al hacer click afuera. */
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function handlePointer(event: PointerEvent) {
+      if (overflowRef.current?.contains(event.target as Node)) return;
+      setOverflowOpen(false);
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOverflowOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [overflowOpen]);
+
+  const visibleGroups = useMemo(
+    () => accessibleGroups.filter((g) => !overflowIds.includes(g.id)),
+    [accessibleGroups, overflowIds],
+  );
+  const overflowGroups = useMemo(
+    () => accessibleGroups.filter((g) => overflowIds.includes(g.id)),
+    [accessibleGroups, overflowIds],
+  );
+
   /** @summary Cierra el mega menú y devuelve el foco al disparador. */
   const closeMegaMenu = useCallback(() => {
     const current = openGroupRef.current;
     setOpenGroup(null);
     setActiveSectionId(null);
     setPanelFocusIndex(-1);
+    setOverflowOpen(false);
     if (current && triggerRefs.current[current]) triggerRefs.current[current]?.focus();
   }, []);
 
   function setOpenGroupBoth(value: string | null) {
+    setOverflowOpen(false);
     if (openGroupRef.current !== value) {
       setPanelFocusIndex(-1);
       // Seleccionar la primera sección con items al abrir un grupo nuevo
@@ -733,7 +806,7 @@ export function AdminShell({
 
   return (
     <div
-      className={`admin-shell admin-theme admin-theme-${adminTheme} min-h-dvh bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`}
+      className={`admin-shell admin-theme admin-theme-${adminTheme} min-h-dvh overflow-x-hidden bg-[radial-gradient(circle_at_top_left,var(--admin-glow),transparent_30%),var(--admin-background)]`}
       style={
         {
           ...paletteCssVariables(palette),
@@ -791,10 +864,11 @@ export function AdminShell({
           </Link>
 
           <nav
-            className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden px-2 lg:flex xl:gap-1.5"
+            ref={navContainerRef}
+            className="hidden min-w-0 flex-1 items-center justify-end gap-1 px-2 lg:flex xl:gap-1.5"
             aria-label="Secciones administrativas"
           >
-            {accessibleGroups.map((group) => {
+            {visibleGroups.map((group) => {
               const groupActive = activeGroupId === group.id;
               const expanded = openGroup === group.id;
               return (
@@ -828,6 +902,50 @@ export function AdminShell({
                 </div>
               );
             })}
+
+            {overflowGroups.length > 0 && (
+              <div className="relative shrink-0" ref={overflowRef}>
+                <button
+                  type="button"
+                  className={`flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-all duration-200 ${
+                    overflowOpen
+                      ? "bg-white/[.08] text-white shadow-sm shadow-black/10"
+                      : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
+                  }`}
+                  onClick={() => setOverflowOpen((current) => !current)}
+                  aria-haspopup="true"
+                  aria-expanded={overflowOpen}
+                >
+                  <span className="hidden md:inline">Más</span>
+                  <ChevronDownIcon open={overflowOpen} className="text-zinc-600" />
+                </button>
+                {overflowOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-white/[.08] bg-zinc-950/95 shadow-xl shadow-black/30 backdrop-blur-2xl">
+                    {overflowGroups.map((group) => {
+                      const groupActive = activeGroupId === group.id;
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] transition-all duration-150 ${
+                            groupActive
+                              ? "bg-white/[.06] text-white"
+                              : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
+                          }`}
+                          onClick={() => {
+                            setOverflowOpen(false);
+                            setOpenGroupBoth(group.id);
+                          }}
+                        >
+                          <span className="text-zinc-600 text-xs font-black">{group.icon}</span>
+                          <span className="truncate">{group.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">

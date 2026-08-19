@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 /**
  * @summary Menú contextual reutilizable con posicionamiento inteligente.
@@ -24,7 +24,7 @@ export function ActionMenu({
   const [position, setPosition] = useState<"bottom" | "top">("bottom");
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [panelId] = useState(() => `action-menu-${Math.random().toString(36).slice(2, 9)}`);
+  const panelId = useId();
 
   /** @summary Calcula si el menú debe abrirse hacia arriba o hacia abajo. */
   const computePosition = useCallback(() => {
