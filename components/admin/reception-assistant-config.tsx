@@ -35,21 +35,42 @@ type KnowledgeData = {
 
 type BranchInfo = { id: number; name: string; slug: string };
 
+/** @summary Defaults vacíos cuando no existe configuración para el tenant. */
+const EMPTY_KNOWLEDGE: KnowledgeData = {
+  id: 0,
+  businessName: null,
+  address: null,
+  phone: null,
+  email: null,
+  website: null,
+  timezone: "America/Argentina/Buenos_Aires",
+  openingHoursText: null,
+  reservationPolicy: null,
+  faqs: [],
+  locationInfo: null,
+  assistantConfig: null,
+  enabled: false,
+};
+
 /**
  * @summary Componente client para configurar la base de conocimiento de la recepcionista IA.
  *
  * Permite editar información del negocio, horarios, políticas de reserva,
  * FAQs, configuración del asistente y activar/desactivar la asistente.
+ * Si no hay configuración previa (initialKnowledge null), muestra defaults vacíos.
+ * El registro se crea en la base únicamente cuando el usuario guarda.
  * NO implementa IA real ni muestra chat funcional.
  */
 export function ReceptionAssistantConfig({
   initialKnowledge,
   branches,
 }: {
-  initialKnowledge: KnowledgeData;
+  initialKnowledge: KnowledgeData | null;
   branches: BranchInfo[];
 }) {
-  const [knowledge, setKnowledge] = useState<KnowledgeData>(initialKnowledge);
+  const [knowledge, setKnowledge] = useState<KnowledgeData>(
+    initialKnowledge ?? EMPTY_KNOWLEDGE,
+  );
   const [saving, setSaving] = useState(false);
 
   const config = knowledge.assistantConfig ?? {};

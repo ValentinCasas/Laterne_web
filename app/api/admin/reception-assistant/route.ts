@@ -64,20 +64,25 @@ export async function GET() {
   const auth = await authorize("business.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const knowledge = await prisma.receptionKnowledge.findUnique({
-    where: { tenantId: auth.tenant.id },
-  });
+  try {
+    const knowledge = await prisma.receptionKnowledge.findUnique({
+      where: { tenantId: auth.tenant.id },
+    });
 
-  return NextResponse.json({
-    knowledge: knowledge
-      ? {
-          ...knowledge,
-          faqs: Array.isArray(knowledge.faqs) ? knowledge.faqs : [],
-          locationInfo: knowledge.locationInfo ?? null,
-          assistantConfig: knowledge.assistantConfig ?? null,
-        }
-      : null,
-  });
+    return NextResponse.json({
+      knowledge: knowledge
+        ? {
+            ...knowledge,
+            faqs: Array.isArray(knowledge.faqs) ? knowledge.faqs : [],
+            locationInfo: knowledge.locationInfo ?? null,
+            assistantConfig: knowledge.assistantConfig ?? null,
+          }
+        : null,
+    });
+  } catch {
+    // Tabla no migrada aún — devolver null sin romper
+    return NextResponse.json({ knowledge: null });
+  }
 }
 
 /** @summary POST — Crea o actualiza la configuración de conocimiento (upsert). */
@@ -95,58 +100,66 @@ export async function POST(request: Request) {
 
   const data = parsed.data;
 
-  const previous = await prisma.receptionKnowledge.findUnique({
-    where: { tenantId: auth.tenant.id },
-  });
+  try {
+    const previous = await prisma.receptionKnowledge.findUnique({
+      where: { tenantId: auth.tenant.id },
+    });
 
-  const knowledge = await prisma.receptionKnowledge.upsert({
-    where: { tenantId: auth.tenant.id },
-    create: {
-      tenantId: auth.tenant.id,
-      businessName: data.businessName ?? null,
-      address: data.address ?? null,
-      phone: data.phone ?? null,
-      email: data.email ?? null,
-      website: data.website ?? null,
-      timezone: data.timezone ?? "America/Argentina/Buenos_Aires",
-      openingHoursText: data.openingHoursText ?? null,
-      reservationPolicy: data.reservationPolicy ?? null,
-      faqs: data.faqs ?? [],
-      locationInfo: data.locationInfo ?? undefined,
-      assistantConfig: data.assistantConfig ?? undefined,
-      enabled: data.enabled ?? false,
-    },
-    update: {
-      ...(data.businessName !== undefined && { businessName: data.businessName }),
-      ...(data.address !== undefined && { address: data.address }),
-      ...(data.phone !== undefined && { phone: data.phone }),
-      ...(data.email !== undefined && { email: data.email }),
-      ...(data.website !== undefined && { website: data.website }),
-      ...(data.timezone !== undefined && { timezone: data.timezone }),
-      ...(data.openingHoursText !== undefined && { openingHoursText: data.openingHoursText }),
-      ...(data.reservationPolicy !== undefined && { reservationPolicy: data.reservationPolicy }),
-      ...(data.faqs !== undefined && { faqs: data.faqs }),
-      ...(data.locationInfo !== undefined && { locationInfo: data.locationInfo }),
-      ...(data.assistantConfig !== undefined && { assistantConfig: data.assistantConfig }),
-      ...(data.enabled !== undefined && { enabled: data.enabled }),
-    },
-  });
+    const knowledge = await prisma.receptionKnowledge.upsert({
+      where: { tenantId: auth.tenant.id },
+      create: {
+        tenantId: auth.tenant.id,
+        businessName: data.businessName ?? null,
+        address: data.address ?? null,
+        phone: data.phone ?? null,
+        email: data.email ?? null,
+        website: data.website ?? null,
+        timezone: data.timezone ?? "America/Argentina/Buenos_Aires",
+        openingHoursText: data.openingHoursText ?? null,
+        reservationPolicy: data.reservationPolicy ?? null,
+        faqs: data.faqs ?? [],
+        locationInfo: data.locationInfo ?? undefined,
+        assistantConfig: data.assistantConfig ?? undefined,
+        enabled: data.enabled ?? false,
+      },
+      update: {
+        ...(data.businessName !== undefined && { businessName: data.businessName }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.email !== undefined && { email: data.email }),
+        ...(data.website !== undefined && { website: data.website }),
+        ...(data.timezone !== undefined && { timezone: data.timezone }),
+        ...(data.openingHoursText !== undefined && { openingHoursText: data.openingHoursText }),
+        ...(data.reservationPolicy !== undefined && { reservationPolicy: data.reservationPolicy }),
+        ...(data.faqs !== undefined && { faqs: data.faqs }),
+        ...(data.locationInfo !== undefined && { locationInfo: data.locationInfo }),
+        ...(data.assistantConfig !== undefined && { assistantConfig: data.assistantConfig }),
+        ...(data.enabled !== undefined && { enabled: data.enabled }),
+      },
+    });
 
-  await recordAudit({
-    context: { session: auth.session, tenant: auth.tenant },
-    action: previous ? "reception_knowledge.updated" : "reception_knowledge.created",
-    entityType: "ReceptionKnowledge",
-    entityId: knowledge.id,
-    oldValues: previous ? toAuditValue(previous) : undefined,
-    newValues: toAuditValue(knowledge),
-  });
+    await recordAudit({
+      context: { session: auth.session, tenant: auth.tenant },
+      action: previous ? "reception_knowledge.updated" : "reception_knowledge.created",
+      entityType: "ReceptionKnowledge",
+      entityId: knowledge.id,
+      oldValues: previous ? toAuditValue(previous) : undefined,
+      newValues: toAuditValue(knowledge),
+    });
 
-  return NextResponse.json({
-    knowledge: {
-      ...knowledge,
-      faqs: Array.isArray(knowledge.faqs) ? knowledge.faqs : [],
-      locationInfo: knowledge.locationInfo ?? null,
-      assistantConfig: knowledge.assistantConfig ?? null,
-    },
-  });
+    return NextResponse.json({
+      knowledge: {
+        ...knowledge,
+        faqs: Array.isArray(knowledge.faqs) ? knowledge.faqs : [],
+        locationInfo: knowledge.locationInfo ?? null,
+        assistantConfig: knowledge.assistantConfig ?? null,
+      },
+    });
+  } catch {
+    // Tabla no migrada aún — informar al usuario
+    return NextResponse.json(
+      { error: "La base de datos no está configurada para Recepcionista IA. Ejecutá prisma migrate deploy." },
+      { status: 503 },
+    );
+  }
 }

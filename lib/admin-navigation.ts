@@ -1,17 +1,20 @@
 /**
  * Navegación administrativa centralizada de MenuClick.
  *
- * Estructura por áreas funcionales:
+ * Estructura por áreas funcionales con subgrupos claros:
  * - Inicio
- * - Operación
- * - Productos
- * - Administración
+ * - Atención (pedidos, cocina, clientes, reservas, cobros, facturación)
+ * - Salón (plano interactivo, mesas, delivery)
+ * - Productos (catálogo, producción, inventario)
+ * - Compras (proveedores y gastos)
+ * - Finanzas (operativa y reportes)
+ * - Administración (negocio, acceso, config, análisis, datos)
  *
  * Cada entrada declara su ruta lógica, ícono, permiso y descripción breve.
  * El layout (AdminShell) consume esta definición, filtra por permisos y
  * convierte a URLs canónicas del tenant/sucursal.
  *
- * Solo se listan opciones cuya funcionalidad/ruta existe hoy en `app/admin`.
+ * Solo se listan opciones cuya funcionalidad/route existe hoy en `app/admin`.
  */
 
 export type AdminNavItem = {
@@ -68,14 +71,14 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
-    id: "operacion",
-    label: "Operación",
-    icon: "OP",
-    description: "Pedidos, atención, clientes y facturación del día a día",
+    id: "atencion",
+    label: "Atención",
+    icon: "PE",
+    description: "Pedidos, cocina, clientes y servicio al comensal",
     sections: [
       {
-        id: "ventas",
-        label: "Ventas y atención",
+        id: "pedidos-cocina",
+        label: "Pedidos y cocina",
         items: [
           {
             href: "/admin/pedidos",
@@ -98,6 +101,93 @@ export const ADMIN_NAVIGATION = [
             permission: "order.manage",
             description: "Áreas e impresoras de comandas",
           },
+        ],
+      },
+      {
+        id: "clientes-fidelizacion",
+        label: "Clientes",
+        items: [
+          {
+            href: "/admin/clientes",
+            label: "Clientes",
+            icon: "CL",
+            permission: "customer.manage",
+            description: "Base maestra de clientes",
+          },
+          {
+            href: "/admin/clientes-frecuentes",
+            label: "Clientes frecuentes",
+            icon: "CF",
+            permission: "customer.manage",
+            description: "Fidelización y puntos de clientes habituales",
+          },
+          {
+            href: "/admin/fidelizacion",
+            label: "Programa de fidelización",
+            icon: "FI",
+            permission: "customer.manage",
+            description: "Programa de puntos y recompensas",
+          },
+        ],
+      },
+      {
+        id: "reservas-atencion",
+        label: "Reservas",
+        items: [
+          {
+            href: "/admin/reservas",
+            label: "Reservas",
+            icon: "RS",
+            permission: "reservation.manage",
+            description: "Confirmá y organizá reservas",
+          },
+        ],
+      },
+      {
+        id: "cobros-atencion",
+        label: "Cobros",
+        items: [
+          {
+            href: "/admin/cobros",
+            label: "Cuenta corriente",
+            icon: "CC",
+            permission: "customer.manage",
+            description: "Pagos y saldo de clientes",
+          },
+        ],
+      },
+      {
+        id: "facturacion-atencion",
+        label: "Facturación",
+        items: [
+          {
+            href: "/admin/facturacion",
+            label: "Facturación",
+            icon: "FC",
+            permission: "order.manage",
+            description: "Comprobantes y facturación",
+          },
+          {
+            href: "/admin/configuracion/comprobantes/plantillas",
+            label: "Plantillas de documentos",
+            icon: "PL",
+            permission: "order.manage",
+            description: "Diseño de comprobantes",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "salon",
+    label: "Salón",
+    icon: "SL",
+    description: "Plano interactivo, mesas, sectores y delivery",
+    sections: [
+      {
+        id: "salon-plano",
+        label: "Plano",
+        items: [
           {
             href: "/admin/salon",
             label: "Salón",
@@ -115,41 +205,8 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
-        id: "clientes",
-        label: "Clientes",
-        items: [
-          {
-            href: "/admin/clientes",
-            label: "Clientes",
-            icon: "CL",
-            permission: "customer.manage",
-            description: "Base maestra de clientes",
-          },
-          {
-            href: "/admin/fidelizacion",
-            label: "Fidelización",
-            icon: "FI",
-            permission: "customer.manage",
-            description: "Programa de puntos y recompensas",
-          },
-        ],
-      },
-      {
-        id: "reservas",
-        label: "Reservas",
-        items: [
-          {
-            href: "/admin/reservas",
-            label: "Reservas",
-            icon: "RS",
-            permission: "reservation.manage",
-            description: "Confirmá y organizá reservas",
-          },
-        ],
-      },
-      {
-        id: "entregas",
-        label: "Entregas",
+        id: "delivery-salon",
+        label: "Delivery",
         items: [
           {
             href: "/admin/entregas",
@@ -174,50 +231,17 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
-      {
-        id: "cobros",
-        label: "Cobros",
-        items: [
-          {
-            href: "/admin/cobros",
-            label: "Cuenta corriente",
-            icon: "CC",
-            permission: "customer.manage",
-            description: "Pagos y saldo de clientes",
-          },
-        ],
-      },
-      {
-        id: "facturacion",
-        label: "Facturación",
-        items: [
-          {
-            href: "/admin/facturacion",
-            label: "Facturación",
-            icon: "FC",
-            permission: "order.manage",
-            description: "Comprobantes y facturación",
-          },
-          {
-            href: "/admin/configuracion/comprobantes/plantillas",
-            label: "Plantillas de documentos",
-            icon: "PL",
-            permission: "order.manage",
-            description: "Diseño de comprobantes",
-          },
-        ],
-      },
     ],
   },
   {
     id: "catalogo",
-    label: "Catálogo",
+    label: "Productos",
     icon: "PR",
-    description: "Productos, ingredientes, recetas, inventario y compras",
+    description: "Catálogo, producción, recetas e inventario",
     sections: [
       {
         id: "catalogo-productos",
-        label: "Productos",
+        label: "Catálogo",
         items: [
           {
             href: "/admin/productos",
@@ -262,9 +286,17 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+    ],
+  },
+  {
+    id: "compras",
+    label: "Compras",
+    icon: "CO",
+    description: "Pedidos a proveedores, recepciones y gastos",
+    sections: [
       {
-        id: "compras",
-        label: "Compras",
+        id: "compras-proveedores",
+        label: "Proveedores",
         items: [
           {
             href: "/admin/compras",
@@ -273,6 +305,12 @@ export const ADMIN_NAVIGATION = [
             permission: "purchase.manage",
             description: "Pedidos, recepciones y facturas de proveedores",
           },
+        ],
+      },
+      {
+        id: "gastos-compras",
+        label: "Gastos",
+        items: [
           {
             href: "/admin/gastos",
             label: "Gastos",
@@ -288,11 +326,11 @@ export const ADMIN_NAVIGATION = [
     id: "finanzas",
     label: "Finanzas",
     icon: "FI",
-    description: "Cuentas, movimientos, reportes y análisis",
+    description: "Cuentas, movimientos, flujo de caja y reportes",
     sections: [
       {
         id: "finanzas-operativa",
-        label: "Finanzas",
+        label: "Operativa",
         items: [
           {
             href: "/admin/finanzas",
@@ -346,7 +384,7 @@ export const ADMIN_NAVIGATION = [
         ],
       },
       {
-        id: "reportes",
+        id: "reportes-finanzas",
         label: "Reportes",
         items: [
           {
@@ -406,7 +444,7 @@ export const ADMIN_NAVIGATION = [
     id: "administracion",
     label: "Administración",
     icon: "AD",
-    description: "Configuración, análisis y datos del negocio",
+    description: "Configuración, acceso, análisis y datos del negocio",
     sections: [
       {
         id: "negocio",
@@ -487,6 +525,13 @@ export const ADMIN_NAVIGATION = [
             icon: "NO",
             permission: "notification.manage",
             description: "Configuración de avisos",
+          },
+          {
+            href: "/admin/soporte",
+            label: "Soporte",
+            icon: "SP",
+            permission: "support.manage",
+            description: "Centro de ayuda y soporte técnico",
           },
         ],
       },
