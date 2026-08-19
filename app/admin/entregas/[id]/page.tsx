@@ -64,6 +64,11 @@ export default async function DeliveryDetailPage({ params }: { params: Promise<{
           title="Remito"
           description="Documento histórico de lo efectivamente despachado, con su pedido origen y vínculo a factura y pagos."
           section="entregas"
+          breadcrumbs={[
+            { label: "Pedidos", href: adminHref("/admin/pedidos") },
+            { label: order?.reference ?? `#${delivery.orderId}`, href: adminHref(`/admin/pedidos?id=${delivery.orderId}`) },
+            { label: delivery.number },
+          ]}
           actions={
             <>
               <Link

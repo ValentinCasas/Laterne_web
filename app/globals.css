@@ -166,8 +166,13 @@ button {
 }
 /* Contenedor del panel administrativo: más ancho que la superficie pública. */
 .admin-shell-inner {
-  width: min(1536px, calc(100% - 2rem));
+  width: min(1536px, calc(100% - 1.5rem));
   margin-inline: auto;
+}
+@media (min-width: 640px) {
+  .admin-shell-inner {
+    width: min(1536px, calc(100% - 2rem));
+  }
 }
 /* Plano del salón: retícula sutil y brillo de ambiente. */
 .salon-floor {

@@ -76,8 +76,9 @@ function tenantInitials(name: string) {
 
 /** @summary Cantidad de columnas del mega menú según sus secciones. */
 function megaMenuColumns(count: number) {
-  if (count >= 3) return "sm:grid-cols-2 lg:grid-cols-3";
-  if (count === 2) return "sm:grid-cols-2";
+  if (count >= 4) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+  if (count >= 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  if (count >= 2) return "grid-cols-1 sm:grid-cols-2";
   return "";
 }
 
@@ -787,7 +788,7 @@ export function AdminShell({
           </Link>
 
           <nav
-            className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-hidden lg:flex xl:gap-1"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden px-2 lg:flex xl:gap-1.5"
             aria-label="Secciones administrativas"
           >
             {accessibleGroups.map((group) => {
@@ -918,12 +919,13 @@ export function AdminShell({
           onBlur={handlePanelBlur}
         >
           <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
-            <div className="flex items-baseline gap-3 border-b border-white/[.06] px-8 py-5">
+            <div className="flex items-baseline gap-3 border-b border-white/[.06] px-6 py-4 sm:px-8 sm:py-5">
               <h2 className="text-sm font-bold text-white">{activeGroup.label}</h2>
               <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
             </div>
+            <div className="max-h-[70vh] overflow-y-auto overscroll-contain">
             <div
-              className={`grid gap-x-14 gap-y-9 px-8 py-7 ${megaMenuColumns(activeGroup.sections.length)}`}
+              className={`grid gap-x-10 gap-y-7 px-6 py-5 sm:gap-x-14 sm:gap-y-9 sm:px-8 sm:py-7 ${megaMenuColumns(activeGroup.sections.length)}`}
             >
               {(() => {
                 let flatIndex = 0;
@@ -948,12 +950,12 @@ export function AdminShell({
                               setOpenGroupBoth(null);
                               setMobileMenuPath(null);
                             }}
-                            className={`group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors duration-150 ${
+                            className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors duration-150 ${
                               active ? "bg-white/[.06]" : "hover:bg-white/[.04]"
                             }`}
                           >
                             <span
-                              className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
+                              className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
                                 active
                                   ? "bg-pink-500/15 text-pink-300"
                                   : "bg-white/[.05] text-zinc-500 group-hover:text-zinc-300"
@@ -963,17 +965,12 @@ export function AdminShell({
                             </span>
                             <span className="min-w-0">
                               <span
-                                className={`block truncate text-sm font-medium transition-colors duration-150 ${
+                                className={`block text-[13px] font-medium transition-colors duration-150 ${
                                   active ? "text-white" : "text-zinc-300 group-hover:text-white"
                                 }`}
                               >
                                 {item.label}
                               </span>
-                              {item.description && (
-                                <span className="mt-0.5 block truncate text-xs text-zinc-500">
-                                  {item.description}
-                                </span>
-                              )}
                             </span>
                           </Link>
                         );
@@ -983,11 +980,12 @@ export function AdminShell({
                 ));
               })()}
             </div>
+            </div>
           </div>
         </div>
       )}
 
-      <main className="admin-main admin-shell-inner py-6 lg:py-8">{children}</main>
+      <main className="admin-main admin-shell-inner px-3 py-5 sm:px-4 sm:py-6 lg:px-0 lg:py-8">{children}</main>
 
       {mobileMenuOpen && (
         <>

@@ -172,6 +172,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           title="Comprobante"
           description="Documento comercial con líneas snapshot históricas, vinculado a su pedido y remitos."
           section="facturacion"
+          breadcrumbs={[
+            { label: "Pedidos", href: adminHref("/admin/pedidos") },
+            { label: invoice.order.reference, href: adminHref(`/admin/pedidos?id=${invoice.orderId}`) },
+            ...(invoice.delivery ? [{ label: invoice.delivery.number, href: adminHref(`/admin/entregas/${invoice.delivery.id}`) }] : []),
+            { label: invoice.number ?? `#${invoice.id}` },
+          ]}
           actions={
             <>
               <Link

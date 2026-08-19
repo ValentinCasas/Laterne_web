@@ -12,8 +12,8 @@ const DENSITY_CLASSES: Record<Density, string> = {
 
 const DENSITY_CELL_CLASSES: Record<Density, string> = {
   compact: "px-3 py-2",
-  normal: "px-5 py-3",
-  comfortable: "px-5 py-4",
+  normal: "px-5 py-3.5",
+  comfortable: "px-6 py-4",
 };
 
 const STORAGE_KEY = "admin-view-options";

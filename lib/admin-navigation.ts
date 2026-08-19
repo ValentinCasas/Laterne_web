@@ -210,14 +210,14 @@ export const ADMIN_NAVIGATION = [
     ],
   },
   {
-    id: "productos",
-    label: "Productos",
+    id: "catalogo",
+    label: "Catálogo",
     icon: "PR",
-    description: "Catálogo, precios, producción e inventario",
+    description: "Productos, ingredientes, recetas, inventario y compras",
     sections: [
       {
-        id: "catalogo",
-        label: "Catálogo",
+        id: "catalogo-productos",
+        label: "Productos",
         items: [
           {
             href: "/admin/productos",
@@ -253,12 +253,6 @@ export const ADMIN_NAVIGATION = [
             permission: "product.manage",
             description: "Costos de recetas y ficha técnica imprimible",
           },
-        ],
-      },
-      {
-        id: "inventario",
-        label: "Inventario",
-        items: [
           {
             href: "/admin/inventario",
             label: "Inventario",
@@ -268,16 +262,8 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
-    ],
-  },
-  {
-    id: "compras",
-    label: "Compras",
-    icon: "CO",
-    description: "Compras a proveedores y gastos del negocio",
-    sections: [
       {
-        id: "compras-proveedores",
+        id: "compras",
         label: "Compras",
         items: [
           {
@@ -302,11 +288,11 @@ export const ADMIN_NAVIGATION = [
     id: "finanzas",
     label: "Finanzas",
     icon: "FI",
-    description: "Cuentas, movimientos, cobranzas, pagos y resultados",
+    description: "Cuentas, movimientos, reportes y análisis",
     sections: [
       {
-        id: "resumen-finanzas",
-        label: "Resumen",
+        id: "finanzas-operativa",
+        label: "Finanzas",
         items: [
           {
             href: "/admin/finanzas",
@@ -315,12 +301,6 @@ export const ADMIN_NAVIGATION = [
             permission: "finance.view",
             description: "Panorama financiero del negocio",
           },
-        ],
-      },
-      {
-        id: "cuentas-finanzas",
-        label: "Cuentas",
-        items: [
           {
             href: "/admin/finanzas/cuentas",
             label: "Cuentas",
@@ -328,12 +308,6 @@ export const ADMIN_NAVIGATION = [
             permission: "finance.view",
             description: "Cuentas corrientes y bancarias",
           },
-        ],
-      },
-      {
-        id: "movimientos-finanzas",
-        label: "Movimientos",
-        items: [
           {
             href: "/admin/finanzas/movimientos",
             label: "Movimientos",
@@ -341,12 +315,6 @@ export const ADMIN_NAVIGATION = [
             permission: "finance.view",
             description: "Registro de movimientos financieros",
           },
-        ],
-      },
-      {
-        id: "flujo-finanzas",
-        label: "Flujo de caja",
-        items: [
           {
             href: "/admin/finanzas/flujo-caja",
             label: "Flujo de caja",
@@ -354,12 +322,6 @@ export const ADMIN_NAVIGATION = [
             permission: "finance.view",
             description: "Entradas y salidas de efectivo",
           },
-        ],
-      },
-      {
-        id: "cuentas-cobrar-finanzas",
-        label: "Cuentas a cobrar",
-        items: [
           {
             href: "/admin/finanzas/cuentas-cobrar",
             label: "Cuentas a cobrar",
@@ -367,12 +329,6 @@ export const ADMIN_NAVIGATION = [
             permission: "finance.view",
             description: "Saldos pendientes de clientes",
           },
-        ],
-      },
-      {
-        id: "cuentas-pagar-finanzas",
-        label: "Cuentas a pagar",
-        items: [
           {
             href: "/admin/finanzas/cuentas-pagar",
             label: "Cuentas a pagar",
@@ -380,12 +336,6 @@ export const ADMIN_NAVIGATION = [
             permission: "finance.view",
             description: "Obligaciones pendientes con proveedores",
           },
-        ],
-      },
-      {
-        id: "resultados-finanzas",
-        label: "Resultados",
-        items: [
           {
             href: "/admin/finanzas/estado-resultados",
             label: "Estado de resultados",
@@ -395,17 +345,9 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
-    ],
-  },
-  {
-    id: "reportes",
-    label: "Reportes",
-    icon: "RE",
-    description: "Ventas, productos, compras y sucursales",
-    sections: [
       {
-        id: "resumen-reportes",
-        label: "Resumen",
+        id: "reportes",
+        label: "Reportes",
         items: [
           {
             href: "/admin/reportes",
@@ -414,12 +356,6 @@ export const ADMIN_NAVIGATION = [
             permission: "analytics.read",
             description: "KPIs generales y evolución",
           },
-        ],
-      },
-      {
-        id: "ventas-reportes",
-        label: "Ventas",
-        items: [
           {
             href: "/admin/reportes/ventas",
             label: "Ventas",
@@ -427,12 +363,6 @@ export const ADMIN_NAVIGATION = [
             permission: "analytics.read",
             description: "Análisis de ventas, medios de pago y origen",
           },
-        ],
-      },
-      {
-        id: "productos-reportes",
-        label: "Productos",
-        items: [
           {
             href: "/admin/reportes/productos",
             label: "Productos",
@@ -440,12 +370,6 @@ export const ADMIN_NAVIGATION = [
             permission: "analytics.read",
             description: "Popularidad, rentabilidad y CMV",
           },
-        ],
-      },
-      {
-        id: "compras-reportes",
-        label: "Compras",
-        items: [
           {
             href: "/admin/reportes/compras",
             label: "Compras",
@@ -453,12 +377,6 @@ export const ADMIN_NAVIGATION = [
             permission: "analytics.read",
             description: "Evolución de costos y proveedores",
           },
-        ],
-      },
-      {
-        id: "sucursales-reportes",
-        label: "Sucursales",
-        items: [
           {
             href: "/admin/reportes/sucursales",
             label: "Sucursales",
@@ -466,12 +384,6 @@ export const ADMIN_NAVIGATION = [
             permission: "analytics.read",
             description: "Comparativa entre sucursales",
           },
-        ],
-      },
-      {
-        id: "consolidado-reportes",
-        label: "Consolidado",
-        items: [
           {
             href: "/admin/reportes/consolidado",
             label: "Consolidado",
@@ -479,12 +391,6 @@ export const ADMIN_NAVIGATION = [
             permission: "analytics.read",
             description: "Vista integral multi-sucursal del tenant",
           },
-        ],
-      },
-      {
-        id: "ingenieria-menu-reportes",
-        label: "Ingeniería de menú",
-        items: [
           {
             href: "/admin/reportes/ingenieria-menu",
             label: "Ingeniería de menú",
