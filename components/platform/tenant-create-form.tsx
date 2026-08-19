@@ -1,7 +1,7 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { platformClientPath } from "@/lib/routes";
 
 /**
  * @summary Gestiona la creación inicial de un tenant y su administrador.
@@ -34,7 +34,7 @@ export function TenantCreateForm({ plans }: { plans: Array<{ id: number; name: s
     }
     router.push(
       result.tenant?.publicGuid && result.tenant?.slug
-        ? `/platform/clientes/${result.tenant.publicGuid}/${result.tenant.slug}`
+        ? platformClientPath(result.tenant.publicGuid, result.tenant.slug)
         : result.tenant?.slug
           ? `/platform/clientes/${result.tenant.slug}`
           : "/platform/clientes",

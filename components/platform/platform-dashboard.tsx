@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { platformClientPath } from "@/lib/routes";
 
-type Tenant = {
+  type Tenant = {
   id: number;
   name: string;
   slug: string;
-  publicGuid?: string;
+  publicGuid: string;
   status: string;
   subscription: { status: string; endsAt: string | null; plan: { name: string } | null } | null;
   storageBytes: number;
@@ -115,11 +116,7 @@ export function PlatformDashboard({ tenants, newLeads }: { tenants: Tenant[]; ne
             .map((tenant) => (
               <Link
                 className="flex flex-wrap items-center justify-between gap-3 py-4 hover:bg-white/[.03]"
-                href={
-                  tenant.publicGuid
-                    ? `/platform/clientes/${tenant.publicGuid}/${tenant.slug}`
-                    : `/platform/clientes/${tenant.id}`
-                }
+                href={platformClientPath(tenant.publicGuid, tenant.slug)}
                 key={tenant.id}
               >
                 <span>

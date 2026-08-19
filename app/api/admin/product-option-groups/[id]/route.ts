@@ -26,7 +26,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Revisá los límites del grupo" }, { status: 400 });
   const current = await prisma.productOptionGroup.findFirst({ where: { id, tenantId: auth.tenant.id } });
   if (!current) return NextResponse.json({ error: "Grupo no encontrado" }, { status: 404 });
-  const group = await prisma.productOptionGroup.update({ where: { id }, data: parsed.data });
+  const group = await prisma.productOptionGroup.update({
+    where: { id },
+    data: {
+      name: parsed.data.name,
+      required: parsed.data.required,
+      minSelections: parsed.data.minSelections,
+      maxSelections: parsed.data.maxSelections,
+      sortOrder: parsed.data.sortOrder,
+      active: parsed.data.active,
+    },
+  });
   await recordAudit({
     context: auth,
     action: "update",

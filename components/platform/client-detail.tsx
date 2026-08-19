@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { platformBranchPath } from "@/lib/routes";
 
 export type ClientDetailData = {
   id: number;
@@ -660,10 +661,9 @@ function Branches({
               const license = branch.licenses[0];
               const usage = branch.userUsage ?? { allowed: 0, used: branch._count.membershipAccess };
               const limitReached = license?.status !== "SUSPENDED" && usage.allowed > 0 && usage.used >= usage.allowed;
-              const detailHref =
-                client.publicGuid
-                  ? `/platform/clientes/${client.publicGuid}/${client.slug}/sucursales/${branch.slug}`
-                  : `/platform/clientes/${client.slug}/sucursales/${branch.slug}`;
+               const detailHref = client.publicGuid
+                 ? platformBranchPath(client.publicGuid, client.slug, branch.slug)
+                 : (`/platform/clientes/${client.slug}/sucursales/${branch.slug}` as Route);
               return (
                 <tr className={selectedBranchId === branch.id ? "bg-amber-300/10" : ""} key={branch.id}>
                   <td className="px-3 py-4">

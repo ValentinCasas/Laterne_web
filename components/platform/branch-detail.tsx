@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { platformClientPath } from "@/lib/routes";
 
 export type BranchDetailData = {
-  tenant: { id: number; name: string; slug: string; status: string; publicGuid?: string };
+  tenant: { id: number; name: string; slug: string; status: string; publicGuid: string };
   branch: {
     id: number;
     name: string;
@@ -310,11 +311,7 @@ export function BranchDetail({
         <span>·</span>
         <Link
           className="font-bold text-amber-300"
-          href={
-            tenant.publicGuid
-              ? `/platform/clientes/${tenant.publicGuid}/${tenant.slug}`
-              : `/platform/clientes/${tenant.slug}`
-          }
+          href={platformClientPath(tenant.publicGuid, tenant.slug)}
         >
           {tenant.name}
         </Link>
