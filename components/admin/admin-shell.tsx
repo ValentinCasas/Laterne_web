@@ -746,9 +746,9 @@ export function AdminShell({
     >
       <header
         ref={headerRef}
-        className="sticky top-0 z-50 border-b border-white/[.08] bg-zinc-950/80 backdrop-blur-xl print:hidden"
+        className="sticky top-0 z-50 border-b border-white/[.06] bg-zinc-950/90 backdrop-blur-2xl print:hidden"
       >
-        <div className="admin-shell-inner flex h-16 items-center gap-2 sm:gap-3">
+        <div className="admin-shell-inner flex h-[3.75rem] items-center gap-1 px-2 sm:gap-2 sm:px-3 lg:px-4">
           <button
             ref={mobileTriggerRef}
             type="button"
@@ -804,10 +804,12 @@ export function AdminShell({
                       triggerRefs.current[group.id] = element;
                     }}
                     type="button"
-                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-sm transition-colors duration-150 xl:px-3 ${
-                      expanded || groupActive
-                        ? "bg-white/[.06] text-white"
-                        : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
+                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-all duration-200 xl:px-3 ${
+                      expanded
+                        ? "bg-white/[.08] text-white shadow-sm shadow-black/10"
+                        : groupActive
+                          ? "bg-white/[.05] text-white border border-white/[.08] shadow-sm shadow-black/5"
+                          : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
                     }`}
                     aria-haspopup="true"
                     aria-expanded={expanded}
@@ -921,32 +923,27 @@ export function AdminShell({
           }
           onBlur={handlePanelBlur}
         >
-          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
-            <div className="flex items-baseline gap-3 border-b border-white/[.06] px-6 py-4 sm:px-8 sm:py-5">
-              <h2 className="text-sm font-bold text-white">{activeGroup.label}</h2>
-              <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
+          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-zinc-950/95 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <div className="flex items-baseline gap-3 border-b border-white/[.06] px-6 py-3.5 sm:px-8 sm:py-4">
+              <h2 className="text-sm font-bold tracking-wide text-white">{activeGroup.label}</h2>
+              <p className="truncate text-[11px] text-zinc-500">{activeGroup.description}</p>
             </div>
             <div className="flex max-h-[70vh] overflow-hidden overscroll-contain">
               {/* ── Panel izquierdo: secciones ── */}
-              <nav className="w-52 shrink-0 overflow-y-auto border-r border-white/[.06] py-3" aria-label="Subsecciones">
+              <nav className="w-52 shrink-0 overflow-y-auto border-r border-white/[.06] py-2" aria-label="Subsecciones">
                 {activeGroup.sections.map((section) => {
                   const isActive = activeSectionId === section.id;
                   return (
                     <button
                       key={section.id}
                       type="button"
-                      className={`flex w-full items-center gap-2.5 px-5 py-2 text-left text-[13px] transition-colors duration-100 ${
+                      className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-all duration-150 ${
                         isActive
-                          ? "bg-white/[.06] font-medium text-white"
-                          : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"
+                          ? "bg-white/[.06] font-medium text-white border-l-2 border-[var(--admin-primary-strong)] pl-3.5"
+                          : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200 border-l-2 border-transparent"
                       }`}
                       onClick={() => setActiveSectionId(section.id)}
                     >
-                      <span
-                        className={`h-1 w-1 shrink-0 rounded-full transition-colors duration-100 ${
-                          isActive ? "bg-[var(--admin-primary-strong)]" : "bg-zinc-700"
-                        }`}
-                      />
                       {section.label}
                     </button>
                   );
@@ -985,15 +982,15 @@ export function AdminShell({
                                 setOpenGroupBoth(null);
                                 setMobileMenuPath(null);
                               }}
-                              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-150 ${
-                                active ? "bg-white/[.06]" : "hover:bg-white/[.04]"
+                              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 ${
+                                active ? "bg-white/[.06] ring-1 ring-white/[.06]" : "hover:bg-white/[.04]"
                               }`}
                             >
                               <span
-                                className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
+                                className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-[9px] font-black tracking-wider transition-all duration-150 ${
                                   active
-                                    ? "bg-pink-500/15 text-pink-300"
-                                    : "bg-white/[.05] text-zinc-500 group-hover:text-zinc-300"
+                                    ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]"
+                                    : "bg-white/[.04] text-zinc-500 group-hover:bg-white/[.06] group-hover:text-zinc-300"
                                 }`}
                               >
                                 {item.icon}
@@ -1001,7 +998,7 @@ export function AdminShell({
                               <span className="min-w-0">
                                 <span
                                   className={`block text-[13px] font-medium leading-tight transition-colors duration-150 ${
-                                    active ? "text-white" : "text-zinc-300 group-hover:text-white"
+                                    active ? "text-white" : "text-zinc-300 group-hover:text-zinc-100"
                                   }`}
                                 >
                                   {item.label}
@@ -1109,14 +1106,14 @@ export function AdminShell({
                   >
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 hover:bg-white/[.04]"
+                      className="flex w-full items-center gap-3 px-3 py-3 text-left transition-all duration-200 hover:bg-white/[.04]"
                       aria-controls={`mobile-admin-group-${group.id}`}
                       aria-expanded={expanded}
                       onClick={() => setMobileExpanded((current) => (current === group.id ? null : group.id))}
                     >
                       <span
-                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
-                          containsActive ? "bg-pink-500/15 text-pink-300" : "bg-white/[.05] text-zinc-500"
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-all duration-200 ${
+                          containsActive ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]" : "bg-white/[.04] text-zinc-500"
                         }`}
                       >
                         {group.icon}
@@ -1150,15 +1147,15 @@ export function AdminShell({
                                     key={item.href}
                                     href={adminHref(item.href)}
                                     onClick={() => setMobileMenuPath(null)}
-                                    className={`flex items-start gap-3 rounded-lg px-2.5 py-2.5 transition-colors duration-150 ${
-                                      active ? "bg-white/[.06]" : "hover:bg-white/[.04]"
+                                    className={`flex items-start gap-3 rounded-lg px-2.5 py-2.5 transition-all duration-150 ${
+                                      active ? "bg-white/[.06] border-l-2 border-[var(--admin-primary-strong)] pl-2" : "hover:bg-white/[.04] border-l-2 border-transparent"
                                     }`}
                                   >
                                     <span
-                                      className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-colors duration-150 ${
+                                      className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-[9px] font-black tracking-wider transition-all duration-150 ${
                                         active
-                                          ? "bg-pink-500/15 text-pink-300"
-                                          : "bg-white/[.05] text-zinc-500"
+                                          ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]"
+                                          : "bg-white/[.04] text-zinc-500"
                                       }`}
                                     >
                                       {item.icon}
