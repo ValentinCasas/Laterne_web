@@ -308,16 +308,16 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar referencia, cliente o teléfono"
-                className="w-64 rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
+                placeholder="Buscar…"
+                className="w-48 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 pl-8 text-xs text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-white/20 focus:bg-white/[.07]"
               />
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500"><Icon name="search" className="h-4 w-4" /></span>
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-zinc-500"><Icon name="search" className="h-3.5 w-3.5" /></span>
             </div>
           </div>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         {(
           [
             { value: "all", label: "Todos" },
@@ -327,17 +327,17 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
           ] as Array<{ value: OrderTypeFilter; label: string }>
         ).map((option) => (
           <button
-            className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${
+            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
               typeFilter === option.value
-                ? "border-[var(--admin-primary)] bg-[var(--admin-primary)]/15 text-[var(--admin-primary-strong)]"
-                : "border-white/10 bg-white/5 text-zinc-400 hover:text-white"
+                ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)] ring-1 ring-[var(--admin-primary-strong)]/30"
+                : "bg-white/5 text-zinc-400 hover:text-zinc-200"
             }`}
             key={option.value}
             onClick={() => setTypeFilter(option.value)}
             type="button"
           >
             {option.label}
-            <span className="ml-2 rounded-full bg-black/30 px-2 py-0.5 text-xs">
+            <span className="ml-1.5 text-[10px] opacity-60">
               {orders.filter((order) => option.value === "all" || order.orderType === option.value).length}
             </span>
           </button>
@@ -351,22 +351,21 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
           action={<Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin")}>Ir al resumen</Link>}
         />
       ) : (
-        <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">
-          {orderStatuses.map((status) => {
+        <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">              {orderStatuses.map((status) => {
             const statusOrders = visibleOrders.filter((order) => order.status === status);
             return (
               <section
-                className={`w-[min(86vw,360px)] shrink-0 snap-start rounded-3xl border p-4 ${statusStyle[status]}`}
+                className={`w-[min(86vw,320px)] shrink-0 snap-start rounded-2xl border ${statusStyle[status]}`}
                 key={status}
               >
-                <header className="mb-3 flex items-center justify-between px-2 py-1">
-                  <h2 className="font-black">{orderStatusLabel(status)}</h2>
-                  <span className="rounded-full bg-black/30 px-2.5 py-1 text-xs">{statusOrders.length}</span>
+                <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[.06] bg-[var(--admin-surface)] px-3 py-2.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">{orderStatusLabel(status)}</h3>
+                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-zinc-500">{statusOrders.length}</span>
                 </header>
-                <div className="max-h-[64vh] space-y-3 overflow-y-auto pr-1">
+                <div className="max-h-[64vh] space-y-2 overflow-y-auto overscroll-contain p-2.5">
                   {statusOrders.map((order) => (
                     <article
-                      className="rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-xl"
+                      className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 transition-all duration-150 hover:border-white/[.15] hover:shadow-md"
                       key={order.id}
                     >
                       <button
@@ -374,54 +373,42 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                         onClick={() => setSelected(order)}
                         type="button"
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-xs font-black uppercase tracking-wider text-[var(--admin-primary-strong)]">
+                            <div className="flex items-center gap-2">
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--admin-primary-strong)]">
                                 {order.reference}
                               </p>
-                              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-500">
+                              <span className="text-[10px] text-zinc-500">
                                 {elapsedLabel(order.createdAt)}
                               </span>
                             </div>
-                            <h3 className="mt-1 truncate text-lg font-black">{order.customerName}</h3>
+                            <h3 className="mt-0.5 truncate text-sm font-bold text-white">{order.customerName}</h3>
                           </div>
-                          <strong className="shrink-0 tabular-nums">{formatPrice(order.total, order.currency)}</strong>
+                          <span className="shrink-0 text-sm font-bold tabular-nums text-white">{formatPrice(order.total, order.currency)}</span>
                         </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span
-                            className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${modalityStyle[order.orderType]}`}
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}
                           >
-                            {orderTypeLabel(order.orderType)}
-                            {order.table ? ` · ${order.table.name}` : ""}
+                            {orderTypeLabel(order.orderType)}{order.table ? ` ${order.table.name}` : ""}
                           </span>
-                          {order.delivery && (
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${deliveryStatusMeta(order.delivery.status).badge}`}
-                            >
-                              Delivery: {deliveryStatusMeta(order.delivery.status).label}
-                              {order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}
+                          <span className="text-[10px] text-zinc-500">
+                            {order.items.reduce((sum, item) => sum + item.quantity, 0)} items
+                          </span>
+                          {(order.status === "received" || order.status === "preparing") && (
+                            <span className={`text-[10px] font-bold ${
+                              order.status === "received" ? "text-sky-300" : "text-amber-300"
+                            }`}>
+                              {elapsedLabel(order.createdAt)}
                             </span>
                           )}
-                          <span className="text-xs text-zinc-500">
-                            {order.items.reduce((sum, item) => sum + item.quantity, 0)} productos
-                          </span>
-                          {order.phone && <span className="text-xs text-zinc-500">{order.phone}</span>}
                         </div>
-                        {order.status === "received" || order.status === "preparing" ? (
-                          <p
-                            className={`mt-3 text-xs font-black ${
-                              order.status === "received" ? "text-sky-300" : "text-amber-300"
-                            }`}
-                          >
-                            {elapsedLabel(order.createdAt)} esperando
-                          </p>
-                        ) : null}
                       </button>
-                      <div className="mt-3 flex gap-2">
-                        {nextStatus(order) && (
+                      {nextStatus(order) && (
+                        <div className="mt-2.5">
                           <button
-                            className="btn flex-1 py-2 text-sm"
+                            className="w-full rounded-lg bg-[var(--admin-primary-strong)]/15 px-3 py-1.5 text-xs font-bold text-[var(--admin-primary-strong)] transition-colors hover:bg-[var(--admin-primary-strong)]/25"
                             onClick={() => void updateStatus(order, nextStatus(order)!)}
                             type="button"
                           >
@@ -430,28 +417,13 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                               : nextStatus(order) === "preparing"
                                 ? "Empezar"
                                 : nextStatus(order) === "ready"
-                                  ? "Marcar listo"
+                                  ? "Listo"
                                   : nextStatus(order) === "on_the_way"
                                     ? "Enviar"
                                     : "Entregar"}
                           </button>
-                        )}
-                        <select
-                          className="input flex-1 py-2 text-sm"
-                          value={order.status}
-                          onChange={(event) => void updateStatus(order, event.target.value as OrderStatus)}
-                          aria-label={`Estado de ${order.reference}`}
-                        >
-                          <option value={order.status}>{orderStatusLabel(order.status)}</option>
-                          {allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).map(
-                            (candidate) => (
-                              <option key={candidate} value={candidate}>
-                                {orderStatusLabel(candidate)}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
+                        </div>
+                      )}
                     </article>
                   ))}
                   {!statusOrders.length && (

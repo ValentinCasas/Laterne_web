@@ -1,40 +1,59 @@
-/** @summary Badge de estado consistente con colores semánticos. */
-export function StatusBadge({ status, tone }: { status: string; tone?: "default" | "success" | "warning" | "danger" | "info" }) {
-  const styles: Record<string, string> = {
-    default: "bg-white/5 text-zinc-300",
-    success: "bg-emerald-500/10 text-emerald-300",
-    warning: "bg-amber-500/10 text-amber-300",
-    danger: "bg-red-500/10 text-red-300",
-    info: "bg-sky-500/10 text-sky-300",
+/**
+ * @summary Badge de estado consistente con dot indicator y colores semánticos.
+ *
+ * Muestra un punto de color + texto para mejor jerarquía visual.
+ * Los colores se resuelven automáticamente por status o por tone explícito.
+ */
+export function StatusBadge({
+  status,
+  tone,
+  size = "default",
+}: {
+  status: string;
+  tone?: "default" | "success" | "warning" | "danger" | "info";
+  size?: "default" | "sm";
+}) {
+  const styles: Record<string, { badge: string; dot: string }> = {
+    default: { badge: "bg-white/5 text-zinc-300", dot: "bg-zinc-400" },
+    success: { badge: "bg-emerald-500/10 text-emerald-300", dot: "bg-emerald-400" },
+    warning: { badge: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
+    danger: { badge: "bg-red-500/10 text-red-300", dot: "bg-red-400" },
+    info: { badge: "bg-sky-500/10 text-sky-300", dot: "bg-sky-400" },
   };
 
-  const normalized = tone ?? "default";
-  if (!styles[normalized]) {
-    const map: Record<string, string> = {
-      active: "success",
-      delivered: "success",
-      completed: "success",
-      finished: "success",
-      paid: "success",
-      cancelled: "danger",
-      canceled: "danger",
-      rejected: "danger",
-      failed: "danger",
-      pending: "warning",
-      processing: "info",
-      in_progress: "info",
-      draft: "default",
-    };
-    const resolved = map[status.toLowerCase()] || "default";
-    return (
-      <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${styles[resolved]}`}>
-        {status}
-      </span>
-    );
-  }
+  const autoMap: Record<string, string> = {
+    active: "success",
+    delivered: "success",
+    completed: "success",
+    finished: "success",
+    paid: "success",
+    published: "success",
+    available: "success",
+    cancelled: "danger",
+    canceled: "danger",
+    rejected: "danger",
+    failed: "danger",
+    incident: "danger",
+    draft: "default",
+    hidden: "default",
+    archived: "default",
+    pending: "warning",
+    processing: "info",
+    in_progress: "info",
+    scheduled: "info",
+  };
+
+  const normalized = tone ?? autoMap[status.toLowerCase()] ?? "default";
+  const style = styles[normalized] ?? styles.default;
+  const isSmall = size === "sm";
 
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${styles[normalized]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-wider ${style.badge} ${
+        isSmall ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
       {status}
     </span>
   );
