@@ -64,6 +64,7 @@ Docker NO obligatorio para desarrollo.
 | Facturación | PARCIAL |
 | Fidelización | FUNCIONAL |
 | Administración (Marca, Landing, Integraciones, Notificaciones, Datos) | FUNCIONAL |
+| Recepcionista IA (Base de conocimiento, intents, configuración) | PREPARADO |
 | Estadísticas/Analítica | PARCIAL |
 | Reportes (Resumen, Ventas, Productos, Compras, Sucursales, Consolidado, Ingeniería de menú) | FUNCIONAL |
 
@@ -81,6 +82,7 @@ Docker NO obligatorio para desarrollo.
 - **TableSession / TableSessionEvent / DiningTable / TableSector**: salón y mesas.
 - **KitchenStation / PrintArea / PrintJob / PrintDestination**: KDS e impresión.
 - **AnalyticsEvent**: eventos anónimos de actividad.
+- **ReceptionKnowledge / ConversationSession / ConversationMessage**: recepcionista IA (base de conocimiento por tenant, sesiones de conversación, mensajes con trazabilidad de intents).
 
 ## Permisos
 - Clave/valor globales (`permission.key`).
@@ -96,7 +98,7 @@ Docker NO obligatorio para desarrollo.
 - Capacidad de sucursal = suma de cupos de licencias activas vigentes.
 
 ## Migraciones
-- 52 migraciones incrementales en `prisma/migrations/`.
+- 53 migraciones incrementales en `prisma/migrations/`.
 - Estrategia: incremental, nunca `prisma migrate reset`.
 - `prisma/bootstrap.sql` es dump histórico (phpMyAdmin, 2023); NO usado por migraciones actuales.
 - Para modificar schema: migración incremental segura + `prisma generate`.
@@ -106,7 +108,7 @@ Docker NO obligatorio para desarrollo.
 - Lista: `/admin/clientes` (DataTable), `/admin/entregas` (DataTable), `/admin/auditoria`, `/admin/errores`, `/admin/repartidores`, `/admin/facturacion`, `/admin/oportunidades`, `/admin/planes`, `/admin/recetas`, `/admin/testimonios`, `/admin/archivos`, `/admin/gastos`, `/admin/impresion`, `/admin/integraciones`, `/admin/notificaciones`, `/admin/cuenta`, `/admin/datos`, `/admin/marca`, `/admin/landing`, `/admin/carta`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`, `/admin/mesas`
 - Ficha/Documento: `/admin/recetas/[id]`, `/admin/recetas/[id]/ficha`, `/admin/facturacion/[id]` (ficha tipo BC con líneas propias), `/admin/entregas/[id]` (remito tipo BC), modales de compras (`OrderDetailModal`, `InvoiceDetailModal`, `SupplierDetailModal`), ficha de cliente (`CustomerMaster` detail)
 - Board operativo: `/admin/pedidos` (kanban), `/admin/cocina` (KDS), `/admin/salon` (mesas), `/admin/delivery` (seguimiento), `/admin/reservas` (kanban/estados), `/admin/productos` (grid/lista)
-- Configuración: `/admin/integraciones`, `/admin/notificaciones`, `/admin/marca`, `/admin/landing`, `/admin/cuenta`, `/admin/datos`, `/admin/impresion`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`
+- Configuración: `/admin/integraciones`, `/admin/notificaciones`, `/admin/marca`, `/admin/landing`, `/admin/cuenta`, `/admin/datos`, `/admin/impresion`, `/admin/configuracion/comprobantes/plantillas`, `/admin/onboarding`, `/admin/opciones-producto`, `/admin/recepcionista-ia`
 - Reporte: `/admin/reportes` (shell multi-tab), `/admin/reportes/ventas`, `/admin/reportes/productos`, `/admin/reportes/compras`, `/admin/reportes/sucursales`, `/admin/reportes/consolidado`, `/admin/reportes/ingenieria-menu`
 - Entidades genéricas (ResourceManager): categorías, eventos, horarios, testimonios, usuarios, negocio, promociones, legales, ayuda, casos, sucursales, seo, redirecciones
 
@@ -117,7 +119,7 @@ Docker NO obligatorio para desarrollo.
 - Compras/Gastos: ExpensesManager, PurchasesManager (parcial)
 - Finanzas: dashboard, cuentas, movimientos, flujo de caja, cuentas cobrar/pagar, estado de resultados
 - Reportes: shell, tabla genérica, filtros
-- Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, admin-shell (parcial)
+- Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, reception-assistant-config, admin-shell (parcial)
 - Modelo documental: ficha de pedido (cantidades pedida/entregada/pendiente + documentos relacionados), ficha de remito (`/admin/entregas/[id]`), ficha de factura con líneas snapshot (`/admin/facturacion/[id]`), vínculo factura↔remito.
 - Geofencing: validación server-side (Haversine) en `/api/orders` para pedidos de mesa, geolocalización client-side en checkout y config por sucursal (radio + mapa) en `sucursales`. El mapa (`LocationPicker`) dibuja el radio como círculo azul proyectado a píxeles cuando la sucursal tiene `geofenceRadius`.
 - Checkout de mesa: el formulario de pedido carga las mesas activas de la sucursal y las ofrece en un `<select>` (por `code`, etiqueta = nombre); si no hay mesas, cae a input libre. Valida con "Elegí la mesa desde la que vas a pedir.".
@@ -145,6 +147,7 @@ Docker NO obligatorio para desarrollo.
 - Modelo documental: Pedido → OrderDelivery (remito) → InvoiceRecord (factura). `OrderDeliveryItem` es la línea de remito; `InvoiceRecordItem` es la línea snapshot de factura (vinculable a orderItem o deliveryItem). La API de facturas permite emitir desde un remito (`deliveryId`) usando las cantidades efectivamente despachadas.
 - Geofencing: campos en `Branch` (`latitude`/`longitude` Decimal, `geofenceRadius` default 150, `geofenceEnabled` default false) + `lib/geofence.ts` (Haversine y tolerancia por precisión GPS acotada a 500 m). El servidor valida en `/api/orders` para `dine_in` con geofence habilitado; el checkout solicita `getCurrentPosition` y el formulario de sucursales permite configurar radio y ubicación.
 - Sin emojis en UI: se usa iconografía SVG profesional (`Icon` desde `components/admin/ui/icons.tsx`) en `SearchBox`, `ActionMenu`, tablas, estados vacíos, repartidor, carta pública, checkout y demás superficies.
+- Recepcionista IA (preparación): contrato `ReceptionAssistantProvider` en `lib/reception-assistant/types.ts`, base de conocimiento configurable por tenant (`ReceptionKnowledge`), clasificador de intents por regex (`lib/reception-assistant/intents.ts`), carga de knowledge desde Prisma (`lib/reception-assistant/knowledge.ts`). La API `/api/reception-assistant` usa `getDefaultTenant()` y `buildDefaultResponse()`. La configuración admin está en `/admin/recepcionista-ia` con CRUD en `/api/admin/reception-assistant`. No implementa IA real, WhatsApp ni chat funcional.
 
 ## Pendientes
 - Migración de analítica hacia dashboards de gestión comercial.

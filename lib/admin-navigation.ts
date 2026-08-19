@@ -544,6 +544,19 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+      {
+        id: "recepcionista-ia",
+        label: "Recepcionista IA",
+        items: [
+          {
+            href: "/admin/recepcionista-ia",
+            label: "Configuración",
+            icon: "RA",
+            permission: "business.manage",
+            description: "Base de conocimiento y comportamiento de la asistente virtual",
+          },
+        ],
+      },
     ],
   },
 ] as const satisfies readonly AdminNavGroup[];

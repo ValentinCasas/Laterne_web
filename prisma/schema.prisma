@@ -428,6 +428,8 @@ model Tenant {
   driverBranches          DriverBranch[]
   driverIncidents         DriverIncident[]
   deliveryStatusLogs      OrderDeliveryStatusLog[]
+  receptionKnowledge      ReceptionKnowledge?
+  conversationSessions    ConversationSession[]
 
   @@map("tenant")
 }
@@ -944,6 +946,83 @@ model ReservationStatusHistory {
 
   @@index([reservationId, createdAt])
   @@map("reservationstatushistory")
+}
+
+/** @summary Base de conocimiento configurable por tenant para la recepcionista IA futura. */
+model ReceptionKnowledge {
+  id                Int      @id @default(autoincrement())
+  tenantId          Int      @unique
+  businessName      String?  @db.VarChar(160)
+  address           String?  @db.Text
+  phone             String?  @db.VarChar(60)
+  email             String?  @db.VarChar(190)
+  website           String?  @db.VarChar(300)
+  timezone          String   @default("America/Argentina/Buenos_Aires") @db.VarChar(80)
+  /** Horarios de atención en texto libre (Markdown/HTML simplificado). */
+  openingHoursText  String?  @db.Text
+  /** Política de reservas pública. */
+  reservationPolicy String?  @db.Text
+  /** Preguntas frecuentes en JSON: [{ question: string, answer: string, category?: string }] */
+  faqs              Json?
+  /** Información de ubicación para entrega / geolocalización. */
+  locationInfo      Json?
+  /** Instrucciones especiales para la IA (tono, idioma, límites, handoff). */
+  assistantConfig   Json?
+  enabled           Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("receptionknowledge")
+}
+
+/** @summary Sesión de conversación externa (WhatsApp, webchat, etc.) sin guardar datos sensibles innecesarios. */
+model ConversationSession {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int
+  branchId        Int?
+  /** ID externo del canal (ej: WhatsApp phone number hash, webchat UUID). */
+  externalId      String   @db.VarChar(128)
+  channel         String   @default("web") @db.VarChar(30)
+  /** Nombre del cliente si se conoce (no PHI). */
+  customerName    String?  @db.VarChar(160)
+  status          String   @default("active") @db.VarChar(24)
+  /** Última actividad para expiración. */
+  lastActivityAt  DateTime @default(now())
+  /** Handoff a humano pendiente. */
+  handoffPending  Boolean  @default(false)
+  handoffReason   String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  messages        ConversationMessage[]
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId, channel, status])
+  @@map("conversationsession")
+}
+
+/** @summary Mensajes de una sesión de conversación. Almacena la trazabilidad sin datos sensibles innecesarios. */
+model ConversationMessage {
+  id              Int      @id @default(autoincrement())
+  sessionId       Int
+  /** user = cliente, assistant = IA, system = sistema, handoff = humano. */
+  role            String   @db.VarChar(20)
+  content         String   @db.Text
+  /** Intent clasificado (check_availability, create_reservation, etc.). */
+  intent          String?  @db.VarChar(60)
+  /** Acción propuesta o confirmada por la IA. */
+  actionType      String?  @db.VarChar(60)
+  /** ID de reserva creada/modificada si aplica. */
+  reservationId   Int?
+  /** Metadata adicional (slots disponibles, errores, etc.). */
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  session         ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("conversationmessage")
 }
 
 model Notification {
@@ -2018,6 +2097,7 @@ model Branch {
   financialMovements FinancialMovement[]
   receivableDocuments ReceivableDocument[]
   receivablePayments ReceivablePayment[]
+  conversationSessions ConversationSession[]
 
   @@map("branch")
 }
