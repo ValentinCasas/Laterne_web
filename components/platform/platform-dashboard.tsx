@@ -59,7 +59,7 @@ export function PlatformDashboard({ tenants, newLeads }: { tenants: Tenant[]; ne
           Alta de cliente
         </Link>
       </header>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 2xl:grid-cols-5">
         {cards.map(([value, label, href, color]) => (
           <Link
             className="rounded-2xl border border-white/10 bg-[#151a24] p-5 hover:border-amber-300/40"

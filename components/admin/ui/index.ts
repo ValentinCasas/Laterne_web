@@ -1,6 +1,15 @@
 export { ViewOptions, type Density } from "./view-options";
 export { DENSITY_CLASSES, DENSITY_CELL_CLASSES } from "./view-options";
 export { PageHeader } from "./page-header";
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  type CardPadding,
+} from "./card";
 export { SectionHeader } from "./section-header";
 export { Toolbar } from "./toolbar";
 export { FiltersBar } from "./filters-bar";

@@ -224,7 +224,7 @@ export function PaletteManager({
           </p>
         )}
       </div>
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(300px,.7fr)]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div>
           <h3 className="text-sm font-black uppercase tracking-wider text-[var(--color-text-muted)]">
             Paletas predefinidas
@@ -370,7 +370,7 @@ export function PaletteManager({
               </a>
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3">
             {editableColors.map(([key, label]) => (
               <label className="text-xs font-bold" key={key}>
                 <span className="mb-1 block" style={{ color: draft.textMuted }}>

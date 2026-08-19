@@ -52,7 +52,7 @@ export function CardGrid<T>({
         <ViewModeToggle value={viewMode} onChange={applyMode} />
       </div>
       {isCards ? (
-        <div className={`grid ${compact ? "grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"}`}>
+        <div className={`grid ${compact ? "grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" : "grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"}`}>
           {items.map((item, index) => (
             <div key={keyExtractor(item, index)}>{renderCard(item)}</div>
           ))}
