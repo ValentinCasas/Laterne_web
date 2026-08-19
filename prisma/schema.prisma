@@ -271,6 +271,8 @@ model User {
   password                 String                   @db.VarChar(255)
   role                     Int
   imageUrl                 String                   @db.VarChar(255)
+  /** @summary Hash bcrypt del PIN de acceso rápido (6 dígitos). Nunca se almacena en texto plano. */
+  pinHash                  String?                  @db.VarChar(255)
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
   memberships              TenantMembership[]
