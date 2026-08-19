@@ -1118,6 +1118,8 @@ export async function reverseFinancialMovement(
   id: number,
   _reason: string,
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const __ = _reason;
   const movement = await prisma.financialMovement.findFirst({
     where: { id, tenantId },
     include: { account: { select: { name: true } } },
@@ -1556,6 +1558,8 @@ export async function reverseReceivablePayment(
   id: number,
   _reason: string,
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const __ = _reason;
   const payment = await prisma.receivablePayment.findFirst({
     where: { id, tenantId },
     include: { allocations: { where: { status: "active" } } },

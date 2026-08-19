@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader } from "@/components/admin/ui";
+import { PageHeader, SearchBox, StatusBadge, ActionMenu, EmptyState, Drawer, DataTable } from "@/components/admin/ui";
 import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
 import { scopedFetch } from "@/lib/client-routing";
 import { orderStatusLabel } from "@/lib/orders";
@@ -45,6 +45,13 @@ const modalityLabel: Record<string, string> = {
   delivery: "Delivery",
 };
 
+const tierTone: Record<string, "success" | "info" | "warning" | "default" | "danger"> = {
+  diamante: "success",
+  oro: "info",
+  plata: "warning",
+  inicial: "default",
+};
+
 /** @summary Permite buscar clientes frecuentes, ver su ficha 360 y registrar ajustes manuales de puntos. */
 export function CustomerManager({ initialCustomers }: { initialCustomers: LoyaltyCustomerData[] }) {
   const [customers, setCustomers] = useState(initialCustomers);
@@ -70,6 +77,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
     }
     setDetail(body.customer);
   }
+
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
     return normalized
@@ -122,33 +130,26 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
   }
 
   return (
-    <section>
+    <section className="space-y-6">
       <PageHeader
         eyebrow="Fidelización"
         title="Clientes frecuentes"
         description="Perfiles consentidos, niveles, pedidos y movimientos de puntos."
         section="clientes-frecuentes"
-      >
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <input
-            className="input max-w-md flex-1"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            type="search"
-            placeholder="Buscar nombre, email o teléfono"
-          />
-          <ViewModeToggle value={view} onChange={setView} />
-        </div>
-      </PageHeader>
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchBox value={query} onChange={setQuery} placeholder="Buscar nombre, email o teléfono" className="min-w-[220px] flex-1" />
+            <ViewModeToggle value={view} onChange={setView} />
+          </div>
+        }
+      />
       {isCards ? (
         <div className={`grid sm:grid-cols-2 xl:grid-cols-3 ${compactCards ? "gap-2.5" : "gap-4"}`}>
           {visible.map((customer) => (
             <article className={`card ${compactCards ? "p-3" : "p-5"}`} key={customer.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className={`font-black uppercase tracking-wider text-pink-300 ${compactCards ? "text-[10px]" : "text-xs"}`}>
-                    Nivel {customer.tier}
-                  </p>
+                  <StatusBadge status={customer.tier} tone={tierTone[customer.tier] ?? "default"} />
                   <h2 className={`mt-1 font-black ${compactCards ? "text-base" : "text-xl"}`}>{customer.name}</h2>
                   <p className="text-sm text-zinc-500">{customer.email || customer.phone}</p>
                 </div>
@@ -169,96 +170,67 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
             </article>
           ))}
           {!visible.length && (
-            <p className="card p-10 text-center text-zinc-500">No hay clientes con esos datos.</p>
+            <EmptyState title="Sin clientes" description="No hay clientes con esos datos." />
           )}
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[.02]">
-          <div className="hidden grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] gap-4 border-b border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-500 lg:grid">
-            <span>Cliente</span>
-            <span>Nivel</span>
-            <span>Puntos</span>
-            <span>Actividad</span>
-            <span />
-            <span />
-          </div>
-          <div className="divide-y divide-white/10">
-            {visible.map((customer) => (
-              <div
-                className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(200px,1.4fr)_140px_120px_130px_auto_auto] lg:items-center"
-                key={customer.id}
-              >
-                <div className="min-w-0">
-                  <strong className="block truncate">{customer.name}</strong>
-                  <p className="truncate text-sm text-zinc-500">{customer.email || customer.phone}</p>
+        <div className="shadow-xl shadow-black/10">
+          <DataTable
+            viewStorageKey="clientes-frecuentes"
+            columns={[
+              { key: "name", label: "Cliente" },
+              { key: "tier", label: "Nivel" },
+              { key: "points", label: "Puntos", align: "right" as const },
+              { key: "activity", label: "Actividad" },
+              { key: "actions", label: "", align: "right" as const },
+            ]}
+            data={visible.map((customer) => ({
+              id: customer.id,
+              name: (
+                <div>
+                  <strong className="block">{customer.name}</strong>
+                  <p className="text-xs text-zinc-500">{customer.email || customer.phone}</p>
                 </div>
-                <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-black uppercase text-pink-300 w-fit">
-                  {customer.tier}
-                </span>
-                <strong className="text-lg text-pink-300 tabular-nums">{customer.points}</strong>
-                <span className="text-sm text-zinc-500">
-                  {customer._count.orders} pedidos · {customer._count.transactions} mov.
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10"
-                    onClick={() => void openDetail(customer)}
-                    type="button"
-                  >
-                    Ficha 360
-                  </button>
-                  <button
-                    className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-bold hover:bg-white/10"
-                    onClick={() => adjust(customer)}
-                    type="button"
-                  >
-                    Ajustar puntos
-                  </button>
-                </div>
-              </div>
-            ))}
-            {!visible.length && (
-              <p className="p-10 text-center text-zinc-500">No hay clientes con esos datos.</p>
-            )}
-          </div>
+              ),
+              tier: <StatusBadge status={customer.tier} tone={tierTone[customer.tier] ?? "default"} />,
+              points: <strong className="tabular-nums text-pink-300">{customer.points}</strong>,
+              activity: `${customer._count.orders} pedidos · ${customer._count.transactions} mov.`,
+              actions: (
+                <ActionMenu
+                  align="right"
+                  items={[
+                    { label: "Ver ficha 360", onClick: () => void openDetail(customer) },
+                    { label: "Ajustar puntos", onClick: () => adjust(customer) },
+                  ]}
+                />
+              ),
+            }))}
+            keyExtractor={(row) => row.id as number}
+            emptyMessage="No hay clientes con esos datos."
+            density="normal"
+          />
         </div>
       )}
 
-      {detail && (
-        <div
-          className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4"
-          onClick={() => setDetail(null)}
-        >
-          <article
-            className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-zinc-950 p-6 sm:p-8"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
+      <Drawer open={!!detail} onClose={() => setDetail(null)} title={detail ? `Ficha 360 · ${detail.name}` : ""} width="560px">
+        {detail && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="section-eyebrow">Ficha 360 · Nivel {detail.tier}</p>
-                <h2 className="mt-1 text-3xl font-black">{detail.name}</h2>
-                <p className="mt-1 text-sm text-zinc-500">
+                <StatusBadge status={detail.tier} tone={tierTone[detail.tier] ?? "default"} />
+                <h3 className="mt-1 text-xl font-black">{detail.name}</h3>
+                <p className="text-sm text-zinc-500">
                   {detail.email ?? "Sin email"} · {detail.phone ?? "Sin teléfono"}
                   {detail.birthday ? ` · Cumple ${detail.birthday.slice(0, 10)}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-xs uppercase text-zinc-600">Puntos</p>
-                  <strong className="text-3xl text-pink-300">{detail.points}</strong>
-                </div>
-                <button
-                  className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
-                  onClick={() => setDetail(null)}
-                  type="button"
-                  aria-label="Cerrar ficha"
-                >
-                  ×
-                </button>
+              <div className="text-right">
+                <p className="text-xs uppercase text-zinc-600">Puntos</p>
+                <strong className="text-3xl text-pink-300">{detail.points}</strong>
               </div>
             </div>
 
-            <section className="mt-6">
+            <section>
               <h3 className="text-lg font-black">Pedidos recientes</h3>
               <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
                 {detail.orders.map((order) => (
@@ -291,7 +263,7 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
               </div>
             </section>
 
-            <section className="mt-6">
+            <section>
               <h3 className="text-lg font-black">Movimientos de puntos</h3>
               <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
                 {detail.transactions.map((movement) => (
@@ -320,8 +292,8 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
               </div>
             </section>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button className="btn" onClick={() => void adjust(detail)} type="button">
+            <div className="flex flex-wrap gap-3">
+              <button className="btn" onClick={() => adjust(detail)} type="button">
                 Ajustar puntos
               </button>
               {detail.phone && (
@@ -335,9 +307,9 @@ export function CustomerManager({ initialCustomers }: { initialCustomers: Loyalt
                 </a>
               )}
             </div>
-          </article>
-        </div>
-      )}
+          </div>
+        )}
+      </Drawer>
     </section>
   );
 }

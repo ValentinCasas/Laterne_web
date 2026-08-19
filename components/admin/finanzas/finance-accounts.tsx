@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
-import { PageHeader, DataTable, StatusBadge, ActionMenu, FactBox } from "@/components/admin/ui";
+import { PageHeader, DataTable, StatusBadge, ActionMenu, FactBox, Drawer } from "@/components/admin/ui";
 import { money } from "@/lib/finance-helpers";
 
 export type AccountsInitial = {
@@ -290,30 +290,17 @@ export function FinanceAccountsClient({ initial }: { initial: AccountsInitial })
         </div>
       </div>
 
-      {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--admin-border)] px-5 py-4">
-              <div>
-                <h2 className="text-xl font-black">{editing ? "Editar cuenta" : "Nueva cuenta"}</h2>
-                <p className="text-sm text-[var(--admin-muted)]">
-                  {editing ? "Modificá los datos de la cuenta" : "Completá los datos de la nueva cuenta financiera"}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setCreating(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-                disabled={busy}
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-            <div className="space-y-4 p-5">
+      <Drawer
+        open={creating}
+        onClose={() => {
+          setCreating(false);
+          setEditing(null);
+          setForm(emptyForm);
+        }}
+        title={editing ? "Editar cuenta" : "Nueva cuenta"}
+        width="520px"
+      >
+            <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-bold text-[var(--admin-muted)]">Nombre</label>
                 <input
@@ -401,9 +388,7 @@ export function FinanceAccountsClient({ initial }: { initial: AccountsInitial })
                 {editing ? "Guardar cambios" : "Crear cuenta"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Drawer>
     </div>
   );
 }

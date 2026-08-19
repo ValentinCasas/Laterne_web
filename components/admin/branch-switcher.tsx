@@ -110,7 +110,7 @@ export function BranchSwitcher({
         }
       >
         <StoreIcon />{" "}
-        <span className={`min-w-0 truncate ${compact ? "hidden max-w-32 lg:inline" : ""}`}>
+        <span className={`min-w-0 truncate ${compact ? "hidden max-w-40 lg:inline" : ""}`}>
           {currentLabel}
         </span>
         <svg

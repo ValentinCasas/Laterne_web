@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { PageHeader, Tabs, EmptyState, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, Tabs, StatusBadge } from "@/components/admin/ui";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { scopedFetch } from "@/lib/client-routing";
 import { unitLabel } from "@/lib/recipe-units";
@@ -36,14 +36,6 @@ type Payload = {
   usedIn: UsedIn[];
 };
 
-const statusLabels: Record<string, string> = {
-  published: "Publicado",
-  scheduled: "Programado",
-  draft: "Borrador",
-  hidden: "Oculto",
-  archived: "Archivado",
-};
-
 export function IngredientFicha({ initial }: { initial: Payload }) {
   const pathname = usePathname();
   const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
@@ -68,15 +60,45 @@ export function IngredientFicha({ initial }: { initial: Payload }) {
   };
 
   const updateCost = async () => {
-    const newCost = prompt("Nuevo costo:");
-    if (newCost === null) return;
-    const reason = prompt("Motivo del cambio (opcional):") ?? "";
+    const result = await Swal.fire({
+      title: "Actualizar costo",
+      html: `
+        <div class="text-left space-y-3">
+          <p class="text-sm text-zinc-400">Costo actual: <strong class="text-white">${money(payload.product.cost)}</strong></p>
+          <div>
+            <label class="block text-sm font-bold text-zinc-400 mb-1">Nuevo costo</label>
+            <input id="ingredient-cost" type="number" step="0.01" value="${payload.product.cost ?? ""}" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-white" />
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-zinc-400 mb-1">Motivo (opcional)</label>
+            <input id="ingredient-reason" type="text" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-white" />
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+      cancelButtonText: "Cancelar",
+      background: "#18181b",
+      color: "#fafafa",
+      preConfirm: () => {
+        const cost = Number((document.getElementById("ingredient-cost") as HTMLInputElement)?.value);
+        const reason = (document.getElementById("ingredient-reason") as HTMLInputElement)?.value.trim();
+        if (!cost || cost <= 0) {
+          Swal.showValidationMessage("Ingresá un costo válido");
+          return false;
+        }
+        return { cost, reason };
+      },
+    });
+
+    if (!result.isConfirmed || !result.value) return;
+    const { cost, reason } = result.value as { cost: number; reason?: string };
     setBusy(true);
     try {
       const res = await scopedFetch(`/api/admin/ingredients/${payload.product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cost: Number(newCost), reason: reason.trim() || undefined }),
+        body: JSON.stringify({ cost, reason: reason || undefined }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo actualizar");
       await Swal.fire({ title: "Costo actualizado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });

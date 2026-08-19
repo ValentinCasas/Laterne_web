@@ -336,7 +336,7 @@ button {
     min-width: 0;
   }
   .admin-theme .admin-page-header h1 {
-    font-size: clamp(2.25rem, 3.2vw, 3.75rem);
+    font-size: clamp(1.25rem, 2vw, 1.875rem);
   }
 }
 .section-eyebrow {

@@ -162,12 +162,10 @@ function NewCustomerDrawer({ open, onClose, onCreated }: { open: boolean; onClos
   const [form, setForm] = useState<CustomerForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(emptyForm);
-// eslint-disable-next-line react-hooks/set-state-in-effect
       setSaving(false);
     }
   }, [open]);
@@ -266,7 +264,6 @@ function CustomerDetailDrawer({
   const [editForm, setEditForm] = useState<CustomerForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!open || !customerId) return;
     let cancelled = false;
@@ -307,17 +304,13 @@ function CustomerDetailDrawer({
     };
   }, [open, customerId]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDetail(null);
-// eslint-disable-next-line react-hooks/set-state-in-effect
-      setError(null)
-// eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(false)
-// eslint-disable-next-line react-hooks/set-state-in-effect
-      setEditing(false)
+      setError(null);
+      setLoading(false);
+      setEditing(false);
     }
   }, [open]);
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { PageHeader, SearchBox, StatusBadge, EmptyState, DataTable } from "@/components/admin/ui";
+import { PageHeader, SearchBox, StatusBadge, EmptyState, DataTable, ActionMenu } from "@/components/admin/ui";
 import { adminHrefFromPathname } from "@/lib/routes";
 import type { RecipeBoardPayload } from "@/lib/recipe-data";
 
@@ -113,22 +113,13 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
     const product = filtered.find((p) => p.id === row.id as number);
     if (!product) return null;
     return (
-      <div className="flex justify-end gap-2">
-        <a
-          href={adminHref(`/admin/recetas/${product.id}`)}
-          className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-        >
-          Editar
-        </a>
-        {product.hasRecipe && (
-          <a
-            href={adminHref(`/admin/recetas/${product.id}/ficha`)}
-            className="inline-flex h-9 items-center rounded-lg border border-[var(--admin-border)] bg-white/5 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-          >
-            Ficha
-          </a>
-        )}
-      </div>
+      <ActionMenu
+        align="right"
+        items={[
+          { label: "Editar", onClick: () => { window.location.href = adminHref(`/admin/recetas/${product.id}`); } },
+          ...(product.hasRecipe ? [{ label: "Ficha", onClick: () => { window.location.href = adminHref(`/admin/recetas/${product.id}/ficha`); } }] : []),
+        ]}
+      />
     );
   };
 

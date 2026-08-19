@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, Tabs, DataTable } from "@/components/admin/ui";
+import { PageHeader, SearchBox, Tabs, ActionMenu } from "@/components/admin/ui";
 import { InvoiceDetailModal, NewInvoiceModal, NewOrderModal, OrderDetailModal, SupplierModal } from "@/components/admin/purchases-modals";
 import { SupplierDetailModal, type Supplier } from "@/components/admin/supplier-detail-modal";
 import {
@@ -429,108 +429,20 @@ function OrdersTable({
                       {purchaseOrderStatusLabels[order.status] ?? order.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onOpen(order.id)}>
-                        Ver
-                      </button>
-                      {order.status === "draft" && (
-                        <button type="button" className="btn px-2.5 py-1.5 text-xs" onClick={() => void changeStatus(order, "sent")}>
-                          Enviar
-                        </button>
-                      )}
-                      {["received", "partially_received", "sent", "draft"].includes(order.status) && (
-                        <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => void changeStatus(order, "closed")}>
-                          Cerrar
-                        </button>
-                      )}
-                      {order.status === "draft" && (
-                        <button
-                          type="button"
-                          className="rounded-lg border border-red-500/20 px-2.5 py-1.5 text-xs font-bold text-rose-300 hover:bg-rose-500/10"
-                          onClick={() => void changeStatus(order, "cancelled")}
-                        >
-                          Cancelar
-                        </button>
-                      )}
-                      {order.status === "draft" && (
-                        <button
-                          type="button"
-                          className="rounded-lg border border-[var(--admin-border)] px-2 py-1 text-xs text-[var(--admin-muted)] hover:text-rose-300"
-                          onClick={() => void remove(order)}
-                          title="Eliminar"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <ActionMenu
+                      align="right"
+                      items={[
+                        { label: "Ver", onClick: () => onOpen(order.id) },
+                        ...(order.status === "draft" ? [{ label: "Enviar", onClick: () => void changeStatus(order, "sent") }] : []),
+                        ...(["received", "partially_received", "sent", "draft"].includes(order.status) ? [{ label: "Cerrar", onClick: () => void changeStatus(order, "closed") }] : []),
+                        ...(order.status === "draft" ? [
+                          { label: "Cancelar", tone: "danger" as const, onClick: () => void changeStatus(order, "cancelled") },
+                          { label: "Eliminar", tone: "danger" as const, onClick: () => void remove(order) },
+                        ] : []),
+                      ]}
+                    />
                   </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/** @summary Tabla de recepciones físicas. */
-function ReceiptsTable({
-  receipts,
-  currency,
-  onOpenOrder,
-}: {
-  receipts: ReceiptRow[];
-  currency: string;
-  onOpenOrder: (id: number) => void;
-}) {
-  if (!receipts.length) {
-    return (
-      <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
-        <Icon name="truck" className="mx-auto text-4xl text-zinc-600" />
-        <h3 className="mt-3 text-xl font-black">Todavía no hay recepciones</h3>
-        <p className="mt-2 text-sm text-[var(--admin-muted)]">Abrí un pedido y usá el botón «Recibir» cuando llegue la mercadería.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-              <th className="px-4 py-3">Recepción</th>
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Pedido</th>
-              <th className="px-4 py-3">Proveedor</th>
-              <th className="px-4 py-3">Sucursal</th>
-              <th className="px-4 py-3">Productos</th>
-              <th className="px-4 py-3 text-right">Importe estimado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--admin-border)]/70">
-            {receipts.map((receipt) => {
-              const total = receipt.items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitCost), 0);
-              return (
-                <tr key={receipt.id} className="transition-colors hover:bg-white/[0.02]">
-                  <td className="px-4 py-3 font-black text-pink-300">{receipt.number}</td>
-                  <td className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(receipt.receivedAt)}</td>
-                  <td className="px-4 py-3">
-                    {receipt.order ? (
-                      <button type="button" className="font-semibold text-zinc-200 hover:underline" onClick={() => onOpenOrder(receipt.order!.id)}>
-                        {receipt.order.number}
-                      </button>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{receipt.supplier.name}</td>
-                  <td className="px-4 py-3 text-[var(--admin-muted)]">{receipt.branch.name}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">
-                    {receipt.items.map((item) => `${item.product?.name ?? item.product?.id ?? item.id} × ${item.quantity} ${item.unit}`).join(", ")}
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold tabular-nums">{money(total, currency)}</td>
                 </tr>
               );
             })}
@@ -630,21 +542,14 @@ function InvoicesTable({
                       {purchaseInvoiceStatusLabels[invoice.status] ?? invoice.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onOpen(invoice.id)}>
-                        Ver / Pagar
-                      </button>
-                      {!["paid", "cancelled"].includes(invoice.status) && (
-                        <button
-                          type="button"
-                          className="rounded-lg border border-red-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
-                          onClick={() => void annul(invoice)}
-                        >
-                          Anular
-                        </button>
-                      )}
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <ActionMenu
+                      align="right"
+                      items={[
+                        { label: "Ver / Pagar", onClick: () => onOpen(invoice.id) },
+                        ...(!["paid", "cancelled"].includes(invoice.status) ? [{ label: "Anular", tone: "danger" as const, onClick: () => void annul(invoice) }] : []),
+                      ]}
+                    />
                   </td>
                 </tr>
               );
@@ -801,19 +706,14 @@ function SuppliersTable({
                       {supplier.status === "active" ? "Activo" : supplier.status === "blocked" ? "Bloqueado" : "Suspendido"}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onEdit(supplier)}>
-                        Ver / Editar
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border border-red-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
-                        onClick={() => void remove(supplier)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <ActionMenu
+                      align="right"
+                      items={[
+                        { label: "Ver / Editar", onClick: () => onEdit(supplier) },
+                        { label: "Eliminar", tone: "danger", onClick: () => void remove(supplier) },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

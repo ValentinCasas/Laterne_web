@@ -156,6 +156,39 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
     }
   }
 
+  async function reverseDelivery(deliveryId: number) {
+    const confirmed = await Swal.fire({
+      title: "¿Anular entrega?",
+      text: "Se revertirán las cantidades al pedido original.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Anular",
+      cancelButtonText: "Cancelar",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+    if (!confirmed.isConfirmed) return;
+    setSaving(true);
+    try {
+      const response = await scopedFetch(`/api/admin/deliveries/${deliveryId}/reverse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: "Anulación manual desde el panel" }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
+      const delivery = body.delivery ? normalizeDeliveryDetail(body.delivery) : undefined;
+      if (!response.ok || !delivery) {
+        await Swal.fire({ title: "No se pudo anular", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
+        return;
+      }
+      setDeliveries((current) => current.map((d) => (d.id === deliveryId ? delivery : d)));
+      setSelected((current) => (current?.id === deliveryId ? delivery : current));
+      await Swal.fire({ title: "Entrega anulada", text: "Las cantidades volvieron al pedido.", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const d of deliveries) {
@@ -250,7 +283,7 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
                         label: "Ver remito",
                         onClick: () => window.open(adminHrefFromPathname(pathname, `/admin/entregas/${selected.id}`), "_blank"),
                       },
-                      { label: "Anular entrega", tone: "danger", onClick: () => {} },
+                      { label: "Anular entrega", tone: "danger", onClick: () => reverseDelivery(selected.id) },
                     ]}
                   />
                 }

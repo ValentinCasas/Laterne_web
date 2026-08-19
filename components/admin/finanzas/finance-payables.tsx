@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
-import { PageHeader, KpiCard, DataTable, StatusBadge, ActionMenu, FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
+import { PageHeader, KpiCard, DataTable, StatusBadge, FiltersBar, ActiveFilterChip } from "@/components/admin/ui";
 import { money, dateLabel } from "@/lib/finance-helpers";
 
 export type PayablesInitial = {
@@ -90,61 +90,6 @@ export function FinancePayablesClient({ initial }: { initial: PayablesInitial })
     }
   }, [statusFilter, initial.activeBranchId]);
 
-  const registerPayment = useCallback(
-    async (item: PayablesInitial["items"][number]) => {
-      const result = await Swal.fire({
-        title: "Registrar pago",
-        html: `
-          <div class="text-left space-y-3">
-            <p class="text-sm text-zinc-400">Proveedor: <strong class="text-white">${item.supplierName}</strong></p>
-            <p class="text-sm text-zinc-400">Documento: <strong class="text-white">${item.documentNumber || "—"}</strong></p>
-            <p class="text-sm text-zinc-400">Restante: <strong class="text-rose-300">${money(item.remainingAmount, currency)}</strong></p>
-            <div>
-              <label class="block text-sm font-bold text-zinc-400 mb-1">Monto a pagar</label>
-              <input id="pp-amount" type="number" step="0.01" max="${item.remainingAmount}" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-white" />
-            </div>
-            <div>
-              <label class="block text-sm font-bold text-zinc-400 mb-1">Método</label>
-              <select id="pp-method" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-white">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: "Registrar pago",
-        cancelButtonText: "Cancelar",
-        background: "#18181b",
-        color: "#fafafa",
-        preConfirm: () => {
-          const amount = Number((document.getElementById("pp-amount") as HTMLInputElement)?.value);
-          const method = (document.getElementById("pp-method") as HTMLSelectElement)?.value;
-          if (!amount || amount <= 0) {
-            Swal.showValidationMessage("Ingresá un monto válido");
-            return false;
-          }
-          return { amount, method };
-        },
-      });
-
-      if (result.isConfirmed && result.value) {
-        await Swal.fire({
-          title: "Pago registrado",
-          text: "El pago se ha registrado correctamente",
-          icon: "success",
-          background: "#18181b",
-          color: "#fafafa",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-      }
-    },
-    [currency],
-  );
-
   const statusLabel = (status: string) => {
     const labels: Record<string, string> = {
       open: "Abierto",
@@ -219,7 +164,6 @@ export function FinancePayablesClient({ initial }: { initial: PayablesInitial })
             { key: "restante", label: "Restante", align: "right" },
             { key: "estado", label: "Estado" },
             { key: "diasVencimiento", label: "Vencimiento" },
-            { key: "acciones", label: "Acciones", align: "right" },
           ]}
           data={useMemo(() => filtered.map((item) => ({
             id: item.id,
@@ -239,17 +183,7 @@ export function FinancePayablesClient({ initial }: { initial: PayablesInitial })
               />
             ),
             diasVencimiento: item.daysOverdue > 0 ? <span className="text-rose-300">{item.daysOverdue} días</span> : <span className="text-[var(--admin-muted)]">—</span>,
-            acciones: (
-              item.status !== "paid" && item.status !== "cancelled" ? (
-                <ActionMenu
-                  align="right"
-                  items={[
-                    { label: "Pagar", onClick: () => registerPayment(item), tone: "primary" },
-                  ]}
-                />
-              ) : null
-            ),
-          })), [filtered, registerPayment])}
+          })), [filtered])}
           keyExtractor={(row) => row.id as number}
           emptyMessage="No hay cuentas a pagar registradas"
           density="normal"

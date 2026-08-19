@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, ActionMenu, EmptyState, DataTable, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, SearchBox, ActionMenu, EmptyState, DataTable, StatusBadge, Drawer } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { unitLabel } from "@/lib/recipe-units";
@@ -36,7 +36,6 @@ type IngredientRow = {
   stocks: IngredientStock[];
   lastCost: { cost: string; unit: string; reason: string | null; createdAt: string } | null;
 };
-
 
 type Payload = {
   ingredients: IngredientRow[];
@@ -83,14 +82,13 @@ function stockDraftFrom(stocks: IngredientStock[], branches: Branch[]): StockDra
   });
 }
 
-
-
 export function IngredientsBoard({ initial }: { initial: Payload }) {
   const pathname = usePathname();
   const adminHref = (href: string) => adminHrefFromPathname(pathname, href);
   const [payload, setPayload] = useState<Payload>(initial);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [mode, setMode] = useState<FormMode>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({
@@ -108,6 +106,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
     setEditingId(null);
     setForm({ name: "", cost: "", costUnit: "unidad", reason: "" });
     setStocks(stockDraftFrom([], payload.branches));
+    setDrawerOpen(true);
   };
 
   const openEdit = (ingredient: IngredientRow) => {
@@ -120,6 +119,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
       reason: "",
     });
     setStocks(stockDraftFrom(ingredient.stocks, payload.branches));
+    setDrawerOpen(true);
   };
 
   const refresh = async () => {
@@ -160,6 +160,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
       }
       setMode(null);
       setEditingId(null);
+      setDrawerOpen(false);
       await refresh();
       await Swal.fire({
         title: mode === "create" ? "Ingrediente creado" : "Ingrediente actualizado",
@@ -200,10 +201,6 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
     }
   };
 
-  const patchStock = (index: number, patch: Partial<StockDraft>) => {
-    setStocks((current) => current.map((stock, stockIndex) => (stockIndex === index ? { ...stock, ...patch } : stock)));
-  };
-
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("es");
     return payload.ingredients.filter((ingredient) =>
@@ -217,8 +214,8 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
   };
 
   const columns = useMemo(() => [
-    { key: "name", label: "Ingrediente", hideOnMobile: false } as const,
-    { key: "cost", label: "Costo", align: "right" as const, hideOnMobile: false } as const,
+    { key: "name", label: "Ingrediente" } as const,
+    { key: "cost", label: "Costo", align: "right" as const } as const,
     { key: "unit", label: "Unidad base", align: "right" as const, hideOnMobile: true } as const,
     { key: "stock", label: "Stock", hideOnMobile: true } as const,
     { key: "usedIn", label: "Usado en", align: "left" as const, hideOnMobile: true },
@@ -316,18 +313,37 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
         }
       />
 
-      {mode && (
-        <div className="mb-5 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-xl shadow-black/10">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-black">
-              {mode === "create" ? "Nuevo ingrediente" : `Editar · ${form.name}`}
-            </h2>
-            <button type="button" onClick={() => { setMode(null); setEditingId(null); }} className="btn btn-secondary">
-              Cancelar
-            </button>
-          </div>
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10">
+        <div className="min-w-52 flex-1">
+          <SearchBox value={search} onChange={setSearch} placeholder="Buscar ingrediente…" />
+        </div>
+        <p className="flex items-center text-sm text-[var(--admin-muted)]">
+          {filtered.length} ingrediente{filtered.length === 1 ? "" : "s"}
+        </p>
+      </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {filtered.length === 0 ? (
+        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-10 text-center shadow-xl shadow-black/10">
+          <EmptyState title="No hay ingredientes cargados todavía" description="Creá el primero para comenzar a administrar costos y stock." action={
+            <button type="button" onClick={openCreate} className="btn">+ Nuevo ingrediente</button>
+          } />
+        </div>
+      ) : (
+        <div className="shadow-xl shadow-black/10">
+          <DataTable
+            viewStorageKey="ingredientes"
+            columns={columns}
+            data={data}
+            keyExtractor={(row) => row.id as number}
+            rowActions={rowActions}
+            emptyMessage="No hay ingredientes cargados todavía."
+          />
+        </div>
+      )}
+
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title={mode === "create" ? "Nuevo ingrediente" : `Editar · ${form.name}`} width="640px">
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="block text-xs font-semibold text-[var(--admin-muted)]">Nombre</span>
               <input
@@ -376,7 +392,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
             </label>
           </div>
 
-          <div className="mt-4">
+          <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
               Existencias por sucursal
             </p>
@@ -387,7 +403,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
                     <input
                       type="checkbox"
                       checked={stock.tracked}
-                      onChange={(event) => patchStock(index, { tracked: event.target.checked })}
+                      onChange={(event) => setStocks((current) => current.map((s, i) => (i === index ? { ...s, tracked: event.target.checked } : s)))}
                       className="h-4 w-4"
                     />
                     {stock.branchName}
@@ -399,7 +415,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
                     step="0.001"
                     value={stock.current}
                     disabled={!stock.tracked}
-                    onChange={(event) => patchStock(index, { current: event.target.value })}
+                    onChange={(event) => setStocks((current) => current.map((s, i) => (i === index ? { ...s, current: event.target.value } : s)))}
                     aria-label={`Stock actual en ${stock.branchName}`}
                   />
                   <span className="text-xs text-[var(--admin-muted)]">mín.</span>
@@ -410,14 +426,14 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
                     step="0.001"
                     value={stock.minimum}
                     disabled={!stock.tracked}
-                    onChange={(event) => patchStock(index, { minimum: event.target.value })}
+                    onChange={(event) => setStocks((current) => current.map((s, i) => (i === index ? { ...s, minimum: event.target.value } : s)))}
                     aria-label={`Stock mínimo en ${stock.branchName}`}
                   />
                   <input
                     className="input w-24"
                     value={stock.unit}
                     disabled={!stock.tracked}
-                    onChange={(event) => patchStock(index, { unit: event.target.value })}
+                    onChange={(event) => setStocks((current) => current.map((s, i) => (i === index ? { ...s, unit: event.target.value } : s)))}
                     aria-label={`Unidad de stock en ${stock.branchName}`}
                   />
                 </div>
@@ -425,39 +441,16 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setDrawerOpen(false)} className="btn btn-secondary">
+              Cancelar
+            </button>
             <button type="button" onClick={saveIngredient} className="btn" disabled={busy}>
               {busy ? "Guardando…" : mode === "create" ? "Crear ingrediente" : "Guardar cambios"}
             </button>
           </div>
         </div>
-      )}
-
-      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10">
-        <div className="min-w-52 flex-1">
-          <SearchBox value={search} onChange={setSearch} placeholder="Buscar ingrediente…" />
-        </div>
-        <p className="flex items-center text-sm text-[var(--admin-muted)]">
-          {filtered.length} ingrediente{filtered.length === 1 ? "" : "s"}
-        </p>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-10 text-center shadow-xl shadow-black/10">
-          <EmptyState title="No hay ingredientes cargados todavía" description="Creá el primero para comenzar a administrar costos y stock." action={
-            <button type="button" onClick={openCreate} className="btn">+ Nuevo ingrediente</button>
-          } />
-        </div>
-      ) : (
-        <DataTable
-          viewStorageKey="ingredientes"
-          columns={columns}
-          data={data}
-          keyExtractor={(row) => row.id as number}
-          rowActions={rowActions}
-          emptyMessage="No hay ingredientes cargados todavía."
-        />
-      )}
+      </Drawer>
     </div>
   );
 }

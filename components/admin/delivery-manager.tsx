@@ -1,14 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { PageHeader, StatusBadge, DataTable, EmptyState } from "@/components/admin/ui";
+import { PageHeader, StatusBadge, DataTable, EmptyState, SearchBox, ActionMenu, Drawer } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import type { OrderDeliveryData } from "@/lib/delivery-types";
-import { Icon } from "@/components/admin/ui/icons";
 
 type DeliveryManagerProps = {
   initialDeliveries: OrderDeliveryData[];
@@ -45,6 +43,7 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
   const [deliveries, setDeliveries] = useState<OrderDeliveryData[]>(initialDeliveries);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState<DeliveryForm>({
     orderId: orderId ?? 0,
     deliveryType: "full",
@@ -63,8 +62,8 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
   }, [deliveries, query]);
 
   async function createDelivery() {
-    if (!form.orderId || form.items.length === 0) {
-      await Swal.fire({ title: "Datos incompletos", text: "Indicá el pedido y al menos una línea.", icon: "warning", background: "#18181b", color: "#fafafa" });
+    if (!form.orderId) {
+      await Swal.fire({ title: "Datos incompletos", text: "Indicá el pedido.", icon: "warning", background: "#18181b", color: "#fafafa" });
       return;
     }
     setCreating(true);
@@ -82,6 +81,7 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
       const delivery = body.delivery;
       setDeliveries((current) => [delivery, ...current]);
       setForm((current) => ({ ...current, notes: "", items: [] }));
+      setDrawerOpen(false);
       await Swal.fire({ title: "Entrega generada", text: delivery.number, icon: "success", background: "#18181b", color: "#fafafa" });
     } finally {
       setCreating(false);
@@ -111,79 +111,98 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
       return;
     }
     setDeliveries((current) => current.map((item) => (item.id === delivery.id ? body.delivery! : item)));
-    await Swal.fire({ title: "Entrega anulada", text: "Las cantidades volvieron al pedido.", icon: "success", background: "#18181b", color: "#fafafa" });
+    await Swal.fire({ title: "Entrega anulada", text: "Las cantidades volvieron al pedido.", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
   }
 
   return (
     <section className="space-y-6">
-      <PageHeader eyebrow="Remitos y entregas" title="Entregas confirmadas" description="Documento histórico por cada entrega generada desde tus pedidos." section="entregas" />
+      <PageHeader eyebrow="Remitos y entregas" title="Entregas confirmadas" description="Documento histórico por cada entrega generada desde tus pedidos." section="entregas" actions={
+        <button type="button" className="btn" onClick={() => setDrawerOpen(true)}>
+          Nueva entrega
+        </button>
+      } />
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px]">
-          <input
-            type="search"
-            placeholder="Buscar por número, cliente o pedido…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
-          />
-          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500"><Icon name="search" className="h-4 w-4" /></span>
-        </div>
-        <select
-          className="input w-auto"
-          value={form.orderId}
-          onChange={(event) => setForm((current) => ({ ...current, orderId: Number(event.target.value) }))}
-        >
-          <option value="0">Pedido…</option>
-          {Array.from(new Set(deliveries.map((delivery) => delivery.orderId))).map((orderId) => {
-            const ref = deliveries.find((d) => d.orderId === orderId)?.order?.reference ?? `#${orderId}`;
-            return <option key={orderId} value={orderId}>{ref}</option>;
-          })}
-        </select>
-        <button type="button" className="btn" disabled={creating || !form.orderId} onClick={createDelivery}>
-          {creating ? "Generando…" : "Nueva entrega"}
-        </button>
+        <SearchBox value={query} onChange={setQuery} placeholder="Buscar por número, cliente o pedido…" className="min-w-[220px] flex-1" />
       </div>
 
       {visible.length === 0 ? (
         <EmptyState title="No hay entregas registradas" description="Las entregas que generes desde los pedidos aparecerán acá." />
       ) : (
-        <DataTable
-          viewStorageKey="entregas"
-          columns={DELIVERY_COLUMNS}
-          data={visible.map((delivery) => ({
-            id: delivery.id,
-            number: delivery.number,
-            deliveryDate: new Date(delivery.deliveryDate).toLocaleString("es-AR"),
-            order: delivery.order?.reference ?? `#${delivery.orderId}`,
-            customerName: delivery.customerName,
-            branch: delivery.branch?.name ?? "—",
-            status: <StatusBadge status={statusLabel[delivery.status] ?? delivery.status} tone={delivery.status === "delivered" ? "success" : "danger"} />,
-            itemsCount: delivery.items.reduce((sum, item) => sum + item.quantityDelivered, 0),
-          }))}
-          keyExtractor={(row) => row.id as number}
-          emptyMessage="No hay entregas registradas."
-          rowActions={(row) => {
-            const delivery = visible.find((d) => d.id === row.id as number);
-            if (!delivery) return null;
-            return (
-              <div className="flex items-center gap-2">
-                <Link
-                  className="btn btn-secondary"
-                  href={adminHrefFromPathname(pathname, `/admin/entregas/${delivery.id}`)}
-                >
-                  Ver remito
-                </Link>
-                {delivery.status !== "reversed" && (
-                  <button type="button" className="btn btn-secondary" onClick={() => reverseDelivery(delivery)}>
-                    Anular
-                  </button>
-                )}
-              </div>
-            );
-          }}
-        />
+        <div className="shadow-xl shadow-black/10">
+          <DataTable
+            viewStorageKey="entregas"
+            columns={DELIVERY_COLUMNS}
+            data={visible.map((delivery) => ({
+              id: delivery.id,
+              number: delivery.number,
+              deliveryDate: new Date(delivery.deliveryDate).toLocaleString("es-AR"),
+              order: delivery.order?.reference ?? `#${delivery.orderId}`,
+              customerName: delivery.customerName,
+              branch: delivery.branch?.name ?? "—",
+              status: <StatusBadge status={statusLabel[delivery.status] ?? delivery.status} tone={delivery.status === "delivered" ? "success" : "danger"} />,
+              itemsCount: delivery.items.reduce((sum, item) => sum + item.quantityDelivered, 0),
+            }))}
+            keyExtractor={(row) => row.id as number}
+            emptyMessage="No hay entregas registradas."
+            rowActions={(row) => {
+              const delivery = visible.find((d) => d.id === row.id as number);
+              if (!delivery) return null;
+              return (
+                <ActionMenu
+                  align="right"
+                  items={[
+                    { label: "Ver remito", onClick: () => { window.location.href = adminHrefFromPathname(pathname, `/admin/entregas/${delivery.id}`); } },
+                    ...(delivery.status !== "reversed" ? [{ label: "Anular", tone: "danger" as const, onClick: () => { void reverseDelivery(delivery); } }] : []),
+                  ]}
+                />
+              );
+            }}
+          />
+        </div>
       )}
+
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="Nueva entrega" width="520px">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-zinc-400 mb-1">Pedido</label>
+            <select
+              className="input w-full"
+              value={form.orderId}
+              onChange={(event) => setForm((current) => ({ ...current, orderId: Number(event.target.value) }))}
+            >
+              <option value="0">Pedido…</option>
+              {Array.from(new Set(deliveries.map((delivery) => delivery.orderId))).map((oid) => {
+                const ref = deliveries.find((d) => d.orderId === oid)?.order?.reference ?? `#${oid}`;
+                return <option key={oid} value={oid}>{ref}</option>;
+              })}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-zinc-400 mb-1">Tipo</label>
+            <select
+              className="input w-full"
+              value={form.deliveryType}
+              onChange={(event) => setForm((current) => ({ ...current, deliveryType: event.target.value as "full" | "partial" }))}
+            >
+              <option value="full">Completa</option>
+              <option value="partial">Parcial</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-zinc-400 mb-1">Notas</label>
+            <textarea
+              className="input w-full"
+              rows={3}
+              value={form.notes}
+              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+            />
+          </div>
+          <button type="button" className="btn w-full" disabled={creating || !form.orderId} onClick={createDelivery}>
+            {creating ? "Generando…" : "Generar entrega"}
+          </button>
+        </div>
+      </Drawer>
     </section>
   );
 }

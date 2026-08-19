@@ -127,7 +127,7 @@ function UserAvatar({
       .toUpperCase() || "U";
   return (
     <span
-      className={`${className || "h-8 w-8"} grid place-items-center rounded-full bg-pink-500/10 text-[11px] font-black text-pink-300`}
+      className={`${className || "h-8 w-8"} grid place-items-center rounded-full bg-[var(--admin-primary-strong)]/10 text-[11px] font-black text-[var(--admin-primary-strong)]`}
       aria-hidden="true"
     >
       {initials}
@@ -448,6 +448,7 @@ export function AdminShell({
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const openGroupRef = useRef<string | null>(null);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
+
   const [panelFocusIndex, setPanelFocusIndex] = useState(-1);
   const headerRef = useRef<HTMLElement | null>(null);
   const megaPanelRef = useRef<HTMLDivElement | null>(null);
@@ -786,7 +787,7 @@ export function AdminShell({
           </Link>
 
           <nav
-            className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-hidden lg:flex xl:gap-1"
             aria-label="Secciones administrativas"
           >
             {accessibleGroups.map((group) => {
@@ -823,8 +824,8 @@ export function AdminShell({
             })}
           </nav>
 
-<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
-                <BranchSwitcher
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
+            <BranchSwitcher
                   branches={branches}
                   activeBranchId={activeBranchId}
                   activeBranchName={activeBranch?.name}
@@ -916,7 +917,7 @@ export function AdminShell({
           }
           onBlur={handlePanelBlur}
         >
-          <div className="admin-shell-inner w-full overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
+          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-[var(--admin-surface)] shadow-2xl shadow-black/20">
             <div className="flex items-baseline gap-3 border-b border-white/[.06] px-8 py-5">
               <h2 className="text-sm font-bold text-white">{activeGroup.label}</h2>
               <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>

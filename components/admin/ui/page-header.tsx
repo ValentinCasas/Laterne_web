@@ -41,7 +41,7 @@ export function PageHeader({
             <p className="text-[10px] font-bold uppercase tracking-widest text-pink-300">{eyebrow}</p>
           )}
           <div className="mt-2 flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight sm:text-4xl">{title}</h1>
+            <h1 className="text-xl font-black tracking-tight sm:text-2xl lg:text-3xl">{title}</h1>
             <AdminPageHelp section={section} />
           </div>
           {description && (
