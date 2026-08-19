@@ -475,22 +475,22 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-xl shadow-black/10">
-        <div className="relative min-w-52 flex-1">
-          <SearchBox value={search} onChange={setSearch} placeholder="Buscar por nombre, descripción o categoría…" />
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-3 py-2 shadow-lg shadow-black/10 print:hidden">
+        <div className="relative min-w-[200px] flex-1">
+          <SearchBox value={search} onChange={setSearch} placeholder="Buscar productos…" />
         </div>
         <button
           type="button"
           onClick={() => setFiltersOpen(true)}
-          className={`btn btn-secondary ${hasActiveFilters ? "ring-1 ring-pink-500/50" : ""}`}
+          className={`shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-zinc-300 transition-colors hover:bg-white/10 ${hasActiveFilters ? "ring-1 ring-pink-500/50" : ""}`}
         >
           Filtros{hasActiveFilters ? ` (${activeFilterCount})` : ""}
         </button>
         <select
           value={sort}
           onChange={(event) => setSort(event.target.value as SortKey)}
-          className="input w-auto"
-          aria-label="Ordenar productos"
+          className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300"
+          aria-label="Ordenar"
         >
           {sortOptions.map((option) => (
             <option key={option.key} value={option.key}>{option.label}</option>
@@ -501,8 +501,8 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
           <select
             value={density}
             onChange={(event) => applyDensity(event.target.value as "comfortable" | "compact")}
-            className="input w-auto"
-            aria-label="Densidad de la lista"
+            className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300"
+            aria-label="Densidad"
           >
             <option value="comfortable">Cómoda</option>
             <option value="compact">Compacta</option>
@@ -897,20 +897,17 @@ function ProductCard({
         </div>
 
         <div className="mt-auto flex items-center gap-2 pt-2">
-          <button type="button" className="btn flex-1 py-2 text-sm" onClick={onEdit}>
+          <button type="button" className="btn flex-1 py-1.5 text-xs" onClick={onEdit}>
             Editar
           </button>
           <ActionMenu
             align="right"
             items={[
-              { label: "Editar", onClick: onEdit },
               { label: "Duplicar", onClick: onDuplicate },
               { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: onToggleFavorite },
               ...(product.status === "published"
                 ? [{ label: "Pasar a borrador", onClick: () => onChangeStatus("draft") }]
-                : product.status === "draft"
-                  ? [{ label: "Publicar", onClick: () => onChangeStatus("published") }]
-                  : [{ label: "Publicar", onClick: () => onChangeStatus("published") }]),
+                : [{ label: "Publicar", onClick: () => onChangeStatus("published") }]),
               { label: "Eliminar", tone: "danger", onClick: onRemove },
             ]}
           />
@@ -1082,19 +1079,15 @@ function ListTable({
                     <StatusBadge status={product.status} />
                   </td>
                   <td className={`${cell} text-right`}>
-                    <div className="flex items-center justify-end gap-2">
-                      <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onEdit(product.id)}>
-                        Editar
-                      </button>
-                      <ActionMenu
-                        align="right"
-                        items={[
-                          { label: "Duplicar", onClick: () => onDuplicate(product) },
-                          { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: () => onToggleFavorite(product) },
-                          { label: "Eliminar", tone: "danger", onClick: () => onRemove(product) },
-                        ]}
-                      />
-                    </div>
+                    <ActionMenu
+                      align="right"
+                      items={[
+                        { label: "Editar", onClick: () => onEdit(product.id) },
+                        { label: "Duplicar", onClick: () => onDuplicate(product) },
+                        { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: () => onToggleFavorite(product) },
+                        { label: "Eliminar", tone: "danger", onClick: () => onRemove(product) },
+                      ]}
+                    />
                   </td>
                 </tr>
               );
