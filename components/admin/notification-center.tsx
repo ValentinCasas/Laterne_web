@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { EmptyState } from "@/components/admin/ui";
@@ -54,22 +55,44 @@ function relativeTime(iso: string) {
 }
 
 /**
- * @summary Carga, presenta y marca avisos del panel sin interrumpir la tarea actual.
- * `compact` lo adapta a la barra superior (campana + panel flotante amplio).
- * `sidebarMode` posiciona el dropdown hacia la derecha (para rail lateral de 68px).
+ * @summary Bloquea el scroll del body sin causar layout shift.
+ *
+ * Calcula el ancho real de la scrollbar y aplica un padding-right
+ * compensatorio para que la página no se desplace horizontalmente.
+ */
+function lockBodyScroll() {
+  const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.overflow = "hidden";
+  if (scrollbarWidth > 0) {
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
+  }
+}
+
+function unlockBodyScroll() {
+  document.body.style.overflow = "";
+  document.body.style.paddingRight = "";
+}
+
+/**
+ * @summary Centro de notificaciones con modal portal.
+ *
+ * Renderiza el botón de campana en el navbar/sidebar y el panel modal
+ * mediante React Portal hacia document.body para que sea totalmente
+ * independiente del layout de la aplicación.
  */
 export function NotificationCenter({ compact = false, sidebarMode = false }: { compact?: boolean; sidebarMode?: boolean }) {
   const pathname = usePathname();
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     let active = true;
-    /**
-     * @summary Recarga las notificaciones y conserva el estado de la interfaz.
-     */
     async function refresh() {
       try {
         const response = await scopedFetch("/api/admin/notifications");
@@ -94,22 +117,39 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
     };
   }, []);
 
+  /** @summary Bloquea scroll del body al abrir el modal. */
   useEffect(() => {
     if (!open) return;
-    /** @summary Cierra el panel de avisos al interactuar fuera de él o con Escape. */
+    lockBodyScroll();
+    return () => unlockBodyScroll();
+  }, [open]);
+
+  /** @summary Cierra con Escape y click afuera. Devuelve focus al botón al cerrar. */
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    }
     function handlePointer(event: PointerEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
     }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("pointerdown", handlePointer);
-    document.addEventListener("keydown", handleEscape);
     return () => {
+      document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("pointerdown", handlePointer);
-      document.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    buttonRef.current?.focus();
+  }, []);
 
   /** @summary Marca los avisos pendientes como leídos y actualiza su apariencia local. */
   async function readAll() {
@@ -123,63 +163,16 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
     setUnread(0);
   }
 
-  if (!compact) {
-    // Variante legada de sidebar (en desuso tras el rediseño de la barra superior).
-    return (
-      <div className="relative border-b border-white/10 p-3" ref={containerRef}>
-        <button
-          className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left text-sm font-bold hover:bg-white/10"
-          onClick={() => setOpen((value) => !value)}
-          type="button"
-          aria-haspopup="true"
-          aria-expanded={open}
-        >
-          <span>Centro de actividad</span>
-          {unread > 0 && (
-            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-pink-500 px-1 text-xs">
-              {unread > 99 ? "99+" : unread}
-            </span>
-          )}
-        </button>
-        {open && (
-          <div className="absolute left-3 right-3 top-[calc(100%-.25rem)] z-50 max-h-[60vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
-            <header className="flex items-center justify-between p-3">
-              <strong>Notificaciones</strong>
-              {unread > 0 && (
-                <button className="text-xs text-pink-300" onClick={readAll}>
-                  Marcar leídas
-                </button>
-              )}
-            </header>
-            {items.map((item) => (
-              <Link
-                className={`block rounded-xl p-3 hover:bg-white/5 ${item.readAt ? "opacity-60" : "bg-pink-500/5"}`}
-                href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
-                key={item.id}
-                onClick={() => setOpen(false)}
-              >
-                <strong className="text-sm">{item.title}</strong>
-                <p className="mt-1 text-xs text-zinc-400">{item.message}</p>
-                <time className="mt-1 block text-[10px] text-zinc-600">{relativeTime(item.createdAt)}</time>
-              </Link>
-            ))}
-            {!items.length && <p className="p-6 text-center text-sm text-zinc-500">No hay notificaciones.</p>}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const notificationPanel = (
+  const notificationPanelContent = (
     <>
-      <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
-        <div>
-          <h2 className="text-sm font-bold text-white">Notificaciones</h2>
+      <header className="flex items-center justify-between gap-3 px-5 pb-3 pt-4 sm:px-6 sm:pt-5">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-bold text-white">Notificaciones</h2>
           <p className="mt-0.5 text-[11px] text-zinc-500">
             {unread > 0 ? `${unread} sin leer` : "Estás al día"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {unread > 0 && (
             <button
               className="text-xs font-semibold text-pink-300 transition-colors duration-150 hover:text-pink-200"
@@ -190,11 +183,11 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
           )}
           <button
             type="button"
-            onClick={() => setOpen(false)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/[.06] hover:text-zinc-300"
+            onClick={close}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/[.06] hover:text-zinc-300"
             aria-label="Cerrar"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
           </button>
@@ -202,22 +195,22 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
       </header>
       <div className="h-px shrink-0 bg-white/[.07]" />
       {items.length === 0 ? (
-        <div className="grid place-items-center gap-3 px-6 py-12 text-center">
+        <div className="grid place-items-center gap-3 px-6 py-14 text-center">
           <EmptyState
             title="No hay notificaciones"
             description="Te avisaremos cuando haya movimientos nuevos."
           />
         </div>
       ) : (
-        <ul className="max-h-[26rem] flex-1 overflow-y-auto overscroll-contain">
-          {items.map((item) => {
+        <ul className="flex-1 overflow-y-auto overscroll-contain min-h-0 admin-custom-scroll">
+          {items.map((item, index) => {
             const unreadItem = !item.readAt;
             return (
-              <li key={item.id}>
+              <li key={item.id} className={index > 0 ? "border-t border-white/[.04]" : ""}>
                 <Link
                   href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
-                  onClick={() => setOpen(false)}
-                  className={`flex gap-3.5 px-5 py-4 transition-colors duration-150 hover:bg-white/[.04] ${
+                  onClick={close}
+                  className={`group flex gap-3.5 px-5 py-4 transition-colors duration-150 hover:bg-white/[.04] ${
                     unreadItem ? "bg-white/[.02]" : "opacity-70 hover:opacity-100"
                   }`}
                 >
@@ -232,7 +225,7 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-3">
-                      <strong className="truncate text-sm font-semibold text-white">{item.title}</strong>
+                      <strong className="min-w-0 truncate text-sm font-semibold text-white">{item.title}</strong>
                       <time className="shrink-0 text-[11px] text-zinc-500">
                         {relativeTime(item.createdAt)}
                       </time>
@@ -250,73 +243,122 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
     </>
   );
 
-  /** @summary En sidebar mode, las notificaciones se muestran como modal centrado. */
-  if (sidebarMode) {
+  /** @summary Botón de campana compartido entre todas las variantes. */
+  const bellButton = (
+    <button
+      ref={buttonRef}
+      className="relative grid h-9 w-9 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100"
+      onClick={() => setOpen((v) => !v)}
+      type="button"
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      aria-label="Notificaciones"
+      title="Notificaciones"
+    >
+      <BellIcon />
+      {unread > 0 && (
+        <span
+          className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[9px] font-bold leading-none text-white"
+          aria-label={`${unread} sin leer`}
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </button>
+  );
+
+  if (!compact) {
+    // Variante legada de sidebar (en desuso tras el rediseño de la barra superior).
     return (
-      <div className="relative" ref={containerRef}>
+      <div className="relative border-b border-white/10 p-3">
         <button
-          className="relative grid h-9 w-9 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100"
+          className="flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left text-sm font-bold hover:bg-white/10"
           onClick={() => setOpen((value) => !value)}
           type="button"
-          aria-haspopup="true"
+          aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label="Notificaciones"
-          title="Notificaciones"
         >
-          <BellIcon />
+          <span>Centro de actividad</span>
           {unread > 0 && (
-            <span
-              className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[9px] font-bold leading-none text-white"
-              aria-label={`${unread} sin leer`}
-            >
+            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-pink-500 px-1 text-xs">
               {unread > 99 ? "99+" : unread}
             </span>
           )}
         </button>
-        {open && (
+        {mounted && open && createPortal(
           <>
             <div
-              className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm"
-              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
               aria-hidden="true"
             />
-            <div className="fixed inset-0 z-[310] flex items-center justify-center p-4" role="dialog" aria-label="Notificaciones">
-              <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40">
-                {notificationPanel}
-              </div>
+            <div
+              ref={panelRef}
+              className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
+                left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
+                sm:left-auto sm:right-6 sm:translate-x-0 sm:translate-y-0 sm:top-[4.5rem]"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Notificaciones"
+            >
+              {notificationPanelContent}
             </div>
-          </>
+          </>,
+          document.body,
         )}
       </div>
     );
   }
 
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        className="relative grid h-9 w-9 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-        aria-haspopup="true"
-        aria-expanded={open}
-        aria-label="Notificaciones"
-        title="Notificaciones"
-      >
-        <BellIcon />
-        {unread > 0 && (
-          <span
-            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[9px] font-bold leading-none text-white"
-            aria-label={`${unread} sin leer`}
-          >
-            {unread > 99 ? "99+" : unread}
-          </span>
+  if (sidebarMode) {
+    return (
+      <>
+        {bellButton}
+        {mounted && open && createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
+              aria-hidden="true"
+            />
+            <div
+              ref={panelRef}
+              className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
+                left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Notificaciones"
+            >
+              {notificationPanelContent}
+            </div>
+          </>,
+          document.body,
         )}
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-3 flex max-h-[min(calc(100vh-6.5rem),34rem)] w-[29rem] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-xl shadow-black/25 backdrop-blur-xl">
-          {notificationPanel}
-        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {bellButton}
+      {mounted && open && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
+            aria-hidden="true"
+          />
+          <div
+            ref={panelRef}
+            className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
+              right-4 top-[4.5rem]
+              max-sm:left-4 max-sm:right-4 max-sm:top-1/2 max-sm:-translate-y-1/2 max-sm:translate-x-0"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notificaciones"
+          >
+            {notificationPanelContent}
+          </div>
+        </>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }

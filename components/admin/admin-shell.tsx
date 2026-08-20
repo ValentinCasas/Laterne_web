@@ -636,7 +636,7 @@ export function AdminShell({
         <>
           <header
         ref={headerRef}
-        className="sticky top-0 z-50 border-b border-white/[.04] bg-zinc-950/80 backdrop-blur-xl print:hidden"
+        className="sticky top-0 z-50 border-b border-white/[.06] bg-zinc-950/85 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.03)_inset] print:hidden"
       >
         <div className="admin-shell-inner flex h-14 items-center gap-1.5 px-3 sm:gap-2 sm:px-4 lg:px-6">
           <button
@@ -695,7 +695,7 @@ export function AdminShell({
                       triggerRefs.current[group.id] = element;
                     }}
                     type="button"
-                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-200 xl:px-3.5 ${
+                    className={`relative flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-200 xl:px-3.5 ${
                       expanded
                         ? "bg-white/[.07] text-white"
                         : groupActive
@@ -754,7 +754,7 @@ export function AdminShell({
                             setOpenGroupBoth(group.id);
                           }}
                         >
-                          <span className="text-zinc-500 text-xs font-black">{group.icon}</span>
+                          <span className="text-xs font-black text-[var(--admin-primary-strong)]">{group.icon}</span>
                           <span className="truncate">{group.label}</span>
                         </button>
                       );
@@ -860,35 +860,36 @@ export function AdminShell({
           }
           onBlur={handlePanelBlur}
         >
-          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden border-b border-white/[.06] bg-zinc-950/95 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden border-b border-white/[.06] bg-zinc-900/95 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <div className="flex items-center gap-3 px-5 py-3.5 sm:px-7 sm:py-4">
               <h2 className="text-sm font-semibold text-white">{activeGroup.label}</h2>
               {activeGroup.description && (
                 <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
               )}
             </div>
             <div className="flex max-h-[70vh] overflow-hidden overscroll-contain">
-              <nav className="w-48 shrink-0 overflow-y-auto overscroll-contain py-1.5 sm:w-56" aria-label="Subsecciones">
+              <nav className="w-48 shrink-0 overflow-y-auto overscroll-contain border-r border-white/[.04] py-2 sm:w-56 admin-custom-scroll" aria-label="Subsecciones">
                 {activeGroup.sections.map((section) => {
                   const isActive = activeSectionId === section.id;
                   return (
                     <button
                       key={section.id}
                       type="button"
-                      className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-all duration-200 ${
+                      className={`mega-section-btn group flex w-full items-center gap-2.5 rounded-lg px-4 py-2.5 text-left text-sm transition-all duration-200 ${
                         isActive
                           ? "bg-white/[.06] font-medium text-white"
                           : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"
                       }`}
                       onClick={() => setActiveSectionId(section.id)}
                     >
+                      <span className={`mega-accent-bar${isActive ? " is-active" : ""}`} aria-hidden="true" />
                       {section.label}
                     </button>
                   );
                 })}
               </nav>
 
-              <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
+              <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 admin-custom-scroll">
                 {(() => {
                   const activeSection = activeGroup.sections.find((s) => s.id === activeSectionId) ?? activeGroup.sections[0];
                   if (!activeSection) return null;
@@ -899,10 +900,10 @@ export function AdminShell({
                   }
                   return (
                     <div>
-                      <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                      <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
                         {activeSection.label}
                       </h3>
-                      <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
                         {activeSection.items.map((item) => {
                           const index = flatIndex++;
                           const active = activeLink?.href === item.href;
@@ -918,10 +919,14 @@ export function AdminShell({
                                 setOpenGroupBoth(null);
                                 setMobileMenuPath(null);
                               }}
-                              className={`group flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all duration-200 ${
-                                active ? "bg-white/[.05]" : "hover:bg-white/[.03]"
+                              className={`mega-item group flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all duration-200 ${
+                                active ? "bg-white/[.06]" : "hover:bg-white/[.03]"
                               }`}
                             >
+                              <span
+                                className={`mega-accent-bar shrink-0 ${active ? "is-active" : ""}`}
+                                aria-hidden="true"
+                              />
                               <span
                                 className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black tracking-wider transition-all duration-200 ${
                                   active

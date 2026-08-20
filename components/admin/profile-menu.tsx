@@ -64,6 +64,8 @@ type ProfileMenuProps = {
   currentMode?: "TOP" | "SIDEBAR";
   /** @summary Cuando true, el dropdown se abre hacia la derecha (para sidebar rail). */
   sidebarMode?: boolean;
+  /** @summary Cuando true, solo muestra el avatar centrado (para rail compacto). */
+  compact?: boolean;
 };
 
 /** @summary Menú de perfil compartido entre barra superior y barra lateral. */
@@ -78,6 +80,7 @@ export function ProfileMenu({
   onSwitchNavigationMode,
   currentMode,
   sidebarMode = false,
+  compact = false,
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
@@ -146,25 +149,25 @@ export function ProfileMenu({
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        className={`flex h-9 items-center gap-2 rounded-full py-1 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white ${sidebarMode ? "justify-center px-1" : "pl-1 pr-2.5"}`}
+        className={`flex h-9 items-center gap-2 rounded-full py-1 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white ${compact ? "justify-center px-1" : sidebarMode ? "justify-center px-1" : "pl-1 pr-2.5"}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Menú de perfil"
         onClick={() => setOpen((current) => !current)}
       >
-        <UserAvatar name={displayName} src={avatarSrc} size="sm" className="ring-1 ring-white/10" />
-        <span className="hidden max-w-20 truncate 2xl:block">{tenantName}</span>
-        <ChevronDownIcon open={open} className="hidden text-zinc-500 2xl:block" />
+        <UserAvatar name={displayName} src={avatarSrc} size="sm" className="ring-1 ring-white/10 shadow-[2px_2px_6px_rgba(0,0,0,0.45),-1px_-1px_4px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.04)]" />
+        {!compact && <span className="hidden max-w-20 truncate 2xl:block">{tenantName}</span>}
+        {!compact && <ChevronDownIcon open={open} className="hidden text-zinc-500 2xl:block" />}
       </button>
       {open && (
         <div
-          className={`${sidebarMode ? "left-full top-0 ml-2" : "right-0 top-full mt-3"} absolute z-50 w-72 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl dropdown-enter`}
+          className={`${sidebarMode ? "left-full top-0 ml-2" : "right-0 top-full mt-3"} absolute z-50 w-72 overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-900/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl dropdown-enter`}
           role="menu"
           aria-label="Menú de perfil"
           onKeyDown={handleMenuKeyDown}
         >
-          <div className="flex items-center gap-3.5 rounded-xl px-4 py-3.5">
-            <UserAvatar name={displayName} src={avatarSrc} size="md" className="text-sm" />
+          <div className="flex items-center gap-3.5 rounded-xl px-4 py-4">
+            <UserAvatar name={displayName} src={avatarSrc} size="md" className="text-sm shadow-[3px_3px_8px_rgba(0,0,0,0.5),-1px_-1px_5px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.05)]" />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{displayName}</p>
               <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>

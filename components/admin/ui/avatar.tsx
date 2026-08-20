@@ -65,7 +65,7 @@ export function UserAvatar({
         alt={name}
         referrerPolicy="no-referrer"
         onError={() => setErrored(true)}
-        className={`${SIZES[size]} shrink-0 rounded-full object-cover ${className ?? ""}`}
+        className={`${SIZES[size]} shrink-0 rounded-full object-cover overflow-hidden flex-shrink-0 ${className ?? ""}`}
       />
     );
   }

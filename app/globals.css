@@ -218,7 +218,7 @@ button {
 @keyframes mega-panel-enter {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
@@ -232,20 +232,20 @@ button {
   }
   to {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-6px);
   }
 }
 .mega-panel-enter {
-  animation: mega-panel-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: mega-panel-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .mega-panel-exit {
-  animation: mega-panel-exit 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: mega-panel-exit 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 @keyframes dropdown-enter {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(-4px);
+    transform: scale(0.985) translateY(-3px);
   }
   to {
     opacity: 1;
@@ -253,7 +253,7 @@ button {
   }
 }
 .dropdown-enter {
-  animation: dropdown-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: dropdown-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes mobile-drawer-enter {
@@ -266,6 +266,162 @@ button {
 }
 .mobile-drawer-enter {
   animation: mobile-drawer-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Mega menu / sidebar vertical accent bar (inside items, uses theme accent) ── */
+.mega-accent-bar {
+  width: 2px;
+  min-width: 2px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--admin-primary-strong, #ec4899);
+  opacity: 0.2;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.mega-accent-bar.is-active {
+  opacity: 0.85;
+  box-shadow: 0 0 5px var(--admin-primary-strong, #ec4899);
+}
+.mega-item:hover > .mega-accent-bar:not(.is-active) {
+  opacity: 0.45;
+}
+.mega-section-btn:hover > .mega-accent-bar:not(.is-active) {
+  opacity: 0.45;
+}
+
+/* ── Sidebar ripple (gota de agua) ── */
+.sidebar-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--admin-primary-strong, #ec4899) 0%, transparent 70%);
+  opacity: 0.18;
+  pointer-events: none;
+  animation: ripple-expand 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes ripple-expand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.22;
+  }
+  100% {
+    width: 80px;
+    height: 80px;
+    opacity: 0;
+  }
+}
+
+/* ── Sidebar panel slide ── */
+@keyframes sidebar-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.sidebar-panel-enter {
+  animation: sidebar-panel-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ── Sidebar content fade-in (staggered: appears after panel starts expanding) ── */
+@keyframes sidebar-content-reveal {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.sidebar-content-reveal {
+  animation: sidebar-content-reveal 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+/* ── Modal backdrop + panel ── */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes modal-panel-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+}
+.modal-backdrop-in {
+  animation: modal-backdrop-in 0.25s ease-out forwards;
+}
+.modal-backdrop-out {
+  animation: modal-backdrop-out 0.2s ease-in forwards;
+}
+.modal-panel-in {
+  animation: modal-panel-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.modal-panel-out {
+  animation: modal-panel-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* ── Custom scrollbars (dark, thin, premium) ── */
+.admin-custom-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.admin-custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+}
+.admin-custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.admin-custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* ── Reduced motion: disable all non-essential animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .mega-panel-enter,
+  .mega-panel-exit,
+  .dropdown-enter,
+  .mobile-drawer-enter,
+  .mega-accent-bar,
+  .sidebar-ripple,
+  .sidebar-panel-enter,
+  .sidebar-content-reveal,
+  .modal-backdrop-in,
+  .modal-backdrop-out,
+  .modal-panel-in,
+  .modal-panel-out {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 .card {

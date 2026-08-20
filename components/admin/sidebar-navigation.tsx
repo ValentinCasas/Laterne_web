@@ -40,6 +40,20 @@ type SidebarProps = {
 const RAIL_WIDTH = "w-[68px]";
 const PANEL_WIDTH = "w-64";
 
+/** @summary Crea un efecto ripple (gota de agua) en el punto del click. */
+function createRipple(event: React.MouseEvent<HTMLButtonElement>, button: HTMLButtonElement) {
+  const existing = button.querySelector('.sidebar-ripple');
+  if (existing) existing.remove();
+  const rect = button.getBoundingClientRect();
+  const ripple = document.createElement('span');
+  ripple.className = 'sidebar-ripple';
+  const size = 80;
+  ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
+  ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
+  button.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 500);
+}
+
 /** @summary Iconos SVG específicos para el rail lateral del sidebar. */
 function RailIcon({ name, active = false }: { name: string; active?: boolean }) {
   return (
@@ -215,7 +229,7 @@ export function SidebarNavigation({
       {/* Rail lateral */}
       <nav
         ref={railRef}
-        className={`flex shrink-0 flex-col bg-zinc-950 transition-all duration-300 ${RAIL_WIDTH}`}
+        className={`flex shrink-0 flex-col bg-zinc-950 transition-all duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${RAIL_WIDTH}`}
         aria-label="Navegación principal"
       >
         <div className="flex h-16 shrink-0 items-center justify-center">
@@ -243,16 +257,22 @@ export function SidebarNavigation({
               >
                 <button
                   type="button"
-                  onClick={() => handleGroupClick(group.id)}
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
+                  onClick={(e) => {
+                    createRipple(e, e.currentTarget);
+                    handleGroupClick(group.id);
+                  }}
+                  className={`relative flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden transition-all duration-200 ${
                     isActive || isSelected
-                      ? "bg-white/[.07] text-white"
+                      ? "bg-white/[.06] text-white"
                       : "text-zinc-500 hover:bg-white/[.04] hover:text-zinc-300"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                   title={group.label}
                   aria-label={group.label}
                 >
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-[var(--admin-primary-strong)]" aria-hidden="true" />
+                  )}
                   <span
                     className={`grid h-8 w-8 place-items-center rounded-lg text-xs font-black transition-all duration-200 ${
                       isActive || isSelected
@@ -272,7 +292,7 @@ export function SidebarNavigation({
           })}
         </div>
 
-        <div className="space-y-0.5 p-1.5">
+        <div className="mt-auto shrink-0 space-y-0.5 border-t border-white/[.04] p-1.5 pt-3">
           <button
             type="button"
             onClick={onOpenCommand}
@@ -319,6 +339,7 @@ export function SidebarNavigation({
               onSwitchNavigationMode={onSwitchNavigationMode}
               currentMode={currentMode}
               sidebarMode
+              compact={compact}
             />
           </div>
         </div>
@@ -328,7 +349,7 @@ export function SidebarNavigation({
       {displayGroup && !compact && (
         <nav
           data-sidebar-panel
-          className={`hidden md:flex shrink-0 flex-col border-l border-white/[.04] bg-zinc-950/40 ${PANEL_WIDTH}`}
+          className={`hidden md:flex shrink-0 flex-col border-l border-white/[.04] bg-zinc-950/60 ${PANEL_WIDTH} sidebar-panel-enter`}
           aria-label={`Secciones de ${displayGroup.label}`}
         >
           <div className="flex h-16 shrink-0 items-center justify-between px-4">
@@ -349,7 +370,7 @@ export function SidebarNavigation({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-contain admin-custom-scroll sidebar-content-reveal">
             {displayGroup.sections.map((section, sectionIndex) => (
               <div key={section.id} className={sectionIndex > 0 ? "mt-5" : ""}>
                 <div className="px-4 pb-1.5 pt-4">
@@ -365,23 +386,27 @@ export function SidebarNavigation({
                         key={item.href}
                         href={adminHref(item.href)}
                         onClick={handleItemClick}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200 ${
+                        className={`mega-item group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 ${
                           itemActive
                             ? "bg-white/[.05] text-white"
                             : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"
                         }`}
                       >
                         <span
+                          className={`mega-accent-bar shrink-0 ${itemActive ? "is-active" : ""}`}
+                          aria-hidden="true"
+                        />
+                        <span
                           className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[10px] font-black transition-all duration-200 ${
                             itemActive
                               ? "bg-[var(--admin-primary-strong)]/12 text-[var(--admin-primary-strong)]"
-                              : "bg-white/[.03] text-zinc-500"
+                              : "bg-white/[.03] text-zinc-500 group-hover:bg-white/[.05] group-hover:text-zinc-400"
                           }`}
                         >
                           {item.icon}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium">{item.label}</span>
+                          <span className={`block truncate text-sm font-medium transition-colors duration-200 ${itemActive ? "" : "group-hover:text-zinc-100"}`}>{item.label}</span>
                           {item.description && (
                             <span className="block truncate text-[11px] text-zinc-500">{item.description}</span>
                           )}
