@@ -56,8 +56,9 @@ function relativeTime(iso: string) {
 /**
  * @summary Carga, presenta y marca avisos del panel sin interrumpir la tarea actual.
  * `compact` lo adapta a la barra superior (campana + panel flotante amplio).
+ * `sidebarMode` posiciona el dropdown hacia la derecha (para rail lateral de 68px).
  */
-export function NotificationCenter({ compact = false }: { compact?: boolean }) {
+export function NotificationCenter({ compact = false, sidebarMode = false }: { compact?: boolean; sidebarMode?: boolean }) {
   const pathname = usePathname();
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -95,9 +96,7 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     if (!open) return;
-    /**
-     * @summary Cierra el panel de avisos al interactuar fuera de él o con Escape.
-     */
+    /** @summary Cierra el panel de avisos al interactuar fuera de él o con Escape. */
     function handlePointer(event: PointerEvent) {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     }
@@ -171,6 +170,127 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
     );
   }
 
+  const notificationPanel = (
+    <>
+      <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+        <div>
+          <h2 className="text-sm font-bold text-white">Notificaciones</h2>
+          <p className="mt-0.5 text-[11px] text-zinc-500">
+            {unread > 0 ? `${unread} sin leer` : "Estás al día"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {unread > 0 && (
+            <button
+              className="text-xs font-semibold text-pink-300 transition-colors duration-150 hover:text-pink-200"
+              onClick={readAll}
+            >
+              Marcar leídas
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/[.06] hover:text-zinc-300"
+            aria-label="Cerrar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <div className="h-px shrink-0 bg-white/[.07]" />
+      {items.length === 0 ? (
+        <div className="grid place-items-center gap-3 px-6 py-12 text-center">
+          <EmptyState
+            title="No hay notificaciones"
+            description="Te avisaremos cuando haya movimientos nuevos."
+          />
+        </div>
+      ) : (
+        <ul className="max-h-[26rem] flex-1 overflow-y-auto overscroll-contain">
+          {items.map((item) => {
+            const unreadItem = !item.readAt;
+            return (
+              <li key={item.id}>
+                <Link
+                  href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
+                  onClick={() => setOpen(false)}
+                  className={`flex gap-3.5 px-5 py-4 transition-colors duration-150 hover:bg-white/[.04] ${
+                    unreadItem ? "bg-white/[.02]" : "opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  <span className="relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[.06] text-[10px] font-black text-zinc-400">
+                    {typeGlyph(item.type)}
+                    {unreadItem && (
+                      <span
+                        className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-pink-500"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <strong className="truncate text-sm font-semibold text-white">{item.title}</strong>
+                      <time className="shrink-0 text-[11px] text-zinc-500">
+                        {relativeTime(item.createdAt)}
+                      </time>
+                    </span>
+                    <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-zinc-400">
+                      {item.message}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
+
+  /** @summary En sidebar mode, las notificaciones se muestran como modal centrado. */
+  if (sidebarMode) {
+    return (
+      <div className="relative" ref={containerRef}>
+        <button
+          className="relative grid h-9 w-9 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100"
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+          aria-haspopup="true"
+          aria-expanded={open}
+          aria-label="Notificaciones"
+          title="Notificaciones"
+        >
+          <BellIcon />
+          {unread > 0 && (
+            <span
+              className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-pink-500 px-1 text-[9px] font-bold leading-none text-white"
+              aria-label={`${unread} sin leer`}
+            >
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </button>
+        {open && (
+          <>
+            <div
+              className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
+            <div className="fixed inset-0 z-[310] flex items-center justify-center p-4" role="dialog" aria-label="Notificaciones">
+              <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40">
+                {notificationPanel}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <button
@@ -194,69 +314,7 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
       </button>
       {open && (
         <div className="absolute right-0 top-full z-50 mt-3 flex max-h-[min(calc(100vh-6.5rem),34rem)] w-[29rem] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-xl shadow-black/25 backdrop-blur-xl">
-          <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
-            <div>
-              <h2 className="text-sm font-bold text-white">Notificaciones</h2>
-              <p className="mt-0.5 text-[11px] text-zinc-500">
-                {unread > 0 ? `${unread} sin leer` : "Estás al día"}
-              </p>
-            </div>
-            {unread > 0 && (
-              <button
-                className="mt-0.5 text-xs font-semibold text-pink-300 transition-colors duration-150 hover:text-pink-200"
-                onClick={readAll}
-              >
-                Marcar todas como leídas
-              </button>
-            )}
-          </header>
-          <div className="h-px shrink-0 bg-white/[.07]" />
-          {items.length === 0 ? (
-            <div className="grid place-items-center gap-3 px-6 py-12 text-center">
-              <EmptyState
-                title="No hay notificaciones"
-                description="Te avisaremos cuando haya movimientos nuevos."
-              />
-            </div>
-          ) : (
-            <ul className="max-h-[26rem] flex-1 overflow-y-auto overscroll-contain">
-              {items.map((item) => {
-                const unreadItem = !item.readAt;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={adminHrefFromPathname(pathname, item.link || "/admin") as never}
-                      onClick={() => setOpen(false)}
-                      className={`flex gap-3.5 px-5 py-4 transition-colors duration-150 hover:bg-white/[.04] ${
-                        unreadItem ? "bg-white/[.02]" : "opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      <span className="relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[.06] text-[10px] font-black text-zinc-400">
-                        {typeGlyph(item.type)}
-                        {unreadItem && (
-                          <span
-                            className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-pink-500"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline justify-between gap-3">
-                          <strong className="truncate text-sm font-semibold text-white">{item.title}</strong>
-                          <time className="shrink-0 text-[11px] text-zinc-500">
-                            {relativeTime(item.createdAt)}
-                          </time>
-                        </span>
-                        <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-zinc-400">
-                          {item.message}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          {notificationPanel}
         </div>
       )}
     </div>

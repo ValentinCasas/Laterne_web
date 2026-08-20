@@ -86,10 +86,15 @@ function RailIcon({ name, active = false }: { name: string; active?: boolean }) 
           <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
+      {name === "reportes" && (
+        <>
+          <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
       {name === "administracion" && (
         <>
           <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82.33 1.65 1.65 0 0 0-.58 1.82v.09a2 2 0 0 1-2 2h-.09a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-.58-1.82 1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82v.09a2 2 0 0 1-2 2h-.09a2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.82-.58 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 .58-1.82v-.09a2 2 0 0 1 2-2h.09a2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 .58 1.82 1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a2 2 0 0 1-2 2h-.09a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 .58-1.82v-.09a2 2 0 0 1 2-2h-.09z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82.33 1.65 1.65 0 0 0-.58 1.82v.09a2 2 0 0 1-2 2h-.09a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-.58-1.82 1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82v.09a2 2 0 0 1-2 2h-.09a2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.82-.58 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 .58-1.82v-.09a2 2 0 0 1 2-2h.09a2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 .58 1.82 1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a2 2 0 0 1-2 2h-.09a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 .58-1.82v-.09a2 2 0 0 1 2-2h.09z" strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
     </svg>
@@ -110,7 +115,12 @@ function RailTooltip({ label, visible }: { label: string; visible: boolean }) {
   );
 }
 
-/** @summary Navegación lateral dual-tier: rail fijo + panel contextual integrado. */
+/**
+ * @summary Navegación lateral dual-tier: rail fijo + panel contextual integrado.
+ *
+ * El panel solo se muestra cuando el usuario clickea un ícono del rail.
+ * El botón de cerrar (flecha) oculta el panel hasta el próximo click.
+ */
 export function SidebarNavigation({
   groups,
   activeGroupId,
@@ -140,28 +150,42 @@ export function SidebarNavigation({
   currentMode,
 }: SidebarProps) {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [panelExplicitlyClosed, setPanelExplicitlyClosed] = useState(false);
   const [hoveredRailId, setHoveredRailId] = useState<string | null>(null);
   const railRef = useRef<HTMLElement | null>(null);
 
+  /**
+   * @summary Resuelve qué grupo mostrar en el panel.
+   * Prioridad: selección explícita > cierre explícito (nada) > grupo activo de la URL > hover > nada.
+   */
   const displayGroupId = useMemo(() => {
-    if (!compact && activeGroupId && groups.some((g) => g.id === activeGroupId)) return activeGroupId;
     if (selectedGroupId && groups.some((g) => g.id === selectedGroupId)) return selectedGroupId;
+    if (panelExplicitlyClosed) return null;
     if (hoveredRailId && compact && groups.some((g) => g.id === hoveredRailId)) return hoveredRailId;
-    return groups[0]?.id ?? null;
-  }, [groups, activeGroupId, selectedGroupId, hoveredRailId, compact]);
+    return null;
+  }, [groups, selectedGroupId, hoveredRailId, compact, panelExplicitlyClosed]);
 
   const displayGroup = useMemo(
     () => groups.find((g) => g.id === displayGroupId) ?? null,
     [groups, displayGroupId],
   );
 
+  /** @summary Click en un ícono del rail: alterna el panel para ese grupo. */
   const handleGroupClick = useCallback(
     (groupId: string) => {
+      setPanelExplicitlyClosed(false);
       setSelectedGroupId((current) => (current === groupId ? null : groupId));
     },
     [],
   );
 
+  /** @summary Click en el botón de cerrar del panel. */
+  const handleClosePanel = useCallback(() => {
+    setSelectedGroupId(null);
+    setPanelExplicitlyClosed(true);
+  }, []);
+
+  /** @summary Click en un item del panel: navega y cierra. */
   const handleItemClick = useCallback(() => {
     onNavigate();
     setSelectedGroupId(null);
@@ -260,7 +284,7 @@ export function SidebarNavigation({
           </button>
           {permissions.includes("notification.manage") && (
             <div className="flex justify-center">
-              <NotificationCenter compact />
+              <NotificationCenter compact sidebarMode />
             </div>
           )}
           {compact && (
@@ -281,7 +305,7 @@ export function SidebarNavigation({
             aria-label={currentMode === "TOP" ? "Cambiar a barra lateral" : "Cambiar a barra superior"}
             title={currentMode === "TOP" ? "Cambiar a barra lateral" : "Cambiar a barra superior"}
           >
-            <Icon name={currentMode === "TOP" ? "menu" : "arrow-left"} className="h-4 w-4" />
+            <Icon name={currentMode === "TOP" ? "menu" : "panels"} className="h-4 w-4" />
           </button>
           <div className="flex justify-center">
             <ProfileMenu
@@ -300,7 +324,7 @@ export function SidebarNavigation({
         </div>
       </nav>
 
-      {/* Panel contextual secundario - columna fija integrada al layout */}
+      {/* Panel contextual secundario */}
       {displayGroup && !compact && (
         <nav
           data-sidebar-panel
@@ -316,12 +340,12 @@ export function SidebarNavigation({
             </div>
             <button
               type="button"
-              onClick={() => setSelectedGroupId(null)}
+              onClick={handleClosePanel}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors duration-200 hover:bg-white/[.04] hover:text-zinc-300"
               aria-label="Cerrar panel"
               title="Cerrar panel"
             >
-              <Icon name="arrow-left" className="h-3.5 w-3.5" />
+              <Icon name="x" className="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -370,25 +394,17 @@ export function SidebarNavigation({
             ))}
           </div>
 
-          <div className="space-y-0.5 p-1.5">
-            <button
-              type="button"
-              onClick={onToggleCompact}
-              className="flex w-full items-center justify-center rounded-lg py-2 text-zinc-500 transition-colors duration-200 hover:bg-white/[.04] hover:text-zinc-300"
-              aria-label={compact ? "Expandir menú" : "Contraer menú"}
-              title={compact ? "Expandir menú" : "Contraer menú"}
-            >
-              <Icon name="arrow-left" className="h-4 w-4" />
-            </button>
+          <div className="border-t border-white/[.04] p-2">
             <a
               href={publicSiteUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex w-full items-center justify-center rounded-lg py-2 text-zinc-500 transition-colors duration-200 hover:bg-white/[.04] hover:text-zinc-300"
+              className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs text-zinc-500 transition-colors duration-200 hover:bg-white/[.04] hover:text-zinc-300"
               aria-label="Ver sitio"
               title="Ver sitio"
             >
-              <Icon name="external-link" className="h-4 w-4" />
+              <Icon name="external-link" className="h-3.5 w-3.5" />
+              <span>Ver sitio</span>
             </a>
           </div>
         </nav>

@@ -146,7 +146,7 @@ export function ProfileMenu({
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        className="flex h-9 items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+        className={`flex h-9 items-center gap-2 rounded-full py-1 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white ${sidebarMode ? "justify-center px-1" : "pl-1 pr-2.5"}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Menú de perfil"
