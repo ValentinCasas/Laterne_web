@@ -296,19 +296,19 @@ function ProfileMenu({
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 p-1.5 shadow-xl shadow-black/25 backdrop-blur-xl"
+          className="absolute right-0 top-full z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl dropdown-enter"
           role="menu"
           aria-label="Menú de perfil"
           onKeyDown={handleMenuKeyDown}
         >
-          <div className="flex items-center gap-3 rounded-xl px-3 py-3">
-            <UserAvatar name={displayName} imageUrl={userImageUrl} className="h-10 w-10 text-sm" />
+          <div className="flex items-center gap-3.5 rounded-xl px-4 py-3.5">
+            <UserAvatar name={displayName} imageUrl={userImageUrl} className="h-11 w-11 text-sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{displayName}</p>
               <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>
             </div>
           </div>
-          <div className="my-1 h-px bg-white/[.07]" />
+          <div className="my-2 h-px bg-white/[.07]" />
           {menuItems.map((entry, index) => {
             const tabIndex = focusIndex === -1 || focusIndex === index ? 0 : -1;
             if (entry.key === "help" && helpHref) {
@@ -325,9 +325,9 @@ function ProfileMenu({
                     setOpen(false);
                     setFocusIndex(-1);
                   }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                  className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
                 >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/[.05] text-[10px] font-black text-zinc-400">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
                     <HelpIcon />
                   </span>
                   Soporte
@@ -348,9 +348,9 @@ function ProfileMenu({
                     setOpen(false);
                     setFocusIndex(-1);
                   }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                  className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
                 >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/[.05] text-[10px] font-black text-zinc-400">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
                     MC
                   </span>
                   Mi perfil
@@ -367,9 +367,9 @@ function ProfileMenu({
                 }}
                 tabIndex={tabIndex}
                 onClick={onLogout}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-300 transition-colors duration-150 hover:bg-red-500/10"
+                className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left text-sm font-medium text-red-300 transition-all duration-200 hover:bg-red-500/10"
               >
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-red-500/10 text-[10px] font-black">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500/10 text-sm font-black">
                   <LogoutIcon />
                 </span>
                 Cerrar sesión
@@ -505,15 +505,19 @@ export function AdminShell({
       for (const item of widths) {
         const needed = visible.length === 0 ? item.width : usedWidth + gap + item.width;
         // Reservar espacio para "Más" si ya hay algo que ocultar
-        const reserveForMais = overflow.length > 0 ? maisButtonWidth + gap : 0;
-        if (needed + reserveForMais <= containerWidth) {
-          visible.push(item.id);
-          usedWidth = needed;
-        } else {
-          overflow.push(item.id);
-        }
+      const reserveForMais = overflow.length > 0 ? maisButtonWidth + gap : 0;
+      if (needed + reserveForMais <= containerWidth) {
+        visible.push(item.id);
+        usedWidth = needed;
+      } else {
+        overflow.push(item.id);
       }
-      setOverflowIds(overflow);
+    }
+    if (visible.length > 5) {
+      const excess = visible.splice(5);
+      overflow.unshift(...excess);
+    }
+    setOverflowIds(overflow);
     }
     measureOverflow();
     const observer = new ResizeObserver(measureOverflow);
@@ -821,11 +825,11 @@ export function AdminShell({
         ref={headerRef}
         className="sticky top-0 z-50 border-b border-white/[.06] bg-zinc-950/90 backdrop-blur-2xl print:hidden"
       >
-        <div className="admin-shell-inner flex h-[3.75rem] items-center gap-1 px-2 sm:gap-2 sm:px-3 lg:px-4">
+        <div className="admin-shell-inner flex h-[3.75rem] items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:px-6">
           <button
             ref={mobileTriggerRef}
             type="button"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white lg:hidden"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white lg:hidden"
             aria-controls="admin-navigation-panel"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
@@ -844,20 +848,20 @@ export function AdminShell({
 
           <Link
             href={adminHref("/admin")}
-            className="flex shrink-0 items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors duration-150 hover:bg-white/[.04]"
+            className="flex shrink-0 items-center gap-2.5 rounded-xl px-2 py-2 transition-all duration-200 hover:bg-white/[.04]"
             onClick={() => {
               setOpenGroup(null);
               setMobileMenuPath(null);
             }}
           >
-            <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--admin-primary-strong)] text-xs font-black text-white">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--admin-primary-strong)] text-sm font-black text-white">
               {tenantInitials(tenantName)}
             </span>
             <span className="hidden min-w-0 leading-tight sm:block">
               <strong className="block max-w-28 truncate text-sm font-semibold text-white xl:max-w-32">
                 {tenantName}
               </strong>
-              <small className="block text-[9px] font-bold uppercase tracking-[.16em] text-zinc-500">
+              <small className="block text-[10px] font-bold uppercase tracking-[.16em] text-zinc-500">
                 Administración
               </small>
             </span>
@@ -865,7 +869,7 @@ export function AdminShell({
 
           <nav
             ref={navContainerRef}
-            className="hidden min-w-0 flex-1 items-center justify-end gap-1 px-2 lg:flex xl:gap-1.5"
+            className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 px-3 lg:flex xl:gap-2"
             aria-label="Secciones administrativas"
           >
             {visibleGroups.map((group) => {
@@ -878,7 +882,7 @@ export function AdminShell({
                       triggerRefs.current[group.id] = element;
                     }}
                     type="button"
-                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-all duration-200 xl:px-3 ${
+                    className={`flex h-10 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-medium transition-all duration-200 xl:px-4 ${
                       expanded
                         ? "bg-white/[.08] text-white shadow-sm shadow-black/10"
                         : groupActive
@@ -907,7 +911,7 @@ export function AdminShell({
               <div className="relative shrink-0" ref={overflowRef}>
                 <button
                   type="button"
-                  className={`flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-all duration-200 ${
+                  className={`flex h-10 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-medium transition-all duration-200 ${
                     overflowOpen
                       ? "bg-white/[.08] text-white shadow-sm shadow-black/10"
                       : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
@@ -920,14 +924,14 @@ export function AdminShell({
                   <ChevronDownIcon open={overflowOpen} className="text-zinc-600" />
                 </button>
                 {overflowOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-white/[.08] bg-zinc-950/95 shadow-xl shadow-black/30 backdrop-blur-2xl">
+                  <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/[.08] bg-zinc-950/95 shadow-xl shadow-black/30 backdrop-blur-2xl dropdown-enter">
                     {overflowGroups.map((group) => {
                       const groupActive = activeGroupId === group.id;
                       return (
                         <button
                           key={group.id}
                           type="button"
-                          className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] transition-all duration-150 ${
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all duration-200 ${
                             groupActive
                               ? "bg-white/[.06] text-white"
                               : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
@@ -937,7 +941,7 @@ export function AdminShell({
                             setOpenGroupBoth(group.id);
                           }}
                         >
-                          <span className="text-zinc-600 text-xs font-black">{group.icon}</span>
+                          <span className="text-zinc-500 text-xs font-black">{group.icon}</span>
                           <span className="truncate">{group.label}</span>
                         </button>
                       );
@@ -948,7 +952,7 @@ export function AdminShell({
             )}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 xl:gap-2.5">
             <BranchSwitcher
                   branches={branches}
                   activeBranchId={activeBranchId}
@@ -959,7 +963,7 @@ export function AdminShell({
 
             <button
               type="button"
-              className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
+              className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-100"
               onClick={() => {
                 setCommandOpen(true);
                 setMobileMenuPath(null);
@@ -969,7 +973,7 @@ export function AdminShell({
             >
               <SearchIcon />
               <span className="hidden lg:inline">Buscar</span>
-              <kbd className="hidden h-5 items-center rounded border border-white/10 bg-white/[.04] px-1.5 font-sans text-[10px] font-medium text-zinc-500 2xl:flex">
+              <kbd className="hidden h-5 items-center rounded-lg border border-white/10 bg-white/[.04] px-2 font-sans text-[10px] font-medium text-zinc-500 2xl:flex">
                 Ctrl K
               </kbd>
             </button>
@@ -982,7 +986,7 @@ export function AdminShell({
               rel="noreferrer"
               aria-label="Ver sitio"
               title="Ver sitio"
-              className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
+              className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-100"
             >
               <ExternalIcon />
               <span className="hidden lg:inline">Ver sitio</span>
@@ -993,9 +997,9 @@ export function AdminShell({
                 href={platformAdminPath()}
                 aria-label="Ir a la plataforma"
                 title="Ir a la plataforma"
-                className="hidden h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-amber-300/90 transition-colors duration-150 hover:bg-amber-500/[.08] sm:flex"
+                className="hidden h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-amber-300/90 transition-all duration-200 hover:bg-amber-500/[.08] sm:flex"
               >
-                <span className="grid h-5 w-5 place-items-center rounded-md bg-amber-500/15 text-[8px] font-black text-amber-300">
+                <span className="grid h-5 w-5 place-items-center rounded-lg bg-amber-500/15 text-[8px] font-black text-amber-300">
                   SA
                 </span>
                 <span className="hidden lg:inline">Plataforma</span>
@@ -1007,7 +1011,7 @@ export function AdminShell({
                 href={adminHref("/admin/soporte")}
                 aria-label="Soporte"
                 title="Soporte"
-                className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
+                className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-100"
               >
                 <HelpIcon />
                 <span className="hidden lg:inline">Soporte</span>
@@ -1030,7 +1034,7 @@ export function AdminShell({
       {activeGroup && (
           <div
             ref={megaPanelRef}
-            className="fixed inset-x-0 top-16 z-40 flex justify-center print:hidden"
+            className="fixed inset-x-0 top-16 z-40 flex justify-center mega-panel-enter print:hidden"
             role="region"
             aria-label={`Secciones de ${activeGroup.label}`}
             onKeyDown={(event) =>
@@ -1042,22 +1046,21 @@ export function AdminShell({
           onBlur={handlePanelBlur}
         >
           <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-zinc-950/95 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="flex items-baseline gap-3 border-b border-white/[.06] px-6 py-3.5 sm:px-8 sm:py-4">
-              <h2 className="text-sm font-bold tracking-wide text-white">{activeGroup.label}</h2>
-              <p className="truncate text-[11px] text-zinc-500">{activeGroup.description}</p>
+            <div className="flex items-center gap-4 border-b border-white/[.06] px-8 py-5 sm:px-10 sm:py-6">
+              <h2 className="text-base font-bold tracking-wide text-white">{activeGroup.label}</h2>
+              <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
             </div>
             <div className="flex max-h-[70vh] overflow-hidden overscroll-contain">
-              {/* ── Panel izquierdo: secciones ── */}
-              <nav className="w-52 shrink-0 overflow-y-auto border-r border-white/[.06] py-2" aria-label="Subsecciones">
+              <nav className="w-60 shrink-0 overflow-y-auto border-r border-white/[.06] py-3" aria-label="Subsecciones">
                 {activeGroup.sections.map((section) => {
                   const isActive = activeSectionId === section.id;
                   return (
                     <button
                       key={section.id}
                       type="button"
-                      className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-all duration-150 ${
+                      className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-200 ${
                         isActive
-                          ? "bg-white/[.06] font-medium text-white border-l-2 border-[var(--admin-primary-strong)] pl-3.5"
+                          ? "bg-white/[.06] font-semibold text-white border-l-2 border-[var(--admin-primary-strong)] pl-4"
                           : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200 border-l-2 border-transparent"
                       }`}
                       onClick={() => setActiveSectionId(section.id)}
@@ -1068,23 +1071,21 @@ export function AdminShell({
                 })}
               </nav>
 
-              {/* ── Panel derecho: ítems de la sección activa ── */}
-              <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5 sm:px-8 sm:py-6">
+              <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-8 py-6 sm:px-10 sm:py-8">
                 {(() => {
                   const activeSection = activeGroup.sections.find((s) => s.id === activeSectionId) ?? activeGroup.sections[0];
                   if (!activeSection) return null;
                   let flatIndex = 0;
-                  // Contar índices previos para el focus
                   for (const s of activeGroup.sections) {
                     if (s.id === activeSection.id) break;
                     flatIndex += s.items.length;
                   }
                   return (
                     <div>
-                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                      <h3 className="mb-5 text-xs font-bold uppercase tracking-widest text-zinc-500">
                         {activeSection.label}
                       </h3>
-                      <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                         {activeSection.items.map((item) => {
                           const index = flatIndex++;
                           const active = activeLink?.href === item.href;
@@ -1100,12 +1101,12 @@ export function AdminShell({
                                 setOpenGroupBoth(null);
                                 setMobileMenuPath(null);
                               }}
-                              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 ${
-                                active ? "bg-white/[.06] ring-1 ring-white/[.06]" : "hover:bg-white/[.04]"
+                              className={`group flex items-center gap-3.5 rounded-xl px-4 py-3.5 transition-all duration-200 ${
+                                active ? "bg-white/[.06] ring-1 ring-white/[.08]" : "hover:bg-white/[.04]"
                               }`}
                             >
                               <span
-                                className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-[9px] font-black tracking-wider transition-all duration-150 ${
+                                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xs font-black tracking-wider transition-all duration-200 ${
                                   active
                                     ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]"
                                     : "bg-white/[.04] text-zinc-500 group-hover:bg-white/[.06] group-hover:text-zinc-300"
@@ -1115,14 +1116,14 @@ export function AdminShell({
                               </span>
                               <span className="min-w-0">
                                 <span
-                                  className={`block text-[13px] font-medium leading-tight transition-colors duration-150 ${
+                                  className={`block text-sm font-medium leading-snug transition-colors duration-200 ${
                                     active ? "text-white" : "text-zinc-300 group-hover:text-zinc-100"
                                   }`}
                                 >
                                   {item.label}
                                 </span>
                                 {item.description && (
-                                  <span className="mt-0.5 block text-[11px] leading-tight text-zinc-500">
+                                  <span className="mt-1 block text-xs leading-snug text-zinc-500">
                                     {item.description}
                                   </span>
                                 )}
@@ -1151,23 +1152,23 @@ export function AdminShell({
           />
           <div
             id="admin-navigation-panel"
-            className="fixed inset-y-0 left-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-r border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 lg:hidden"
+            className="fixed inset-y-0 left-0 z-[200] flex h-dvh w-[min(20rem,88vw)] max-w-full flex-col border-r border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 mobile-drawer-enter lg:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Menú de administración"
           >
-            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.08] px-4 py-3.5 pt-[env(safe-area-inset-top)]">
-              <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.08] px-5 py-4 pt-[env(safe-area-inset-top)]">
+              <div className="flex min-w-0 items-center gap-3.5">
                 <UserAvatar
                   name={userName?.trim() || tenantName}
                   imageUrl={userImageUrl}
-                  className="h-9 w-9 text-xs"
+                  className="h-10 w-10 text-sm"
                 />
                 <span className="min-w-0">
                   <strong className="block truncate text-sm text-white">
                     {userName?.trim() || tenantName}
                   </strong>
-                  <small className="block truncate text-[11px] text-zinc-500">
+                  <small className="block truncate text-xs text-zinc-500">
                     {userEmail || tenantName}
                   </small>
                 </span>
@@ -1184,10 +1185,10 @@ export function AdminShell({
               </button>
             </div>
 
-            <div className="grid gap-2 border-b border-white/[.08] px-3 py-3">
+            <div className="grid gap-3 border-b border-white/[.08] px-4 py-4">
               <button
                 type="button"
-                className="flex h-11 w-full items-center gap-3 rounded-xl border border-white/[.08] bg-white/[.03] px-4 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                className="flex h-12 w-full items-center gap-3 rounded-xl border border-white/[.08] bg-white/[.03] px-4 text-base font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
                 onClick={() => {
                   setCommandOpen(true);
                   setMobileMenuPath(null);
@@ -1207,7 +1208,7 @@ export function AdminShell({
             </div>
 
             <nav
-              className="flex-1 space-y-2 overflow-y-auto overscroll-contain p-3"
+              className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-4"
               aria-label="Secciones administrativas"
             >
               {accessibleGroups.map((group) => {
@@ -1216,7 +1217,7 @@ export function AdminShell({
                 return (
                   <section
                     key={group.id}
-                    className={`overflow-hidden rounded-xl border transition-colors duration-150 ${
+                    className={`overflow-hidden rounded-2xl border transition-all duration-200 ${
                       containsActive
                         ? "border-white/[.1] bg-white/[.03]"
                         : "border-white/[.06] bg-transparent"
@@ -1224,13 +1225,13 @@ export function AdminShell({
                   >
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left transition-all duration-200 hover:bg-white/[.04]"
+                      className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/[.04]"
                       aria-controls={`mobile-admin-group-${group.id}`}
                       aria-expanded={expanded}
                       onClick={() => setMobileExpanded((current) => (current === group.id ? null : group.id))}
                     >
                       <span
-                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-black tracking-wider transition-all duration-200 ${
+                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xs font-black tracking-wider transition-all duration-200 ${
                           containsActive ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]" : "bg-white/[.04] text-zinc-500"
                         }`}
                       >
@@ -1238,7 +1239,7 @@ export function AdminShell({
                       </span>
                       <span className="min-w-0 flex-1">
                         <strong
-                          className={`block truncate text-sm font-medium ${
+                          className={`block truncate text-sm font-semibold ${
                             containsActive ? "text-white" : "text-zinc-300"
                           }`}
                         >
@@ -1250,14 +1251,14 @@ export function AdminShell({
                     {expanded && (
                       <div
                         id={`mobile-admin-group-${group.id}`}
-                        className="space-y-4 border-t border-white/[.06] p-3"
+                        className="space-y-1 border-t border-white/[.06] px-3 py-3"
                       >
                         {group.sections.map((section) => (
                           <div key={section.id}>
-                            <h3 className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                            <h3 className="mb-2 px-3 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
                               {section.label}
                             </h3>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {section.items.map((item) => {
                                 const active = activeLink?.href === item.href;
                                 return (
@@ -1265,12 +1266,12 @@ export function AdminShell({
                                     key={item.href}
                                     href={adminHref(item.href)}
                                     onClick={() => setMobileMenuPath(null)}
-                                    className={`flex items-start gap-3 rounded-lg px-2.5 py-2.5 transition-all duration-150 ${
-                                      active ? "bg-white/[.06] border-l-2 border-[var(--admin-primary-strong)] pl-2" : "hover:bg-white/[.04] border-l-2 border-transparent"
+                                    className={`flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all duration-200 ${
+                                      active ? "bg-white/[.06] border-l-2 border-[var(--admin-primary-strong)] pl-3" : "hover:bg-white/[.04] border-l-2 border-transparent"
                                     }`}
                                   >
                                     <span
-                                      className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-[9px] font-black tracking-wider transition-all duration-150 ${
+                                      className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black tracking-wider transition-all duration-200 ${
                                         active
                                           ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]"
                                           : "bg-white/[.04] text-zinc-500"
@@ -1280,7 +1281,7 @@ export function AdminShell({
                                     </span>
                                     <span className="min-w-0">
                                       <span
-                                        className={`block truncate text-sm font-medium transition-colors duration-150 ${
+                                        className={`block truncate text-sm font-medium transition-colors duration-200 ${
                                           active ? "text-white" : "text-zinc-300"
                                         }`}
                                       >
@@ -1308,9 +1309,9 @@ export function AdminShell({
                 <Link
                   href={platformAdminPath()}
                   onClick={() => setMobileMenuPath(null)}
-                  className="flex items-center gap-3 rounded-xl border border-amber-500/15 bg-amber-500/[.04] px-3 py-3 text-sm font-medium text-amber-300 transition-colors duration-150 hover:bg-amber-500/[.08]"
+                  className="flex items-center gap-3.5 rounded-2xl border border-amber-500/15 bg-amber-500/[.04] px-4 py-3.5 text-base font-medium text-amber-300 transition-all duration-200 hover:bg-amber-500/[.08]"
                 >
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/10 text-[9px] font-black">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-xs font-black">
                     SA
                   </span>
                   Plataforma
@@ -1321,9 +1322,9 @@ export function AdminShell({
                 <Link
                   href={adminHref("/admin/soporte")}
                   onClick={() => setMobileMenuPath(null)}
-                  className="flex items-center gap-3 rounded-xl border border-white/[.08] bg-white/[.03] px-3 py-3 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                  className="flex items-center gap-3.5 rounded-2xl border border-white/[.08] bg-white/[.03] px-4 py-3.5 text-base font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
                 >
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[.05] text-[9px] font-black text-zinc-500">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-xs font-black text-zinc-500">
                     <HelpIcon />
                   </span>
                   Soporte
@@ -1331,9 +1332,9 @@ export function AdminShell({
               )}
             </nav>
 
-            <div className="grid gap-2 border-t border-white/[.08] p-3">
+            <div className="grid gap-3 border-t border-white/[.08] p-4">
               <a
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[.08] bg-white/[.03] px-3 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-white/[.08] bg-white/[.03] px-3 text-base font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
                 href={`${publicSite}/carta`}
                 target="_blank"
                 rel="noreferrer"
@@ -1344,7 +1345,7 @@ export function AdminShell({
               <button
                 type="button"
                 onClick={logout}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/15 bg-red-500/[.04] px-3 text-sm font-medium text-red-300 transition-colors duration-150 hover:bg-red-500/10"
+                className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-red-500/15 bg-red-500/[.04] px-3 text-base font-medium text-red-300 transition-all duration-200 hover:bg-red-500/10"
               >
                 <LogoutIcon />
                 Cerrar sesión
