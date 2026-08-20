@@ -38,7 +38,7 @@ type SidebarProps = {
 };
 
 const RAIL_WIDTH = "w-[68px]";
-const PANEL_WIDTH = "w-64";
+const PANEL_WIDTH = "w-[288px]";
 
 /** @summary Crea un efecto ripple (gota de agua) en el punto del click. */
 function createRipple(event: React.MouseEvent<HTMLButtonElement>, button: HTMLButtonElement) {
@@ -229,7 +229,7 @@ export function SidebarNavigation({
       {/* Rail lateral */}
       <nav
         ref={railRef}
-        className={`flex shrink-0 flex-col bg-zinc-950 transition-all duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${RAIL_WIDTH}`}
+        className={`flex shrink-0 flex-col bg-zinc-950 transition-all duration-[460ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${RAIL_WIDTH}`}
         aria-label="Navegación principal"
       >
         <div className="flex h-16 shrink-0 items-center justify-center">

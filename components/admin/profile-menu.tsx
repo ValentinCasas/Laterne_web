@@ -3,12 +3,14 @@
 import type { Route } from "next";
 import Link from "next/link";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@/components/admin/ui/icons";
 import { UserAvatar } from "@/components/admin/ui/avatar";
 
@@ -68,7 +70,46 @@ type ProfileMenuProps = {
   compact?: boolean;
 };
 
-/** @summary Menú de perfil compartido entre barra superior y barra lateral. */
+/**
+ * @summary Calcula la posición del popover para que siempre quede dentro del viewport.
+ *
+ * Intenta abrir a la derecha y hacia arriba del botón. Si no cabe, ajusta.
+ */
+function computePopoverPosition(buttonRect: DOMRect): { top: number; left: number } {
+  const POPOVER_W = 272;
+  const POPOVER_H = 320;
+  const GAP = 8;
+  const MARGIN = 12;
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Intentar a la derecha del botón, alineado arriba
+  let left = buttonRect.right + GAP;
+  let top = buttonRect.top;
+
+  // Si no cabe a la derecha, abrir a la izquierda
+  if (left + POPOVER_W > vw - MARGIN) {
+    left = buttonRect.left - GAP - POPOVER_W;
+  }
+  // Si tampoco cabe a la izquierda, centrar
+  if (left < MARGIN) {
+    left = Math.max(MARGIN, (vw - POPOVER_W) / 2);
+  }
+
+  // Si no cabe hacia abajo, abrir hacia arriba
+  if (top + POPOVER_H > vh - MARGIN) {
+    top = vh - MARGIN - POPOVER_H;
+  }
+  // Si no cabe hacia arriba, alinear al tope
+  if (top < MARGIN) {
+    top = MARGIN;
+  }
+
+  return { top, left };
+}
+
+/** @summary Menú de perfil como popover flotante con Portal. */
 export function ProfileMenu({
   userName,
   userEmail,
@@ -84,10 +125,15 @@ export function ProfileMenu({
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
   const displayName = userName?.trim() || tenantName;
   const avatarSrc = avatarUrl(userImageUrl);
+
+  useEffect(() => setMounted(true), []);
 
   const menuItems = useMemo(
     () => [
@@ -106,24 +152,50 @@ export function ProfileMenu({
     [helpHref, onSwitchNavigationMode, currentMode],
   );
 
+  /** @summary Calcula posición al abrir y registra listeners de cierre. */
   useEffect(() => {
     if (!open) return;
+
+    // Calcular posición del popover
+    if (buttonRef.current) {
+      setPopoverPos(computePopoverPosition(buttonRef.current.getBoundingClientRect()));
+    }
+
     function handlePointer(event: PointerEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      if (
+        popoverRef.current && !popoverRef.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+        setFocusIndex(-1);
+      }
     }
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
         setFocusIndex(-1);
+        buttonRef.current?.focus();
+      }
+    }
+    function handleResize() {
+      if (buttonRef.current) {
+        setPopoverPos(computePopoverPosition(buttonRef.current.getBoundingClientRect()));
       }
     }
     document.addEventListener("pointerdown", handlePointer);
     document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", handleResize);
     return () => {
       document.removeEventListener("pointerdown", handlePointer);
       document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", handleResize);
     };
   }, [open]);
+
+  const toggle = useCallback(() => {
+    setOpen((c) => !c);
+    setFocusIndex(-1);
+  }, []);
 
   function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
     if (menuItems.length === 0) return;
@@ -145,128 +217,117 @@ export function ProfileMenu({
     }
   }
 
+  const popoverContent = (
+    <div
+      ref={popoverRef}
+      className="fixed z-[250] w-[272px] overflow-hidden rounded-xl border border-white/[.08] bg-zinc-900/95 p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl dropdown-enter"
+      style={{ top: popoverPos.top, left: popoverPos.left }}
+      role="menu"
+      aria-label="Menú de perfil"
+      onKeyDown={handleMenuKeyDown}
+    >
+      {/* Header: avatar + info */}
+      <div className="flex items-center gap-3 rounded-lg px-3 py-3">
+        <UserAvatar name={displayName} src={avatarSrc} size="md" className="text-sm shrink-0 shadow-[2px_2px_6px_rgba(0,0,0,0.45),-1px_-1px_4px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.04)]" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+          <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>
+        </div>
+      </div>
+      <div className="mx-2 my-1 h-px bg-white/[.06]" />
+      {/* Menu items */}
+      {menuItems.map((entry, index) => {
+        const tabIndex = focusIndex === -1 || focusIndex === index ? 0 : -1;
+        if (entry.key === "help" && helpHref) {
+          return (
+            <Link
+              key={entry.key}
+              role="menuitem"
+              ref={(element) => { itemRefs.current[index] = element; }}
+              href={helpHref}
+              tabIndex={tabIndex}
+              onClick={() => { setOpen(false); setFocusIndex(-1); }}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.05] text-sm font-black text-zinc-400">
+                <HelpIcon />
+              </span>
+              Soporte
+            </Link>
+          );
+        }
+        if (entry.key === "profile") {
+          return (
+            <Link
+              key={entry.key}
+              role="menuitem"
+              ref={(element) => { itemRefs.current[index] = element; }}
+              href={adminHref("/admin/cuenta")}
+              tabIndex={tabIndex}
+              onClick={() => { setOpen(false); setFocusIndex(-1); }}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.05] text-sm font-black text-zinc-400">
+                <Icon name="user" className="h-4 w-4" />
+              </span>
+              Mi perfil
+            </Link>
+          );
+        }
+        if (entry.key === "mode" && onSwitchNavigationMode) {
+          return (
+            <button
+              key={entry.key}
+              type="button"
+              role="menuitem"
+              ref={(element) => { itemRefs.current[index] = element; }}
+              tabIndex={tabIndex}
+              onClick={() => { onSwitchNavigationMode(); setOpen(false); setFocusIndex(-1); }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.05] text-sm font-black text-zinc-400">
+                <Icon name={currentMode === "TOP" ? "menu" : "arrow-left"} className="h-4 w-4" />
+              </span>
+              {currentMode === "TOP" ? "Modo barra lateral" : "Modo barra superior"}
+            </button>
+          );
+        }
+        return (
+          <button
+            key={entry.key}
+            type="button"
+            role="menuitem"
+            ref={(element) => { itemRefs.current[index] = element; }}
+            tabIndex={tabIndex}
+            onClick={onLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-300 transition-colors duration-150 hover:bg-red-500/10"
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-500/10 text-sm font-black">
+              <Icon name="logout" className="h-4 w-4" />
+            </span>
+            Cerrar sesión
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         className={`flex h-9 items-center gap-2 rounded-full py-1 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white ${compact ? "justify-center px-1" : sidebarMode ? "justify-center px-1" : "pl-1 pr-2.5"}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Menú de perfil"
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggle}
       >
         <UserAvatar name={displayName} src={avatarSrc} size="sm" className="ring-1 ring-white/10 shadow-[2px_2px_6px_rgba(0,0,0,0.45),-1px_-1px_4px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.04)]" />
         {!compact && <span className="hidden max-w-20 truncate 2xl:block">{tenantName}</span>}
         {!compact && <ChevronDownIcon open={open} className="hidden text-zinc-500 2xl:block" />}
       </button>
-      {open && (
-        <div
-          className={`${sidebarMode ? "left-full top-0 ml-2" : "right-0 top-full mt-3"} absolute z-50 w-72 overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-900/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl dropdown-enter`}
-          role="menu"
-          aria-label="Menú de perfil"
-          onKeyDown={handleMenuKeyDown}
-        >
-          <div className="flex items-center gap-3.5 rounded-xl px-4 py-4">
-            <UserAvatar name={displayName} src={avatarSrc} size="md" className="text-sm shadow-[3px_3px_8px_rgba(0,0,0,0.5),-1px_-1px_5px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.05)]" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-              <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>
-            </div>
-          </div>
-          <div className="my-2 h-px bg-white/[.07]" />
-          {menuItems.map((entry, index) => {
-            const tabIndex = focusIndex === -1 || focusIndex === index ? 0 : -1;
-            if (entry.key === "help" && helpHref) {
-              return (
-                <Link
-                  key={entry.key}
-                  role="menuitem"
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  href={helpHref}
-                  tabIndex={tabIndex}
-                  onClick={() => {
-                    setOpen(false);
-                    setFocusIndex(-1);
-                  }}
-                  className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
-                    <HelpIcon />
-                  </span>
-                  Soporte
-                </Link>
-              );
-            }
-            if (entry.key === "profile") {
-              return (
-                <Link
-                  key={entry.key}
-                  role="menuitem"
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  href={adminHref("/admin/cuenta")}
-                  tabIndex={tabIndex}
-                  onClick={() => {
-                    setOpen(false);
-                    setFocusIndex(-1);
-                  }}
-                  className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
-                    <Icon name="user" className="h-4 w-4" />
-                  </span>
-                  Mi perfil
-                </Link>
-              );
-            }
-            if (entry.key === "mode" && onSwitchNavigationMode) {
-              return (
-                <button
-                  key={entry.key}
-                  type="button"
-                  role="menuitem"
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  tabIndex={tabIndex}
-                  onClick={() => {
-                    onSwitchNavigationMode();
-                    setOpen(false);
-                    setFocusIndex(-1);
-                  }}
-                  className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
-                    <Icon name={currentMode === "TOP" ? "menu" : "arrow-left"} className="h-4 w-4" />
-                  </span>
-                  {currentMode === "TOP" ? "Modo barra lateral" : "Modo barra superior"}
-                </button>
-              );
-            }
-            return (
-              <button
-                key={entry.key}
-                type="button"
-                role="menuitem"
-                ref={(element) => {
-                  itemRefs.current[index] = element;
-                }}
-                tabIndex={tabIndex}
-                onClick={onLogout}
-                className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left text-sm font-medium text-red-300 transition-all duration-200 hover:bg-red-500/10"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500/10 text-sm font-black">
-                  <Icon name="logout" className="h-4 w-4" />
-                </span>
-                Cerrar sesión
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {mounted && open && createPortal(popoverContent, document.body)}
     </div>
   );
 }

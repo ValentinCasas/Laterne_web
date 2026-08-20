@@ -98,7 +98,7 @@ export function AdminShellSidebar({
 
       {/* Sidebar drawer wrapper */}
       <div
-        className={`flex h-full shrink-0 border-r border-white/[.04] bg-zinc-950 transition-all duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:translate-x-0 ${
+        className={`flex h-full shrink-0 border-r border-white/[.04] bg-zinc-950 transition-all duration-[460ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:translate-x-0 ${
           sidebarMobileOpen ? "translate-x-0" : "-translate-x-full"
         } fixed inset-y-0 left-0 z-[200] shadow-2xl shadow-black/50 lg:relative lg:shadow-none`}
       >

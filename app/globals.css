@@ -218,34 +218,34 @@ button {
 @keyframes mega-panel-enter {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-5px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 @keyframes mega-panel-exit {
   from {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-5px) scale(0.99);
   }
 }
 .mega-panel-enter {
-  animation: mega-panel-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: mega-panel-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 .mega-panel-exit {
-  animation: mega-panel-exit 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: mega-panel-exit 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 @keyframes dropdown-enter {
   from {
     opacity: 0;
-    transform: scale(0.985) translateY(-3px);
+    transform: scale(0.98) translateY(4px);
   }
   to {
     opacity: 1;
@@ -253,7 +253,7 @@ button {
   }
 }
 .dropdown-enter {
-  animation: dropdown-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: dropdown-enter 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes mobile-drawer-enter {
@@ -324,7 +324,7 @@ button {
   }
 }
 .sidebar-panel-enter {
-  animation: sidebar-panel-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: sidebar-panel-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* ── Sidebar content fade-in (staggered: appears after panel starts expanding) ── */
@@ -339,8 +339,8 @@ button {
   }
 }
 .sidebar-content-reveal {
-  animation: sidebar-content-reveal 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: 0.1s;
+  animation: sidebar-content-reveal 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.08s;
   opacity: 0;
 }
 
