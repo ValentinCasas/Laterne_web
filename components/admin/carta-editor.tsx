@@ -262,7 +262,7 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
                         aria-label="Buscador de la carta (vista previa)"
                       />
                       <button
-                        className="flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black lg:hidden"
+                        className="flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-5 text-base font-black lg:hidden"
                         type="button"
                       >
                         <Icon name="gear" className="h-4 w-4" /> Filtros

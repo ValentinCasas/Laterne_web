@@ -113,7 +113,7 @@ export function MenuProductCard({
         </p>
         <div className="mt-auto pt-3 sm:pt-5">
           <Link
-            className="mb-2 block min-h-9 rounded-lg py-2 text-center text-xs font-bold text-zinc-400 hover:bg-white/5 hover:text-pink-300 sm:text-sm"
+            className="mb-2 block min-h-10 rounded-lg py-2 text-center text-sm font-bold text-zinc-400 hover:bg-white/5 hover:text-pink-300 sm:text-sm"
             href={detailHref as Route}
           >
             Ver detalles
@@ -122,7 +122,7 @@ export function MenuProductCard({
             <span className="text-xs font-bold text-red-300 sm:text-sm">No disponible</span>
           ) : (
             <button
-              className="min-h-11 w-full rounded-lg border border-white/15 px-2 py-2 text-sm font-black hover:border-pink-500 hover:bg-pink-500 sm:rounded-xl sm:py-3"
+              className="min-h-12 w-full rounded-lg border border-white/15 px-2 py-3 text-base font-black hover:border-pink-500 hover:bg-pink-500 sm:rounded-xl sm:py-3"
               onClick={() => onAdd(product)}
               aria-label={`Agregar ${product.name}`}
             >

@@ -44,7 +44,7 @@ export function CartaHeader({
             <p className="mt-0.5 text-xs font-bold text-zinc-400">Carta virtual</p>
           </div>
           <button
-            className="min-h-11 shrink-0 rounded-full bg-pink-500 px-4 text-sm font-black text-white"
+            className="min-h-11 shrink-0 rounded-full bg-pink-500 px-5 text-base font-black text-white"
             onClick={onOpenCart}
             type="button"
           >
@@ -62,7 +62,7 @@ export function CartaHeader({
             </p>
           </div>
           <Link
-            className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm font-bold hover:bg-white hover:text-black"
+            className="inline-flex rounded-full border border-white/15 px-5 py-3 text-base font-bold hover:bg-white hover:text-black"
             href={homeHref as Route}
           >
             Volver al inicio
