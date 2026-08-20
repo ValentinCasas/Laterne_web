@@ -109,9 +109,9 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
         }
       />
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(300px,.85fr)_minmax(0,1.15fr)]">
-        <div className="card space-y-4 p-5">
-          <FormSection title="Textos de la cabecera">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(360px,420px)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <FormSection title="Textos de la cabecera" className="xl:col-span-1">
             <label>
               <span className="label">Texto de arriba (eyebrow)</span>
               <input
@@ -188,14 +188,6 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
             </p>
           </div>
 
-          <button
-            className="btn w-full"
-            disabled={status.kind === "saving"}
-            onClick={() => void save()}
-            type="button"
-          >
-            {status.kind === "saving" ? "Guardando…" : "Guardar carta"}
-          </button>
           {status.kind === "saved" && (
             <p
               className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
@@ -221,7 +213,7 @@ export function CartaEditor({ data }: { data: CartaEditorData }) {
               La cabecera usa el mismo renderizador y las mismas tarjetas que la carta pública.
             </p>
           </div>
-          <div className="h-[min(720px,calc(100dvh-16rem))]">
+            <div className="h-[min(680px,calc(100dvh-14rem))] overflow-hidden rounded-2xl border border-white/10">
             <ResponsivePreview bodyClass="tenant-theme" bodyStyle={previewBodyStyle}>
               <div className="flex min-h-full flex-col bg-[var(--brand-background)]">
                 <SiteHeader

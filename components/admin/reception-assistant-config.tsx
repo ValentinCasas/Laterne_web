@@ -171,7 +171,7 @@ export function ReceptionAssistantConfig({
               <label className="mb-1 block text-sm text-zinc-400">Nombre comercial</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="input"
                 value={knowledge.businessName ?? ""}
                 onChange={(e) =>
                   setKnowledge((prev) => ({ ...prev, businessName: e.target.value || null }))
@@ -183,7 +183,7 @@ export function ReceptionAssistantConfig({
               <label className="mb-1 block text-sm text-zinc-400">Dirección</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="input"
                 value={knowledge.address ?? ""}
                 onChange={(e) =>
                   setKnowledge((prev) => ({ ...prev, address: e.target.value || null }))
@@ -193,10 +193,10 @@ export function ReceptionAssistantConfig({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm text-zinc-400">Teléfono</label>
+                <label className="label">Teléfono</label>
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                  className="input"
                   value={knowledge.phone ?? ""}
                   onChange={(e) =>
                     setKnowledge((prev) => ({ ...prev, phone: e.target.value || null }))
@@ -205,10 +205,10 @@ export function ReceptionAssistantConfig({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-zinc-400">Email</label>
+                <label className="label">Email</label>
                 <input
                   type="email"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                  className="input"
                   value={knowledge.email ?? ""}
                   onChange={(e) =>
                     setKnowledge((prev) => ({ ...prev, email: e.target.value || null }))
@@ -219,10 +219,10 @@ export function ReceptionAssistantConfig({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm text-zinc-400">Sitio web</label>
+                <label className="label">Sitio web</label>
                 <input
                   type="url"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                  className="input"
                   value={knowledge.website ?? ""}
                   onChange={(e) =>
                     setKnowledge((prev) => ({ ...prev, website: e.target.value || null }))
@@ -231,10 +231,10 @@ export function ReceptionAssistantConfig({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-zinc-400">Zona horaria</label>
+                <label className="label">Zona horaria</label>
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                  className="input"
                   value={knowledge.timezone}
                   onChange={(e) =>
                     setKnowledge((prev) => ({
@@ -255,7 +255,7 @@ export function ReceptionAssistantConfig({
             <div>
               <label className="mb-1 block text-sm text-zinc-400">Tono</label>
               <select
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="input"
                 value={config.tone ?? "friendly"}
                 onChange={(e) =>
                   setKnowledge((prev) => ({
@@ -274,10 +274,10 @@ export function ReceptionAssistantConfig({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm text-zinc-400">Idioma</label>
+                <label className="label">Idioma</label>
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                  className="input"
                   value={config.language ?? "es"}
                   onChange={(e) =>
                     setKnowledge((prev) => ({
@@ -292,12 +292,12 @@ export function ReceptionAssistantConfig({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-zinc-400">Máx. mensajes antes de handoff</label>
+                <label className="label">Máx. mensajes antes de handoff</label>
                 <input
                   type="number"
                   min={1}
                   max={100}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                  className="input"
                   value={config.maxMessagesBeforeHandoff ?? 10}
                   onChange={(e) =>
                     setKnowledge((prev) => ({
@@ -315,7 +315,7 @@ export function ReceptionAssistantConfig({
               <label className="mb-1 block text-sm text-zinc-400">Mensaje de saludo</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="input"
                 value={config.greeting ?? ""}
                 onChange={(e) =>
                   setKnowledge((prev) => ({
@@ -333,7 +333,7 @@ export function ReceptionAssistantConfig({
               <label className="mb-1 block text-sm text-zinc-400">Mensaje de despedida</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="input"
                 value={config.farewell ?? ""}
                 onChange={(e) =>
                   setKnowledge((prev) => ({
@@ -353,7 +353,7 @@ export function ReceptionAssistantConfig({
               </label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="input"
                 value={(config.alwaysHandoffCategories ?? []).join(", ")}
                 onChange={(e) =>
                   setKnowledge((prev) => ({
@@ -495,7 +495,7 @@ export function ReceptionAssistantConfig({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-xl bg-blue-600 px-6 py-2.5 font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+          className="btn min-w-48"
         >
           {saving ? "Guardando..." : "Guardar configuración"}
         </button>

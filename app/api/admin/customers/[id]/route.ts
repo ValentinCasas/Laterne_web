@@ -62,7 +62,17 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     },
   });
   if (!customer) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
-  return NextResponse.json({ customer: serialize(customer) });
+  // Las relaciones se devuelven en nivel superior (no anidadas en `customer`)
+  // para que el frontend las consuma directamente como arrays. Siempre se
+  // envía un array (vacío si el cliente no tiene movimientos).
+  const { orders, payments, transactions, deliveries, ...rest } = customer;
+  return NextResponse.json({
+    customer: serialize(rest),
+    orders: serialize(orders ?? []),
+    payments: serialize(payments ?? []),
+    transactions: serialize(transactions ?? []),
+    deliveries: serialize(deliveries ?? []),
+  });
 }
 
 /** @summary Actualiza datos del cliente o ajusta puntos según el cuerpo recibido. */

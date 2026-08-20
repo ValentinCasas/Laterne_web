@@ -32,3 +32,4 @@ export { SplitView } from "./split-view";
 export { Drawer } from "./drawer";
 export { FilterPanel } from "./filter-panel";
 export { ActiveFilterChip } from "./active-filter-chip";
+export { UserAvatar, type AvatarSize } from "./avatar";

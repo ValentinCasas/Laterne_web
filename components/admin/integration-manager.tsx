@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, StatusBadge, FormSection } from "@/components/admin/ui";
+import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 type Integration = {
@@ -103,60 +103,55 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
           const upcoming = integration.provider !== "storage";
           return (
             <form
-              className="card min-w-0 p-4 sm:p-6"
+              className="card min-w-0 space-y-4 p-4 sm:p-5"
               key={integration.provider}
               onSubmit={(event) => void save(event, integration)}
             >
-              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-black">{details.name}</h2>
-                  <p className="mt-2 text-sm text-zinc-500">{details.description}</p>
+                  <h2 className="text-lg font-black">{details.name}</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-500">{details.description}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {upcoming && <StatusBadge status="Próximamente" tone="default" />}
                   <StatusBadge
                     status={integration.secretConfigured ? "Credencial detectada" : "Falta credencial"}
                     tone={integration.secretConfigured ? "success" : "warning"}
                   />
-                  {upcoming && (
-                    <StatusBadge status="Próximamente" tone="default" />
-                  )}
                 </div>
               </div>
-              <FormSection title="Configuración" className="mt-5">
-                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                  <label className="min-w-0">
-                    <span className="label">Modo</span>
-                    <select className="input" name="mode" defaultValue={integration.mode} disabled={payment}>
-                      <option value="disabled">Desactivado</option>
-                      <option value="sandbox">Pruebas</option>
-                      <option value="live">Producción</option>
-                    </select>
-                    <p className="mt-1 text-xs text-zinc-500">Entorno de operación.</p>
-                  </label>
-                  <label className="min-w-0">
-                    <span className="label">Cuenta visible</span>
-                    <input
-                      className="input"
-                      name="accountLabel"
-                      defaultValue={integration.publicConfig?.accountLabel ?? ""}
-                      placeholder="Nombre interno"
-                    />
-                    <p className="mt-1 text-xs text-zinc-500">Nombre que verá el equipo.</p>
-                  </label>
-                  <label className="min-w-0 sm:col-span-2">
-                    <span className="label">Identificador público</span>
-                    <input
-                      className="input"
-                      name="publicIdentifier"
-                      defaultValue={integration.publicConfig?.publicIdentifier ?? ""}
-                    />
-                  </label>
-                </div>
-              </FormSection>
-              <p className="mt-3 min-w-0 break-words rounded-xl bg-white/[.03] p-3 font-mono text-xs text-zinc-500">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                <label className="min-w-0">
+                  <span className="label">Modo</span>
+                  <select className="input" name="mode" defaultValue={integration.mode} disabled={payment}>
+                    <option value="disabled">Desactivado</option>
+                    <option value="sandbox">Pruebas</option>
+                    <option value="live">Producción</option>
+                  </select>
+                </label>
+                <label className="min-w-0">
+                  <span className="label">Cuenta visible</span>
+                  <input
+                    className="input"
+                    name="accountLabel"
+                    defaultValue={integration.publicConfig?.accountLabel ?? ""}
+                    placeholder="Nombre interno"
+                  />
+                </label>
+                <label className="min-w-0 sm:col-span-2">
+                  <span className="label">Identificador público</span>
+                  <input
+                    className="input"
+                    name="publicIdentifier"
+                    defaultValue={integration.publicConfig?.publicIdentifier ?? ""}
+                    placeholder="ID o número de cuenta"
+                  />
+                </label>
+              </div>
+              <p className="min-w-0 break-words rounded-lg bg-white/[.03] px-3 py-2 font-mono text-xs text-zinc-500">
                 Variable requerida: {details.env}
               </p>
-              <div className="mt-5 flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-4">
                 <label className="flex items-center gap-2 text-sm font-bold">
                   <input
                     name="enabled"
@@ -166,10 +161,12 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
                   />{" "}
                   Habilitada
                 </label>
-                <button className="btn">Guardar</button>
+                <button className="btn" disabled={payment || upcoming || !integration.secretConfigured}>
+                  Guardar
+                </button>
               </div>
               {(payment || upcoming) && (
-                <p className="mt-3 text-xs text-amber-300">
+                <p className="-mt-1 text-xs text-amber-300">
                   Disponible próximamente. Esta integración todavía no envía ni recibe información.
                 </p>
               )}

@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /**
- * @summary Menú contextual reutilizable con posicionamiento inteligente.
+ * @summary Menú contextual reutilizable con posicionamiento automático.
  *
- * Usa un portal para renderizar fuera del contenedor padre (evita clipping
- * por overflow-hidden o border-radius). Se posiciona arriba o abajo según
- * el espacio disponible en el viewport. Se cierra con click afuera o Escape.
+ * Se renderiza en un portal (`document.body`) para no ser recortado por
+ * `overflow-hidden`/`border-radius` de la tabla o de su contenedor. Se posiciona
+ * con `position: fixed` calculando arriba/abajo según el espacio disponible y
+ * se ajusta dentro del viewport. Se recalcula ante scroll (incluso en
+ * contenedores con scroll) y resize.
  */
 export function ActionMenu({
   items,
@@ -21,88 +24,106 @@ export function ActionMenu({
   align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<"bottom" | "top">("bottom");
+  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const panelId = useId();
 
-  /** @summary Calcula si el menú debe abrirse hacia arriba o hacia abajo. */
-  const computePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
+  /** @summary Calcula la posición fija del panel evitando el recorte por overflow y el viewport. */
+  const reposition = useCallback(() => {
+    const trigger = triggerRef.current;
+    const panel = panelRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const panelWidth = panel?.offsetWidth ?? 176;
+    const panelHeight = panel?.offsetHeight ?? 180;
+    const gap = 6;
+    const margin = 8;
+
     const spaceBelow = window.innerHeight - rect.bottom;
-    setPosition(spaceBelow < 220 ? "top" : "bottom");
-  }, []);
+    const placeUp = spaceBelow < panelHeight + gap && rect.top > spaceBelow;
+    const top = placeUp ? rect.top - gap - panelHeight : rect.bottom + gap;
+    let left = align === "right" ? rect.right - panelWidth : rect.left;
+
+    left = Math.min(Math.max(left, margin), window.innerWidth - panelWidth - margin);
+    const clampedTop = Math.min(Math.max(top, margin), window.innerHeight - panelHeight - margin);
+    setCoords({ top: clampedTop, left });
+  }, [align]);
 
   useEffect(() => {
     if (!open) return;
+    const frame = requestAnimationFrame(reposition);
 
-    computePosition();
-
-    /** @summary Cierra el menú al hacer click fuera o presionar Escape. */
-    function handlePointer(event: PointerEvent) {
+    const handlePointer = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (
-        panelRef.current?.contains(target) ||
-        triggerRef.current?.contains(target)
-      )
-        return;
+      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
       setOpen(false);
-    }
-    function handleKey(event: KeyboardEvent) {
+    };
+    const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
-    }
+    };
+    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
     document.addEventListener("pointerdown", handlePointer);
     document.addEventListener("keydown", handleKey);
     return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
       document.removeEventListener("pointerdown", handlePointer);
       document.removeEventListener("keydown", handleKey);
     };
-  }, [open, computePosition]);
+  }, [open, reposition]);
+
+  const trigger = (
+    <button
+      ref={triggerRef}
+      type="button"
+      onClick={() => setOpen((current) => !current)}
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-xs font-black text-zinc-300 transition-colors hover:bg-white/10"
+      aria-haspopup="menu"
+      aria-expanded={open}
+      aria-controls={panelId}
+    >
+      ⋯
+    </button>
+  );
 
   return (
-    <div className="relative inline-flex">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-xs font-black text-zinc-300 transition-colors hover:bg-white/10"
-        aria-haspopup="menu"
-        aria-expanded={open}          aria-controls={panelId}
-      >
-        ⋯
-      </button>
-      {open && (
-        <div
-          ref={panelRef}
-          id={panelId}
-          role="menu"
-          className={`absolute z-[100] mt-1 w-44 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 p-1 shadow-xl shadow-black/30 ${
-            position === "top" ? "bottom-full mb-1" : "top-full"
-          } ${align === "right" ? "right-0" : "left-0"}`}
-        >
-          {items.map((item, index) => (
-            <button
-              key={index}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                item.onClick();
-              }}
-              className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${
-                item.tone === "danger"
-                  ? "text-red-300 hover:bg-red-500/10"
-                  : item.tone === "primary"
-                    ? "text-pink-300 hover:bg-pink-500/10"
-                    : "text-zinc-300 hover:bg-white/5"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      {trigger}
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="menu"
+            style={{ position: "fixed", top: coords.top, left: coords.left }}
+            className="z-[100] w-44 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 p-1 shadow-xl shadow-black/30"
+          >
+            {items.map((item, index) => (
+              <button
+                key={index}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  item.onClick();
+                }}
+                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                  item.tone === "danger"
+                    ? "text-red-300 hover:bg-red-500/10"
+                    : item.tone === "primary"
+                      ? "text-pink-300 hover:bg-pink-500/10"
+                      : "text-zinc-300 hover:bg-white/5"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

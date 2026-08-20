@@ -60,18 +60,47 @@ export function LocationPicker({
   const [longitude, setLongitude] = useState(startLocation.longitude);
   const parsedRadius = Number(radiusMeters);
   const hasRadius = Number.isFinite(parsedRadius) && parsedRadius > 0;
+  const hasValidLocation =
+    Number.isFinite(startLocation.latitude) && Number.isFinite(startLocation.longitude);
+  const [mapFailed, setMapFailed] = useState(false);
 
   useEffect(() => {
-    if (!container.current) return;
+    if (!container.current || !hasValidLocation) return;
     maplibregl.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
 
-    const instance = new maplibregl.Map({
-      container: container.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [startLocation.longitude, startLocation.latitude],
-      zoom: 14.5,
-      cooperativeGestures: true,
+    let instance: maplibregl.Map;
+    try {
+      instance = new maplibregl.Map({
+        container: container.current,
+        style: "https://tiles.openfreemap.org/styles/liberty",
+        center: [startLocation.longitude, startLocation.latitude],
+        zoom: 14.5,
+        cooperativeGestures: true,
+      });
+    } catch {
+      setMapFailed(true);
+      return;
+    }
+
+    /** @summary Si el proveedor de tiles no responde, degradamos a un fallback controlado. */
+    instance.on("error", (event) => {
+      // Antes de cargar el estilo, cualquier fallo (style/tile 4xx/5xx/red) es fatal.
+      if (!instance.isStyleLoaded()) {
+        try {
+          instance.remove();
+        } catch {
+          /* ya removido */
+        }
+        setMapFailed(true);
+        return;
+      }
+      // Errores de tiles sueltos luego de cargar: se ignoran para no romper la vista.
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn("Mapa: tile no disponible", (event.error as Error)?.message);
+      }
     });
+
     const point = new maplibregl.Marker({ color: "#ec4899", draggable: true })
       .setLngLat([startLocation.longitude, startLocation.latitude])
       .addTo(instance);
@@ -140,9 +169,13 @@ export function LocationPicker({
     return () => {
       marker.current = null;
       map.current = null;
-      instance.remove();
+      try {
+        instance.remove();
+      } catch {
+        /* ya removido */
+      }
     };
-  }, [hasRadius, parsedRadius, startLocation]);
+  }, [hasRadius, parsedRadius, hasValidLocation, startLocation]);
 
   /** @summary Actualiza manualmente una coordenada y reposiciona el mapa y su marcador. */
   function updateCoordinates(nextLatitude: number, nextLongitude: number) {
@@ -175,7 +208,18 @@ export function LocationPicker({
         Hacé clic sobre el mapa o arrastrá el marcador rosa hasta la entrada del local.
       </p>
       <div className="mt-3 overflow-hidden rounded-3xl border border-white/10 bg-zinc-900">
-        <div ref={container} className="h-96 w-full" aria-label="Selector de ubicación del negocio" />
+        {mapFailed || !hasValidLocation ? (
+          <div className="grid h-96 w-full place-items-center p-6 text-center text-sm text-zinc-400">
+            <div>
+              <p className="font-bold text-zinc-200">Vista de mapa no disponible</p>
+              <p className="mt-1">
+                No se pudo cargar el proveedor de tiles. Podés ingresar las coordenadas manualmente abajo.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div ref={container} className="h-96 w-full" aria-label="Selector de ubicación del negocio" />
+        )}
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-bold">

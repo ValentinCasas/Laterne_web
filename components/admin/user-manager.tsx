@@ -13,6 +13,7 @@ import {
   FormSection,
   Tabs,
   FactBox,
+  UserAvatar,
 
 } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
@@ -382,16 +383,10 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
               id: user.id,
               name: (
                 <div className="flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={user.imageUrl || "/images/images_profile/avatar_profile_default.png"}
-                    alt=""
-                    className="h-8 w-8 rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <p className="font-bold">{user.name}</p>
-                    <p className="text-xs text-zinc-500">{user.email}</p>
+                  <UserAvatar name={user.name} src={user.imageUrl} size="sm" />
+                  <div className="min-w-0">
+                    <p className="truncate font-bold">{user.name}</p>
+                    <p className="truncate text-xs text-zinc-500">{user.email}</p>
                   </div>
                 </div>
               ),

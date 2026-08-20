@@ -341,8 +341,11 @@ function CustomerDetailDrawer({
 
   const timeline = useMemo(() => {
     if (!detail) return [];
+    const orders = detail.orders ?? [];
+    const payments = detail.payments ?? [];
+    const transactions = detail.transactions ?? [];
     const events: Array<{ date: string; type: string; title: string; description: string }> = [];
-    detail.orders.forEach((order) => {
+    orders.forEach((order) => {
       events.push({
         date: order.createdAt,
         type: "order",
@@ -350,7 +353,7 @@ function CustomerDetailDrawer({
         description: `${order.status} · ${formatMoney(order.total)}`,
       });
     });
-    detail.payments.forEach((payment) => {
+    payments.forEach((payment) => {
       events.push({
         date: payment.paidAt,
         type: "payment",
@@ -358,7 +361,7 @@ function CustomerDetailDrawer({
         description: `${formatMoney(payment.amount)} · ${payment.method}`,
       });
     });
-    detail.transactions.forEach((tx) => {
+    transactions.forEach((tx) => {
       events.push({
         date: tx.createdAt,
         type: "transaction",
@@ -581,11 +584,11 @@ function CustomerDetailDrawer({
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-zinc-400">Pedidos</span>
-                          <span className="font-bold">{detail.orders.length}</span>
+                          <span className="font-bold">{detail.orders?.length ?? 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-zinc-400">Pagos</span>
-                          <span className="font-bold">{detail.payments.length}</span>
+                          <span className="font-bold">{detail.payments?.length ?? 0}</span>
                         </div>
                       </FactBox>
                     </div>
