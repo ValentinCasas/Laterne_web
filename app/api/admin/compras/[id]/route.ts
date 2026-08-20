@@ -45,6 +45,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       supplierId: z.coerce.number().int().positive().optional(),
       branchId: z.coerce.number().int().positive().optional(),
       orderDate: z.string().optional(),
+      postingDate: z.string().optional(),
       expectedDate: z.string().nullable().optional(),
       externalReference: z.string().trim().max(120).optional(),
       notes: z.string().trim().max(2000).optional(),
@@ -56,6 +57,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const order = await updatePurchaseOrder(auth.tenant.id, Number(id), {
       ...parsed.data,
+      postingDate: parsed.data.postingDate,
       lines: parsed.data.lines?.map((line) => ({ ...line, unit: line.unit || "unidad" })),
     });
     await recordAudit({

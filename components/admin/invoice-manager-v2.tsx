@@ -2,18 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Swal from "sweetalert2";
-import { PageHeader } from "@/components/admin/ui";
+import { Icon } from "@/components/admin/ui/icons";
 import { scopedFetch } from "@/lib/client-routing";
 import { documentTypeLabels, documentTypes, type DocumentType } from "@/lib/documents/document-fields";
 import { adminHrefFromPathname } from "@/lib/routes";
 
-type InvoiceDocumentSummary = {
-  pdfStatus: string;
-  conversionMessage: string | null;
-  templateVersion: number | null;
-} | null;
+type InvoiceDocumentSummary = { pdfStatus: string; conversionMessage: string | null; templateVersion: number | null } | null;
 
 export type InvoiceListItem = {
   id: number;
@@ -31,51 +27,30 @@ export type InvoiceListItem = {
   document: InvoiceDocumentSummary;
 };
 
-export type AvailableInvoiceOrder = {
-  id: number;
-  reference: string;
-  customerName: string;
-  total: string | number;
-  currency: string;
-  createdAt: string;
-};
+export type AvailableInvoiceOrder = { id: number; reference: string; customerName: string; total: string | number; currency: string; createdAt: string };
+export type InvoiceSettingsData = { issuerName: string | null; taxId: string | null; address: string | null; city: string | null; terms: string | null };
 
-export type InvoiceSettingsData = {
-  issuerName: string | null;
-  taxId: string | null;
-  address: string | null;
-  city: string | null;
-  terms: string | null;
+function fmt(value: string | number, currency: string) { return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(Number(value)); }
+function docStatus(d: InvoiceDocumentSummary) {
+  if (!d) return { label: "Legacy", color: "var(--admin-muted)", bg: "color-mix(in srgb, var(--admin-muted) 10%, transparent)" };
+  if (d.pdfStatus === "ready") return { label: "PDF + DOCX", color: "var(--admin-success)", bg: "color-mix(in srgb, var(--admin-success) 12%, transparent)" };
+  return { label: "DOCX", color: "var(--admin-warning)", bg: "color-mix(in srgb, var(--admin-warning) 12%, transparent)" };
+}
+
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  draft: { label: "Borrador", color: "var(--admin-muted)", bg: "color-mix(in srgb, var(--admin-muted) 12%, transparent)" },
+  issued: { label: "Emitido", color: "var(--admin-success)", bg: "color-mix(in srgb, var(--admin-success) 12%, transparent)" },
+  cancelled: { label: "Anulado", color: "var(--admin-danger)", bg: "color-mix(in srgb, var(--admin-danger) 12%, transparent)" },
 };
 
 /**
- * @summary Formatea un valor para mostrarlo en el panel de comprobantes.
+ * @summary Gestor de comprobantes internos de facturacion de ventas — vista estilo ERP moderno.
+ * Tabla principal, KPIs, toolbar, configuracion en modal, pedidos pendientes como tabla compacta.
  */
-function money(value: string | number, currency: string) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(Number(value));
-}
-
-/**
- * @summary Resume la disponibilidad de DOCX y PDF de un comprobante.
- */
-function documentStatus(document: InvoiceDocumentSummary) {
-  if (!document) return { label: "Legacy HTML", className: "text-zinc-400 bg-white/5" };
-  if (document.pdfStatus === "ready")
-    return { label: "PDF + DOCX", className: "text-emerald-200 bg-emerald-500/10" };
-  return { label: "DOCX disponible", className: "text-amber-200 bg-amber-500/10" };
-}
-
-/** @summary Gestiona comprobantes y delega el diseño libre a las plantillas Word del tenant. */
-export function InvoiceManagerV2({
-  initialInvoices,
-  availableOrders,
-  initialSettings,
-}: {
-  initialInvoices: InvoiceListItem[];
-  availableOrders: AvailableInvoiceOrder[];
-  initialSettings: InvoiceSettingsData | null;
-}) {
+export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSettings }: { initialInvoices: InvoiceListItem[]; availableOrders: AvailableInvoiceOrder[]; initialSettings: InvoiceSettingsData | null }) {
   const pathname = usePathname();
+  const href = (path: string) => adminHrefFromPathname(pathname, path);
+
   const [invoices, setInvoices] = useState(initialInvoices);
   const [orders, setOrders] = useState(availableOrders);
   const [settings, setSettings] = useState<InvoiceSettingsData | null>(initialSettings);
@@ -83,399 +58,268 @@ export function InvoiceManagerV2({
   const [documentType, setDocumentType] = useState<DocumentType>("internal_receipt");
   const [busyOrder, setBusyOrder] = useState<number | null>(null);
   const [busyDocument, setBusyDocument] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [showConfig, setShowConfig] = useState(false);
+  const [showPending, setShowPending] = useState(false);
 
-  /**
-   * @summary Genera y guarda el documento asociado a un comprobante.
-   */
+  const draftCount = invoices.filter((i) => i.status === "draft").length;
+  const issuedCount = invoices.filter((i) => i.status === "issued").length;
+  const cancelledCount = invoices.filter((i) => i.status === "cancelled").length;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("es");
+    return invoices.filter((inv) => {
+      if (statusFilter && inv.status !== statusFilter) return false;
+      if (q && !inv.number?.toLocaleLowerCase("es").includes(q) && !inv.customerName.toLocaleLowerCase("es").includes(q) && !inv.order.reference.toLocaleLowerCase("es").includes(q)) return false;
+      return true;
+    });
+  }, [invoices, query, statusFilter]);
+
   async function generateDocument(invoice: InvoiceListItem) {
     setBusyDocument(invoice.id);
-    const response = await scopedFetch(`/api/admin/invoices/${invoice.id}/document`, { method: "POST" });
-    const body = (await response.json().catch(() => ({}))) as {
-      document?: InvoiceDocumentSummary;
-      error?: string;
-    };
+    const r = await scopedFetch(`/api/admin/invoices/${invoice.id}/document`, { method: "POST" });
+    const body = (await r.json().catch(() => ({}))) as { document?: InvoiceDocumentSummary; error?: string };
     setBusyDocument(null);
-    if (!response.ok || !body.document) {
-      await Swal.fire({
-        title: "No se pudo generar el documento",
-        text: body.error ?? "Intentá nuevamente.",
-        icon: "error",
-        background: "#18181b",
-        color: "#fafafa",
-      });
-      return;
-    }
-    setInvoices((current) =>
-      current.map((item) => (item.id === invoice.id ? { ...item, document: body.document! } : item)),
-    );
-    await Swal.fire({
-      title: "Documento generado",
-      text:
-        body.document.pdfStatus === "ready"
-          ? "El DOCX y el PDF quedaron listos."
-          : "El DOCX quedó disponible; el PDF depende del conversor configurado.",
-      icon: "success",
-      timer: 1500,
-      showConfirmButton: false,
-      background: "#18181b",
-      color: "#fafafa",
-    });
+    if (!r.ok || !body.document) { await Swal.fire({ title: "Error", text: body.error ?? "Intenta nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" }); return; }
+    setInvoices((c) => c.map((i) => i.id === invoice.id ? { ...i, document: body.document! } : i));
+    await Swal.fire({ title: "Documento generado", text: body.document.pdfStatus === "ready" ? "DOCX y PDF listos." : "DOCX disponible.", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
   }
 
-  /**
-   * @summary Guarda los datos del emisor utilizados por las plantillas documentales.
-   */
-  async function saveIssuerSettings(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (savingSettings) return;
-    setSavingSettings(true);
-    const form = new FormData(event.currentTarget);
-    const payload = {
-      issuerName: String(form.get("issuerName") ?? "").trim() || null,
-      taxId: String(form.get("taxId") ?? "").trim() || null,
-      address: String(form.get("address") ?? "").trim() || null,
-      city: String(form.get("city") ?? "").trim() || null,
-      terms: String(form.get("terms") ?? "").trim() || null,
-    };
+  async function saveIssuerSettings(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); if (savingSettings) return; setSavingSettings(true);
+    const form = new FormData(e.currentTarget);
+    const payload = { issuerName: String(form.get("issuerName") ?? "").trim() || null, taxId: String(form.get("taxId") ?? "").trim() || null, address: String(form.get("address") ?? "").trim() || null, city: String(form.get("city") ?? "").trim() || null, terms: String(form.get("terms") ?? "").trim() || null };
     try {
-      const response = await scopedFetch("/api/admin/invoice-settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const body = (await response.json().catch(() => ({}))) as {
-        settings?: InvoiceSettingsData;
-        error?: string;
-      };
-      if (!response.ok || !body.settings)
-        throw new Error(body.error ?? "No se pudo guardar la configuración");
+      const r = await scopedFetch("/api/admin/invoice-settings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const body = (await r.json().catch(() => ({}))) as { settings?: InvoiceSettingsData; error?: string };
+      if (!r.ok || !body.settings) throw new Error(body.error ?? "Error");
       setSettings(body.settings);
-      await Swal.fire({
-        title: "Emisor guardado",
-        text: "Los próximos comprobantes usarán estos datos en las plantillas Word.",
-        icon: "success",
-        timer: 1400,
-        showConfirmButton: false,
-        background: "#18181b",
-        color: "#fafafa",
-      });
-    } catch (error) {
-      await Swal.fire({
-        title: "No se pudo guardar",
-        text: error instanceof Error ? error.message : "Intentá nuevamente.",
-        icon: "error",
-        background: "#18181b",
-        color: "#fafafa",
-      });
-    } finally {
-      setSavingSettings(false);
-    }
+      await Swal.fire({ title: "Emisor guardado", icon: "success", timer: 1400, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      setShowConfig(false);
+    } catch (err) { await Swal.fire({ title: "No se pudo guardar", text: err instanceof Error ? err.message : "Error", icon: "error", background: "#18181b", color: "#fafafa" }); }
+    finally { setSavingSettings(false); }
   }
 
-  /**
-   * @summary Crea un comprobante interno a partir de un pedido disponible.
-   */
   async function createInvoice(orderId: number) {
     setBusyOrder(orderId);
-    const response = await scopedFetch("/api/admin/invoices", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ orderId, documentType }),
-    });
-    const body = (await response.json().catch(() => ({}))) as {
-      invoice?: InvoiceListItem;
-      documentError?: string | null;
-      error?: string;
-    };
+    const r = await scopedFetch("/api/admin/invoices", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId, documentType }) });
+    const body = (await r.json().catch(() => ({}))) as { invoice?: InvoiceListItem; documentError?: string | null; error?: string };
     setBusyOrder(null);
-    if (!response.ok || !body.invoice) {
-      await Swal.fire({ title: "No se pudo crear el comprobante", text: body.error, icon: "error" });
-      return;
-    }
-    setInvoices((current) => [body.invoice!, ...current]);
-    setOrders((current) => current.filter((order) => order.id !== orderId));
-    await Swal.fire({
-      title: "Comprobante creado",
-      text: body.documentError
-        ? `El registro se creó, pero el DOCX no pudo generarse: ${body.documentError}`
-        : body.invoice.document?.pdfStatus === "ready"
-          ? "El DOCX y el PDF quedaron guardados con esta versión de plantilla."
-          : body.invoice.document?.conversionMessage || "El DOCX quedó disponible para descargar.",
-      icon: body.documentError ? "warning" : "success",
-      background: "#18181b",
-      color: "#fafafa",
-    });
+    if (!r.ok || !body.invoice) { await Swal.fire({ title: "Error", text: body.error, icon: "error", background: "#18181b", color: "#fafafa" }); return; }
+    setInvoices((c) => [body.invoice!, ...c]);
+    setOrders((c) => c.filter((o) => o.id !== orderId));
+    await Swal.fire({ title: "Comprobante creado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
   }
 
-  /**
-   * @summary Actualiza un comprobante y regenera su documento cuando corresponde.
-   */
   async function editInvoice(invoice: InvoiceListItem) {
     const result = await Swal.fire({
-      title: "Editar registro interno",
-      text: "En Borrador el DOCX/PDF se regenera con los datos corregidos. Una vez emitido o anulado queda congelado en su versión histórica.",
-      html: `<label style="display:block;text-align:left">Estado<select id="invoice-status" class="swal2-select" style="display:block;width:100%;margin:.5rem 0"><option value="draft" ${invoice.status === "draft" ? "selected" : ""}>Borrador</option><option value="issued" ${invoice.status === "issued" ? "selected" : ""}>Emitido internamente</option><option value="cancelled" ${invoice.status === "cancelled" ? "selected" : ""}>Anulado</option></select></label><input id="invoice-tax" class="swal2-input" maxlength="40" placeholder="CUIT/DNI opcional"><textarea id="invoice-notes" class="swal2-textarea" maxlength="1000" placeholder="Notas internas"></textarea>`,
-      didOpen: () => {
-        (document.querySelector("#invoice-tax") as HTMLInputElement).value = invoice.customerTaxId ?? "";
-        (document.querySelector("#invoice-notes") as HTMLTextAreaElement).value = invoice.notes ?? "";
-      },
-      preConfirm: () => ({
-        status: (document.querySelector("#invoice-status") as HTMLSelectElement).value,
-        customerTaxId: (document.querySelector("#invoice-tax") as HTMLInputElement).value,
-        notes: (document.querySelector("#invoice-notes") as HTMLTextAreaElement).value,
-      }),
-      showCancelButton: true,
-      confirmButtonText: "Guardar",
-      cancelButtonText: "Cancelar",
-      background: "#18181b",
-      color: "#fafafa",
+      title: "Editar comprobante",
+      html: `<label style="display:block;text-align:left;font-size:13px;margin-bottom:8px">Estado<select id="is" class="swal2-select" style="display:block;width:100%;margin-top:4px"><option value="draft" ${invoice.status === "draft" ? "selected" : ""}>Borrador</option><option value="issued" ${invoice.status === "issued" ? "selected" : ""}>Emitido</option><option value="cancelled" ${invoice.status === "cancelled" ? "selected" : ""}>Anulado</option></select></label><input id="it" class="swal2-input" maxlength="40" placeholder="CUIT/DNI"><textarea id="in" class="swal2-textarea" maxlength="1000" placeholder="Notas">`,
+      didOpen: () => { (document.querySelector("#it") as HTMLInputElement).value = invoice.customerTaxId ?? ""; (document.querySelector("#in") as HTMLTextAreaElement).value = invoice.notes ?? ""; },
+      preConfirm: () => ({ status: (document.querySelector("#is") as HTMLSelectElement).value, customerTaxId: (document.querySelector("#it") as HTMLInputElement).value, notes: (document.querySelector("#in") as HTMLTextAreaElement).value }),
+      showCancelButton: true, confirmButtonText: "Guardar", cancelButtonText: "Cancelar", background: "#18181b", color: "#fafafa",
     });
     if (!result.isConfirmed || !result.value) return;
-    const response = await scopedFetch(`/api/admin/invoices/${invoice.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(result.value),
-    });
-    const body = (await response.json().catch(() => ({}))) as {
-      invoice?: InvoiceListItem;
-      document?: InvoiceDocumentSummary;
-      error?: string;
-    };
-    if (!response.ok || !body.invoice) {
-      await Swal.fire({
-        title: "No se pudo actualizar",
-        text: body.error ?? "Intentá nuevamente.",
-        icon: "error",
-        background: "#18181b",
-        color: "#fafafa",
-      });
-      return;
-    }
-    setInvoices((current) =>
-      current.map((item) =>
-        item.id === invoice.id
-          ? { ...item, ...body.invoice!, document: body.document ?? item.document }
-          : item,
-      ),
-    );
-    await Swal.fire({
-      title: "Registro actualizado",
-      text: body.document
-        ? "El DOCX/PDF se regeneró con los datos corregidos."
-        : "Los documentos emitidos conservan su versión histórica.",
-      icon: "success",
-      timer: 1600,
-      showConfirmButton: false,
-      background: "#18181b",
-      color: "#fafafa",
-    });
+    const r = await scopedFetch(`/api/admin/invoices/${invoice.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(result.value) });
+    const body = (await r.json().catch(() => ({}))) as { invoice?: InvoiceListItem; document?: InvoiceDocumentSummary; error?: string };
+    if (!r.ok || !body.invoice) { await Swal.fire({ title: "Error", text: body.error, icon: "error", background: "#18181b", color: "#fafafa" }); return; }
+    setInvoices((c) => c.map((i) => i.id === invoice.id ? { ...i, ...body.invoice!, document: body.document ?? i.document } : i));
+    await Swal.fire({ title: "Actualizado", icon: "success", timer: 1400, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
   }
 
   return (
-    <section className="min-w-0">
-      <PageHeader
-        eyebrow="Operación documental"
-        title="Comprobantes internos"
-        description="Generá documentos trazables desde pedidos y conservá el DOCX/PDF exacto de cada emisión."
-        section="facturacion"
-        actions={
-          <Link
-            className="btn"
-            href={adminHrefFromPathname(pathname, "/admin/configuracion/comprobantes/plantillas")}
-          >
-            Configurar plantillas Word
-          </Link>
-        }
-      />
-
-      <div className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
-        Estos documentos son internos. Los tipos Factura A/B son diseños visuales y no representan emisión
-        fiscal, CAE ni integración con un proveedor autorizado.
+    <div className="min-h-screen" style={{ background: "var(--admin-background)" }}>
+      {/* Header */}
+      <div style={{ background: "var(--admin-surface)" }} className="relative">
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), var(--admin-primary), transparent)" }} />
+        <div className="mx-auto max-w-[1600px] px-8 pt-6 pb-5">
+          <nav className="mb-5 flex items-center gap-2 text-xs" style={{ color: "var(--admin-muted)" }}>
+            <Link href={href("/admin")} className="transition-colors hover:opacity-70">Inicio</Link>
+            <span className="opacity-40">/</span>
+            <span className="font-medium" style={{ color: "var(--admin-text)" }}>Facturacion</span>
+          </nav>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight leading-none" style={{ color: "var(--admin-text)" }}>Facturacion</h1>
+              <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>Comprobantes internos y gestion documental</p>
+            </div>
+            <button type="button" className="rounded-lg px-4 py-2 text-xs font-semibold transition-all hover:opacity-80" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }} onClick={() => setShowConfig(true)}>
+              Configuracion del emisor
+            </button>
+          </div>
+        </div>
       </div>
 
-      <section className="card mb-6 min-w-0 p-5 sm:p-7">
-        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-xl font-black">Emisor del comprobante</h2>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">
-              Estos datos completan los campos business.* de las plantillas Word (nombre, CUIT, domicilio y
-              teléfono).
-            </p>
+      {/* Toolbar */}
+      <div className="border-b" style={{ borderColor: "var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface) 60%, var(--admin-background))" }}>
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center gap-3 px-8 py-3">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--admin-muted)" }} />
+            <input className="input w-full py-2 pl-9 pr-3 text-sm rounded-lg" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por numero, cliente o pedido..." />
           </div>
-          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">
-            Configuración
-          </span>
+          <select className="input py-2 px-3 text-xs rounded-lg" style={{ minWidth: "130px" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">Todos</option>
+            {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          <span className="ml-auto text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</span>
         </div>
-        <form className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2" onSubmit={saveIssuerSettings}>
-          <label className="text-sm font-bold">
-            Nombre del negocio
-            <input
-              className="input mt-2"
-              name="issuerName"
-              maxLength={180}
-              defaultValue={settings?.issuerName ?? ""}
-              placeholder="Nombre que se estampa en el comprobante"
-            />
-          </label>
-          <label className="text-sm font-bold">
-            CUIT / documento
-            <input
-              className="input mt-2"
-              name="taxId"
-              maxLength={40}
-              defaultValue={settings?.taxId ?? ""}
-              placeholder="Ej. 30-12345678-9"
-            />
-          </label>
-          <label className="text-sm font-bold">
-            Domicilio
-            <input
-              className="input mt-2"
-              name="address"
-              maxLength={300}
-              defaultValue={settings?.address ?? ""}
-              placeholder="Calle y número"
-            />
-          </label>
-          <label className="text-sm font-bold">
-            Localidad
-            <input
-              className="input mt-2"
-              name="city"
-              maxLength={120}
-              defaultValue={settings?.city ?? ""}
-              placeholder="Ciudad"
-            />
-          </label>
-          <label className="text-sm font-bold sm:col-span-2">
-            Condiciones o pie de comprobante
-            <textarea
-              className="input mt-2 min-h-24"
-              name="terms"
-              maxLength={3000}
-              defaultValue={settings?.terms ?? ""}
-              placeholder="Ej. Gracias por tu compra. Este documento es interno y no fiscal."
-            />
-          </label>
-          <div className="flex min-w-0 flex-wrap items-center gap-3 sm:col-span-2">
-            <button className="btn" disabled={savingSettings} type="submit">
-              {savingSettings ? "Guardando…" : "Guardar emisor"}
-            </button>
-            {!settings?.issuerName && !settings?.taxId && !settings?.address && !settings?.city && (
-              <p className="text-xs text-[var(--admin-muted)]">
-                Sin datos cargados: se usa el nombre del negocio y el monograma por defecto.
-              </p>
-            )}
-          </div>
-        </form>
-      </section>
+      </div>
 
-      <section className="card min-w-0 p-5 sm:p-7">
-        <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-xl font-black">Pedidos sin comprobante</h2>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">
-              La plantilla activa se completa con los datos y queda congelada en el historial.
-            </p>
-          </div>
-          <label className="w-full text-sm font-bold sm:w-auto sm:min-w-72">
-            Tipo visual/documental
-            <select
-              className="input mt-2"
-              value={documentType}
-              onChange={(event) => setDocumentType(event.target.value as DocumentType)}
-            >
-              {documentTypes.map((type) => (
-                <option value={type} key={type}>
-                  {documentTypeLabels[type]}
-                </option>
-              ))}
-            </select>
-          </label>
+      {/* KPIs */}
+      <div className="mx-auto max-w-[1600px] px-8 pt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Kpi label="Total" value={String(invoices.length)} />
+          <Kpi label="Borradores" value={String(draftCount)} color={draftCount > 0 ? "var(--admin-warning)" : undefined} />
+          <Kpi label="Emitidos" value={String(issuedCount)} color="var(--admin-success)" />
+          <Kpi label="Anulados" value={String(cancelledCount)} />
         </div>
-        <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {orders.map((order) => (
-            <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[.03] p-4" key={order.id}>
-              <strong className="break-words">{order.reference}</strong>
-              <p className="mt-1 break-words text-sm text-[var(--admin-muted)]">{order.customerName}</p>
-              <p className="mt-3 text-xl font-black">{money(order.total, order.currency)}</p>
-              <button
-                className="btn mt-4 w-full"
-                disabled={busyOrder === order.id}
-                onClick={() => void createInvoice(order.id)}
-                type="button"
-              >
-                {busyOrder === order.id ? "Generando…" : "Crear comprobante"}
-              </button>
-            </article>
-          ))}
-          {!orders.length && (
-            <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-[var(--admin-muted)] sm:col-span-2 xl:col-span-3">
-              Todos los pedidos visibles ya tienen comprobante.
-            </p>
+      </div>
+
+      {/* Pending Orders Toggle */}
+      {orders.length > 0 && (
+        <div className="mx-auto max-w-[1600px] px-8 pt-4">
+          <button type="button" className="flex items-center gap-2 text-xs font-bold transition-colors" style={{ color: "var(--admin-primary)" }} onClick={() => setShowPending(!showPending)}>
+            <Icon name="arrow-down" className="text-[10px] transition-transform duration-200" style={{ transform: showPending ? "rotate(180deg)" : undefined }} />
+            Pedidos sin comprobante ({orders.length})
+          </button>
+          {showPending && (
+            <div className="mt-3 rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))" }} className="text-[10px] uppercase tracking-wider">
+                      <th className="px-4 py-2.5 font-semibold" style={{ color: "var(--admin-muted)" }}>Pedido</th>
+                      <th className="px-4 py-2.5 font-semibold" style={{ color: "var(--admin-muted)" }}>Cliente</th>
+                      <th className="px-4 py-2.5 font-semibold" style={{ color: "var(--admin-muted)" }}>Fecha</th>
+                      <th className="px-4 py-2.5 text-right font-semibold" style={{ color: "var(--admin-muted)" }}>Total</th>
+                      <th className="px-4 py-2.5 font-semibold" style={{ color: "var(--admin-muted)" }}>Tipo</th>
+                      <th className="px-4 py-2.5 w-28"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o, idx) => (
+                      <tr key={o.id} style={{ borderBottom: "1px solid var(--admin-border)", background: idx % 2 === 1 ? "color-mix(in srgb, var(--admin-surface-elevated) 15%, var(--admin-surface))" : undefined }}>
+                        <td className="px-4 py-2 font-semibold" style={{ color: "var(--admin-text)" }}>{o.reference}</td>
+                        <td className="px-4 py-2" style={{ color: "var(--admin-muted)" }}>{o.customerName}</td>
+                        <td className="px-4 py-2" style={{ color: "var(--admin-muted)" }}>{new Date(o.createdAt).toLocaleDateString("es-AR")}</td>
+                        <td className="px-4 py-2 text-right font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{fmt(o.total, o.currency)}</td>
+                        <td className="px-4 py-2">
+                          <select className="input py-1 px-2 text-[10px] rounded-lg" style={{ minWidth: "120px" }} value={documentType} onChange={(e) => setDocumentType(e.target.value as DocumentType)}>
+                            {documentTypes.map((t) => <option key={t} value={t}>{documentTypeLabels[t]}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-4 py-2">
+                          <button type="button" className="rounded-lg px-3 py-1 text-[10px] font-bold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} disabled={busyOrder === o.id} onClick={() => void createInvoice(o.id)}>
+                            {busyOrder === o.id ? "Creando..." : "Crear"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
-      </section>
+      )}
 
-      <section className="mt-6 grid min-w-0 gap-4 lg:grid-cols-2">
-        {invoices.map((invoice) => {
-          const fileStatus = documentStatus(invoice.document);
-          const type = documentTypes.includes(invoice.documentType as DocumentType)
-            ? (invoice.documentType as DocumentType)
-            : "internal_receipt";
-          return (
-            <article className="card min-w-0 p-5" key={invoice.id}>
-              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <strong className="block break-words text-lg">{invoice.number}</strong>
-                  <p className="mt-1 break-words text-sm text-[var(--admin-muted)]">
-                    Pedido {invoice.order.reference} · {invoice.customerName}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--admin-muted)]">
-                    {documentTypeLabels[type]}
-                    {invoice.branch ? ` · ${invoice.branch.name}` : ""}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-black uppercase">
-                    {invoice.status}
-                  </span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-black ${fileStatus.className}`}>
-                    {fileStatus.label}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-4 text-2xl font-black">{money(invoice.total, invoice.currency)}</p>
-              {invoice.document?.conversionMessage && invoice.document.pdfStatus !== "ready" && (
-                <p className="mt-3 rounded-xl bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200">
-                  {invoice.document.conversionMessage}
-                </p>
-              )}
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button className="btn btn-secondary" onClick={() => void editInvoice(invoice)} type="button">
-                  Editar registro
-                </button>
-                {!invoice.document && (
-                  <button
-                    className="btn btn-secondary"
-                    disabled={busyDocument === invoice.id}
-                    onClick={() => void generateDocument(invoice)}
-                    type="button"
-                  >
-                    {busyDocument === invoice.id ? "Generando…" : "Generar documento"}
-                  </button>
-                )}
-                <Link
-                  className="btn"
-                  href={adminHrefFromPathname(pathname, `/admin/facturacion/${invoice.id}`)}
-                >
-                  Abrir documento
-                </Link>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-    </section>
+      {/* Main Table */}
+      <div className="mx-auto max-w-[1600px] px-8 py-6">
+        {filtered.length === 0 ? (
+          <div className="rounded-xl p-12 text-center" style={{ border: "1px dashed var(--admin-border)" }}>
+            <Icon name="receipt" className="mx-auto text-3xl mb-3" style={{ color: "var(--admin-muted)", opacity: 0.4 }} />
+            <h3 className="text-lg font-bold" style={{ color: "var(--admin-text)" }}>No hay comprobantes</h3>
+            <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>Crea un comprobante desde un pedido pendiente.</p>
+          </div>
+        ) : (
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))" }} className="text-[10px] uppercase tracking-wider sticky top-0 z-10">
+                    <Th>Nro</Th><Th>Pedido</Th><Th>Cliente</Th><Th>Tipo</Th><Th>Fecha</Th><Th>Sucursal</Th><Th r>Total</Th><Th>Estado</Th><Th>Documento</Th><Th>Acciones</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((inv, idx) => {
+                    const st = STATUS_CFG[inv.status] ?? STATUS_CFG.draft;
+                    const ds = docStatus(inv.document);
+                    return (
+                      <tr key={inv.id} className="transition-colors" style={{ borderBottom: "1px solid var(--admin-border)", background: idx % 2 === 1 ? "color-mix(in srgb, var(--admin-surface-elevated) 15%, var(--admin-surface))" : undefined }}>
+                        <Td><Link href={href(`/admin/facturacion/${inv.id}`) as never} className="font-bold transition-colors" style={{ color: "var(--admin-primary)" }} onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"} onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>{inv.number || "Sin numero"}</Link></Td>
+                        <Td muted>{inv.order.reference}</Td>
+                        <Td bold>{inv.customerName}</Td>
+                        <Td muted>{documentTypeLabels[(inv.documentType as DocumentType) ?? "internal_receipt"] ?? inv.documentType}</Td>
+                        <Td muted>{new Date(inv.createdAt).toLocaleDateString("es-AR")}</Td>
+                        <Td muted>{inv.branch?.name ?? "—"}</Td>
+                        <Td r bold>{fmt(inv.total, inv.currency)}</Td>
+                        <Td><span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: st.bg, color: st.color }}>{st.label}</span></Td>
+                        <Td><span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: ds.bg, color: ds.color }}>{ds.label}</span></Td>
+                        <Td>
+                          <div className="flex gap-1">
+                            <button type="button" className="rounded px-2 py-1 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-muted)" }} onClick={() => void editInvoice(inv)} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Editar</button>
+                            {!inv.document && <button type="button" className="rounded px-2 py-1 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-primary)" }} disabled={busyDocument === inv.id} onClick={() => void generateDocument(inv)}>{busyDocument === inv.id ? "..." : "Generar"}</button>}
+                            <Link href={href(`/admin/facturacion/${inv.id}`) as never} className="rounded px-2 py-1 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-muted)" }} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Abrir</Link>
+                          </div>
+                        </Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Config Modal */}
+      {showConfig && <ConfigModal settings={settings} saving={savingSettings} onSave={saveIssuerSettings} onClose={() => setShowConfig(false)} />}
+    </div>
   );
+}
+
+function Th({ children, r }: { children: React.ReactNode; r?: boolean }) { return <th className="px-5 py-3 font-semibold" style={{ textAlign: r ? "right" : "left", color: "var(--admin-muted)" }}>{children}</th>; }
+function Td({ children, r, bold, muted }: { children: React.ReactNode; r?: boolean; bold?: boolean; muted?: boolean }) { return <td className="px-5 py-3" style={{ textAlign: r ? "right" : "left", fontWeight: bold ? 700 : 400, color: muted ? "var(--admin-muted)" : "var(--admin-text)" }}>{children}</td>; }
+function Kpi({ label, value, color }: { label: string; value: string; color?: string }) {
+  return <div className="rounded-xl px-4 py-3" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>{label}</p>
+    <p className="text-xl font-extrabold tabular-nums mt-1" style={{ color: color || "var(--admin-text)" }}>{value}</p>
+  </div>;
+}
+
+function ConfigModal({ settings, saving, onSave, onClose }: { settings: InvoiceSettingsData | null; saving: boolean; onSave: (e: React.FormEvent<HTMLFormElement>) => void; onClose: () => void }) {
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k); }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", maxHeight: "85vh" }} onClick={(e) => e.stopPropagation()}>
+        <div className="relative px-6 pt-5 pb-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), transparent)" }} />
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold" style={{ color: "var(--admin-text)" }}>Configuracion del emisor</h2>
+            <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition-colors" style={{ color: "var(--admin-muted)" }} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-muted) 10%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}><Icon name="x" className="text-sm" /></button>
+          </div>
+        </div>
+        <form className="overflow-y-auto p-6 space-y-4" style={{ maxHeight: "calc(85vh - 60px)" }} onSubmit={onSave}>
+          <p className="text-xs" style={{ color: "var(--admin-muted)" }}>Estos datos completan los campos business.* de las plantillas Word.</p>
+          <Field label="Nombre del negocio" name="issuerName" defaultValue={settings?.issuerName ?? ""} placeholder="Nombre en el comprobante" />
+          <Field label="CUIT / documento" name="taxId" defaultValue={settings?.taxId ?? ""} placeholder="Ej. 30-12345678-9" />
+          <Field label="Domicilio" name="address" defaultValue={settings?.address ?? ""} placeholder="Calle y numero" />
+          <Field label="Localidad" name="city" defaultValue={settings?.city ?? ""} placeholder="Ciudad" />
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--admin-muted)" }}>Condiciones / pie</label>
+            <textarea className="input w-full min-h-20 text-sm rounded-lg" name="terms" maxLength={3000} defaultValue={settings?.terms ?? ""} placeholder="Texto pie del comprobante..." />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }} onClick={onClose}>Cancelar</button>
+            <button type="submit" className="rounded-lg px-4 py-1.5 text-xs font-bold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, name, defaultValue, placeholder }: { label: string; name: string; defaultValue: string; placeholder?: string }) {
+  return <div><label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--admin-muted)" }}>{label}</label><input className="input w-full py-1.5 text-sm rounded-lg" name={name} defaultValue={defaultValue} placeholder={placeholder} /></div>;
 }

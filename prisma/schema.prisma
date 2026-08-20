@@ -2422,6 +2422,7 @@ model PurchaseOrder {
   number            String              @db.VarChar(24)
   status            String              @default("draft") @db.VarChar(24)
   orderDate         DateTime            @default(now())
+  postingDate       DateTime            @default(now())
   expectedDate      DateTime?
   externalReference String?             @db.VarChar(120)
   notes             String?             @db.Text

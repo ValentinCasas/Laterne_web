@@ -48,16 +48,21 @@ type OrderInvoice = {
   externalNumber?: string | null;
 };
 
+type SupplierOption = { id: number; name: string; paymentTerms?: string | null };
+type BranchOption = { id: number; name: string };
+
 type OrderDetail = {
   id: number;
   number: string;
   status: string;
   orderDate: string;
+  postingDate?: string;
   expectedDate?: string | null;
   externalReference?: string | null;
   notes?: string | null;
-  supplier: { id: number; name: string; paymentTerms?: string | null };
-  branch: { id: number; name: string };
+  createdAt: string;
+  supplier: SupplierOption;
+  branch: BranchOption;
   createdBy?: { id: number; name: string } | null;
   items: OrderItem[];
   receipts: OrderReceipt[];
@@ -87,7 +92,15 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
   const [showReceiptsModal, setShowReceiptsModal] = useState(false);
   const [showInvoicesModal, setShowInvoicesModal] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
-  const [headerDraft, setHeaderDraft] = useState({ expectedDate: order.expectedDate ?? "", externalReference: order.externalReference ?? "", notes: order.notes ?? "" });
+  const [headerDraft, setHeaderDraft] = useState({
+    supplierId: order.supplier.id,
+    branchId: order.branch.id,
+    orderDate: order.orderDate ? order.orderDate.slice(0, 10) : "",
+    postingDate: (order.postingDate ?? order.orderDate) ? (order.postingDate ?? order.orderDate).slice(0, 10) : "",
+    expectedDate: order.expectedDate ?? "",
+    externalReference: order.externalReference ?? "",
+    notes: order.notes ?? "",
+  });
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ general: true, lineas: true, facturacion: false, envio: false, notas: false });
   const [factBoxVisible, setFactBoxVisible] = useState(true);
 
@@ -124,8 +137,23 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
   async function saveHeader() {
     setSaving(true);
     try {
-      await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ expectedDate: headerDraft.expectedDate || null, externalReference: headerDraft.externalReference || null, notes: headerDraft.notes || null }) });
+      const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0) }; });
+      await api(`/api/admin/compras/${order.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          supplierId: headerDraft.supplierId !== order.supplier.id ? headerDraft.supplierId : undefined,
+          branchId: headerDraft.branchId !== order.branch.id ? headerDraft.branchId : undefined,
+          orderDate: headerDraft.orderDate || undefined,
+          postingDate: headerDraft.postingDate || undefined,
+          expectedDate: headerDraft.expectedDate || null,
+          externalReference: headerDraft.externalReference || null,
+          notes: headerDraft.notes || null,
+          lines,
+        }),
+      });
       setEditingHeader(false);
+      setDirty(false);
+      await Swal.fire({ title: "Cambios guardados", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       router.refresh();
     } catch (reason) { await showError("No se pudo guardar", reason); } finally { setSaving(false); }
   }
@@ -134,7 +162,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
     setSaving(true);
     try {
       const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0) }; });
-      await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ lines }) });
+      await api(`/api/admin/compras/${order.id}`, { method: "PUT", body: JSON.stringify({ lines }) });
       setDirty(false);
       await Swal.fire({ title: "Cambios guardados", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       router.refresh();
@@ -226,8 +254,17 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
         <div className="mx-auto max-w-[1600px] flex flex-wrap items-center px-8 py-2 text-xs gap-0">
           {canEdit && (
             <ActionGroup label="Pedido">
-              <ActionBtn label={editingHeader ? "Guardando..." : "Editar"} icon="edit" onClick={() => editingHeader ? void saveHeader() : setEditingHeader(true)} disabled={busy || saving} />
-              {dirty && <ActionBtn label="Guardar" icon="save" onClick={() => void saveLines()} disabled={saving} accent />}
+              {editingHeader ? (
+                <>
+                  <ActionBtn label={saving ? "Guardando..." : "Guardar"} icon="save" onClick={() => void saveHeader()} disabled={saving} accent />
+                  <ActionBtn label="Cancelar" icon="x" onClick={() => { setEditingHeader(false); setDirty(false); router.refresh(); }} disabled={saving} />
+                </>
+              ) : (
+                <>
+                  <ActionBtn label="Editar" icon="edit" onClick={() => setEditingHeader(true)} disabled={busy || saving} />
+                  {dirty && <ActionBtn label="Guardar" icon="save" onClick={() => void saveLines()} disabled={saving} accent />}
+                </>
+              )}
               <ActionBtn label="Enviar" icon="external-link" onClick={() => void changeStatus("sent")} disabled={busy} />
             </ActionGroup>
           )}
@@ -265,6 +302,11 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
               <FieldRow label="Estado" value={purchaseStatusLabel(order.status)} />
               {editingHeader ? (
                 <>
+                  <FieldSelect label="Sucursal" value={String(headerDraft.branchId)} onChange={(v) => setHeaderDraft((d) => ({ ...d, branchId: Number(v) }))}>
+                    <option value={order.branch.id}>{order.branch.name}</option>
+                  </FieldSelect>
+                  <FieldInput label="Fecha documento" type="date" value={headerDraft.orderDate} onChange={(v) => setHeaderDraft((d) => ({ ...d, orderDate: v }))} />
+                  <FieldInput label="Fecha registro" type="date" value={headerDraft.postingDate} onChange={(v) => setHeaderDraft((d) => ({ ...d, postingDate: v }))} />
                   <FieldInput label="Recepción prevista" type="date" value={headerDraft.expectedDate} onChange={(v) => setHeaderDraft((d) => ({ ...d, expectedDate: v }))} />
                   <FieldInput label="Referencia proveedor" value={headerDraft.externalReference} onChange={(v) => setHeaderDraft((d) => ({ ...d, externalReference: v }))} placeholder="Nº remito, OC proveedor..." />
                 </>
@@ -274,7 +316,8 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                   {order.externalReference && <FieldRow label="Referencia proveedor" value={order.externalReference} />}
                 </>
               )}
-              <FieldRow label="Fecha pedido" value={dateLabel(order.orderDate)} />
+              <FieldRow label="Fecha documento" value={dateLabel(order.orderDate)} />
+              <FieldRow label="Fecha registro" value={dateLabel(order.postingDate ?? order.createdAt)} />
               {order.supplier.paymentTerms && <FieldRow label="Condiciones de pago" value={order.supplier.paymentTerms} />}
               <FieldRow label="Sucursal" value={order.branch.name} />
               <FieldRow label="Moneda" value="ARS" />
@@ -371,13 +414,11 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
           </CollapsibleSection>
 
           {/* NOTAS */}
-          {(order.notes || editingHeader) && (
-            <CollapsibleSection title="Notas" isOpen={openSections.notas} onToggle={() => toggleSection("notas")}>
+          <CollapsibleSection title="Notas" isOpen={openSections.notas} onToggle={() => toggleSection("notas")}>
               <div className="p-6">
-                {editingHeader ? <textarea className="input min-h-20" value={headerDraft.notes} onChange={(e) => setHeaderDraft((d) => ({ ...d, notes: e.target.value }))} placeholder="Notas del pedido..." /> : <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--admin-muted)" }}>{order.notes}</p>}
+                {editingHeader ? <textarea className="input min-h-20 w-full text-sm rounded-lg" value={headerDraft.notes} onChange={(e) => setHeaderDraft((d) => ({ ...d, notes: e.target.value }))} placeholder="Notas del pedido..." /> : <p className="text-sm whitespace-pre-wrap" style={{ color: order.notes ? "var(--admin-muted)" : "var(--admin-border)" }}>{order.notes || "Sin notas"}</p>}
               </div>
             </CollapsibleSection>
-          )}
         </div>
 
         {/* FactBox */}
@@ -490,6 +531,10 @@ function FieldRow({ label, value }: { label: string; value: string }) {
 
 function FieldInput({ label, value, type, placeholder, onChange }: { label: string; value: string; type?: string; placeholder?: string; onChange: (v: string) => void }) {
   return <div><p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--admin-muted)" }}>{label}</p><input className="input w-full py-1.5 text-sm rounded-lg" type={type ?? "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>;
+}
+
+function FieldSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+  return <div><p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--admin-muted)" }}>{label}</p><select className="input w-full py-1.5 text-sm rounded-lg" value={value} onChange={(e) => onChange(e.target.value)}>{children}</select></div>;
 }
 
 function FactBoxSection({ title, children }: { title: string; children: React.ReactNode }) {

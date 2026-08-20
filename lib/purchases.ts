@@ -226,6 +226,7 @@ export async function updatePurchaseOrder(
     supplierId?: number;
     branchId?: number;
     orderDate?: string;
+    postingDate?: string;
     expectedDate?: string | null;
     externalReference?: string;
     notes?: string;
@@ -242,6 +243,18 @@ export async function updatePurchaseOrder(
 
     const lines = input.lines?.map((line) => ({ ...line, ...validateOrderLine(line) }));
     if (lines && !lines.length) throw new PurchaseError("Agregá al menos un producto al pedido", 400);
+
+    // Validate that new quantities don't go below receivedQuantity (BC-style safety).
+    if (lines) {
+      const existingItems = await transaction.purchaseOrderItem.findMany({ where: { orderId }, select: { productId: true, receivedQuantity: true } });
+      const receivedByProduct = new Map(existingItems.map((i) => [i.productId, Number(i.receivedQuantity)]));
+      for (const line of lines) {
+        const received = receivedByProduct.get(line.productId) ?? 0;
+        if (line.quantity < received) {
+          throw new PurchaseError(`La cantidad de un producto no puede ser menor a la ya recibida (${received})`, 400);
+        }
+      }
+    }
 
     await transaction.purchaseOrderItem.deleteMany({ where: { orderId } });
     if (lines) {
@@ -264,6 +277,7 @@ export async function updatePurchaseOrder(
         ...(input.supplierId ? { supplierId: input.supplierId } : {}),
         ...(input.branchId ? { branchId: input.branchId } : {}),
         ...(input.orderDate ? { orderDate: new Date(input.orderDate) } : {}),
+        ...(input.postingDate !== undefined ? { postingDate: input.postingDate ? new Date(input.postingDate) : new Date() } : {}),
         ...(input.expectedDate !== undefined ? { expectedDate: input.expectedDate ? new Date(input.expectedDate) : null } : {}),
         ...(input.externalReference !== undefined ? { externalReference: input.externalReference.trim() || null } : {}),
         ...(input.notes !== undefined ? { notes: input.notes.trim() || null } : {}),
