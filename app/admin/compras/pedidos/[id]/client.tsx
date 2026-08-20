@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import { Icon } from "@/components/admin/ui/icons";
 import { dateLabel, money } from "@/lib/helpers";
@@ -67,9 +67,8 @@ type OrderDetail = {
 /* ────────────────────────── Main Component ────────────────────────── */
 
 /**
- * @summary Ficha de pedido de compra estilo Business Central.
- * Incluye barra de acciones, FastTabs, líneas editables (qty to receive/invoice),
- * modales contextuales para albaranes/facturas, y FactBox lateral.
+ * @summary Ficha de pedido de compra — UI moderna estilo ERP premium.
+ * Lógica: FastTabs, líneas editables, modales contextuales, FactBox lateral.
  */
 export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDetail; currency: string }) {
   const pathname = usePathname();
@@ -77,15 +76,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
   const href = useCallback((path: string) => adminHrefFromPathname(pathname, path), [pathname]);
   const router = useRouter();
 
-  // ── Editable line data (draft only) ──
-  const [lineDrafts, setLineDrafts] = useState<Record<number, {
-    quantity: string;
-    unitCost: string;
-    discountPercent: string;
-    qtyToReceive: string;
-    qtyToInvoice: string;
-  }>>({});
-
+  const [lineDrafts, setLineDrafts] = useState<Record<number, { quantity: string; unitCost: string; discountPercent: string; qtyToReceive: string; qtyToInvoice: string }>>({});
   const [dirty, setDirty] = useState(false);
   const [receivingFor, setReceivingFor] = useState<number | null>(null);
   const [receiveQty, setReceiveQty] = useState("");
@@ -95,14 +86,10 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
   const [busy, setBusy] = useState(false);
   const [showReceiptsModal, setShowReceiptsModal] = useState(false);
   const [showInvoicesModal, setShowInvoicesModal] = useState(false);
-
-  // Edit mode for header
   const [editingHeader, setEditingHeader] = useState(false);
-  const [headerDraft, setHeaderDraft] = useState({
-    expectedDate: order.expectedDate ?? "",
-    externalReference: order.externalReference ?? "",
-    notes: order.notes ?? "",
-  });
+  const [headerDraft, setHeaderDraft] = useState({ expectedDate: order.expectedDate ?? "", externalReference: order.externalReference ?? "", notes: order.notes ?? "" });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ general: true, lineas: true, facturacion: false, envio: false, notas: false });
+  const [factBoxVisible, setFactBoxVisible] = useState(true);
 
   const canReceive = !["cancelled", "closed"].includes(order.status);
   const canEdit = order.status === "draft";
@@ -110,310 +97,176 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
   const canClose = ["received", "partially_received", "sent", "draft"].includes(order.status);
   const readOnly = !canEdit;
 
-  // ── Initialize line drafts ──
   useEffect(() => {
     const drafts: typeof lineDrafts = {};
     for (const item of order.items) {
       const ordered = Number(item.quantity) || 0;
       const received = Number(item.receivedQuantity) || 0;
       const invoiced = Number(item.invoicedQuantity) || 0;
-      drafts[item.id] = {
-        quantity: String(ordered),
-        unitCost: String(Number(item.unitCost) || 0),
-        discountPercent: String(Number(item.discountPercent) || 0),
-        qtyToReceive: String(Math.max(0, ordered - received)),
-        qtyToInvoice: String(Math.max(0, ordered - invoiced)),
-      };
+      drafts[item.id] = { quantity: String(ordered), unitCost: String(Number(item.unitCost) || 0), discountPercent: String(Number(item.discountPercent) || 0), qtyToReceive: String(Math.max(0, ordered - received)), qtyToInvoice: String(Math.max(0, ordered - invoiced)) };
     }
     setLineDrafts(drafts);
   }, [order.items]);
 
-  // ── Highlight line from query param ──
   const highlightLineId = searchParams.get("line");
-
-  // ── Derived stats ──
   const totalLines = order.items.length;
   const totalReceipts = order.receipts.length;
   const totalInvoices = order.invoices.length;
   const totalOrdered = order.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0), 0);
-
   const linesFullyReceived = order.items.filter((item) => (Number(item.receivedQuantity) || 0) >= (Number(item.quantity) || 0)).length;
   const linesFullyInvoiced = order.items.filter((item) => (Number(item.invoicedQuantity) || 0) >= (Number(item.quantity) || 0)).length;
   const receiptStatus = linesFullyReceived === totalLines ? "complete" : linesFullyReceived > 0 ? "partial" : "none";
   const invoiceStatus = totalLines > 0 ? (linesFullyInvoiced === totalLines ? "complete" : linesFullyInvoiced > 0 ? "partial" : "none") : "none";
   const receiptStatusLabel = receiptStatus === "complete" ? "Completa" : receiptStatus === "partial" ? "Parcial" : "Sin recibir";
   const invoiceStatusLabel = invoiceStatus === "complete" ? "Completa" : invoiceStatus === "partial" ? "Parcial" : "Sin facturar";
-
   const hasPendingReceipt = order.items.some((item) => (Number(item.quantity) || 0) - (Number(item.receivedQuantity) || 0) > 0);
-  const hasPendingInvoice = order.items.some((item) => (Number(item.quantity) || 0) - (Number(item.invoicedQuantity) || 0) > 0);
 
-  /* ── Save header edits ── */
   async function saveHeader() {
     setSaving(true);
     try {
-      await api(`/api/admin/compras/${order.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          expectedDate: headerDraft.expectedDate || null,
-          externalReference: headerDraft.externalReference || null,
-          notes: headerDraft.notes || null,
-        }),
-      });
+      await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ expectedDate: headerDraft.expectedDate || null, externalReference: headerDraft.externalReference || null, notes: headerDraft.notes || null }) });
       setEditingHeader(false);
       router.refresh();
-    } catch (reason) {
-      await showError("No se pudo guardar", reason);
-    } finally {
-      setSaving(false);
-    }
+    } catch (reason) { await showError("No se pudo guardar", reason); } finally { setSaving(false); }
   }
 
-  /* ── Save line edits (draft only) ── */
   async function saveLines() {
     setSaving(true);
     try {
-      const lines = order.items.map((item) => {
-        const d = lineDrafts[item.id];
-        return {
-          productId: item.product.id,
-          quantity: Number(d?.quantity || item.quantity),
-          unit: item.unit,
-          unitCost: Number(d?.unitCost || item.unitCost),
-          discountPercent: Number(d?.discountPercent || 0),
-          taxPercent: Number(item.taxPercent || 0),
-        };
-      });
-      await api(`/api/admin/compras/${order.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ lines }),
-      });
+      const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0) }; });
+      await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ lines }) });
       setDirty(false);
       await Swal.fire({ title: "Cambios guardados", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       router.refresh();
-    } catch (reason) {
-      await showError("No se pudieron guardar los cambios", reason);
-    } finally {
-      setSaving(false);
-    }
+    } catch (reason) { await showError("No se pudieron guardar los cambios", reason); } finally { setSaving(false); }
   }
 
-  /* ── Change order status ── */
   async function changeStatus(nextStatus: string) {
-    const confirmations: Record<string, { title: string; text: string; icon: "warning" | "info" }> = {
-      sent: { title: "Enviar pedido", text: `¿Marcar ${order.number} como enviado al proveedor?`, icon: "info" },
-      closed: {
-        title: "Cerrar pedido",
-        text: `¿Cerrar ${order.number}? No se recibirán más cantidades ni se podrán crear recepciones nuevas.`,
-        icon: "warning",
-      },
-      cancelled: {
-        title: "Cancelar pedido",
-        text: `¿Cancelar ${order.number}? Esta acción no se puede revertir. Los albaranes y facturas ya registrados no se eliminan.`,
-        icon: "warning",
-      },
+    const c: Record<string, { title: string; text: string; icon: "warning" | "info" }> = {
+      sent: { title: "Enviar pedido", text: `Marcar ${order.number} como enviado al proveedor.`, icon: "info" },
+      closed: { title: "Cerrar pedido", text: `Cerrar ${order.number}. No se recibirán más cantidades.`, icon: "warning" },
+      cancelled: { title: "Cancelar pedido", text: `Cancelar ${order.number}. No se puede revertir. Los albaranes y facturas existentes no se eliminan.`, icon: "warning" },
     };
-    const c = confirmations[nextStatus];
-    if (!c) return;
-    const result = await Swal.fire({
-      title: c.title, text: c.text, icon: c.icon,
-      showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Cancelar",
-      confirmButtonColor: nextStatus === "cancelled" ? "#ef4444" : "#ec4899",
-      background: "#18181b", color: "#fafafa", reverseButtons: true,
-    });
+    const conf = c[nextStatus]; if (!conf) return;
+    const result = await Swal.fire({ title: conf.title, text: conf.text, icon: conf.icon, showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Cancelar", confirmButtonColor: nextStatus === "cancelled" ? "#ef4444" : "var(--admin-primary-strong)", background: "#18181b", color: "#fafafa", reverseButtons: true });
     if (!result.isConfirmed) return;
     setBusy(true);
-    try {
-      await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) });
-      router.refresh();
-    } catch (reason) {
-      await showError("No se pudo cambiar el estado", reason);
-    } finally {
-      setBusy(false);
-    }
+    try { await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) }); router.refresh(); }
+    catch (reason) { await showError("No se pudo cambiar el estado", reason); } finally { setBusy(false); }
   }
 
-  /* ── Delete order (draft only) ── */
   async function remove() {
-    const result = await Swal.fire({
-      title: "¿Eliminar pedido?",
-      text: `Vas a eliminar ${order.number}. Solo es posible si está en Borrador.`,
-      icon: "warning", showCancelButton: true, confirmButtonText: "Eliminar", cancelButtonText: "Cancelar",
-      confirmButtonColor: "#ef4444", background: "#18181b", color: "#fafafa", reverseButtons: true,
-    });
+    const result = await Swal.fire({ title: "¿Eliminar pedido?", text: `Vas a eliminar ${order.number}. Solo es posible si está en Borrador.`, icon: "warning", showCancelButton: true, confirmButtonText: "Eliminar", cancelButtonText: "Cancelar", confirmButtonColor: "#ef4444", background: "#18181b", color: "#fafafa", reverseButtons: true });
     if (!result.isConfirmed) return;
     setBusy(true);
-    try {
-      await api(`/api/admin/compras/${order.id}`, { method: "DELETE" });
-      router.push(href("/admin/compras/pedidos"));
-    } catch (reason) {
-      await showError("No se pudo eliminar el pedido", reason);
-    } finally {
-      setBusy(false);
-    }
+    try { await api(`/api/admin/compras/${order.id}`, { method: "DELETE" }); router.push(href("/admin/compras/pedidos")); }
+    catch (reason) { await showError("No se pudo eliminar el pedido", reason); } finally { setBusy(false); }
   }
 
-  /* ── Confirm receipt (bulk from all lines with qtyToReceive > 0) ── */
   async function confirmReceipt() {
-    const items = order.items
-      .filter((item) => {
-        const pending = (Number(item.quantity) || 0) - (Number(item.receivedQuantity) || 0);
-        return pending > 0;
-      })
-      .map((item) => {
-        const d = lineDrafts[item.id];
-        const qty = Number(d?.qtyToReceive || 0);
-        return { orderItemId: item.id, quantity: qty, unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost) };
-      })
-      .filter((item) => item.quantity > 0);
-
-    if (!items.length) {
-      await Swal.fire({ title: "No hay cantidades a recibir", text: "Indicá las cantidades en la columna 'A recibir' de cada línea.", icon: "info", background: "#18181b", color: "#fafafa" });
-      return;
-    }
-
-    // Calculate total lines and units for confirmation
-    const lineCount = items.length;
-    const unitCount = items.reduce((sum, item) => sum + item.quantity, 0);
-    const totalCost = items.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
-
-    const result = await Swal.fire({
-      title: "Registrar recepción",
-      html: `<div style="text-align:left;font-size:14px;"><p>Se registrarán las cantidades indicadas en \"A recibir\":</p><p style="margin-top:8px;"><strong>${lineCount}</strong> línea${lineCount > 1 ? "s" : ""}</p><p><strong>${unitCount}</strong> unidad${unitCount > 1 ? "es" : ""}</p><p style="margin-top:4px;color:#a1a1aa;">Costo total: ${money(totalCost, currency)}</p></div>`,
-      icon: "question",
-      showCancelButton: true, confirmButtonText: "Registrar recepción", cancelButtonText: "Cancelar",
-      confirmButtonColor: "#ec4899", background: "#18181b", color: "#fafafa", reverseButtons: true,
-    });
+    const items = order.items.filter((item) => (Number(item.quantity) || 0) - (Number(item.receivedQuantity) || 0) > 0).map((item) => { const d = lineDrafts[item.id]; return { orderItemId: item.id, quantity: Number(d?.qtyToReceive || 0), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost) }; }).filter((item) => item.quantity > 0);
+    if (!items.length) { await Swal.fire({ title: "No hay cantidades a recibir", text: "Indicá las cantidades en 'A recibir' de cada línea.", icon: "info", background: "#18181b", color: "#fafafa" }); return; }
+    const lineCount = items.length; const unitCount = items.reduce((s, i) => s + i.quantity, 0); const totalCost = items.reduce((s, i) => s + i.quantity * i.unitCost, 0);
+    const result = await Swal.fire({ title: "Registrar recepción", html: `<div style="text-align:left;font-size:14px;"><p>Se registrarán las cantidades indicadas en "A recibir":</p><p style="margin-top:8px;"><strong>${lineCount}</strong> línea${lineCount > 1 ? "s" : ""}</p><p><strong>${unitCount}</strong> unidad${unitCount > 1 ? "es" : ""}</p><p style="margin-top:4px;color:#a1a1aa;">Costo total: ${money(totalCost, currency)}</p></div>`, icon: "question", showCancelButton: true, confirmButtonText: "Registrar recepción", cancelButtonText: "Cancelar", confirmButtonColor: "#ec4899", background: "#18181b", color: "#fafafa", reverseButtons: true });
     if (!result.isConfirmed) return;
-
     setSaving(true);
     try {
-      const resp = await api<{ receipt: { number: string } }>(`/api/admin/compras/${order.id}/recepciones`, {
-        method: "POST",
-        body: JSON.stringify({ notes: receiveNotes || undefined, items }),
-      });
-      await Swal.fire({
-        title: "Recepción registrada",
-        html: `<p>Albarán <strong>${resp.receipt.number}</strong> creado correctamente.</p>`,
-        icon: "success", timer: 2500, showConfirmButton: false, background: "#18181b", color: "#fafafa",
-      });
-      router.refresh();
-      setReceivingFor(null);
-    } catch (reason) {
-      await showError("No se pudo registrar la recepción", reason);
-    } finally {
-      setSaving(false);
-    }
+      const resp = await api<{ receipt: { number: string } }>(`/api/admin/compras/${order.id}/recepciones`, { method: "POST", body: JSON.stringify({ notes: receiveNotes || undefined, items }) });
+      await Swal.fire({ title: "Recepción registrada", html: `<p>Albarán <strong>${resp.receipt.number}</strong> creado correctamente.</p>`, icon: "success", timer: 2500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      router.refresh(); setReceivingFor(null);
+    } catch (reason) { await showError("No se pudo registrar la recepción", reason); } finally { setSaving(false); }
   }
 
-  function updateLineDraft(itemId: number, field: string, value: string) {
-    setLineDrafts((prev) => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } }));
-    setDirty(true);
-  }
+  function updateLineDraft(itemId: number, field: string, value: string) { setLineDrafts((prev) => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } })); setDirty(true); }
+  function toggleSection(key: string) { setOpenSections((prev) => ({ ...prev, [key]: !prev[key] })); }
 
   /* ── Render ── */
   return (
-    <div className="min-h-screen bg-[var(--admin-bg)]">
-      {/* ── Document Header ── */}
-      <div className="border-b border-[var(--admin-border)] bg-[var(--admin-surface)]">
-        <div className="mx-auto max-w-[1600px] px-6 pt-4 pb-3">
-          <nav className="mb-4 flex items-center gap-1.5 text-xs text-[var(--admin-muted)]">
-            <Link href={href("/admin/compras")} className="transition-colors hover:text-white/80">Compras</Link>
-            <span className="text-zinc-600">/</span>
-            <Link href={href("/admin/compras/pedidos")} className="transition-colors hover:text-white/80">Pedidos</Link>
-            <span className="text-zinc-600">/</span>
-            <span className="text-white font-medium">{order.number}</span>
+    <div className="min-h-screen" style={{ background: "var(--admin-background)" }}>
+      {/* ── Header ── */}
+      <div style={{ background: "var(--admin-surface)" }} className="relative">
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), var(--admin-primary), transparent)" }} />
+        <div className="mx-auto max-w-[1600px] px-8 pt-6 pb-5">
+          <nav className="mb-5 flex items-center gap-2 text-xs" style={{ color: "var(--admin-muted)" }}>
+            <Link href={href("/admin/compras")} className="transition-colors hover:opacity-70">Compras</Link>
+            <span className="opacity-40">/</span>
+            <Link href={href("/admin/compras/pedidos")} className="transition-colors hover:opacity-70">Pedidos</Link>
+            <span className="opacity-40">/</span>
+            <span className="font-medium" style={{ color: "var(--admin-text)" }}>{order.number}</span>
           </nav>
-
-          <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div>
-              <h1 className="text-3xl font-black tracking-tight leading-none">{order.number}</h1>
-              <p className="mt-1.5 text-sm text-[var(--admin-muted)]">
-                {order.supplier.name} · {order.branch.name}
-              </p>
+              <h1 className="text-3xl font-extrabold tracking-tight leading-none" style={{ color: "var(--admin-text)" }}>{order.number}</h1>
+              <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>{order.supplier.name} · {order.branch.name}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 pb-0.5">
+            <div className="flex flex-wrap items-center gap-2.5 pb-0.5">
               <StatusBadge status={order.status} labels={ORDER_STATUS_LABELS} />
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${receiptStatus === "complete" ? "bg-emerald-500/15 text-emerald-300" : receiptStatus === "partial" ? "bg-amber-500/15 text-amber-300" : "bg-zinc-500/15 text-zinc-400"}`}>
-                Recepción: {receiptStatusLabel}
-              </span>
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${invoiceStatus === "complete" ? "bg-emerald-500/15 text-emerald-300" : invoiceStatus === "partial" ? "bg-amber-500/15 text-amber-300" : "bg-zinc-500/15 text-zinc-400"}`}>
-                Facturación: {invoiceStatusLabel}
-              </span>
+              <Pill color={receiptStatus === "complete" ? "var(--admin-success)" : receiptStatus === "partial" ? "var(--admin-warning)" : undefined} label={`Recepción: ${receiptStatusLabel}`} />
+              <Pill color={invoiceStatus === "complete" ? "var(--admin-success)" : invoiceStatus === "partial" ? "var(--admin-warning)" : undefined} label={`Facturación: ${invoiceStatusLabel}`} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Dirty indicator + Save bar ── */}
+      {/* ── Dirty bar ── */}
       {dirty && (
-        <div className="border-b border-amber-500/30 bg-amber-500/[0.06] px-6 py-2">
+        <div className="border-b px-8 py-2" style={{ borderColor: "color-mix(in srgb, var(--admin-warning) 30%, transparent)", background: "color-mix(in srgb, var(--admin-warning) 5%, transparent)" }}>
           <div className="mx-auto max-w-[1600px] flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-300">Cambios sin guardar</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--admin-warning)" }}>Cambios sin guardar</span>
             <div className="flex gap-2">
-              <button type="button" className="btn btn-secondary text-xs" onClick={() => { setDirty(false); router.refresh(); }} disabled={saving}>Descartar</button>
-              <button type="button" className="btn text-xs" onClick={() => void saveLines()} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button>
+              <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }} onClick={() => { setDirty(false); router.refresh(); }} disabled={saving}>Descartar</button>
+              <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} onClick={() => void saveLines()} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Action Bar (BC ribbon) ── */}
-      <div className="border-b border-[var(--admin-border)] bg-[var(--admin-surface)]/50">
-        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center gap-0 px-6 py-1.5 text-xs">
+      {/* ── Action Bar ── */}
+      <div className="border-b" style={{ borderColor: "var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface) 60%, var(--admin-background))" }}>
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center px-8 py-2 text-xs gap-0">
           {canEdit && (
             <ActionGroup label="Pedido">
-              <ActionItem label={editingHeader ? "Guardando…" : "Editar"} icon="edit" onClick={() => editingHeader ? void saveHeader() : setEditingHeader(true)} disabled={busy || saving} />
-              {dirty && <ActionItem label="Guardar" icon="save" onClick={() => void saveLines()} disabled={saving} />}
-              <ActionItem label="Enviar" icon="external-link" onClick={() => void changeStatus("sent")} disabled={busy} />
+              <ActionBtn label={editingHeader ? "Guardando..." : "Editar"} icon="edit" onClick={() => editingHeader ? void saveHeader() : setEditingHeader(true)} disabled={busy || saving} />
+              {dirty && <ActionBtn label="Guardar" icon="save" onClick={() => void saveLines()} disabled={saving} accent />}
+              <ActionBtn label="Enviar" icon="external-link" onClick={() => void changeStatus("sent")} disabled={busy} />
             </ActionGroup>
           )}
           {canReceive && hasPendingReceipt && (
             <ActionGroup label="Registrar">
-              <ActionItem label="Recibir" icon="package" onClick={() => void confirmReceipt()} disabled={busy || saving} />
+              <ActionBtn label="Recibir" icon="package" onClick={() => void confirmReceipt()} disabled={busy || saving} accent />
             </ActionGroup>
           )}
           <ActionGroup label="Navegar">
-            <ActionItem
-              label={`Albaranes (${totalReceipts})`} icon="document"
-              onClick={() => totalReceipts > 0 ? setShowReceiptsModal(true) : undefined}
-              disabled={totalReceipts === 0}
-            />
-            <ActionItem
-              label={`Facturas (${totalInvoices})`} icon="receipt"
-              onClick={() => totalInvoices > 0 ? setShowInvoicesModal(true) : undefined}
-              disabled={totalInvoices === 0}
-            />
-            <ActionItem
-              label="Proveedor" icon="users" disabled
-            />
+            <ActionBtn label="Albaranes" badge={totalReceipts} icon="document" onClick={() => totalReceipts > 0 ? setShowReceiptsModal(true) : undefined} disabled={totalReceipts === 0} />
+            <ActionBtn label="Facturas" badge={totalInvoices} icon="receipt" onClick={() => totalInvoices > 0 ? setShowInvoicesModal(true) : undefined} disabled={totalInvoices === 0} />
           </ActionGroup>
           {canClose && (
             <ActionGroup label="Estado">
-              <ActionItem label="Cerrar pedido" icon="check" onClick={() => void changeStatus("closed")} disabled={busy} />
-              {canCancel && <ActionItem label="Cancelar" icon="x" onClick={() => void changeStatus("cancelled")} disabled={busy} tone="danger" />}
+              <ActionBtn label="Cerrar" icon="check" onClick={() => void changeStatus("closed")} disabled={busy} />
+              {canCancel && <ActionBtn label="Cancelar" icon="x" onClick={() => void changeStatus("cancelled")} disabled={busy} danger />}
             </ActionGroup>
           )}
           {canEdit && (
             <ActionGroup label="Documento">
-              <ActionItem label="Eliminar" icon="trash" onClick={() => void remove()} disabled={busy} tone="danger" />
+              <ActionBtn label="Eliminar" icon="trash" onClick={() => void remove()} disabled={busy} danger />
             </ActionGroup>
           )}
         </div>
       </div>
 
       {/* ── Content ── */}
-      <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-0">
-        <div className="flex-1 min-w-0">
-          {/* ── GENERAL ── */}
-          <Section title="General" icon="document">
-            <div className="grid gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 px-6 py-5">
+      <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-8 py-6">
+        <div className="flex-1 min-w-0 space-y-5">
+          {/* GENERAL */}
+          <CollapsibleSection title="General" description="Datos principales del documento" isOpen={openSections.general} onToggle={() => toggleSection("general")}>
+            <div className="grid gap-x-12 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 p-6">
               <FieldRow label="Proveedor" value={order.supplier.name} />
               <FieldRow label="Nº documento" value={order.number} />
               <FieldRow label="Estado" value={purchaseStatusLabel(order.status)} />
               {editingHeader ? (
                 <>
-                  <FieldInput label="Fecha recepción prevista" type="date" value={headerDraft.expectedDate} onChange={(v) => setHeaderDraft((d) => ({ ...d, expectedDate: v }))} />
-                  <FieldInput label="Referencia proveedor" value={headerDraft.externalReference} onChange={(v) => setHeaderDraft((d) => ({ ...d, externalReference: v }))} placeholder="Nº remito, OC proveedor…" />
+                  <FieldInput label="Recepción prevista" type="date" value={headerDraft.expectedDate} onChange={(v) => setHeaderDraft((d) => ({ ...d, expectedDate: v }))} />
+                  <FieldInput label="Referencia proveedor" value={headerDraft.externalReference} onChange={(v) => setHeaderDraft((d) => ({ ...d, externalReference: v }))} placeholder="Nº remito, OC proveedor..." />
                 </>
               ) : (
                 <>
@@ -428,392 +281,268 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
               <FieldRow label="Comprador" value={order.createdBy?.name ?? "—"} />
             </div>
             {editingHeader && (
-              <div className="flex justify-end gap-2 px-6 pb-4">
-                <button type="button" className="btn btn-secondary text-xs" onClick={() => setEditingHeader(false)} disabled={saving}>Cancelar</button>
-                <button type="button" className="btn text-xs" onClick={() => void saveHeader()} disabled={saving}>{saving ? "Guardando…" : "Guardar cabecera"}</button>
+              <div className="flex justify-end gap-2 px-6 pb-5">
+                <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }} onClick={() => setEditingHeader(false)} disabled={saving}>Cancelar</button>
+                <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} onClick={() => void saveHeader()} disabled={saving}>{saving ? "Guardando..." : "Guardar cabecera"}</button>
               </div>
             )}
-          </Section>
+          </CollapsibleSection>
 
-          {/* ── LINES TABLE ── */}
-          <div className="border-b border-[var(--admin-border)]">
-            <div className="px-6 py-3 border-b border-[var(--admin-border)] bg-white/[0.01]">
-              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">
-                Líneas ({totalLines})
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
+          {/* LINES TABLE */}
+          <CollapsibleSection title="Lineas" description={`${totalLines} articulo${totalLines !== 1 ? "s" : ""} en el pedido`} isOpen={openSections.lineas} onToggle={() => toggleSection("lineas")} badge={totalLines > 0 ? String(totalLines) : undefined} accentHeader>
+            <div className="overflow-x-auto" style={{ scrollbarColor: "var(--admin-border) transparent" }}>
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-[10px] uppercase tracking-wider text-[var(--admin-muted)] sticky top-0">
-                    <th className="px-4 py-2.5 w-14">#</th>
-                    <th className="px-4 py-2.5">Artículo</th>
-                    <th className="px-4 py-2.5">UdM</th>
-                    <th className="px-4 py-2.5 text-right">Cant.</th>
-                    <th className="px-4 py-2.5 text-right">Recibida</th>
-                    <th className="px-4 py-2.5 text-right">A recibir</th>
-                    <th className="px-4 py-2.5 text-right">Facturada</th>
-                    <th className="px-4 py-2.5 text-right">A facturar</th>
-                    <th className="px-4 py-2.5 text-right">Costo</th>
-                    <th className="px-4 py-2.5 text-right">Dto %</th>
-                    <th className="px-4 py-2.5 text-right">Importe</th>
-                    <th className="px-4 py-2.5 text-right w-16">Estado</th>
+                  <tr style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))" }} className="text-[10px] uppercase tracking-wider sticky top-0 z-10" role="row">
+                    <Th>#</Th><Th>Articulo</Th><Th>UdM</Th><Th r> cantidad</Th><Th r>Recibida</Th><Th r accent>A recibir</Th><Th r>Facturada</Th><Th r accent>A facturar</Th><Th r>Costo</Th><Th r>Dto %</Th><Th r>Importe</Th><Th c>Estado</Th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--admin-border)]/50">
+                <tbody>
                   {order.items.map((item, idx) => {
-                    const ordered = Number(item.quantity) || 0;
-                    const received = Number(item.receivedQuantity) || 0;
-                    const invoiced = Number(item.invoicedQuantity) || 0;
-                    const pendingRec = Math.max(0, ordered - received);
-                    const pendingInv = Math.max(0, ordered - invoiced);
+                    const ordered = Number(item.quantity) || 0, received = Number(item.receivedQuantity) || 0, invoiced = Number(item.invoicedQuantity) || 0;
+                    const pendingRec = Math.max(0, ordered - received), pendingInv = Math.max(0, ordered - invoiced);
                     const draft = lineDrafts[item.id] ?? { quantity: String(ordered), unitCost: String(Number(item.unitCost)), discountPercent: "0", qtyToReceive: String(pendingRec), qtyToInvoice: String(pendingInv) };
-                    const discount = Number(draft.discountPercent) || 0;
-                    const unitCost = Number(draft.unitCost) || 0;
-                    const qty = Number(draft.quantity) || 0;
+                    const discount = Number(draft.discountPercent) || 0, unitCost = Number(draft.unitCost) || 0, qty = Number(draft.quantity) || 0;
                     const lineNet = qty * unitCost * (1 - discount / 100);
                     const isHighlighted = highlightLineId === String(item.id);
                     const isComplete = pendingRec === 0 && pendingInv === 0;
-
                     return (
-                      <tr key={item.id} className={`transition-colors ${isHighlighted ? "bg-pink-500/[0.08] ring-1 ring-inset ring-pink-500/30" : "hover:bg-white/[0.02]"}`}>
-                        <td className="px-4 py-2 text-[var(--admin-muted)] tabular-nums">{String((idx + 1) * 10000).padStart(5, "0")}</td>
-                        <td className="px-4 py-2 font-semibold">{item.product.name}</td>
-                        <td className="px-4 py-2 text-[var(--admin-muted)]">{item.unit}</td>
-                        <td className="px-4 py-2 text-right">
-                          {readOnly ? (
-                            <span className="tabular-nums font-bold">{qty}</span>
-                          ) : (
-                            <input type="number" min={0} step="0.001" value={draft.quantity}
-                              onChange={(e) => updateLineDraft(item.id, "quantity", e.target.value)}
-                              className="input w-16 py-0.5 px-1.5 text-right text-xs tabular-nums"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums text-emerald-300 font-semibold">{received}</td>
-                        <td className="px-4 py-2 text-right">
-                          {readOnly || pendingRec === 0 ? (
-                            <span className={`tabular-nums font-bold ${pendingRec === 0 ? "text-zinc-500" : "text-amber-300"}`}>{pendingRec}</span>
-                          ) : (
-                            <input type="number" min={0} max={pendingRec} step="0.001"
-                              value={draft.qtyToReceive}
-                              onChange={(e) => updateLineDraft(item.id, "qtyToReceive", e.target.value)}
-                              className="input w-16 py-0.5 px-1.5 text-right text-xs tabular-nums border-amber-500/30 bg-amber-500/[0.06]"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums text-sky-300 font-semibold">{invoiced}</td>
-                        <td className="px-4 py-2 text-right">
-                          {readOnly || pendingInv === 0 ? (
-                            <span className={`tabular-nums font-bold ${pendingInv === 0 ? "text-zinc-500" : "text-amber-300"}`}>{pendingInv}</span>
-                          ) : (
-                            <input type="number" min={0} max={pendingInv} step="0.001"
-                              value={draft.qtyToInvoice}
-                              onChange={(e) => updateLineDraft(item.id, "qtyToInvoice", e.target.value)}
-                              className="input w-16 py-0.5 px-1.5 text-right text-xs tabular-nums border-amber-500/30 bg-amber-500/[0.06]"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          {readOnly ? (
-                            <span className="tabular-nums">{money(unitCost, currency)}</span>
-                          ) : (
-                            <input type="number" min={0} step="0.01"
-                              value={draft.unitCost}
-                              onChange={(e) => updateLineDraft(item.id, "unitCost", e.target.value)}
-                              className="input w-20 py-0.5 px-1.5 text-right text-xs tabular-nums"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          {readOnly ? (
-                            <span className="tabular-nums">{discount > 0 ? `${discount}%` : "—"}</span>
-                          ) : (
-                            <input type="number" min={0} max={100} step="0.01"
-                              value={draft.discountPercent}
-                              onChange={(e) => updateLineDraft(item.id, "discountPercent", e.target.value)}
-                              className="input w-14 py-0.5 px-1.5 text-right text-xs tabular-nums"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right font-bold tabular-nums">{money(lineNet, currency)}</td>
-                        <td className="px-4 py-2 text-center">
-                          {isComplete ? (
-                            <span className="text-[10px] text-emerald-400 font-bold">✓ Completa</span>
-                          ) : pendingRec > 0 ? (
-                            <span className="text-[10px] text-amber-300 font-semibold">Pendiente</span>
-                          ) : (
-                            <span className="text-[10px] text-zinc-500">—</span>
-                          )}
-                        </td>
+                      <tr key={item.id} className="transition-colors" style={{ background: isHighlighted ? "color-mix(in srgb, var(--admin-primary) 6%, transparent)" : idx % 2 === 1 ? "color-mix(in srgb, var(--admin-surface-elevated) 15%, var(--admin-surface))" : undefined, boxShadow: isHighlighted ? `inset 3px 0 0 var(--admin-primary-strong)` : undefined }}>
+                        <Td>{String((idx + 1) * 10000).padStart(5, "0")}</Td>
+                        <Td bold>{item.product.name}</Td>
+                        <Td muted>{item.unit}</Td>
+                        <Td r>{readOnly ? <span className="tabular-nums font-semibold">{qty}</span> : <InlineInput value={draft.quantity} onChange={(v) => { updateLineDraft(item.id, "quantity", v); }} />}</Td>
+                        <Td r muted style={{ color: "var(--admin-success)" }}>{received}</Td>
+                        <Td r>{readOnly || pendingRec === 0 ? <span className="tabular-nums font-semibold" style={{ color: pendingRec === 0 ? "var(--admin-muted)" : "var(--admin-warning)" }}>{pendingRec}</span> : <InlineInput value={draft.qtyToReceive} onChange={(v) => updateLineDraft(item.id, "qtyToReceive", v)} accent />}</Td>
+                        <Td r muted style={{ color: "#60a5fa" }}>{invoiced}</Td>
+                        <Td r>{readOnly || pendingInv === 0 ? <span className="tabular-nums font-semibold" style={{ color: pendingInv === 0 ? "var(--admin-muted)" : "var(--admin-warning)" }}>{pendingInv}</span> : <InlineInput value={draft.qtyToInvoice} onChange={(v) => updateLineDraft(item.id, "qtyToInvoice", v)} accent />}</Td>
+                        <Td r>{readOnly ? <span className="tabular-nums">{money(unitCost, currency)}</span> : <InlineInput value={draft.unitCost} onChange={(v) => updateLineDraft(item.id, "unitCost", v)} wide />}</Td>
+                        <Td r>{readOnly ? <span className="tabular-nums">{discount > 0 ? `${discount}%` : "—"}</span> : <InlineInput value={draft.discountPercent} onChange={(v) => updateLineDraft(item.id, "discountPercent", v)} narrow />}</Td>
+                        <Td r bold>{money(lineNet, currency)}</Td>
+                        <Td c>
+                          {isComplete ? <span className="text-[10px] font-semibold" style={{ color: "var(--admin-success)" }}>Completa</span> : pendingRec > 0 ? <span className="text-[10px] font-semibold" style={{ color: "var(--admin-warning)" }}>Pendiente</span> : <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>—</span>}
+                        </Td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-white/[0.02] font-bold text-xs border-t border-[var(--admin-border)]">
-                    <td className="px-4 py-3" colSpan={11}>Total pedido</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{money(totalOrdered, currency)}</td>
+                  <tr style={{ borderTop: "2px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 30%, var(--admin-surface))" }}>
+                    <td className="px-5 py-3.5 font-bold text-xs" colSpan={11} style={{ color: "var(--admin-text)" }}>Total pedido</td>
+                    <td className="px-5 py-3.5 text-right font-extrabold tabular-nums text-xs" style={{ color: "var(--admin-text)" }}>{money(totalOrdered, currency)}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* ── RECEPCIÓN (inline) ── */}
+          {/* INLINE RECEIPT FORM */}
           {receivingFor !== null && (
-            <div className="border-b border-[var(--admin-border)] bg-pink-500/[0.03] px-6 py-4">
-              <p className="text-sm font-black text-pink-300">Registrar recepción</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-4">
-                <label className="block">
-                  <span className="block text-[10px] font-semibold uppercase text-[var(--admin-muted)]">Cantidad a recibir</span>
-                  <input className="input mt-1" type="number" min={0} step="0.001" value={receiveQty} onChange={(e) => setReceiveQty(e.target.value)} />
-                </label>
-                <label className="block">
-                  <span className="block text-[10px] font-semibold uppercase text-[var(--admin-muted)]">Costo unitario</span>
-                  <input className="input mt-1" type="number" min={0} step="0.01" value={receiveCost} onChange={(e) => setReceiveCost(e.target.value)} />
-                </label>
-                <label className="block">
-                  <span className="block text-[10px] font-semibold uppercase text-[var(--admin-muted)]">Notas</span>
-                  <input className="input mt-1" value={receiveNotes} onChange={(e) => setReceiveNotes(e.target.value)} placeholder="Remito, observaciones…" />
-                </label>
+            <div className="rounded-xl p-5" style={{ border: "1px solid color-mix(in srgb, var(--admin-primary) 25%, transparent)", background: "color-mix(in srgb, var(--admin-primary) 4%, transparent)" }}>
+              <p className="text-sm font-bold mb-3" style={{ color: "var(--admin-primary)" }}>Registrar recepcion</p>
+              <div className="grid gap-3 sm:grid-cols-4">
+                <FieldInput label="Cantidad a recibir" type="number" value={receiveQty} onChange={setReceiveQty} />
+                <FieldInput label="Costo unitario" type="number" value={receiveCost} onChange={setReceiveCost} />
+                <FieldInput label="Notas" value={receiveNotes} onChange={setReceiveNotes} placeholder="Remito, observaciones..." />
                 <div className="flex items-end gap-2">
-                  <button type="button" className="btn text-xs" onClick={() => void confirmReceipt()} disabled={saving}>{saving ? "Confirmando…" : "Confirmar"}</button>
-                  <button type="button" className="btn btn-secondary text-xs" onClick={() => setReceivingFor(null)} disabled={saving}>Cancelar</button>
+                  <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} onClick={() => void confirmReceipt()} disabled={saving}>{saving ? "Confirmando..." : "Confirmar"}</button>
+                  <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }} onClick={() => setReceivingFor(null)} disabled={saving}>Cancelar</button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── FACTURACIÓN ── */}
-          <Section title="Facturación" icon="receipt" badge={totalInvoices > 0 ? String(totalInvoices) : undefined}>
-            <div className="px-6 py-5 space-y-3">
-              <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                <FieldRow label="Moneda" value="ARS" />
-                <FieldRow label="Subtotal estimado" value={money(totalOrdered, currency)} />
-                {order.supplier.paymentTerms && <FieldRow label="Condiciones de pago" value={order.supplier.paymentTerms} />}
-              </div>
-              <p className="text-xs text-[var(--admin-muted)]">
-                Las facturas de compra se registran desde Navegar → Facturas o desde el módulo de Facturas.
-              </p>
+          {/* FACTURACION */}
+          <CollapsibleSection title="Facturacion" description="Moneda, importes y estado de facturacion" isOpen={openSections.facturacion} onToggle={() => toggleSection("facturacion")} badge={totalInvoices > 0 ? String(totalInvoices) : undefined}>
+            <div className="grid gap-x-12 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 p-6">
+              <FieldRow label="Moneda" value="ARS" />
+              <FieldRow label="Subtotal estimado" value={money(totalOrdered, currency)} />
+              {order.supplier.paymentTerms && <FieldRow label="Condiciones de pago" value={order.supplier.paymentTerms} />}
             </div>
-          </Section>
+          </CollapsibleSection>
 
-          {/* ── ENVÍO Y RECEPCIÓN ── */}
-          <Section title="Envío y recepción" icon="truck" badge={totalReceipts > 0 ? String(totalReceipts) : undefined}>
-            <div className="px-6 py-5 space-y-3">
-              <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                <FieldRow label="Sucursal destino" value={order.branch.name} />
-                {order.expectedDate && <FieldRow label="Fecha recepción prevista" value={dateLabel(order.expectedDate)} />}
-                <FieldRow label="Recepciones registradas" value={String(totalReceipts)} />
-              </div>
+          {/* ENVIO */}
+          <CollapsibleSection title="Envio y recepcion" description="Sucursal destino y recepciones" isOpen={openSections.envio} onToggle={() => toggleSection("envio")} badge={totalReceipts > 0 ? String(totalReceipts) : undefined}>
+            <div className="grid gap-x-12 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 p-6">
+              <FieldRow label="Sucursal destino" value={order.branch.name} />
+              {order.expectedDate && <FieldRow label="Fecha recepcion prevista" value={dateLabel(order.expectedDate)} />}
+              <FieldRow label="Recepciones registradas" value={String(totalReceipts)} />
             </div>
-          </Section>
+          </CollapsibleSection>
 
-          {/* ── NOTAS ── */}
+          {/* NOTAS */}
           {(order.notes || editingHeader) && (
-            <Section title="Notas" icon="edit">
-              <div className="px-6 py-5">
-                {editingHeader ? (
-                  <textarea className="input min-h-20" value={headerDraft.notes} onChange={(e) => setHeaderDraft((d) => ({ ...d, notes: e.target.value }))} placeholder="Notas del pedido…" />
-                ) : (
-                  <p className="text-sm text-[var(--admin-muted)] whitespace-pre-wrap">{order.notes}</p>
-                )}
+            <CollapsibleSection title="Notas" isOpen={openSections.notas} onToggle={() => toggleSection("notas")}>
+              <div className="p-6">
+                {editingHeader ? <textarea className="input min-h-20" value={headerDraft.notes} onChange={(e) => setHeaderDraft((d) => ({ ...d, notes: e.target.value }))} placeholder="Notas del pedido..." /> : <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--admin-muted)" }}>{order.notes}</p>}
               </div>
-            </Section>
+            </CollapsibleSection>
           )}
         </div>
 
-        {/* ── FactBox ── */}
-        <div className="w-full lg:w-64 shrink-0 border-l border-[var(--admin-border)] bg-[var(--admin-surface)]/30">
-          <div className="p-5 space-y-5">
-            <FactBoxSection title="Resumen">
-              <FactBoxRow label="Líneas" value={String(totalLines)} />
-              <FactBoxRow label="Total" value={money(totalOrdered, currency)} bold />
-              <FactBoxRow label="Albaranes" value={String(totalReceipts)} />
-              <FactBoxRow label="Facturas" value={String(totalInvoices)} />
-            </FactBoxSection>
-            <FactBoxSection title="Recepción">
-              <FactBoxRow label="Estado" value={receiptStatusLabel} color={receiptStatus === "complete" ? "text-emerald-300" : receiptStatus === "partial" ? "text-amber-300" : "text-zinc-400"} />
-              <FactBoxRow label="Líneas" value={`${linesFullyReceived}/${totalLines}`} />
-            </FactBoxSection>
-            <FactBoxSection title="Facturación">
-              <FactBoxRow label="Estado" value={invoiceStatusLabel} color={invoiceStatus === "complete" ? "text-emerald-300" : invoiceStatus === "partial" ? "text-amber-300" : "text-zinc-400"} />
-              <FactBoxRow label="Líneas" value={`${linesFullyInvoiced}/${totalLines}`} />
-            </FactBoxSection>
-            <FactBoxSection title="Proveedor">
-              <FactBoxRow label={order.supplier.name} value="" />
-              {order.supplier.paymentTerms && <FactBoxRow label="Pago" value={order.supplier.paymentTerms} />}
-            </FactBoxSection>
+        {/* FactBox */}
+        {factBoxVisible && (
+          <div className="w-full lg:w-72 shrink-0 space-y-4">
+            <div className="rounded-xl p-5 space-y-5" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+              <FactBoxSection title="Resumen">
+                <FactBoxRow label="Lineas" value={String(totalLines)} />
+                <FactBoxRow label="Total" value={money(totalOrdered, currency)} bold />
+                <FactBoxRow label="Albaranes" value={String(totalReceipts)} />
+                <FactBoxRow label="Facturas" value={String(totalInvoices)} />
+              </FactBoxSection>
+              <FactBoxSection title="Recepcion">
+                <FactBoxRow label="Estado" value={receiptStatusLabel} color={receiptStatus === "complete" ? "var(--admin-success)" : receiptStatus === "partial" ? "var(--admin-warning)" : "var(--admin-muted)"} />
+                <FactBoxRow label="Lineas" value={`${linesFullyReceived}/${totalLines}`} />
+              </FactBoxSection>
+              <FactBoxSection title="Facturacion">
+                <FactBoxRow label="Estado" value={invoiceStatusLabel} color={invoiceStatus === "complete" ? "var(--admin-success)" : invoiceStatus === "partial" ? "var(--admin-warning)" : "var(--admin-muted)"} />
+                <FactBoxRow label="Lineas" value={`${linesFullyInvoiced}/${totalLines}`} />
+              </FactBoxSection>
+              <FactBoxSection title="Proveedor">
+                <FactBoxRow label={order.supplier.name} value="" />
+                {order.supplier.paymentTerms && <FactBoxRow label="Pago" value={order.supplier.paymentTerms} />}
+              </FactBoxSection>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ── MODAL: Albaranes registrados ── */}
-      {showReceiptsModal && (
-        <Modal onClose={() => setShowReceiptsModal(false)} title="Albaranes registrados" subtitle={`Pedido ${order.number}`}>
-          <div className="space-y-2">
-            {order.receipts.map((receipt) => {
-              const totalReceipt = receipt.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0), 0);
-              return (
-                <Link
-                  key={receipt.id}
-                  href={href(`/admin/compras/albaranes/${receipt.id}`) as never}
-                  className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition-colors"
-                  onClick={() => setShowReceiptsModal(false)}
-                >
-                  <div>
-                    <p className="font-bold text-sm">{receipt.number}</p>
-                    <p className="text-xs text-[var(--admin-muted)]">{dateLabel(receipt.receivedAt)} · {receipt.items.length} línea{receipt.items.length > 1 ? "s" : ""}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold tabular-nums">{money(totalReceipt, currency)}</p>
-                    <Icon name="arrow-right" className="text-xs text-[var(--admin-muted)] ml-auto mt-0.5" />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </Modal>
-      )}
-
-      {/* ── MODAL: Facturas registradas ── */}
-      {showInvoicesModal && (
-        <Modal onClose={() => setShowInvoicesModal(false)} title="Facturas registradas" subtitle={`Pedido ${order.number}`}>
-          <div className="space-y-2">
-            {order.invoices.map((inv) => (
-              <Link
-                key={inv.id}
-                href={href(`/admin/compras/facturas/${inv.id}`) as never}
-                className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition-colors"
-                onClick={() => setShowInvoicesModal(false)}
-              >
-                <div>
-                  <p className="font-bold text-sm">{inv.number}</p>
-                  <p className="text-xs text-[var(--admin-muted)]">{dateLabel(inv.documentDate)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold tabular-nums">{money(inv.total, currency)}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                    inv.status === "paid" ? "bg-emerald-500/15 text-emerald-300" :
-                    inv.status === "cancelled" ? "bg-rose-500/15 text-rose-300" :
-                    "bg-amber-500/15 text-amber-300"
-                  }`}>
-                    {inv.status === "paid" ? "Pagado" : inv.status === "cancelled" ? "Anulado" : "Pendiente"}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Modal>
-      )}
+      {/* ── MODALS ── */}
+      {showReceiptsModal && <DocsModal onClose={() => setShowReceiptsModal(false)} title="Albaranes registrados" subtitle={`Pedido ${order.number}`} count={totalReceipts} items={order.receipts.map((r) => ({ id: r.id, number: r.number, date: dateLabel(r.receivedAt), subtitle: `${r.items.length} linea${r.items.length !== 1 ? "s" : ""}${r.createdBy ? ` \u00B7 ${r.createdBy.name}` : ""}`, total: r.items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost) || 0), 0) }))} hrefFn={(id) => href(`/admin/compras/albaranes/${id}`)} currency={currency} />}
+      {showInvoicesModal && <DocsModal onClose={() => setShowInvoicesModal(false)} title="Facturas registradas" subtitle={`Pedido ${order.number}`} count={totalInvoices} items={order.invoices.map((inv) => ({ id: inv.id, number: inv.number, date: dateLabel(inv.documentDate), subtitle: inv.status === "paid" ? "Pagado" : inv.status === "cancelled" ? "Anulado" : "Pendiente", total: Number(inv.total) || 0, statusColor: inv.status === "paid" ? "var(--admin-success)" : inv.status === "cancelled" ? "var(--admin-danger)" : "var(--admin-warning)" }))} hrefFn={(id) => href(`/admin/compras/facturas/${id}`)} currency={currency} />}
     </div>
   );
 }
 
 /* ────────────────────────── Sub-components ────────────────────────── */
 
+function Pill({ color, label }: { color?: string; label: string }) {
+  return <span className="rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: color ? `color-mix(in srgb, ${color} 15%, transparent)` : "color-mix(in srgb, var(--admin-muted) 10%, transparent)", color: color || "var(--admin-muted)" }}>{label}</span>;
+}
+
 function ActionGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center border-r border-[var(--admin-border)] px-3 py-1.5 last:border-r-0">
-      <span className="mr-2 text-[9px] font-black uppercase tracking-wider text-[var(--admin-muted)] whitespace-nowrap">{label}</span>
+    <div className="flex items-center border-r px-3 py-1.5 last:border-r-0" style={{ borderColor: "color-mix(in srgb, var(--admin-border) 60%, transparent)" }}>
+      <span className="mr-2 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: "var(--admin-muted)" }}>{label}</span>
       {children}
     </div>
   );
 }
 
-function ActionItem({ label, icon, onClick, disabled, tone }: { label: string; icon: string; onClick?: () => void; disabled?: boolean; tone?: "danger" }) {
+function ActionBtn({ label, icon, badge, onClick, disabled, accent, danger }: { label: string; icon?: string; badge?: number; onClick?: () => void; disabled?: boolean; accent?: boolean; danger?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded px-2.5 py-1 text-[11px] font-semibold transition-colors whitespace-nowrap ${
-        tone === "danger"
-          ? "text-rose-300 hover:bg-rose-500/10"
-          : "text-[var(--admin-muted)] hover:bg-white/5 hover:text-white"
-      } disabled:opacity-30 disabled:cursor-not-allowed`}
-    >
+    <button type="button" onClick={onClick} disabled={disabled}
+      className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5"
+      style={{ color: danger ? "var(--admin-danger)" : accent ? "var(--admin-primary)" : "var(--admin-muted)", opacity: disabled ? 0.35 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+      {icon && <Icon name={icon as any} className="text-xs" />}
       {label}
+      {badge !== undefined && badge > 0 && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "color-mix(in srgb, var(--admin-primary) 18%, transparent)", color: "var(--admin-primary)" }}>{badge}</span>}
     </button>
   );
 }
 
-function Section({ title, icon, badge, children }: { title: string; icon: string; badge?: string; children: React.ReactNode }) {
+function CollapsibleSection({ title, description, isOpen, onToggle, badge, accentHeader, children }: { title: string; description?: string; isOpen: boolean; onToggle: () => void; badge?: string; accentHeader?: boolean; children: React.ReactNode }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | "auto">(isOpen ? "auto" : 0);
+
+  useEffect(() => {
+    if (isOpen) { setHeight("auto"); } else { const el = contentRef.current; if (el) { setHeight(el.scrollHeight); requestAnimationFrame(() => setHeight(0)); } }
+  }, [isOpen]);
+
   return (
-    <div className="border-b border-[var(--admin-border)]">
-      <div className="px-6 py-3 bg-white/[0.01]">
-        <div className="flex items-center gap-2">
-          <Icon name={icon as any} className="text-sm text-[var(--admin-muted)]" />
-          <h3 className="text-xs font-black uppercase tracking-widest text-[var(--admin-muted)]">{title}</h3>
-          {badge && <span className="rounded-full bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold text-pink-300">{badge}</span>}
+    <div className="rounded-xl overflow-hidden transition-all duration-250" style={{ background: "var(--admin-surface)", border: `1px solid ${accentHeader && isOpen ? "color-mix(in srgb, var(--admin-primary) 20%, var(--admin-border))" : "var(--admin-border)"}` }}>
+      <button type="button" onClick={onToggle} className="w-full flex items-center justify-between px-6 py-4 text-left transition-colors duration-150 group" style={{ background: isOpen ? "color-mix(in srgb, var(--admin-surface-elevated) 30%, var(--admin-surface))" : undefined }}
+        onMouseEnter={(e) => { if (!isOpen) e.currentTarget.style.background = "color-mix(in srgb, var(--admin-surface-elevated) 20%, var(--admin-surface))"; }}
+        onMouseLeave={(e) => { if (!isOpen) e.currentTarget.style.background = ''; }}>
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>{title}</h3>
+          {badge && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "color-mix(in srgb, var(--admin-primary) 15%, transparent)", color: "var(--admin-primary)" }}>{badge}</span>}
+          {description && <span className="text-[11px] hidden sm:inline" style={{ color: "var(--admin-muted)" }}>{description}</span>}
         </div>
+        <Icon name="arrow-down" className="text-xs transition-transform duration-200" style={{ color: "var(--admin-muted)", transform: isOpen ? "rotate(180deg)" : undefined }} />
+      </button>
+      <div ref={contentRef} className="transition-all duration-250 overflow-hidden" style={{ maxHeight: isOpen ? "none" : 0, opacity: isOpen ? 1 : 0 }}>
+        {children}
       </div>
-      {children}
     </div>
   );
+}
+
+function Th({ children, r, c, accent }: { children: React.ReactNode; r?: boolean; c?: boolean; accent?: boolean }) {
+  return <th className="px-4 py-3 font-semibold" style={{ textAlign: r ? "right" : c ? "center" : "left", color: accent ? "var(--admin-primary)" : "var(--admin-muted)" }}>{children}</th>;
+}
+
+function Td({ children, r, c, bold, muted, style }: { children: React.ReactNode; r?: boolean; c?: boolean; bold?: boolean; muted?: boolean; style?: React.CSSProperties }) {
+  return <td className="px-4 py-3 transition-colors" style={{ textAlign: r ? "right" : c ? "center" : "left", fontWeight: bold ? 700 : 500, color: muted ? "var(--admin-muted)" : "var(--admin-text)", ...style }}>{children}</td>;
+}
+
+function InlineInput({ value, onChange, accent, wide, narrow }: { value: string; onChange: (v: string) => void; accent?: boolean; wide?: boolean; narrow?: boolean }) {
+  return <input type="number" min={0} step="0.001" value={value} onChange={(e) => onChange(e.target.value)}
+    className="rounded-lg border px-2 py-1 text-right text-xs tabular-nums outline-none transition-all duration-150 focus:ring-1"
+    style={{ width: narrow ? "48px" : wide ? "80px" : "60px", borderColor: accent ? "color-mix(in srgb, var(--admin-primary) 30%, transparent)" : "var(--admin-border)", background: accent ? "color-mix(in srgb, var(--admin-primary) 5%, transparent)" : "transparent", color: "var(--admin-text)", "--tw-ring-color": "var(--admin-primary)" } as React.CSSProperties} />;
 }
 
 function FieldRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--admin-muted)] mb-0.5">{label}</p>
-      <p className="text-sm font-bold">{value}</p>
-    </div>
-  );
+  return <div><p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--admin-muted)" }}>{label}</p><p className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>{value}</p></div>;
 }
 
 function FieldInput({ label, value, type, placeholder, onChange }: { label: string; value: string; type?: string; placeholder?: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--admin-muted)] mb-0.5">{label}</p>
-      <input className="input w-full py-1 text-sm" type={type ?? "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-    </div>
-  );
-}
-
-function Modal({ onClose, title, subtitle, children }: { onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="w-full max-w-lg max-h-[70vh] flex flex-col rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--admin-border)]">
-          <div>
-            <h2 className="text-base font-black">{title}</h2>
-            {subtitle && <p className="text-xs text-[var(--admin-muted)]">{subtitle}</p>}
-          </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-[var(--admin-muted)] hover:bg-white/5 hover:text-white transition-colors">
-            <Icon name="x" className="text-sm" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
-      </div>
-    </div>
-  );
+  return <div><p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--admin-muted)" }}>{label}</p><input className="input w-full py-1.5 text-sm rounded-lg" type={type ?? "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>;
 }
 
 function FactBoxSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-[var(--admin-muted)] mb-2.5 pb-1.5 border-b border-[var(--admin-border)]">{title}</p>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
+  return <div><p className="text-[10px] font-bold uppercase tracking-wider mb-2.5 pb-2" style={{ color: "var(--admin-muted)", borderBottom: "1px solid var(--admin-border)" }}>{title}</p><div className="space-y-2.5">{children}</div></div>;
 }
 
 function FactBoxRow({ label, value, bold, color }: { label: string; value: string; bold?: boolean; color?: string }) {
+  return <div className="flex items-center justify-between text-xs gap-2"><span className="truncate" style={{ color: "var(--admin-muted)" }}>{label}</span><span className={`tabular-nums whitespace-nowrap ${bold ? "font-extrabold" : "font-semibold"}`} style={{ color: color || "var(--admin-text)" }}>{value}</span></div>;
+}
+
+function DocsModal({ onClose, title, subtitle, count, items, hrefFn, currency }: { onClose: () => void; title: string; subtitle: string; count: number; items: Array<{ id: number; number: string; date: string; subtitle: string; total: number; statusColor?: string }>; hrefFn: (id: number) => string; currency: string }) {
+  useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; document.addEventListener("keydown", onKey); return () => document.removeEventListener("keydown", onKey); }, [onClose]);
+  const totalAll = items.reduce((s, i) => s + i.total, 0);
+
   return (
-    <div className="flex items-center justify-between text-xs gap-2">
-      <span className="text-[var(--admin-muted)] truncate">{label}</span>
-      <span className={`tabular-nums whitespace-nowrap ${bold ? "font-black" : "font-semibold"} ${color ?? ""}`}>{value}</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div className="w-full max-w-lg flex flex-col rounded-2xl overflow-hidden shadow-2xl" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", maxHeight: "70vh" }} onClick={(e) => e.stopPropagation()}>
+        <div className="relative px-6 pt-5 pb-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), transparent)" }} />
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold" style={{ color: "var(--admin-text)" }}>{title}</h2>
+              <p className="text-xs mt-0.5" style={{ color: "var(--admin-muted)" }}>{subtitle}{count > 0 ? ` \u00B7 ${count} documento${count !== 1 ? "s" : ""}` : ""}</p>
+            </div>
+            <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition-colors" style={{ color: "var(--admin-muted)" }} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-muted) 10%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              <Icon name="x" className="text-sm" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2" style={{ scrollbarColor: "var(--admin-border) transparent" }}>
+          {items.map((item) => (
+            <Link key={item.id} href={hrefFn(item.id) as never} className="block rounded-xl px-5 py-4 transition-all duration-150 group" style={{ border: "1px solid var(--admin-border)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 5%, var(--admin-surface-elevated))"; e.currentTarget.style.borderColor = "color-mix(in srgb, var(--admin-primary) 20%, transparent)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "var(--admin-border)"; }}
+              onClick={onClose}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-bold text-sm" style={{ color: "var(--admin-primary)" }}>{item.number}</span>
+                <span className="font-bold tabular-nums text-sm" style={{ color: "var(--admin-text)" }}>{money(item.total, currency)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "var(--admin-muted)" }}>{item.date}</span>
+                <span className="text-[11px]" style={{ color: item.statusColor || "var(--admin-muted)" }}>{item.subtitle}</span>
+              </div>
+            </Link>
+          ))}
+          {count > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 rounded-xl" style={{ background: "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))" }}>
+              <span className="text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>Total recibido</span>
+              <span className="text-sm font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{money(totalAll, currency)}</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
