@@ -51,6 +51,9 @@ Docker NO obligatorio para desarrollo.
 - Apertura únicamente por CLICK.
 - Cierre: click afuera, Escape, Tab-out.
 - Definición centralizada: `lib/admin-navigation.ts`.
+- Modos de navegación: `TOP` (mega menú barra superior) y `SIDEBAR` (sidebar dual-tier rail + panel contextual). Persistidos en `localStorage` via `hooks/use-navigation-mode.ts`.
+- Toggle de modo en `ProfileMenu` y en la barra inferior del sidebar.
+- Componentes: `ProfileMenu` (`components/admin/profile-menu.tsx`), `SidebarNavigation` (`components/admin/sidebar-navigation.tsx`), `AdminShellSidebar` (`components/admin/admin-shell-sidebar.tsx`).
 
 ## Módulos
 | Módulo | Estado |
@@ -83,6 +86,7 @@ Docker NO obligatorio para desarrollo.
 - **KitchenStation / PrintArea / PrintJob / PrintDestination**: KDS e impresión.
 - **AnalyticsEvent**: eventos anónimos de actividad.
 - **ReceptionKnowledge / ConversationSession / ConversationMessage**: recepcionista IA (base de conocimiento por tenant, sesiones de conversación, mensajes con trazabilidad de intents).
+- **UserPreference**: preferencias individuales de usuario dentro de un tenant (key/value, unique por userId+key).
 
 ## Permisos
 - Clave/valor globales (`permission.key`).
@@ -119,7 +123,7 @@ Docker NO obligatorio para desarrollo.
 - Compras/Gastos: ExpensesManager, PurchasesManager (parcial)
 - Finanzas: dashboard, cuentas, movimientos, flujo de caja, cuentas cobrar/pagar, estado de resultados
 - Reportes: shell, tabla genérica, filtros
-- Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, reception-assistant-config, admin-shell (parcial)
+- Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, reception-assistant-config, admin-shell (parcial: dual-tier sidebar + mega menú)
 - Modelo documental: ficha de pedido (cantidades pedida/entregada/pendiente + documentos relacionados), ficha de remito (`/admin/entregas/[id]`), ficha de factura con líneas snapshot (`/admin/facturacion/[id]`), vínculo factura↔remito.
 - Geofencing: validación server-side (Haversine) en `/api/orders` para pedidos de mesa, geolocalización client-side en checkout y config por sucursal (radio + mapa) en `sucursales`. El mapa (`LocationPicker`) dibuja el radio como círculo azul proyectado a píxeles cuando la sucursal tiene `geofenceRadius`.
 - Checkout de mesa: el formulario de pedido carga las mesas activas de la sucursal y las ofrece en un `<select>` (por `code`, etiqueta = nombre); si no hay mesas, cae a input libre. Valida con "Elegí la mesa desde la que vas a pedir.".

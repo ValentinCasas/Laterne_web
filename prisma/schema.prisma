@@ -288,6 +288,7 @@ model User {
   tableSessionsClosed      TableSession[]           @relation("CloserTableSessions")
   tableSessionEvents       TableSessionEvent[]
   transfersCreated         StockTransfer[]          @relation("TransferCreatedBy")
+  transferReversesCreated  StockTransfer[]          @relation("TransferReversedBy")
   countSessionsStarted     InventoryCountSession[]  @relation("CountStartedBy")
   countSessionsCompleted   InventoryCountSession[]  @relation("CountCompletedBy")
   stockMovements           StockMovement[]
@@ -312,6 +313,7 @@ model User {
   receivablePayments       ReceivablePayment[]      @relation("ReceivablePaymentCreatedBy")
   receivablePaymentsReversed ReceivablePayment[]    @relation("ReceivablePaymentReversedBy")
   receivableAllocationsReversed ReceivableAllocation[] @relation("ReceivableAllocationReversedBy")
+  preferences              UserPreference[]
 
   @@unique([email])
   @@map("user")
@@ -430,6 +432,7 @@ model Tenant {
   deliveryStatusLogs      OrderDeliveryStatusLog[]
   receptionKnowledge      ReceptionKnowledge?
   conversationSessions    ConversationSession[]
+  preferences            UserPreference[]
 
   @@map("tenant")
 }
@@ -2702,6 +2705,7 @@ model StockTransfer {
   unit         String          @default("unidad") @db.VarChar(40)
   status       String          @default("completed") @db.VarChar(20)
   note         String?         @db.VarChar(300)
+  reversedById Int?
   createdById  Int?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -2710,6 +2714,7 @@ model StockTransfer {
   toBranch     Branch          @relation("TransferTo", fields: [toBranchId], references: [id], onDelete: Restrict)
   product      Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
   createdBy    User?           @relation("TransferCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reversedBy   User?           @relation("TransferReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
   movements    StockMovement[]
 
   @@unique([tenantId, reference])
@@ -3406,4 +3411,23 @@ model ReceivableAllocation {
   @@index([documentId])
   @@index([paymentId])
   @@map("receivableallocation")
+}
+
+/**
+ * @summary Preferencias individuales de un usuario dentro de un tenant.
+ */
+model UserPreference {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  tenantId   Int
+  key        String   @db.VarChar(120)
+  value      String   @db.VarChar(255)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([tenantId, userId])
+  @@map("userpreference")
 }

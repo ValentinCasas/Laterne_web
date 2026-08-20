@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, startTransition } from "react";
 import * as maplibregl from "maplibre-gl";
 
 /** @summary Renderiza un mapa interactivo centrado en la ubicación pública del negocio. */
@@ -19,7 +19,7 @@ export function BusinessMap({
 
   useEffect(() => {
     if (!container.current || !hasValidLocation) {
-      setFailed(true);
+      startTransition(() => setFailed(true));
       return;
     }
 
@@ -37,7 +37,7 @@ export function BusinessMap({
         cooperativeGestures: true,
       });
     } catch {
-      setFailed(true);
+      startTransition(() => setFailed(true));
       return;
     }
 
@@ -48,7 +48,7 @@ export function BusinessMap({
         } catch {
           /* ya removido */
         }
-        setFailed(true);
+        startTransition(() => setFailed(true));
       }
     });
 

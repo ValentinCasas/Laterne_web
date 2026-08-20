@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import * as maplibregl from "maplibre-gl";
 
 const defaultLocation = { latitude: -33.3017, longitude: -66.3378 };
@@ -78,7 +78,7 @@ export function LocationPicker({
         cooperativeGestures: true,
       });
     } catch {
-      setMapFailed(true);
+      startTransition(() => setMapFailed(true));
       return;
     }
 
@@ -91,7 +91,7 @@ export function LocationPicker({
         } catch {
           /* ya removido */
         }
-        setMapFailed(true);
+        startTransition(() => setMapFailed(true));
         return;
       }
       // Errores de tiles sueltos luego de cargar: se ignoran para no romper la vista.

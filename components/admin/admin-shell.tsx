@@ -15,9 +15,11 @@ import {
 import Swal from "sweetalert2";
 import { BranchSwitcher } from "@/components/admin/branch-switcher";
 import { NotificationCenter } from "@/components/admin/notification-center";
+import { ProfileMenu } from "@/components/admin/profile-menu";
 import { defaultPalette, paletteCssVariables, type PaletteColors } from "@/lib/theme-palettes";
 import { SearchBox } from "@/components/admin/ui";
 import { Icon } from "@/components/admin/ui/icons";
+import { UserAvatar } from "@/components/admin/ui/avatar";
 import {
   adminHrefForContext,
   isBranchAdminLogicalPath,
@@ -33,6 +35,8 @@ import {
   findActiveAdminLink,
   type AdminNavItem,
 } from "@/lib/admin-navigation";
+import { useNavigationMode } from "@/hooks/use-navigation-mode";
+import { AdminShellSidebar } from "@/components/admin/admin-shell-sidebar";
 
 type SearchResults = {
   products: Array<{ id: number; name: string; price: string | null; status: string }>;
@@ -72,60 +76,6 @@ function tenantInitials(name: string) {
   if (parts.length === 0) return "MC";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-/**
- * @summary Resuelve la URL pública del avatar a partir del nombre de archivo almacenado.
- * Los valores vacíos o el placeholder por defecto se tratan como "sin foto".
- */
-function avatarUrl(imageUrl?: string) {
-  const value = imageUrl?.trim();
-  if (!value || value === "avatar_profile_default.png") return null;
-  if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/")) return value;
-  return `/images/images_profile/${value}`;
-}
-
-/** @summary Avatar circular con foto real y fallback a iniciales si no hay imagen. */
-function UserAvatar({
-  name,
-  imageUrl,
-  className = "",
-}: {
-  name: string;
-  imageUrl?: string;
-  className?: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  const src = avatarUrl(imageUrl);
-  if (src && !failed) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt=""
-        referrerPolicy="no-referrer"
-        onError={() => setFailed(true)}
-        className={`${className || "h-8 w-8"} rounded-full object-cover ring-1 ring-white/10`}
-      />
-    );
-  }
-  const initials =
-    name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "U";
-  return (
-    <span
-      className={`${className || "h-8 w-8"} grid place-items-center rounded-full bg-[var(--admin-primary-strong)]/10 text-[11px] font-black text-[var(--admin-primary-strong)]`}
-      aria-hidden="true"
-    >
-      {initials}
-    </span>
-  );
 }
 
 function SearchIcon() {
@@ -210,178 +160,6 @@ function ChevronDownIcon({ open = false, className = "" }: { open?: boolean; cla
   );
 }
 
-/**
- * @summary Menú de perfil de la barra superior: identidad, cuenta y cierre de sesión.
- * Soporta foto de usuario (o iniciales), navegación con teclado, Escape y click afuera.
- */
-function ProfileMenu({
-  userName,
-  userEmail,
-  userImageUrl,
-  tenantName,
-  adminHref,
-  onLogout,
-  helpHref,
-}: {
-  userName?: string;
-  userEmail?: string;
-  userImageUrl?: string;
-  tenantName: string;
-  adminHref: (href: string) => Route;
-  onLogout: () => void;
-  helpHref?: Route;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focusIndex, setFocusIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const itemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
-  const displayName = userName?.trim() || tenantName;
-  const menuItems: Array<{ key: string; label: string; danger?: boolean }> = [
-    ...(helpHref ? [{ key: "help", label: "Soporte" }] : []),
-    { key: "profile", label: "Mi perfil" },
-    { key: "logout", label: "Cerrar sesión", danger: true },
-  ];
-
-  useEffect(() => {
-    if (!open) return;
-    /**
-     * @summary Cierra el menú al interactuar fuera de él o con Escape.
-     */
-    function handlePointer(event: PointerEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-        setFocusIndex(-1);
-      }
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointer);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
-
-  /** @summary Navegación con teclado dentro del menú (flechas, Inicio, Fin). */
-  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
-    if (menuItems.length === 0) return;
-    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
-      event.preventDefault();
-      let next = focusIndex;
-      if (event.key === "ArrowDown") next += 1;
-      else if (event.key === "ArrowUp") next -= 1;
-      else if (event.key === "Home") next = 0;
-      else next = menuItems.length - 1;
-      next = Math.max(0, Math.min(menuItems.length - 1, next));
-      setFocusIndex(next);
-      itemRefs.current[next]?.focus();
-    }
-  }
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        className="flex h-9 items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Menú de perfil"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <UserAvatar name={displayName} imageUrl={userImageUrl} />
-        <span className="hidden max-w-20 truncate 2xl:block">{tenantName}</span>
-        <ChevronDownIcon open={open} className="hidden text-zinc-500 2xl:block" />
-      </button>
-      {open && (
-        <div
-          className="absolute right-0 top-full z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl dropdown-enter"
-          role="menu"
-          aria-label="Menú de perfil"
-          onKeyDown={handleMenuKeyDown}
-        >
-          <div className="flex items-center gap-3.5 rounded-xl px-4 py-3.5">
-            <UserAvatar name={displayName} imageUrl={userImageUrl} className="h-11 w-11 text-sm" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-              <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>
-            </div>
-          </div>
-          <div className="my-2 h-px bg-white/[.07]" />
-          {menuItems.map((entry, index) => {
-            const tabIndex = focusIndex === -1 || focusIndex === index ? 0 : -1;
-            if (entry.key === "help" && helpHref) {
-              return (
-                <Link
-                  key={entry.key}
-                  role="menuitem"
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  href={helpHref}
-                  tabIndex={tabIndex}
-                  onClick={() => {
-                    setOpen(false);
-                    setFocusIndex(-1);
-                  }}
-                  className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
-                    <HelpIcon />
-                  </span>
-                  Soporte
-                </Link>
-              );
-            }
-            if (entry.key === "profile") {
-              return (
-                <Link
-                  key={entry.key}
-                  role="menuitem"
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  href={adminHref("/admin/cuenta")}
-                  tabIndex={tabIndex}
-                  onClick={() => {
-                    setOpen(false);
-                    setFocusIndex(-1);
-                  }}
-                  className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.05] text-sm font-black text-zinc-400">
-                    MC
-                  </span>
-                  Mi perfil
-                </Link>
-              );
-            }
-            return (
-              <button
-                key={entry.key}
-                type="button"
-                role="menuitem"
-                ref={(element) => {
-                  itemRefs.current[index] = element;
-                }}
-                tabIndex={tabIndex}
-                onClick={onLogout}
-                className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left text-sm font-medium text-red-300 transition-all duration-200 hover:bg-red-500/10"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500/10 text-sm font-black">
-                  <LogoutIcon />
-                </span>
-                Cerrar sesión
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** @summary Convierte la URL visible canónica al path lógico que usan las definiciones del menú. */
 function normalizedAdminPath(pathname: string) {
   const parsed = parseCanonicalPath(pathname);
@@ -431,6 +209,7 @@ export function AdminShell({
   const router = useRouter();
   const clearPath = normalizedAdminPath(pathname);
   const branchNavigationAvailable = isBranchAdminLogicalPath(clearPath);
+  const { mode: navigationMode, setMode: setNavigationMode } = useNavigationMode();
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [commandResults, setCommandResults] = useState<SearchResults | null>(null);
@@ -455,6 +234,7 @@ export function AdminShell({
   const [overflowIds, setOverflowIds] = useState<string[]>([]);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement | null>(null);
+  const [sidebarCompact, setSidebarCompact] = useState(false);
 
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
@@ -821,15 +601,48 @@ export function AdminShell({
         } as React.CSSProperties
       }
     >
-      <header
+      {navigationMode === "SIDEBAR" ? (
+        <AdminShellSidebar
+          groups={accessibleGroups}
+          activeGroupId={activeGroupId}
+          activeLinkHref={activeLink?.href ?? null}
+          adminHref={adminHref}
+          onNavigate={() => {
+            setOpenGroupBoth(null);
+          }}
+          onLogout={logout}
+          userName={userName}
+          userEmail={userEmail}
+          userImageUrl={userImageUrl}
+          tenantName={tenantName}
+          helpHref={permissions.includes("support.manage") ? adminHref("/admin/soporte") : undefined}
+          publicSiteUrl={publicSite}
+          compact={sidebarCompact}
+          onToggleCompact={() => setSidebarCompact((c) => !c)}
+          onOpenCommand={() => {
+            setCommandOpen(true);
+          }}
+          permissions={permissions}
+          branches={branches}
+          activeBranchId={activeBranchId}
+          allBranches={allBranches}
+          branchNavigationAvailable={branchNavigationAvailable}
+          onSwitchNavigationMode={() => setNavigationMode((current) => (current === "TOP" ? "SIDEBAR" : "TOP"))}
+          currentMode={navigationMode}
+        >
+          {children}
+        </AdminShellSidebar>
+      ) : (
+        <>
+          <header
         ref={headerRef}
-        className="sticky top-0 z-50 border-b border-white/[.06] bg-zinc-950/90 backdrop-blur-2xl print:hidden"
+        className="sticky top-0 z-50 border-b border-white/[.04] bg-zinc-950/80 backdrop-blur-xl print:hidden"
       >
-        <div className="admin-shell-inner flex h-[3.75rem] items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:px-6">
+        <div className="admin-shell-inner flex h-14 items-center gap-1.5 px-3 sm:gap-2 sm:px-4 lg:px-6">
           <button
             ref={mobileTriggerRef}
             type="button"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white lg:hidden"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-400 transition-all duration-200 hover:bg-white/[.06] hover:text-white lg:hidden"
             aria-controls="admin-navigation-panel"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
@@ -848,13 +661,13 @@ export function AdminShell({
 
           <Link
             href={adminHref("/admin")}
-            className="flex shrink-0 items-center gap-2.5 rounded-xl px-2 py-2 transition-all duration-200 hover:bg-white/[.04]"
+            className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 transition-all duration-200 hover:bg-white/[.04]"
             onClick={() => {
               setOpenGroup(null);
               setMobileMenuPath(null);
             }}
           >
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--admin-primary-strong)] text-sm font-black text-white">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--admin-primary-strong)] text-sm font-black text-white">
               {tenantInitials(tenantName)}
             </span>
             <span className="hidden min-w-0 leading-tight sm:block">
@@ -869,7 +682,7 @@ export function AdminShell({
 
           <nav
             ref={navContainerRef}
-            className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 px-3 lg:flex xl:gap-2"
+            className="hidden min-w-0 flex-1 items-center justify-end gap-1 px-2 lg:flex xl:gap-1.5"
             aria-label="Secciones administrativas"
           >
             {visibleGroups.map((group) => {
@@ -882,12 +695,12 @@ export function AdminShell({
                       triggerRefs.current[group.id] = element;
                     }}
                     type="button"
-                    className={`flex h-10 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-medium transition-all duration-200 xl:px-4 ${
+                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-200 xl:px-3.5 ${
                       expanded
-                        ? "bg-white/[.08] text-white shadow-sm shadow-black/10"
+                        ? "bg-white/[.07] text-white"
                         : groupActive
-                          ? "bg-white/[.05] text-white border border-white/[.08] shadow-sm shadow-black/5"
-                          : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
+                          ? "text-white"
+                          : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
                     }`}
                     aria-haspopup="true"
                     aria-expanded={expanded}
@@ -901,7 +714,7 @@ export function AdminShell({
                     }}
                   >
                     <span className="truncate hidden md:inline">{group.label}</span>
-                    <ChevronDownIcon open={expanded} className="text-zinc-600" />
+                    <ChevronDownIcon open={expanded} className="h-3.5 w-3.5 text-zinc-500" />
                   </button>
                 </div>
               );
@@ -911,30 +724,30 @@ export function AdminShell({
               <div className="relative shrink-0" ref={overflowRef}>
                 <button
                   type="button"
-                  className={`flex h-10 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-medium transition-all duration-200 ${
+                  className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-200 ${
                     overflowOpen
-                      ? "bg-white/[.08] text-white shadow-sm shadow-black/10"
-                      : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-100"
+                      ? "bg-white/[.07] text-white"
+                      : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
                   }`}
                   onClick={() => setOverflowOpen((current) => !current)}
                   aria-haspopup="true"
                   aria-expanded={overflowOpen}
                 >
                   <span className="hidden md:inline">Más</span>
-                  <ChevronDownIcon open={overflowOpen} className="text-zinc-600" />
+                  <ChevronDownIcon open={overflowOpen} className="h-3.5 w-3.5 text-zinc-500" />
                 </button>
                 {overflowOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/[.08] bg-zinc-950/95 shadow-xl shadow-black/30 backdrop-blur-2xl dropdown-enter">
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-white/[.06] bg-zinc-950/95 shadow-xl shadow-black/20 backdrop-blur-xl">
                     {overflowGroups.map((group) => {
                       const groupActive = activeGroupId === group.id;
                       return (
                         <button
                           key={group.id}
                           type="button"
-                          className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all duration-200 ${
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-all duration-200 ${
                             groupActive
-                              ? "bg-white/[.06] text-white"
-                              : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
+                              ? "bg-white/[.05] text-white"
+                              : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"
                           }`}
                           onClick={() => {
                             setOverflowOpen(false);
@@ -952,7 +765,7 @@ export function AdminShell({
             )}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 xl:gap-2.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 xl:gap-2">
             <BranchSwitcher
                   branches={branches}
                   activeBranchId={activeBranchId}
@@ -963,7 +776,7 @@ export function AdminShell({
 
             <button
               type="button"
-              className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-100"
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-200"
               onClick={() => {
                 setCommandOpen(true);
                 setMobileMenuPath(null);
@@ -973,7 +786,7 @@ export function AdminShell({
             >
               <SearchIcon />
               <span className="hidden lg:inline">Buscar</span>
-              <kbd className="hidden h-5 items-center rounded-lg border border-white/10 bg-white/[.04] px-2 font-sans text-[10px] font-medium text-zinc-500 2xl:flex">
+              <kbd className="hidden h-5 items-center rounded-md border border-white/10 bg-white/[.03] px-1.5 font-sans text-[10px] font-medium text-zinc-500 2xl:flex">
                 Ctrl K
               </kbd>
             </button>
@@ -986,7 +799,7 @@ export function AdminShell({
               rel="noreferrer"
               aria-label="Ver sitio"
               title="Ver sitio"
-              className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-100"
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-200"
             >
               <ExternalIcon />
               <span className="hidden lg:inline">Ver sitio</span>
@@ -997,9 +810,9 @@ export function AdminShell({
                 href={platformAdminPath()}
                 aria-label="Ir a la plataforma"
                 title="Ir a la plataforma"
-                className="hidden h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-amber-300/90 transition-all duration-200 hover:bg-amber-500/[.08] sm:flex"
+                className="hidden h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-amber-300/90 transition-all duration-200 hover:bg-amber-500/[.06] sm:flex"
               >
-                <span className="grid h-5 w-5 place-items-center rounded-lg bg-amber-500/15 text-[8px] font-black text-amber-300">
+                <span className="grid h-5 w-5 place-items-center rounded-md bg-amber-500/12 text-[8px] font-black text-amber-300">
                   SA
                 </span>
                 <span className="hidden lg:inline">Plataforma</span>
@@ -1011,7 +824,7 @@ export function AdminShell({
                 href={adminHref("/admin/soporte")}
                 aria-label="Soporte"
                 title="Soporte"
-                className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-100"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-all duration-200 hover:bg-white/[.05] hover:text-zinc-200"
               >
                 <HelpIcon />
                 <span className="hidden lg:inline">Soporte</span>
@@ -1026,6 +839,8 @@ export function AdminShell({
               adminHref={adminHref}
               onLogout={logout}
               helpHref={permissions.includes("support.manage") ? adminHref("/admin/soporte") : undefined}
+              onSwitchNavigationMode={() => setNavigationMode((current) => (current === "TOP" ? "SIDEBAR" : "TOP"))}
+              currentMode={navigationMode}
             />
           </div>
         </div>
@@ -1034,7 +849,7 @@ export function AdminShell({
       {activeGroup && (
           <div
             ref={megaPanelRef}
-            className="fixed inset-x-0 top-16 z-40 flex justify-center mega-panel-enter print:hidden"
+            className="fixed inset-x-0 top-14 z-40 flex justify-center mega-panel-enter print:hidden"
             role="region"
             aria-label={`Secciones de ${activeGroup.label}`}
             onKeyDown={(event) =>
@@ -1045,23 +860,25 @@ export function AdminShell({
           }
           onBlur={handlePanelBlur}
         >
-          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden rounded-b-2xl border border-t-0 border-white/[.08] bg-zinc-950/95 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="flex items-center gap-4 border-b border-white/[.06] px-8 py-5 sm:px-10 sm:py-6">
-              <h2 className="text-base font-bold tracking-wide text-white">{activeGroup.label}</h2>
-              <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
+          <div className="admin-shell-inner mx-auto w-full max-w-7xl overflow-hidden border-b border-white/[.06] bg-zinc-950/95 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <div className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
+              <h2 className="text-sm font-semibold text-white">{activeGroup.label}</h2>
+              {activeGroup.description && (
+                <p className="truncate text-xs text-zinc-500">{activeGroup.description}</p>
+              )}
             </div>
             <div className="flex max-h-[70vh] overflow-hidden overscroll-contain">
-              <nav className="w-60 shrink-0 overflow-y-auto border-r border-white/[.06] py-3" aria-label="Subsecciones">
+              <nav className="w-48 shrink-0 overflow-y-auto overscroll-contain py-1.5 sm:w-56" aria-label="Subsecciones">
                 {activeGroup.sections.map((section) => {
                   const isActive = activeSectionId === section.id;
                   return (
                     <button
                       key={section.id}
                       type="button"
-                      className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-200 ${
+                      className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-all duration-200 ${
                         isActive
-                          ? "bg-white/[.06] font-semibold text-white border-l-2 border-[var(--admin-primary-strong)] pl-4"
-                          : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200 border-l-2 border-transparent"
+                          ? "bg-white/[.06] font-medium text-white"
+                          : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"
                       }`}
                       onClick={() => setActiveSectionId(section.id)}
                     >
@@ -1071,7 +888,7 @@ export function AdminShell({
                 })}
               </nav>
 
-              <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-8 py-6 sm:px-10 sm:py-8">
+              <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
                 {(() => {
                   const activeSection = activeGroup.sections.find((s) => s.id === activeSectionId) ?? activeGroup.sections[0];
                   if (!activeSection) return null;
@@ -1082,10 +899,10 @@ export function AdminShell({
                   }
                   return (
                     <div>
-                      <h3 className="mb-5 text-xs font-bold uppercase tracking-widest text-zinc-500">
+                      <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
                         {activeSection.label}
                       </h3>
-                      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                         {activeSection.items.map((item) => {
                           const index = flatIndex++;
                           const active = activeLink?.href === item.href;
@@ -1101,15 +918,15 @@ export function AdminShell({
                                 setOpenGroupBoth(null);
                                 setMobileMenuPath(null);
                               }}
-                              className={`group flex items-center gap-3.5 rounded-xl px-4 py-3.5 transition-all duration-200 ${
-                                active ? "bg-white/[.06] ring-1 ring-white/[.08]" : "hover:bg-white/[.04]"
+                              className={`group flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all duration-200 ${
+                                active ? "bg-white/[.05]" : "hover:bg-white/[.03]"
                               }`}
                             >
                               <span
-                                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xs font-black tracking-wider transition-all duration-200 ${
+                                className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black tracking-wider transition-all duration-200 ${
                                   active
-                                    ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)]"
-                                    : "bg-white/[.04] text-zinc-500 group-hover:bg-white/[.06] group-hover:text-zinc-300"
+                                    ? "bg-[var(--admin-primary-strong)]/12 text-[var(--admin-primary-strong)]"
+                                    : "bg-white/[.03] text-zinc-500 group-hover:bg-white/[.05] group-hover:text-zinc-300"
                                 }`}
                               >
                                 {item.icon}
@@ -1123,7 +940,7 @@ export function AdminShell({
                                   {item.label}
                                 </span>
                                 {item.description && (
-                                  <span className="mt-1 block text-xs leading-snug text-zinc-500">
+                                  <span className="mt-0.5 block text-xs leading-snug text-zinc-500">
                                     {item.description}
                                   </span>
                                 )}
@@ -1161,7 +978,7 @@ export function AdminShell({
               <div className="flex min-w-0 items-center gap-3.5">
                 <UserAvatar
                   name={userName?.trim() || tenantName}
-                  imageUrl={userImageUrl}
+                  src={userImageUrl}
                   className="h-10 w-10 text-sm"
                 />
                 <span className="min-w-0">
@@ -1352,6 +1169,9 @@ export function AdminShell({
               </button>
             </div>
           </div>
+        </>
+      )}
+
         </>
       )}
 
