@@ -581,6 +581,21 @@ export async function createPurchaseInvoice(
 
     await applyInvoicedCosts(transaction, tenantId, invoice, lines);
 
+    // Actualizar invoicedQuantity en las líneas del pedido asociado.
+    if (input.orderId && receiptIds.length) {
+      const receiptItems = await transaction.purchaseReceiptItem.findMany({
+        where: { receiptId: { in: receiptIds }, orderItemId: { not: null } },
+        select: { orderItemId: true, quantity: true },
+      });
+      for (const ri of receiptItems) {
+        if (!ri.orderItemId) continue;
+        await transaction.purchaseOrderItem.update({
+          where: { id: ri.orderItemId },
+          data: { invoicedQuantity: { increment: Number(ri.quantity) } },
+        });
+      }
+    }
+
     await createSupplierLedgerEntry(transaction, tenantId, userId, {
       supplierId: input.supplierId,
       branchId: input.branchId ?? null,

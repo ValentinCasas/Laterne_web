@@ -1,7 +1,11 @@
-/** @summary Convierte valores de Prisma en datos seguros para enviar al cliente. */
+/** @summary Convierte valores de Prisma (Decimal, Date, BigInt) en datos serializables para Client Components. */
 export function serialize<T>(value: T): T {
   return JSON.parse(
-    JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? item.toString() : item)),
+    JSON.stringify(value, (_key, item) => {
+      if (typeof item === "bigint") return item.toString();
+      if (item && typeof item === "object" && typeof item.toJSON === "function" && !(item instanceof Date)) return item.toJSON();
+      return item;
+    }),
   );
 }
 

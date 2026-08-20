@@ -292,18 +292,25 @@ export const ADMIN_NAVIGATION = [
     id: "compras",
     label: "Compras",
     icon: "CO",
-    description: "Pedidos a proveedores, recepciones y gastos",
+    description: "Pedidos, facturas y gastos a proveedores",
     sections: [
       {
-        id: "compras-proveedores",
-        label: "Proveedores",
+        id: "compras-documentos",
+        label: "Documentos",
         items: [
           {
-            href: "/admin/compras",
-            label: "Compras",
-            icon: "CO",
+            href: "/admin/compras/pedidos",
+            label: "Pedidos de compra",
+            icon: "OC",
             permission: "purchase.manage",
-            description: "Pedidos, recepciones y facturas de proveedores",
+            description: "Pedidos de compra a proveedores",
+          },
+          {
+            href: "/admin/compras/facturas",
+            label: "Facturas de compra",
+            icon: "FC",
+            permission: "purchase.manage",
+            description: "Facturas de compra y pagos a proveedores",
           },
         ],
       },

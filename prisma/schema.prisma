@@ -2457,6 +2457,10 @@ model PurchaseOrderItem {
    * Cantidad recibida acumulada; la pendiente es `quantity - receivedQuantity`.
    */
   receivedQuantity Decimal               @default(0) @db.Decimal(12, 3)
+  /**
+   * Cantidad facturada acumulada; la pendiente de facturar es `quantity - invoicedQuantity`.
+   */
+  invoicedQuantity Decimal               @default(0) @db.Decimal(12, 3)
   sortOrder        Int                   @default(0)
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
