@@ -1,8 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import type { Route } from "next";
 import type { MenuProduct } from "@/components/menu/menu-client";
 import { handleImageError, PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
 
@@ -16,16 +14,13 @@ export function formatMenuPrice(value: number, currency: string, locale: string)
 }
 
 /**
- * @summary Renderiza un producto de la carta con precio, imagen y acceso al detalle.
- *
- * La usan la carta pública y la vista previa del editor para mantener el mismo
- * diseño, tipografías y comportamiento responsive.
+ * @summary Card de producto de la carta. Toda la card es clickeable → abre modal de detalle.
+ * La usan la carta pública y la vista previa del editor.
  */
 export function MenuProductCard({
   product,
   currency,
   locale,
-  detailHref,
   onAdd,
   onPreview,
 }: {
@@ -39,31 +34,31 @@ export function MenuProductCard({
   const soldOut = product.availability?.toLowerCase() === "agotado";
   const priceText = (value: number) => formatMenuPrice(value, currency, locale);
   return (
-    <article className="group grid min-h-52 min-w-0 grid-cols-[minmax(6.75rem,36%)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-xl shadow-black/20 sm:flex sm:min-h-[410px] sm:flex-col sm:rounded-[1.75rem]">
+    <article
+      className="group grid min-h-52 min-w-0 cursor-pointer grid-cols-[minmax(6.75rem,36%)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-xl shadow-black/20 transition-all duration-200 hover:border-white/20 hover:shadow-2xl hover:shadow-black/30 sm:flex sm:min-h-[410px] sm:flex-col sm:rounded-[1.75rem]"
+      onClick={() => onPreview(product)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPreview(product); } }}
+      aria-label={`Ver ${product.name}`}
+    >
       <div className="relative min-h-52 overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-950 p-2 sm:h-56 sm:min-h-0 sm:p-5">
-        <button
-          className="relative h-full w-full"
-          type="button"
-          onClick={() => onPreview(product)}
-          aria-label={`Ampliar ${product.name}`}
-        >
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 116px, 320px"
-            className="object-contain transition duration-500 group-hover:scale-105"
-            onError={handleImageError}
-          />
-        </button>
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          sizes="(max-width: 640px) 116px, 320px"
+          className="pointer-events-none object-contain transition duration-500 group-hover:scale-105"
+          onError={handleImageError}
+        />
         {soldOut ? (
           <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black uppercase sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
             Agotado
           </span>
         ) : (
           <button
-            className="absolute bottom-4 right-4 hidden h-11 w-11 place-items-center rounded-full bg-pink-500 text-2xl font-bold shadow-lg hover:scale-110 sm:grid"
-            onClick={() => onAdd(product)}
+            className="absolute bottom-4 right-4 z-10 hidden h-11 w-11 place-items-center rounded-full bg-pink-500 text-2xl font-bold shadow-lg transition hover:scale-110 sm:grid"
+            onClick={(e) => { e.stopPropagation(); onAdd(product); }}
             aria-label={`Agregar ${product.name}`}
           >
             +
@@ -112,18 +107,15 @@ export function MenuProductCard({
           {product.description || "Sin descripción disponible."}
         </p>
         <div className="mt-auto pt-3 sm:pt-5">
-          <Link
-            className="mb-2 block min-h-10 rounded-lg py-2 text-center text-sm font-bold text-zinc-400 hover:bg-white/5 hover:text-pink-300 sm:text-sm"
-            href={detailHref as Route}
-          >
-            Ver detalles
-          </Link>
+          <p className="mb-2 block min-h-10 rounded-lg py-2 text-center text-sm font-bold text-zinc-400 transition group-hover:bg-white/5 group-hover:text-pink-300 sm:text-sm">
+            Ver detalle
+          </p>
           {soldOut ? (
             <span className="text-xs font-bold text-red-300 sm:text-sm">No disponible</span>
           ) : (
             <button
-              className="min-h-12 w-full rounded-lg border border-white/15 px-2 py-3 text-base font-black hover:border-pink-500 hover:bg-pink-500 sm:rounded-xl sm:py-3"
-              onClick={() => onAdd(product)}
+              className="min-h-12 w-full rounded-lg border border-white/15 px-2 py-3 text-base font-black transition hover:border-pink-500 hover:bg-pink-500 sm:rounded-xl sm:py-3"
+              onClick={(e) => { e.stopPropagation(); onAdd(product); }}
               aria-label={`Agregar ${product.name}`}
             >
               Agregar

@@ -3,10 +3,26 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/admin/ui/icons";
 import { createPortal } from "react-dom";
 import { parseCanonicalPath, publicHrefForVisiblePath } from "@/lib/routes";
+
+/** @summary Crea un efecto ripple sutil desde el punto de click usando el accent del tenant. */
+function useRipple() {
+  return useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const dot = document.createElement("span");
+    dot.className = "ripple";
+    dot.style.left = `${x}px`;
+    dot.style.top = `${y}px`;
+    el.appendChild(dot);
+    setTimeout(() => dot.remove(), 500);
+  }, []);
+}
 
 const navGroups = [
   {
@@ -73,6 +89,7 @@ export function SiteHeader({
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
+  const ripple = useRipple();
 
   const activeGroup = getGroupId(logicalPath);
 
@@ -148,12 +165,12 @@ export function SiteHeader({
               <div key={group.id} className="relative">
                 <button
                   type="button"
-                  className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold transition ${
+                  className={`ripple-container flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold transition ${
                     activeGroup === group.id
                       ? "bg-white/10 text-white"
                       : "text-white/70 hover:bg-white/5 hover:text-white"
                   }`}
-                  onClick={() => setOpenGroup(openGroup === group.id ? null : group.id)}
+                  onClick={(e) => { ripple(e); setOpenGroup(openGroup === group.id ? null : group.id); }}
                   aria-expanded={openGroup === group.id}
                   aria-haspopup="menu"
                   aria-controls={`${group.id}-desktop-menu`}
@@ -164,19 +181,19 @@ export function SiteHeader({
 
                 <div
                   id={`${group.id}-desktop-menu`}
-                  className={`absolute right-0 top-full z-30 mt-2 min-w-[14rem] overflow-hidden rounded-3xl border border-white/10 bg-[#09090b]/95 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl ${
-                    openGroup === group.id ? "block" : "hidden"
+                  className={`absolute right-0 top-full z-30 mt-2 min-w-[14rem] overflow-hidden rounded-3xl border border-white/10 bg-[#09090b]/95 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl transition-all duration-200 ${
+                    openGroup === group.id ? "opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 -translate-y-1 scale-[0.98]"
                   }`}
                   role="menu"
                 >
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
                     {group.items.map(([href, label]) => (
                       <li key={href}>
                         <Link
                           href={tenantHref(href)}
-                          className="block rounded-2xl px-3 py-2 text-sm text-white/90 transition hover:bg-white/5 hover:text-white"
+                          className="ripple-container block rounded-2xl px-3 py-2.5 text-sm text-white/90 transition hover:bg-white/5 hover:text-white"
                           role="menuitem"
-                          onClick={() => setOpenGroup(null)}
+                          onClick={(e) => { ripple(e); setOpenGroup(null); }}
                         >
                           {label}
                         </Link>
@@ -264,7 +281,8 @@ export function SiteHeader({
                       key={`${href}-${label}`}
                       href={tenantHref(href)}
                       onClick={() => setMobileOpen(false)}
-                      className="block rounded-2xl px-4 py-3 text-base font-semibold text-white/90 transition hover:bg-white/10 hover:text-white"
+                      className="ripple-container block rounded-2xl px-4 py-3 text-base font-semibold text-white/90 transition hover:bg-white/10 hover:text-white"
+                      onMouseDown={ripple}
                     >
                       {label}
                     </Link>

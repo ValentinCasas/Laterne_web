@@ -1291,6 +1291,66 @@ button {
   }
 }
 
+/* ── Public: ripple / gota de agua (subtle, uses tenant accent) ── */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-container .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-primary, #ec4899) 0%, transparent 70%);
+  opacity: 0.18;
+  pointer-events: none;
+  animation: ripple-expand 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translate(-50%, -50%);
+}
+@keyframes ripple-expand {
+  0% { width: 0; height: 0; opacity: 0.22; }
+  100% { width: 120px; height: 120px; opacity: 0; }
+}
+
+/* ── Public: product detail modal ── */
+@keyframes pub-modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes pub-modal-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.97) translateY(6px); }
+}
+.pub-modal-in {
+  animation: pub-modal-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.pub-modal-out {
+  animation: pub-modal-out 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* ── Public: bottom-sheet slide up (mobile product detail / cart) ── */
+@keyframes pub-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes pub-sheet-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+.pub-sheet-in {
+  animation: pub-sheet-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.pub-sheet-out {
+  animation: pub-sheet-out 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* ── Public: floating cart bar entrance ── */
+@keyframes pub-bar-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pub-bar-in {
+  animation: pub-bar-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
