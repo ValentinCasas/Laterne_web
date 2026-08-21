@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Icon } from "@/components/admin/ui/icons";
 import { dateLabel } from "@/lib/helpers";
 import { adminHrefFromPathname } from "@/lib/routes";
@@ -22,21 +22,14 @@ type OrderRow = {
 
 type SortKey = "number" | "supplier" | "branch" | "orderDate" | "status";
 type SortDir = "asc" | "desc";
-type Density = "compact" | "normal" | "comfortable";
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: "Borrador", color: "var(--admin-muted)", bg: "color-mix(in srgb, var(--admin-muted) 12%, transparent)" },
-  sent: { label: "Enviado", color: "#60a5fa", bg: "color-mix(in srgb, #60a5fa 12%, transparent)" },
-  partially_received: { label: "Parcial", color: "var(--admin-warning)", bg: "color-mix(in srgb, var(--admin-warning) 12%, transparent)" },
-  received: { label: "Recibido", color: "var(--admin-success)", bg: "color-mix(in srgb, var(--admin-success) 12%, transparent)" },
+  sent: { label: "Enviado", color: "#60a5fa", bg: "color-mix(in srgb, #60a5fa 14%, transparent)" },
+  partially_received: { label: "Parcial", color: "var(--admin-warning)", bg: "color-mix(in srgb, var(--admin-warning) 14%, transparent)" },
+  received: { label: "Recibido", color: "var(--admin-success)", bg: "color-mix(in srgb, var(--admin-success) 14%, transparent)" },
   closed: { label: "Cerrado", color: "var(--admin-muted)", bg: "color-mix(in srgb, var(--admin-muted) 8%, transparent)" },
   cancelled: { label: "Cancelado", color: "var(--admin-danger)", bg: "color-mix(in srgb, var(--admin-danger) 12%, transparent)" },
-};
-
-const DENSITY_CFG: Record<Density, { cell: string; font: string; headerCell: string }> = {
-  compact: { cell: "px-3 py-1.5", font: "text-[10px]", headerCell: "px-3 py-2" },
-  normal: { cell: "px-4 py-2.5", font: "text-[11px]", headerCell: "px-4 py-3" },
-  comfortable: { cell: "px-5 py-3.5", font: "text-xs", headerCell: "px-5 py-3.5" },
 };
 
 const ROWS_PER_PAGE_OPTIONS = [15, 25, 50, 100];
@@ -44,16 +37,15 @@ const ROWS_PER_PAGE_OPTIONS = [15, 25, 50, 100];
 export function ComprasPedidosClient({ initialOrders, total, suppliers }: { initialOrders: OrderRow[]; total: number; suppliers: Array<{ id: number; name: string }> }) {
   const pathname = usePathname();
   const href = useCallback((path: string) => adminHrefFromPathname(pathname, path), [pathname]);
-
+  const tableRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("orderDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [density, setDensity] = useState<Density>("compact");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [showDensityMenu, setShowDensityMenu] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("es");
@@ -84,8 +76,8 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
 
   const totalPages = Math.ceil(sorted.length / rowsPerPage);
   const paged = sorted.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-  const dCfg = DENSITY_CFG[density];
   const activeFilters = (statusFilter ? 1 : 0) + (supplierFilter ? 1 : 0) + (query ? 1 : 0);
+  const hasManyRows = sorted.length > 10;
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => d === "asc" ? "desc" : "asc");
@@ -95,101 +87,154 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
 
   function resetFilters() { setQuery(""); setStatusFilter(""); setSupplierFilter(""); setPage(0); }
 
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (showSortMenu) setShowSortMenu(false);
+    }
+    if (showSortMenu) document.addEventListener("click", handleClick, { once: true });
+    return () => document.removeEventListener("click", handleClick);
+  }, [showSortMenu]);
+
   return (
     <div className="min-h-screen" style={{ background: "var(--admin-background)" }}>
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{ background: "var(--admin-surface)" }} className="relative">
         <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), var(--admin-primary), transparent)" }} />
-        <div className="mx-auto max-w-[1600px] px-8 pt-6 pb-5">
-          <nav className="mb-5 flex items-center gap-2 text-xs" style={{ color: "var(--admin-muted)" }}>
+        <div className="mx-auto max-w-[1600px] px-8 pt-7 pb-6">
+          <nav className="mb-4 flex items-center gap-2 text-sm" style={{ color: "var(--admin-muted)" }}>
             <Link href={href("/admin/compras")} className="transition-colors hover:opacity-70">Compras</Link>
             <span className="opacity-40">/</span>
-            <span className="font-medium" style={{ color: "var(--admin-text)" }}>Pedidos de compra</span>
+            <span className="font-medium" style={{ color: "var(--admin-text)" }}>Pedidos</span>
           </nav>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight leading-none" style={{ color: "var(--admin-text)" }}>Pedidos de compra</h1>
-              <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>Gestiona los pedidos a proveedores</p>
+              <h1 className="text-[28px] font-extrabold tracking-tight leading-none" style={{ color: "var(--admin-text)" }}>Pedidos de compra</h1>
+              <p className="mt-2.5 text-sm" style={{ color: "var(--admin-muted)" }}>Gestiona los pedidos a proveedores</p>
             </div>
-            <Link href={href("/admin/compras/pedidos/nuevo") as never} className="rounded-lg px-4 py-2 text-xs font-bold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }}>
-              + Nuevo pedido
+            <Link href={href("/admin/compras/pedidos/nuevo") as never}
+              className="rounded-lg px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 flex items-center gap-2"
+              style={{ background: "var(--admin-primary-strong)" }}>
+              <Icon name="plus" className="text-sm" /> Nuevo pedido
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="border-b" style={{ borderColor: "var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface) 60%, var(--admin-background))" }}>
-        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center gap-2 px-8 py-3">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--admin-muted)" }} />
-            <input className="input w-full py-1.5 pl-9 pr-3 text-xs rounded-lg" value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }} placeholder="Buscar por numero o proveedor..." />
+      {/* ── Toolbar ── */}
+      <div className="sticky top-0 z-20 border-b" style={{ borderColor: "var(--admin-border)", background: "color-mix(in srgb, var(--admin-background) 85%, var(--admin-surface))", backdropFilter: "blur(12px)" }}>
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center gap-3 px-8 py-3">
+          {/* Search — fixed icon overlap */}
+          <div className="relative flex-1 min-w-[260px] max-w-md">
+            <Icon name="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: "var(--admin-muted)" }} />
+            <input className="w-full py-2 pl-10 pr-4 text-sm rounded-lg outline-none transition-all focus:ring-2"
+              style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", "--tw-ring-color": "color-mix(in srgb, var(--admin-primary) 40%, transparent)" } as React.CSSProperties}
+              value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }}
+              placeholder="Buscar por numero o proveedor..." />
           </div>
-          <select className="input py-1.5 px-3 text-[10px] rounded-lg" style={{ minWidth: "120px" }} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
+
+          {/* Filters */}
+          <select className="py-2 px-3 text-sm rounded-lg outline-none"
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", minWidth: "140px" }}
+            value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
             <option value="">Todos los estados</option>
             {Object.entries(STATUS_CFG).map(([v, cfg]) => <option key={v} value={v}>{cfg.label}</option>)}
           </select>
-          <select className="input py-1.5 px-3 text-[10px] rounded-lg" style={{ minWidth: "140px" }} value={supplierFilter} onChange={(e) => { setSupplierFilter(e.target.value); setPage(0); }}>
+          <select className="py-2 px-3 text-sm rounded-lg outline-none"
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", minWidth: "160px" }}
+            value={supplierFilter} onChange={(e) => { setSupplierFilter(e.target.value); setPage(0); }}>
             <option value="">Todos los proveedores</option>
             {suppliers.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
           </select>
+
           {activeFilters > 0 && (
-            <button type="button" className="rounded-lg px-2 py-1.5 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-danger)" }} onClick={resetFilters}>Limpiar ({activeFilters})</button>
-          )}
-          <div className="w-px h-5" style={{ background: "var(--admin-border)" }} />
-          {/* Density */}
-          <div className="relative">
-            <button type="button" className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-muted)" }} onClick={() => setShowDensityMenu(!showDensityMenu)}>
-              <Icon name="menu" className="text-[10px]" /> Densidad
+            <button type="button" className="flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all"
+              style={{ color: "var(--admin-danger)" }} onClick={resetFilters}>
+              <Icon name="x" className="text-xs" /> Limpiar
             </button>
-            {showDensityMenu && (
-              <div className="absolute right-0 top-full z-30 mt-1 rounded-xl p-2 shadow-2xl min-w-[140px]" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
-                {(["compact", "normal", "comfortable"] as Density[]).map((d) => (
-                  <button key={d} type="button" className="w-full text-left rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all"
-                    style={{ color: density === d ? "var(--admin-primary)" : "var(--admin-text)", background: density === d ? "color-mix(in srgb, var(--admin-primary) 8%, transparent)" : "transparent" }}
-                    onClick={() => { setDensity(d); setShowDensityMenu(false); }}>
-                    {d === "compact" ? "Compacta" : d === "normal" ? "Normal" : "Comoda"}
-                  </button>
-                ))}
+          )}
+
+          <div className="w-px h-6" style={{ background: "var(--admin-border)" }} />
+
+          {/* Sort */}
+          <div className="relative">
+            <button type="button"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all"
+              style={{ color: (sortKey !== "orderDate" || sortDir !== "desc") ? "var(--admin-primary)" : "var(--admin-muted)", background: (sortKey !== "orderDate" || sortDir !== "desc") ? "color-mix(in srgb, var(--admin-primary) 8%, transparent)" : "transparent" }}
+              onClick={(e) => { e.stopPropagation(); setShowSortMenu(!showSortMenu); }}>
+              <Icon name="sort" className="text-sm" /> Ordenar
+            </button>
+            {showSortMenu && (
+              <div className="absolute right-0 top-full z-30 mt-1.5 rounded-xl p-2 shadow-2xl min-w-[200px]"
+                style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
+                onClick={(e) => e.stopPropagation()}>
+                {([
+                  { key: "orderDate" as SortKey, label: "Fecha — mas reciente", dir: "desc" as SortDir },
+                  { key: "orderDate" as SortKey, label: "Fecha — mas antigua", dir: "asc" as SortDir },
+                  { key: "number" as SortKey, label: "Numero", dir: "asc" as SortDir },
+                  { key: "supplier" as SortKey, label: "Proveedor A-Z", dir: "asc" as SortDir },
+                  { key: "supplier" as SortKey, label: "Proveedor Z-A", dir: "desc" as SortDir },
+                ]).map((opt, i) => {
+                  const active = sortKey === opt.key && sortDir === opt.dir;
+                  return (
+                    <button key={i} type="button"
+                      className="w-full text-left rounded-lg px-3 py-2 text-sm font-medium transition-all flex items-center justify-between gap-2"
+                      style={{ color: active ? "var(--admin-primary)" : "var(--admin-text)", background: active ? "color-mix(in srgb, var(--admin-primary) 8%, transparent)" : "transparent" }}
+                      onClick={() => { setSortKey(opt.key); setSortDir(opt.dir); setPage(0); setShowSortMenu(false); }}>
+                      {opt.label}
+                      {active && <Icon name="check" className="text-xs" style={{ color: "var(--admin-primary)" }} />}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
-          <span className="ml-auto text-[10px] font-semibold" style={{ color: "var(--admin-muted)" }}>{sorted.length} resultado{sorted.length !== 1 ? "s" : ""}</span>
+
+          <span className="ml-auto text-xs font-medium" style={{ color: "var(--admin-muted)" }}>
+            {sorted.length} resultado{sorted.length !== 1 ? "s" : ""}
+          </span>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="mx-auto max-w-[1600px] px-8 py-4">
+      {/* ── Table ── */}
+      <div className="mx-auto max-w-[1600px] px-8 py-5">
         {sorted.length === 0 ? (
-          <div className="rounded-xl p-12 text-center" style={{ border: "1px dashed var(--admin-border)" }}>
-            <Icon name="package" className="mx-auto text-3xl mb-3" style={{ color: "var(--admin-muted)", opacity: 0.4 }} />
-            <h3 className="text-lg font-bold" style={{ color: "var(--admin-text)" }}>No hay pedidos</h3>
-            <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>
+          <div className="rounded-xl p-14 text-center" style={{ border: "1px dashed var(--admin-border)" }}>
+            <Icon name="package" className="mx-auto mb-4" style={{ color: "var(--admin-muted)", opacity: 0.3, fontSize: "40px" }} />
+            <h3 className="text-xl font-bold" style={{ color: "var(--admin-text)" }}>No hay pedidos</h3>
+            <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>
               {activeFilters > 0 ? "No hay pedidos que coincidan con los filtros." : "Crea el primero para pedir mercaderia a un proveedor."}
             </p>
-            {activeFilters > 0 && <button type="button" className="mt-3 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ color: "var(--admin-primary)" }} onClick={resetFilters}>Limpiar filtros</button>}
+            {activeFilters > 0 && (
+              <button type="button" className="mt-4 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+                style={{ color: "var(--admin-primary)", border: "1px solid color-mix(in srgb, var(--admin-primary) 30%, transparent)" }}
+                onClick={resetFilters}>Limpiar filtros</button>
+            )}
           </div>
         ) : (
           <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
-            <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 340px)", minHeight: "320px", scrollbarColor: "var(--admin-border) transparent" }}>
-              <table className="w-full text-left" style={{ minWidth: "750px" }}>
+            <div ref={tableRef} className="overflow-auto" style={{ maxHeight: hasManyRows ? "calc(100vh - 310px)" : "none", scrollbarColor: "var(--admin-border) transparent" }}>
+              <table className="w-full text-left" style={{ minWidth: "800px" }}>
                 <thead className="sticky top-0 z-10">
                   <tr style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 60%, var(--admin-surface))" }}>
-                    {(["number", "supplier", "branch", "orderDate", "status"] as SortKey[]).map((key) => {
-                      const labels: Record<string, string> = { number: "Pedido", supplier: "Proveedor", branch: "Sucursal", orderDate: "Fecha", status: "Estado" };
-                      return (
-                        <th key={key} className={`${dCfg.headerCell} text-[10px] font-semibold uppercase tracking-wider select-none cursor-pointer transition-colors`}
-                          style={{ color: sortKey === key ? "var(--admin-primary)" : "var(--admin-muted)" }}
-                          onClick={() => toggleSort(key)}>
-                          <span className="flex items-center gap-1">
-                            {labels[key]}
-                            {sortKey === key && <Icon name="arrow-down" className="text-[8px]" style={{ transform: sortDir === "asc" ? "rotate(180deg)" : undefined }} />}
-                          </span>
-                        </th>
-                      );
-                    })}
-                    <th className={`${dCfg.headerCell} text-[10px] font-semibold uppercase tracking-wider text-right`} style={{ color: "var(--admin-muted)" }}>Recepcion</th>
-                    <th className={`${dCfg.headerCell} w-20`}>&nbsp;</th>
+                    {([
+                      { key: "number" as SortKey, label: "Pedido", w: "w-[180px]" },
+                      { key: "supplier" as SortKey, label: "Proveedor", w: "" },
+                      { key: "branch" as SortKey, label: "Sucursal", w: "" },
+                      { key: "orderDate" as SortKey, label: "Fecha", w: "w-[120px]" },
+                      { key: "status" as SortKey, label: "Estado", w: "w-[130px]" },
+                    ]).map(({ key, label, w }) => (
+                      <th key={key}
+                        className={`px-5 py-3.5 text-xs font-semibold uppercase tracking-wider select-none cursor-pointer transition-colors ${w}`}
+                        style={{ color: sortKey === key ? "var(--admin-primary)" : "var(--admin-muted)" }}
+                        onClick={() => toggleSort(key)}>
+                        <span className="flex items-center gap-1.5">
+                          {label}
+                          {sortKey === key && <Icon name="arrow-down" className="text-[10px]" style={{ transform: sortDir === "asc" ? "rotate(180deg)" : undefined }} />}
+                        </span>
+                      </th>
+                    ))}
+                    <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>Recepcion</th>
+                    <th className="px-5 py-3.5 w-16">&nbsp;</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -199,28 +244,36 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                     const receiptPct = totalItems > 0 ? Math.round(((totalItems - pendingReceipt) / totalItems) * 100) : 0;
                     const st = STATUS_CFG[order.status] ?? STATUS_CFG.draft;
                     return (
-                      <tr key={order.id} className="transition-colors"
-                        style={{ borderBottom: "1px solid var(--admin-border)", background: idx % 2 === 1 ? "color-mix(in srgb, var(--admin-surface-elevated) 12%, var(--admin-surface))" : undefined }}>
-                        <td className={`${dCfg.cell} ${dCfg.font}`}>
-                          <Link href={href(`/admin/compras/pedidos/${order.id}`) as never} className="font-bold transition-opacity hover:opacity-80" style={{ color: "var(--admin-primary)" }}>{order.number}</Link>
-                          {order.externalReference && <p className="text-[9px] mt-0.5" style={{ color: "var(--admin-muted)" }}>{order.externalReference}</p>}
+                      <tr key={order.id}
+                        className="transition-colors group cursor-pointer"
+                        style={{ borderBottom: "1px solid var(--admin-border)" }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 4%, var(--admin-surface-elevated))"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 1 ? "color-mix(in srgb, var(--admin-surface-elevated) 8%, var(--admin-surface))" : "transparent"}
+                        onClick={() => { window.location.href = href(`/admin/compras/pedidos/${order.id}`); }}>
+                        <td className="px-5 py-3.5">
+                          <div className="font-semibold text-sm" style={{ color: "var(--admin-primary)" }}>{order.number}</div>
+                          {order.externalReference && <p className="text-xs mt-0.5" style={{ color: "var(--admin-muted)" }}>{order.externalReference}</p>}
                         </td>
-                        <td className={`${dCfg.cell} ${dCfg.font} font-semibold`} style={{ color: "var(--admin-text)" }}>{order.supplier.name}</td>
-                        <td className={`${dCfg.cell} ${dCfg.font}`} style={{ color: "var(--admin-muted)" }}>{order.branch.name}</td>
-                        <td className={`${dCfg.cell} ${dCfg.font}`} style={{ color: "var(--admin-muted)" }}>{dateLabel(order.orderDate)}</td>
-                        <td className={`${dCfg.cell} ${dCfg.font}`}>
-                          <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                        <td className="px-5 py-3.5 font-semibold text-sm" style={{ color: "var(--admin-text)" }}>{order.supplier.name}</td>
+                        <td className="px-5 py-3.5 text-sm" style={{ color: "var(--admin-muted)" }}>{order.branch.name}</td>
+                        <td className="px-5 py-3.5 text-sm tabular-nums" style={{ color: "var(--admin-muted)" }}>{dateLabel(order.orderDate)}</td>
+                        <td className="px-5 py-3.5">
+                          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                            style={{ background: st.bg, color: st.color }}>{st.label}</span>
                         </td>
-                        <td className={`${dCfg.cell} ${dCfg.font}`}>
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-14 rounded-full" style={{ background: "color-mix(in srgb, var(--admin-muted) 15%, transparent)" }}>
-                              <div className="h-1.5 rounded-full transition-all" style={{ width: `${receiptPct}%`, background: receiptPct === 100 ? "var(--admin-success)" : receiptPct > 0 ? "var(--admin-warning)" : "var(--admin-muted)" }} />
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: "color-mix(in srgb, var(--admin-muted) 12%, transparent)" }}>
+                              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${receiptPct}%`, background: receiptPct === 100 ? "var(--admin-success)" : receiptPct > 0 ? "var(--admin-warning)" : "var(--admin-muted)" }} />
                             </div>
-                            <span className="text-[9px] tabular-nums" style={{ color: "var(--admin-muted)" }}>{receiptPct}%</span>
+                            <span className="text-xs tabular-nums font-medium" style={{ color: "var(--admin-muted)" }}>{receiptPct}%</span>
                           </div>
                         </td>
-                        <td className={`${dCfg.cell} ${dCfg.font}`}>
-                          <Link href={href(`/admin/compras/pedidos/${order.id}`) as never} className="rounded px-1.5 py-1 text-[9px] font-semibold transition-all hover:opacity-80" style={{ color: "var(--admin-muted)" }}>Abrir</Link>
+                        <td className="px-5 py-3.5">
+                          <Link href={href(`/admin/compras/pedidos/${order.id}`) as never}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all opacity-0 group-hover:opacity-100"
+                            style={{ color: "var(--admin-primary)", background: "color-mix(in srgb, var(--admin-primary) 8%, transparent)" }}
+                            onClick={(e) => e.stopPropagation()}>Abrir</Link>
                         </td>
                       </tr>
                     );
@@ -228,22 +281,29 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                 </tbody>
               </table>
             </div>
+
             {/* Footer / Pagination */}
-            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 40%, var(--admin-surface))" }}>
-              <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--admin-muted)" }}>
-                <span>Filas:</span>
-                <select className="input py-0.5 px-1.5 text-[10px] rounded" style={{ minWidth: "50px" }} value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
+            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+              style={{ borderTop: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 40%, var(--admin-surface))" }}>
+              <div className="flex items-center gap-2.5 text-xs" style={{ color: "var(--admin-muted)" }}>
+                <span>Filas por pagina:</span>
+                <select className="py-1 px-2 text-xs rounded-lg" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)" }}
+                  value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
                   {ROWS_PER_PAGE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--admin-muted)" }}>
-                <span>{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, sorted.length)} de {sorted.length}</span>
-                <button type="button" className="rounded px-2 py-1 transition-colors disabled:opacity-30" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                  <Icon name="arrow-down" className="text-[10px]" style={{ transform: "rotate(90deg)" }} />
-                </button>
-                <button type="button" className="rounded px-2 py-1 transition-colors disabled:opacity-30" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
-                  <Icon name="arrow-down" className="text-[10px]" style={{ transform: "rotate(-90deg)" }} />
-                </button>
+              <div className="flex items-center gap-3 text-xs" style={{ color: "var(--admin-muted)" }}>
+                <span className="tabular-nums">{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, sorted.length)} de {sorted.length}</span>
+                <div className="flex items-center gap-1">
+                  <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-white/5 disabled:opacity-30"
+                    disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                    <Icon name="arrow-down" className="text-sm" style={{ transform: "rotate(90deg)" }} />
+                  </button>
+                  <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-white/5 disabled:opacity-30"
+                    disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
+                    <Icon name="arrow-down" className="text-sm" style={{ transform: "rotate(-90deg)" }} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
