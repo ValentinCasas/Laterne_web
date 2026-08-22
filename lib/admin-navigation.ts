@@ -4,7 +4,8 @@
  * Estructura por áreas funcionales con subgrupos claros:
  * - Inicio
  * - Atención (pedidos, cocina, clientes, reservas, cobros, facturación)
- * - Salón (plano interactivo, mesas, delivery)
+ * - Salón (plano interactivo, mesas y sectores)
+ * - Delivery (centro operativo, repartidores y configuración)
  * - Productos (catálogo, producción, inventario)
  * - Compras (proveedores y gastos)
  * - Finanzas (operativa y reportes)
@@ -23,6 +24,8 @@ export type AdminNavItem = {
   icon: string;
   permission: string;
   description?: string;
+  /** @summary Permiso requerido para navegar cuando el enlace debe seguir visible. */
+  accessPermission?: string;
   /** @summary Oculta la opción para usuarios que no son súper admin (plataforma). */
   superAdminOnly?: boolean;
 };
@@ -182,7 +185,7 @@ export const ADMIN_NAVIGATION = [
     id: "salon",
     label: "Salón",
     icon: "SL",
-    description: "Plano interactivo, mesas, sectores y delivery",
+    description: "Plano interactivo, mesas y sectores",
     sections: [
       {
         id: "salon-plano",
@@ -204,17 +207,18 @@ export const ADMIN_NAVIGATION = [
           },
         ],
       },
+    ],
+  },
+  {
+    id: "delivery",
+    label: "Delivery",
+    icon: "DL",
+    description: "Operación, repartidores y configuración de delivery",
+    sections: [
       {
-        id: "delivery-salon",
+        id: "delivery-operacion",
         label: "Delivery",
         items: [
-          {
-            href: "/admin/entregas",
-            label: "Remitos y entregas",
-            icon: "RE",
-            permission: "order.manage",
-            description: "Documento histórico de entregas",
-          },
           {
             href: "/admin/delivery",
             label: "Centro de delivery",
@@ -228,6 +232,20 @@ export const ADMIN_NAVIGATION = [
             icon: "RP",
             permission: "driver.view",
             description: "Perfiles de repartidores, sucursales y KPIs",
+          },
+          {
+            href: "/admin/driver",
+            label: "Panel del repartidor",
+            icon: "DR",
+            permission: "admin.access",
+            description: "Entregas y ubicación del repartidor autenticado",
+          },
+          {
+            href: "/admin/integraciones#delivery-map",
+            label: "Configuración de delivery",
+            icon: "CF",
+            permission: "business.manage",
+            description: "OpenFreeMap e integraciones de delivery",
           },
         ],
       },
@@ -646,8 +664,11 @@ export function adminGroupIdForHref(href: string): string {
 }
 
 export function adminLinkMatchScore(pathname: string, href: string): number {
-  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
-  const normalizedHref = href.replace(/\/+$/, "") || "/";
+  const pathnameHash = pathname.includes("#") ? `#${pathname.split("#").slice(1).join("#")}` : "";
+  const hrefHash = href.includes("#") ? `#${href.split("#").slice(1).join("#")}` : "";
+  if (hrefHash && hrefHash !== pathnameHash) return 0;
+  const normalizedPath = (pathname.split(/[?#]/, 1)[0] ?? pathname).replace(/\/+$/, "") || "/";
+  const normalizedHref = (href.split(/[?#]/, 1)[0] ?? href).replace(/\/+$/, "") || "/";
   const hrefSegments = normalizedHref.split("/").filter(Boolean);
   if (hrefSegments.length === 1 && hrefSegments[0] === "admin") {
     const pathSegments = normalizedPath.split("/").filter(Boolean);

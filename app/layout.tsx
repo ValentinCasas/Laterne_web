@@ -33,7 +33,7 @@ async function resolveRequestContext() {
   const routeKind = requestHeaders.get("x-menuclick-route-kind") ?? "";
   const hostKind = classifyHost(host).kind;
   const kind =
-    routeKind === "tenant-public"
+    routeKind === "tenant-public" || routeKind === "tenant-driver"
       ? "tenant"
       : routeKind === "tenant-admin" || routeKind === "tenant-auth"
         ? "app"
@@ -82,9 +82,9 @@ async function resolveRequestContext() {
   const branchSlug =
     requestHeaders.get("x-menuclick-branch-slug")?.trim().toLocaleLowerCase("es") || undefined;
   const originalPath = requestHeaders.get("x-menuclick-original-path") || "/";
-  // El panel administrativo del tenant ofrece su propia barra superior; el header
-  // y footer públicos quedan reservados para la superficie pública.
-  const adminSurface = routeKind === "tenant-admin";
+  // Admin y Driver ofrecen navegación propia; el chrome público queda reservado
+  // exclusivamente para carta, reservas y el resto de la experiencia pública.
+  const privateSurface = routeKind === "tenant-admin" || routeKind === "tenant-driver";
   return {
     kind,
     tenant,
@@ -94,7 +94,7 @@ async function resolveRequestContext() {
     platformSettings,
     branchSlug,
     originalPath,
-    adminSurface,
+    privateSurface,
   };
 }
 
@@ -150,7 +150,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** @summary Define la estructura global y solo añade la navegación pública cuando existe un negocio. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { kind, tenant, brand, palette, menuTheme, branchSlug, originalPath, adminSurface } =
+  const { kind, tenant, brand, palette, menuTheme, branchSlug, originalPath, privateSurface } =
     await resolveRequestContext();
   const style = {
     ...paletteCssVariables(palette),
@@ -170,7 +170,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined}
         style={style}
       >
-        {tenant && !adminSurface && (
+        {tenant && !privateSurface && (
           <SiteHeader
             brandName={name}
             logoUrl={brand?.logoUrl}
@@ -178,15 +178,15 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             branchSlug={branchSlug}
           />
         )}
-        {tenant && <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />}
+        {tenant && !privateSurface && <AnalyticsTracker analyticsId={brand?.analyticsId} metaPixelId={brand?.metaPixelId} />}
         <PwaRegister />
-        {tenant && <CookieBanner />}
+        {tenant && !privateSurface && <CookieBanner />}
         {kind === "platform" ? (
           <MenuClickThemeProvider initialTheme={menuTheme}>{children}</MenuClickThemeProvider>
         ) : (
           children
         )}
-        {tenant && !adminSurface && (
+        {tenant && !privateSurface && (
           <SiteFooter
             businessName={name}
             tenantSlug={tenant.slug}

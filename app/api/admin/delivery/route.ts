@@ -20,11 +20,17 @@ export async function GET(request: Request) {
     : null;
   const provider = url.searchParams.get("provider") || undefined;
   const q = url.searchParams.get("q") || undefined;
-  const limit = Number(url.searchParams.get("limit") ?? 60);
-  const offset = Number(url.searchParams.get("offset") ?? 0);
+  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 60) || 60));
+  const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
 
   const accessibleBranchIds = auth.branches.map((branch) => branch.id);
-  const where: Record<string, unknown> = { tenantId: auth.tenant.id };
+  if (branchId && !accessibleBranchIds.includes(branchId)) {
+    return NextResponse.json({ error: "Sucursal no autorizada" }, { status: 403 });
+  }
+  const where: Record<string, unknown> = {
+    tenantId: auth.tenant.id,
+    order: { is: { tenantId: auth.tenant.id } },
+  };
   if (status) where.status = status;
   if (branchId && accessibleBranchIds.includes(branchId)) where.branchId = branchId;
   if (!branchId && accessibleBranchIds.length > 0) where.branchId = { in: accessibleBranchIds };

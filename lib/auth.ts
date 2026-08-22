@@ -505,13 +505,13 @@ export async function requirePermission(permission: string) {
 }
 
 /**
- * @summary Exige una membresía con el permiso `driver.self` para la vista personal
- * del repartidor. Rechaza con redirección al acceso/403 como el resto del panel.
+ * @summary Exige una membresía activa para la vista personal del repartidor.
+ * La vista resuelve siempre el perfil vinculado al usuario autenticado.
  */
 export async function requireDriver() {
   const requestHeaders = await headers();
   const routeTenantSlug = requestHeaders.get("x-menuclick-tenant-slug")?.trim().toLocaleLowerCase("es");
-  const context = await authorize("driver.self");
+  const context = await authorize();
   if (!context) {
     const loginPath = routeTenantSlug ? tenantPublicPath(routeTenantSlug, "/login") : "/login";
     const session = await getSession();

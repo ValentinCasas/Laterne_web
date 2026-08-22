@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, FiltersBar, KpiCard, ActionMenu, EmptyState } from "@/components/admin/ui";
+import { PageHeader, SearchBox, FiltersBar, KpiCard, ActionMenu, EmptyState, Drawer, Pagination, UserAvatar } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
+import { avatarUrl } from "@/components/admin/profile-menu";
 
 type Driver = {
   id: number;
@@ -17,7 +18,7 @@ type Driver = {
   color?: string | null;
   capacity?: number | null;
   createdAt: string | Date;
-  user?: { id: number; name: string; email: string } | null;
+  user?: { id: number; name: string; email: string; imageUrl?: string | null } | null;
   branches?: Array<{ id: number; name: string; slug: string }>;
   activeDeliveriesCount?: number;
   openIncidents?: number;
@@ -64,12 +65,16 @@ export function DriversList({
   branches,
   users,
   canManage,
+  currentUserId,
+  driverPanelHref,
   kpis,
 }: {
   initialDrivers: Driver[];
   branches: Branch[];
   users: UserOption[];
   canManage: boolean;
+  currentUserId: number;
+  driverPanelHref?: string;
   kpis: Kpis;
 }) {
   const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
@@ -79,6 +84,8 @@ export function DriversList({
   const [editing, setEditing] = useState<Driver | null>(null);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const visible = useMemo(() => {
     const q = filterQ.trim().toLocaleLowerCase("es");
@@ -92,6 +99,10 @@ export function DriversList({
       return haystack.some((value) => value.includes(q));
     });
   }, [drivers, filterQ, filterStatus, filterBranch]);
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const pagedDrivers = visible.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const topNames = kpis.topDrivers
     .map((top) => {
@@ -173,10 +184,19 @@ export function DriversList({
         description="Perfiles de repartidores, sucursales habilitadas, entregas y KPIs del día."
         section="repartidores"
         actions={
-          canManage ? (
-            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-              Nuevo repartidor
-            </button>
+          driverPanelHref || canManage ? (
+            <div className="flex flex-wrap gap-2">
+              {driverPanelHref && (
+                <a className="btn" href={driverPanelHref}>
+                  Abrir mi panel
+                </a>
+              )}
+              {canManage && (
+                <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+                  Nuevo repartidor
+                </button>
+              )}
+            </div>
           ) : undefined
         }
       />
@@ -195,16 +215,17 @@ export function DriversList({
           setFilterQ("");
           setFilterStatus("");
           setFilterBranch("");
+          setPage(1);
         }}
       >
-        <SearchBox value={filterQ} onChange={setFilterQ} placeholder="Buscar por nombre, teléfono o usuario…" />
-        <select className="input w-full" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filtrar por estado">
+        <SearchBox value={filterQ} onChange={(value) => { setFilterQ(value); setPage(1); }} placeholder="Buscar por nombre, teléfono o usuario…" />
+        <select className="input w-full" value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} aria-label="Filtrar por estado">
           <option value="">Todos los estados</option>
           <option value="AVAILABLE">Disponible</option>
           <option value="UNAVAILABLE">No disponible</option>
           <option value="INACTIVE">Inactivo</option>
         </select>
-        <select className="input w-full" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} aria-label="Filtrar por sucursal">
+        <select className="input w-full" value={filterBranch} onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }} aria-label="Filtrar por sucursal">
           <option value="">Todas las sucursales</option>
           {branches.map((branch) => (
             <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
@@ -214,11 +235,14 @@ export function DriversList({
 
       <div className="mt-4 space-y-2">
         {visible.length === 0 && <EmptyState title="Sin repartidores para estos filtros." description="" />}
-        {visible.map((driver) => {
+        {pagedDrivers.map((driver) => {
           const meta = statusMeta(driver.status);
+          const canOpenThisPanel = Boolean(driverPanelHref && driver.user?.id === currentUserId);
           return (
             <div key={driver.id} className="card flex flex-wrap items-center justify-between gap-4 p-4">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-3">
+                <UserAvatar name={driver.name} src={avatarUrl(driver.user?.imageUrl ?? undefined)} size="lg" status={driver.status === "AVAILABLE" ? "online" : "away"} />
+                <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-bold text-white">{driver.name}</p>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${meta.badge}`}>{meta.label}</span>
@@ -238,6 +262,7 @@ export function DriversList({
                     <span className="text-[10px] text-amber-300">Sin sucursales habilitadas</span>
                   )}
                 </div>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-center">
                 <div>
@@ -256,12 +281,19 @@ export function DriversList({
                   <p className="text-lg font-black text-violet-300">{driver.avgTotalMinutes ?? 0}m</p>
                   <p className="text-[10px] uppercase tracking-widest text-[var(--admin-muted)]">Tiempo medio</p>
                 </div>
-                {canManage && (
+                {(canOpenThisPanel || canManage) && (
                   <ActionMenu
                     align="right"
                     items={[
-                      { label: "Editar", onClick: () => setEditing(driver) },
-                      { label: "Eliminar", onClick: () => deleteDriver(driver), tone: "danger" },
+                      ...(canOpenThisPanel && driverPanelHref
+                        ? [{ label: "Abrir mi panel", onClick: () => { window.location.href = driverPanelHref; } }]
+                        : []),
+                      ...(canManage
+                        ? [
+                            { label: "Editar", onClick: () => setEditing(driver) },
+                            { label: "Eliminar", onClick: () => deleteDriver(driver), tone: "danger" as const },
+                          ]
+                        : []),
                     ]}
                   />
                 )}
@@ -270,6 +302,12 @@ export function DriversList({
           );
         })}
       </div>
+
+      {visible.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--admin-border)]">
+          <Pagination page={safePage} pageSize={pageSize} totalItems={visible.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
+        </div>
+      )}
 
       {topNames.length > 0 && (
         <div className="card mt-6 p-4">
@@ -285,7 +323,7 @@ export function DriversList({
       )}
 
       {(creating || editing) && canManage && (
-        <DriverFormModal
+        <DriverFormDrawer
           driver={editing}
           branches={branches}
           users={users}
@@ -315,7 +353,7 @@ type DriverFormValues = {
   branchIds: number[];
 };
 
-function DriverFormModal({
+function DriverFormDrawer({
   driver,
   branches,
   users,
@@ -368,16 +406,9 @@ function DriverFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
-      <form onSubmit={handleSubmit} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#1c1c22] p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-white">{driver ? "Editar repartidor" : "Nuevo repartidor"}</h2>
-          <button type="button" className="text-[var(--admin-muted)] hover:text-white" onClick={onClose} aria-label="Cerrar">
-            ✕
-          </button>
-        </div>
-
-        <div className="mt-4 space-y-4">
+    <Drawer open onClose={onClose} title={driver ? "Editar repartidor" : "Nuevo repartidor"} width="620px">
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-bold text-[var(--admin-muted)]" htmlFor="d-name">Nombre *</label>
@@ -471,7 +502,7 @@ function DriverFormModal({
           </button>
         </div>
       </form>
-    </div>
+    </Drawer>
   );
 }
 

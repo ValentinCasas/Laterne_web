@@ -6,6 +6,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Icon } from "@/components/admin/ui/icons";
 import { dateLabel } from "@/lib/helpers";
 import { adminHrefFromPathname } from "@/lib/routes";
+import { scopedFetch } from "@/lib/client-routing";
 
 type OrderRow = {
   id: number;
@@ -32,7 +33,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   cancelled: { label: "Cancelado", color: "var(--admin-danger)", bg: "color-mix(in srgb, var(--admin-danger) 12%, transparent)" },
 };
 
-const ROWS_PER_PAGE_OPTIONS = [15, 25, 50, 100];
+const ROWS_PER_PAGE_OPTIONS = [25, 50, 100];
 
 export function ComprasPedidosClient({ initialOrders, total, suppliers }: { initialOrders: OrderRow[]; total: number; suppliers: Array<{ id: number; name: string }> }) {
   const pathname = usePathname();
@@ -46,16 +47,19 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [orders, setOrders] = useState(initialOrders);
+  const [resultTotal, setResultTotal] = useState(total);
+  const [loading, setLoading] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("es");
-    return initialOrders.filter((order) => {
+    return orders.filter((order) => {
       if (statusFilter && order.status !== statusFilter) return false;
       if (supplierFilter && String(order.supplier.id) !== supplierFilter) return false;
       if (q && !order.number.toLocaleLowerCase("es").includes(q) && !order.supplier.name.toLocaleLowerCase("es").includes(q)) return false;
       return true;
     });
-  }, [initialOrders, query, statusFilter, supplierFilter]);
+  }, [orders, query, statusFilter, supplierFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -74,10 +78,9 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
     return arr;
   }, [filtered, sortKey, sortDir]);
 
-  const totalPages = Math.ceil(sorted.length / rowsPerPage);
-  const paged = sorted.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(resultTotal / rowsPerPage));
+  const paged = sorted;
   const activeFilters = (statusFilter ? 1 : 0) + (supplierFilter ? 1 : 0) + (query ? 1 : 0);
-  const hasManyRows = sorted.length > 10;
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => d === "asc" ? "desc" : "asc");
@@ -88,12 +91,47 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
   function resetFilters() { setQuery(""); setStatusFilter(""); setSupplierFilter(""); setPage(0); }
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick() {
       if (showSortMenu) setShowSortMenu(false);
     }
     if (showSortMenu) document.addEventListener("click", handleClick, { once: true });
     return () => document.removeEventListener("click", handleClick);
   }, [showSortMenu]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setLoading(true);
+        const params = new URLSearchParams({
+          limit: String(rowsPerPage),
+          offset: String(page * rowsPerPage),
+          sortBy: sortKey,
+          sortDir,
+        });
+        if (query.trim()) params.set("q", query.trim());
+        if (statusFilter) params.set("status", statusFilter);
+        if (supplierFilter) params.set("supplierId", supplierFilter);
+        try {
+          const response = await scopedFetch(`/api/admin/compras?${params.toString()}`, {
+            signal: controller.signal,
+          });
+          if (!response.ok) return;
+          const body = (await response.json()) as { items: OrderRow[]; total: number };
+          setOrders(body.items);
+          setResultTotal(body.total);
+        } catch {
+          if (!controller.signal.aborted) setLoading(false);
+        } finally {
+          if (!controller.signal.aborted) setLoading(false);
+        }
+      })();
+    }, 220);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [page, query, rowsPerPage, sortDir, sortKey, statusFilter, supplierFilter]);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--admin-background)" }}>
@@ -189,8 +227,8 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
             )}
           </div>
 
-          <span className="ml-auto text-xs font-medium" style={{ color: "var(--admin-muted)" }}>
-            {sorted.length} resultado{sorted.length !== 1 ? "s" : ""}
+          <span className="ml-auto text-xs font-medium" style={{ color: "var(--admin-muted)" }} aria-live="polite">
+            {loading ? "Actualizando…" : `${resultTotal} resultado${resultTotal !== 1 ? "s" : ""}`}
           </span>
         </div>
       </div>
@@ -209,7 +247,7 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
             )}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+          <div className={`overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 transition-opacity ${loading ? "opacity-65" : "opacity-100"}`} aria-busy={loading}>
             <div ref={tableRef} className="overflow-x-auto">
               <table className="w-full text-left text-sm" style={{ minWidth: "800px" }}>
                 <thead className="sticky top-0 z-10">
@@ -288,7 +326,7 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                 </select>
               </div>
               <div className="flex items-center gap-3 text-xs" style={{ color: "var(--admin-muted)" }}>
-                <span className="tabular-nums">{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, sorted.length)} de {sorted.length}</span>
+                <span className="tabular-nums">{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, resultTotal)} de {resultTotal}</span>
                 <div className="flex items-center gap-1">
                   <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-white/5 disabled:opacity-30"
                     disabled={page === 0} onClick={() => setPage((p) => p - 1)}>

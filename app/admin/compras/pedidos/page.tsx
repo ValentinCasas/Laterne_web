@@ -15,9 +15,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PedidosPage() {
   const context = await requirePermission("purchase.manage");
   const activeBranchId = context.activeBranchId && context.activeBranchId > 0 ? context.activeBranchId : null;
-  const branchFilter = activeBranchId ? { branchId: activeBranchId } : {};
+  const branchFilter = activeBranchId
+    ? { branchId: activeBranchId }
+    : { branchIds: context.branches.map((branch) => branch.id) };
   const [orders, suppliers] = await Promise.all([
-    listPurchaseOrders(context.tenant.id, { ...branchFilter, limit: 100 }),
+    listPurchaseOrders(context.tenant.id, { ...branchFilter, limit: 25 }),
     prisma.supplier.findMany({
       where: { tenantId: context.tenant.id, status: "active" },
       select: { id: true, name: true },

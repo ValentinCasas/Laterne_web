@@ -18,7 +18,7 @@ const driverUpdateStatusInput = z.object({
  * Registra el histórico con el timestamp real.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await authorize("driver.self");
+  const auth = await authorize();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const driverProfile = await prisma.driverProfile.findFirst({

@@ -8,7 +8,13 @@ export const dynamic = "force-dynamic";
 /** @summary Reúne el estado seguro de los proveedores sin transferir secretos al navegador. */
 export default async function IntegrationsPage() {
   const context = await requirePermission("business.manage");
-  const saved = await prisma.integrationSettings.findMany({ where: { tenantId: context.tenant.id } });
+  const [saved, mapProvider] = await Promise.all([
+    prisma.integrationSettings.findMany({ where: { tenantId: context.tenant.id } }),
+    prisma.deliveryProviderConfig.findUnique({
+      where: { tenantId_provider: { tenantId: context.tenant.id, provider: "openfreemap" } },
+      select: { provider: true, enabled: true, status: true, lastCheckAt: true },
+    }),
+  ]);
   const integrations = integrationProviders.map((provider) => {
     const current = saved.find((item) => item.provider === provider);
     return {
@@ -21,5 +27,16 @@ export default async function IntegrationsPage() {
       lastCheckAt: current?.lastCheckAt?.toISOString() ?? null,
     };
   });
-  return <IntegrationManager initialIntegrations={integrations} />;
+  return (
+    <IntegrationManager
+      initialIntegrations={integrations}
+      initialMapProvider={{
+        provider: "openfreemap",
+        enabled: mapProvider?.enabled ?? true,
+        status: mapProvider?.status ?? "active",
+        lastCheckAt: mapProvider?.lastCheckAt?.toISOString() ?? null,
+        persisted: Boolean(mapProvider),
+      }}
+    />
+  );
 }

@@ -68,6 +68,7 @@ type PaletteEntry = {
   icon: string;
   href: Route;
   logicalHref?: string;
+  restricted?: boolean;
 };
 
 /** @summary Iniciales del nombre del tenant para la marca del panel. */
@@ -208,6 +209,7 @@ export function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const clearPath = normalizedAdminPath(pathname);
+  const [locationHash, setLocationHash] = useState("");
   const branchNavigationAvailable = isBranchAdminLogicalPath(clearPath);
   const { mode: navigationMode, setMode: setNavigationMode } = useNavigationMode();
   const [commandOpen, setCommandOpen] = useState(false);
@@ -252,9 +254,18 @@ export function AdminShell({
     () => adminGroupsForPermissions(permissions, roleKey, isSuperAdmin),
     [permissions, roleKey, isSuperAdmin],
   );
+  /** @summary Conserva el ancla visible para activar una subsección específica de una página compartida. */
+  useEffect(() => {
+    function syncLocationHash() {
+      setLocationHash(window.location.hash);
+    }
+    syncLocationHash();
+    window.addEventListener("hashchange", syncLocationHash);
+    return () => window.removeEventListener("hashchange", syncLocationHash);
+  }, [pathname]);
   const activeLink = useMemo(
-    () => findActiveAdminLink(accessibleGroups, clearPath),
-    [accessibleGroups, clearPath],
+    () => findActiveAdminLink(accessibleGroups, `${clearPath}${locationHash}`),
+    [accessibleGroups, clearPath, locationHash],
   );
   const activeGroupId = useMemo(
     () => (activeLink ? adminGroupIdForHref(activeLink.href) : null),
@@ -362,6 +373,34 @@ export function AdminShell({
     setOpenGroup(value);
   }
 
+  /** @summary Explica por qué el panel personal no está disponible sin alterar permisos ni suplantar repartidores. */
+  async function showDriverPanelAccessNotice() {
+    const canViewDrivers = permissions.includes("driver.view");
+    setOpenGroupBoth(null);
+    setMobileMenuPath(null);
+    setCommandOpen(false);
+    setCommandQuery("");
+    setCommandResults(null);
+    setCommandActive(0);
+
+    const result = await Swal.fire({
+      title: "Panel del repartidor",
+      text: "Esta vista personal está disponible para usuarios vinculados a un perfil de repartidor.",
+      icon: "info",
+      showConfirmButton: true,
+      showCancelButton: canViewDrivers,
+      confirmButtonText: canViewDrivers ? "Ver repartidores" : "Entendido",
+      cancelButtonText: "Cerrar",
+      confirmButtonColor: "#ec4899",
+      background: "#18181b",
+      color: "#fafafa",
+    });
+
+    if (result.isConfirmed && canViewDrivers) {
+      router.push(adminHref("/admin/repartidores"));
+    }
+  }
+
   useEffect(() => {
     if (!mobileMenuOpen && !commandOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -464,6 +503,7 @@ export function AdminShell({
       icon: link.icon,
       href: adminHref(link.href),
       logicalHref: link.href,
+      restricted: Boolean(link.accessPermission && !permissions.includes(link.accessPermission)),
     }));
     if (sectionItems.length) groups.push({ id: "sections", label: "Secciones", items: sectionItems });
 
@@ -513,7 +553,7 @@ export function AdminShell({
       if (productItems.length) groups.push({ id: "products", label: "Productos", items: productItems });
     }
     return groups;
-  }, [adminHref, commandLinks, commandResults]);
+  }, [adminHref, commandLinks, commandResults, permissions]);
 
   const commandItems = useMemo(() => commandGroups.flatMap((group) => group.items), [commandGroups]);
 
@@ -609,6 +649,9 @@ export function AdminShell({
           adminHref={adminHref}
           onNavigate={() => {
             setOpenGroupBoth(null);
+          }}
+          onRestrictedNavigate={() => {
+            void showDriverPanelAccessNotice();
           }}
           onLogout={logout}
           userName={userName}
@@ -910,6 +953,9 @@ export function AdminShell({
                         {activeSection.items.map((item) => {
                           const index = flatIndex++;
                           const active = activeLink?.href === item.href;
+                          const restricted = Boolean(
+                            item.accessPermission && !permissions.includes(item.accessPermission),
+                          );
                           return (
                             <Link
                               key={item.href}
@@ -917,8 +963,15 @@ export function AdminShell({
                                 panelItemRefs.current[index] = element;
                               }}
                               href={adminHref(item.href)}
+                              aria-label={item.label}
+                              aria-current={active ? "page" : undefined}
                               tabIndex={panelFocusIndex === -1 || panelFocusIndex === index ? 0 : -1}
-                              onClick={() => {
+                              onClick={(event) => {
+                                if (restricted) {
+                                  event.preventDefault();
+                                  void showDriverPanelAccessNotice();
+                                  return;
+                                }
                                 setOpenGroupBoth(null);
                                 setMobileMenuPath(null);
                               }}
@@ -1050,6 +1103,7 @@ export function AdminShell({
                   >
                     <button
                       type="button"
+                      aria-label={group.label}
                       className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/[.04]"
                       aria-controls={`mobile-admin-group-${group.id}`}
                       aria-expanded={expanded}
@@ -1086,11 +1140,23 @@ export function AdminShell({
                             <div className="space-y-1">
                               {section.items.map((item) => {
                                 const active = activeLink?.href === item.href;
+                                const restricted = Boolean(
+                                  item.accessPermission && !permissions.includes(item.accessPermission),
+                                );
                                 return (
                                   <Link
                                     key={item.href}
                                     href={adminHref(item.href)}
-                                    onClick={() => setMobileMenuPath(null)}
+                                    aria-label={item.label}
+                                    aria-current={active ? "page" : undefined}
+                                    onClick={(event) => {
+                                      if (restricted) {
+                                        event.preventDefault();
+                                        void showDriverPanelAccessNotice();
+                                        return;
+                                      }
+                                      setMobileMenuPath(null);
+                                    }}
                                     className={`flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all duration-200 ${
                                       active ? "bg-white/[.06] border-l-2 border-[var(--admin-primary-strong)] pl-3" : "hover:bg-white/[.04] border-l-2 border-transparent"
                                     }`}
@@ -1220,8 +1286,12 @@ export function AdminShell({
                      const target = commandItems[commandActive];
                      if (target) {
                        event.preventDefault();
-                       router.push(target.href);
-                       closeCommand();
+                       if (target.restricted) {
+                         void showDriverPanelAccessNotice();
+                       } else {
+                         router.push(target.href);
+                         closeCommand();
+                       }
                      }
                    } else if (event.key === "Escape") {
                      closeCommand();
@@ -1253,7 +1323,12 @@ export function AdminShell({
                           onMouseEnter={() =>
                             setCommandActive(commandItems.findIndex((entry) => entry.key === item.key))
                           }
-                          onClick={() => {
+                          onClick={(event) => {
+                            if (item.restricted) {
+                              event.preventDefault();
+                              void showDriverPanelAccessNotice();
+                              return;
+                            }
                             closeCommand();
                             setOpenGroupBoth(null);
                             setMobileMenuPath(null);

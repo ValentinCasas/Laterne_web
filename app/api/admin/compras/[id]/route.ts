@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorize, canAccessBranch } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/purchases";
 
 const orderLineInput = z.object({
+  orderItemId: z.coerce.number().int().positive().optional(),
   productId: z.coerce.number().int().positive(),
   quantity: z.coerce.number().positive(),
   unit: z.string().trim().max(40).default("unidad"),
@@ -27,7 +28,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
   try {
-    const order = await loadPurchaseOrder(auth.tenant.id, Number(id));
+    const order = await loadPurchaseOrder(
+      auth.tenant.id,
+      Number(id),
+      auth.branches.map((branch) => branch.id),
+    );
     return NextResponse.json(serialize(order));
   } catch (error) {
     return NextResponse.json(
@@ -55,6 +60,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     })
     .safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisá los datos del pedido" }, { status: 400 });
+  if (parsed.data.branchId && !canAccessBranch(auth, parsed.data.branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
+  }
+  const visibleOrder = await prisma.purchaseOrder.findFirst({
+    where: {
+      id: Number(id),
+      tenantId: auth.tenant.id,
+      branchId: { in: auth.branches.map((branch) => branch.id) },
+    },
+    select: { id: true },
+  });
+  if (!visibleOrder) return NextResponse.json({ error: "El pedido no existe" }, { status: 404 });
 
   try {
     const order = await updatePurchaseOrder(auth.tenant.id, Number(id), {
@@ -91,6 +108,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const parsed = z.object({ status: z.string().min(1).max(24) }).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Indicá el estado" }, { status: 400 });
+  const visibleOrder = await prisma.purchaseOrder.findFirst({
+    where: {
+      id: Number(id),
+      tenantId: auth.tenant.id,
+      branchId: { in: auth.branches.map((branch) => branch.id) },
+    },
+    select: { id: true },
+  });
+  if (!visibleOrder) return NextResponse.json({ error: "El pedido no existe" }, { status: 404 });
 
   try {
     const order = await setPurchaseOrderStatus(auth.tenant.id, Number(id), parsed.data.status);
@@ -116,6 +142,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const auth = await authorize("purchase.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
+  const visibleOrder = await prisma.purchaseOrder.findFirst({
+    where: {
+      id: Number(id),
+      tenantId: auth.tenant.id,
+      branchId: { in: auth.branches.map((branch) => branch.id) },
+    },
+    select: { id: true },
+  });
+  if (!visibleOrder) return NextResponse.json({ error: "El pedido no existe" }, { status: 404 });
   try {
     const result = await prisma.$transaction(async (transaction) => {
       const order = await transaction.purchaseOrder.findFirst({

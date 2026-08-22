@@ -26,7 +26,7 @@ export const INCIDENT_TYPES = [
  * pasa a estado INCIDENCIA y se registra en el histórico con el timestamp real.
  */
 export async function POST(request: Request) {
-  const auth = await authorize("driver.self");
+  const auth = await authorize();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const driverProfile = await prisma.driverProfile.findFirst({

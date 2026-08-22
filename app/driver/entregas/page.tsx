@@ -29,9 +29,12 @@ export default async function DriverDeliveriesPage() {
     where: { tenantId: context.tenant.id, driverProfileId: driverProfile.id },
     include: {
       branch: { select: { id: true, name: true } },
-      order: { select: { id: true, reference: true, customerName: true } },
+      order: { select: { id: true, reference: true, customerName: true, phone: true, deliveryAddress: true, total: true, currency: true } },
       incidents: { select: { id: true, type: true, resolved: true, reportedAt: true } },
-      statusLogs: { select: { status: true, previousStatus: true, changedAt: true }, orderBy: { changedAt: "asc" } },
+      statusLogs: {
+        select: { id: true, status: true, previousStatus: true, reason: true, changedAt: true, changedBy: { select: { name: true } } },
+        orderBy: { changedAt: "asc" },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 100,

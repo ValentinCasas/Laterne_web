@@ -5,10 +5,10 @@ import { serialize } from "@/lib/format";
 
 /**
  * @summary Obtiene las entregas asignadas al repartidor autenticado.
- * Solo visible para el propio repartidor o admins con permiso.
+ * Solo devuelve información del perfil vinculado al usuario autenticado.
  */
 export async function GET() {
-  const auth = await authorize("driver.self");
+  const auth = await authorize();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const driverProfile = await prisma.driverProfile.findFirst({
@@ -27,9 +27,10 @@ export async function GET() {
     },
     include: {
       branch: { select: { id: true, name: true, slug: true, address: true, phone: true, latitude: true, longitude: true } },
-      order: { select: { id: true, reference: true, status: true, customerName: true, phone: true, email: true, deliveryAddress: true, notes: true } },
+      order: { select: { id: true, reference: true, status: true, customerName: true, phone: true, email: true, deliveryAddress: true, notes: true, total: true, currency: true, requestedAt: true } },
       items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true, notes: true } },
       incidents: { select: { id: true, type: true, description: true, resolved: true, reportedAt: true } },
+      statusLogs: { select: { id: true, status: true, previousStatus: true, reason: true, changedAt: true }, orderBy: { changedAt: "asc" } },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -39,7 +40,7 @@ export async function GET() {
       tenantId: auth.tenant.id,
       driverProfileId: driverProfile.id,
       status: "DELIVERED",
-      createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      deliveredAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
     },
     include: {
       branch: { select: { id: true, name: true } },
@@ -48,10 +49,19 @@ export async function GET() {
     orderBy: { deliveredAt: "desc" },
     take: 10,
   });
+  const deliveredTodayCount = await prisma.orderDelivery.count({
+    where: {
+      tenantId: auth.tenant.id,
+      driverProfileId: driverProfile.id,
+      status: "DELIVERED",
+      deliveredAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+    },
+  });
 
   return NextResponse.json({
     driver: serialize(driverProfile),
     activeDeliveries: serialize(activeDeliveries),
     completedToday: serialize(completedToday),
+    deliveredTodayCount,
   });
 }

@@ -33,15 +33,35 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const url = new URL(request.url);
+  const rawBranchId = url.searchParams.get("branchId");
+  const requestedBranchId = rawBranchId
+    ? Number(rawBranchId)
+    : auth.activeBranchId && auth.activeBranchId > 0
+      ? auth.activeBranchId
+      : null;
+  if (rawBranchId && (!Number.isInteger(requestedBranchId) || Number(requestedBranchId) <= 0)) {
+    return NextResponse.json({ error: "Sucursal inválida" }, { status: 400 });
+  }
+  if (requestedBranchId && !canAccessBranch(auth, requestedBranchId)) {
+    return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
+  }
+  const requestedSort = url.searchParams.get("sortBy");
+  const sortBy = ["number", "supplier", "branch", "orderDate", "status"].includes(requestedSort ?? "")
+    ? (requestedSort as "number" | "supplier" | "branch" | "orderDate" | "status")
+    : "orderDate";
+  const sortDir = url.searchParams.get("sortDir") === "asc" ? "asc" : "desc";
   const result = await listPurchaseOrders(auth.tenant.id, {
-    branchId: url.searchParams.get("branchId") ? Number(url.searchParams.get("branchId")) : null,
+    branchId: requestedBranchId,
+    branchIds: auth.branches.map((branch) => branch.id),
     supplierId: url.searchParams.get("supplierId") ? Number(url.searchParams.get("supplierId")) : null,
     status: url.searchParams.get("status") || undefined,
     query: url.searchParams.get("q") || undefined,
     from: url.searchParams.get("from") || undefined,
     to: url.searchParams.get("to") || undefined,
-    limit: Number(url.searchParams.get("limit") ?? 60),
-    offset: Number(url.searchParams.get("offset") ?? 0),
+    limit: Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 60) || 60)),
+    offset: Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0),
+    sortBy,
+    sortDir,
   });
   return NextResponse.json(serialize(result));
 }

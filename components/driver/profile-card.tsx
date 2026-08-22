@@ -4,27 +4,26 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
 import { Icon } from "@/components/admin/ui/icons";
+import { NumberFlow } from "@/components/admin/ui/number-flow";
 
 type DriverProfile = {
   id: number;
   name: string;
-  phone: string;
   status: string;
   active: boolean;
+  locationSharingEnabled: boolean;
   vehicleType?: string | null;
   plate?: string | null;
-  color?: string | null;
-  capacity?: number | null;
   branches?: Array<{ branch?: { id: number; name: string; slug: string } }>;
 };
 
-/** @summary Tarjeta del perfil del repartidor con conmutador de disponibilidad. */
+/** @summary Tarjeta operativa de disponibilidad con transición visual y contexto de trabajo. */
 export function DriverProfileCard({
   driver,
-  deliveredToday,
+  activeDeliveries,
 }: {
   driver: DriverProfile;
-  deliveredToday: number;
+  activeDeliveries: number;
 }) {
   const [status, setStatus] = useState(driver.status);
   const [saving, setSaving] = useState(false);
@@ -43,38 +42,52 @@ export function DriverProfileCard({
         return;
       }
       setStatus(body.driver.status);
+      window.dispatchEvent(new CustomEvent("driver-availability-changed", { detail: { available: body.driver.active && body.driver.status === "AVAILABLE" } }));
     } finally {
       setSaving(false);
     }
   }
 
   const available = driver.active && status === "AVAILABLE";
+  const branchName = driver.branches?.[0]?.branch?.name ?? "Sin sucursal";
+  const vehicle = driver.vehicleType ? `${driver.vehicleType}${driver.plate ? ` · ${driver.plate}` : ""}` : "Sin vehículo asignado";
 
   return (
-    <div className="card flex flex-wrap items-center justify-between gap-4 p-4">
-      <div>
-        <p className="text-lg font-black text-white">{driver.name}</p>
-        <p className="flex items-center gap-1.5 text-sm text-zinc-400"><Icon name="phone" className="h-3.5 w-3.5 text-zinc-500" /> {driver.phone}</p>
-        {driver.vehicleType && <p className="flex items-center gap-1.5 text-sm text-zinc-400"><Icon name="truck" className="h-3.5 w-3.5 text-zinc-500" /> {driver.vehicleType}{driver.plate ? ` · ${driver.plate}` : ""}</p>}
-        <p className="mt-2 text-xs text-zinc-500">
-          Entregadas hoy: <span className="font-black text-emerald-300">{deliveredToday}</span>
-        </p>
-      </div>
-      <div className="flex flex-col items-center gap-2">
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-black ${available ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}
-        >
-          {available ? "Disponible" : "No disponible"}
+    <section className={`rounded-3xl border p-5 shadow-xl transition-all duration-300 ${available ? "border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950" : "border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-zinc-900 to-zinc-950"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">Disponibilidad</p>
+          <h2 className="mt-1 text-xl font-black text-white">{available ? "Listo para recibir entregas" : "Recepción pausada"}</h2>
+        </div>
+        <span className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black ${available ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+          <span className={`h-2 w-2 rounded-full ${available ? "animate-pulse bg-emerald-400" : "bg-amber-400"}`} />
+          {available ? "Disponible" : "Pausado"}
         </span>
-        <button
-          type="button"
-          className={`btn ${available ? "bg-amber-500 text-zinc-950 hover:bg-amber-400" : "bg-emerald-600 text-white hover:bg-emerald-500"} py-3 text-sm font-black`}
-          disabled={saving || !driver.active}
-          onClick={() => toggleAvailability(available ? "UNAVAILABLE" : "AVAILABLE")}
-        >
-          {available ? "Pausar entregas" : "Disponible para entregas"}
-        </button>
       </div>
-    </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-white/5 bg-black/15 p-3">
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Vehículo</dt>
+          <dd className="mt-1 flex items-center gap-1.5 truncate text-sm font-bold text-zinc-100"><Icon name="truck" className="h-3.5 w-3.5 text-zinc-500" />{vehicle}</dd>
+        </div>
+        <div className="rounded-2xl border border-white/5 bg-black/15 p-3">
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sucursal</dt>
+          <dd className="mt-1 flex items-center gap-1.5 truncate text-sm font-bold text-zinc-100"><Icon name="map-pin" className="h-3.5 w-3.5 text-zinc-500" />{branchName}</dd>
+        </div>
+        <div className="col-span-2 flex items-center justify-between rounded-2xl border border-white/5 bg-black/15 px-3 py-3">
+          <dt className="text-xs font-bold text-zinc-400">Entregas activas</dt>
+          <dd className="text-lg font-black text-white"><NumberFlow value={activeDeliveries} /></dd>
+        </div>
+      </dl>
+
+      <button
+        type="button"
+        className={`mt-4 min-h-13 w-full rounded-2xl px-5 py-3.5 text-sm font-black transition-all active:scale-[.99] ${available ? "border border-white/10 bg-white/5 text-white hover:bg-white/10" : "bg-emerald-600 text-white hover:bg-emerald-500"}`}
+        disabled={saving || !driver.active}
+        onClick={() => void toggleAvailability(available ? "UNAVAILABLE" : "AVAILABLE")}
+      >
+        {saving ? "Guardando…" : available ? "Pausar entregas" : "Volver a estar disponible"}
+      </button>
+    </section>
   );
 }

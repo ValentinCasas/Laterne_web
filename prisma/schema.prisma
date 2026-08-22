@@ -3153,6 +3153,7 @@ model DriverProfile {
   phone         String                   @db.VarChar(60)
   status        String                   @default("AVAILABLE") @db.VarChar(24)
   active        Boolean                  @default(true)
+  locationSharingEnabled Boolean         @default(false)
   vehicleType   String?                  @db.VarChar(80)
   plate         String?                  @db.VarChar(20)
   color         String?                  @db.VarChar(60)

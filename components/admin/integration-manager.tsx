@@ -15,6 +15,14 @@ type Integration = {
   lastCheckAt: string | null;
 };
 
+type MapProvider = {
+  provider: "openfreemap";
+  enabled: boolean;
+  status: string;
+  lastCheckAt: string | null;
+  persisted: boolean;
+};
+
 const providerDetails: Record<Integration["provider"], { name: string; description: string; env: string }> = {
   mercado_pago: {
     name: "Mercado Pago",
@@ -44,8 +52,50 @@ const providerDetails: Record<Integration["provider"], { name: string; descripti
 };
 
 /** @summary Expone el estado de cada integración sin solicitar ni mostrar credenciales privadas. */
-export function IntegrationManager({ initialIntegrations }: { initialIntegrations: Integration[] }) {
+export function IntegrationManager({
+  initialIntegrations,
+  initialMapProvider,
+}: {
+  initialIntegrations: Integration[];
+  initialMapProvider: MapProvider;
+}) {
   const [integrations, setIntegrations] = useState(initialIntegrations);
+  const [mapProvider, setMapProvider] = useState(initialMapProvider);
+  const [savingMap, setSavingMap] = useState(false);
+
+  /** @summary Persiste la preferencia del mapa; OpenFreeMap no requiere ni almacena una API key. */
+  async function saveMapProvider(enabled: boolean) {
+    setSavingMap(true);
+    try {
+      const response = await scopedFetch("/api/admin/delivery/provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "openfreemap", enabled }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { provider?: MapProvider; error?: string };
+      if (!response.ok || !body.provider) {
+        await Swal.fire({
+          title: "No se pudo guardar",
+          text: body.error ?? "Intentá nuevamente.",
+          icon: "error",
+          background: "#18181b",
+          color: "#fafafa",
+        });
+        return;
+      }
+      setMapProvider(body.provider);
+      await Swal.fire({
+        title: enabled ? "Mapa habilitado" : "Mapa pausado",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
+    } finally {
+      setSavingMap(false);
+    }
+  }
 
   /** @summary Persiste el modo y los identificadores públicos después de verificar la credencial del servidor. */
   async function save(event: React.FormEvent<HTMLFormElement>, integration: Integration) {
@@ -96,6 +146,44 @@ export function IntegrationManager({ initialIntegrations }: { initialIntegration
         description="Las claves privadas se configuran únicamente en el servidor. Nunca se guardan ni se muestran en el panel."
         section="integraciones"
       />
+      <div className="mt-6">
+        <section id="delivery-map" className="card min-w-0 scroll-mt-24 space-y-4 p-4 sm:p-5">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-black">OpenFreeMap</h2>
+              <p className="mt-1 text-sm leading-relaxed text-zinc-500">
+                Mapa de Delivery con estilo Liberty. Es el proveedor predeterminado y no requiere API key.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {!mapProvider.persisted && <StatusBadge status="Predeterminado" tone="info" />}
+              <StatusBadge
+                status={mapProvider.enabled ? "Activo" : "Inactivo"}
+                tone={mapProvider.enabled ? "success" : "default"}
+              />
+            </div>
+          </div>
+          <div className="rounded-lg bg-white/[.03] px-3 py-2 text-xs text-zinc-400">
+            Sin credenciales · Sin variable de entorno · Tiles vectoriales de OpenStreetMap
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-4">
+            <div>
+              <p className="text-sm font-bold text-white">Vista geográfica de Delivery</p>
+              <p className="text-xs text-zinc-500">
+                {mapProvider.enabled ? "Visible para administradores autorizados." : "Oculta por decisión del tenant."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className={mapProvider.enabled ? "admin-button-secondary" : "btn bg-emerald-600 text-white hover:bg-emerald-500"}
+              disabled={savingMap}
+              onClick={() => void saveMapProvider(!mapProvider.enabled)}
+            >
+              {savingMap ? "Guardando…" : mapProvider.enabled ? "Desactivar" : "Activar OpenFreeMap"}
+            </button>
+          </div>
+        </section>
+      </div>
       <div className="mt-6 grid min-w-0 gap-5 xl:grid-cols-2">
         {integrations.map((integration) => {
           const details = providerDetails[integration.provider];

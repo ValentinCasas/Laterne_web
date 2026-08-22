@@ -2,6 +2,7 @@ import { DriversList } from "@/components/admin/drivers/drivers-list";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { tenantDriverGuidPath } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function AdminDriversPage() {
     prisma.driverProfile.findMany({
       where: baseWhere,
       include: {
-        user: { select: { id: true, name: true, email: true } },
+      user: { select: { id: true, name: true, email: true, imageUrl: true } },
         branches: { include: { branch: { select: { id: true, name: true, slug: true } } } },
         _count: {
           select: {
@@ -117,6 +118,8 @@ export default async function AdminDriversPage() {
       branches={serialize(branches)}
       users={serialize(users)}
       canManage={context.permissions.includes("driver.manage")}
+      currentUserId={context.session.userId}
+      driverPanelHref={tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug)}
       kpis={serialize({
         deliveriesToday,
         pendingAssignment,

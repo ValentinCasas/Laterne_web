@@ -12,6 +12,7 @@ type AdminShellSidebarProps = {
   activeLinkHref: string | null;
   adminHref: (href: string) => Route;
   onNavigate: () => void;
+  onRestrictedNavigate: () => void;
   onLogout: () => void;
   userName?: string;
   userEmail?: string;
@@ -39,6 +40,7 @@ export function AdminShellSidebar({
   activeLinkHref,
   adminHref,
   onNavigate,
+  onRestrictedNavigate,
   onLogout,
   userName,
   userEmail,
@@ -60,6 +62,14 @@ export function AdminShellSidebar({
 }: AdminShellSidebarProps) {
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarMobileOpen(false), []);
+  const handleNavigate = useCallback(() => {
+    closeSidebar();
+    onNavigate();
+  }, [closeSidebar, onNavigate]);
+  const handleRestrictedNavigate = useCallback(() => {
+    closeSidebar();
+    onRestrictedNavigate();
+  }, [closeSidebar, onRestrictedNavigate]);
 
   useEffect(() => {
     if (!sidebarMobileOpen) return;
@@ -107,7 +117,8 @@ export function AdminShellSidebar({
           activeGroupId={activeGroupId}
           activeLinkHref={activeLinkHref}
           adminHref={adminHref}
-          onNavigate={onNavigate}
+          onNavigate={handleNavigate}
+          onRestrictedNavigate={handleRestrictedNavigate}
           onLogout={onLogout}
           userName={userName}
           userEmail={userEmail}

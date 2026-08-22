@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit, toAuditValue } from "@/lib/audit";
-import { authorize } from "@/lib/auth";
+import { authorize, canAccessBranch } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { receivePurchaseOrder } from "@/lib/purchases";
 import { prisma } from "@/lib/prisma";
@@ -29,7 +29,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: "Revisá las cantidades a recibir" }, { status: 400 });
 
   const order = await prisma.purchaseOrder.findFirst({
-    where: { id: Number(id), tenantId: auth.tenant.id },
+    where: {
+      id: Number(id),
+      tenantId: auth.tenant.id,
+      branchId: { in: auth.branches.map((branch) => branch.id) },
+    },
     select: { id: true, branchId: true, status: true },
   });
   if (!order) return NextResponse.json({ error: "El pedido no existe" }, { status: 404 });
@@ -43,6 +47,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       { error: "Seleccioná una sucursal para recibir mercadería" },
       { status: 400 },
     );
+  }
+  if (!canAccessBranch(auth, resolvedBranchId)) {
+    return NextResponse.json({ error: "No tenés acceso a esa sucursal" }, { status: 403 });
   }
 
   const validBranch = await prisma.branch.findFirst({

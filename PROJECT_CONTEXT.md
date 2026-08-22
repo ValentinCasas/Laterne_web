@@ -20,8 +20,9 @@
 - Admin por GUID: `/t/{tenantGuid}/{tenantSlug}/admin[/s/{branchSlug}]/...`
 - Público: `/t/{tenantSlug}/...` y `/t/{tenantSlug}/s/{branchSlug}/...`
 - Platform: `/platform/...`
-- Driver: `/t/{tenantSlug}/driver/...`
+- Driver: `/t/{tenantSlug}/driver/...`; `/admin/driver` es únicamente un acceso visible que redirige al panel canónico del repartidor autenticado, sin duplicar la superficie ni permitir suplantación.
 - Helpers canónicos: `lib/routes.ts`
+- Delivery operativo: `/api/admin/delivery/provider` configura el proveedor cartográfico por tenant; `/api/admin/drivers/positions` recibe GPS propio y expone solo las últimas posiciones autorizadas; `/api/admin/deliveries/[id]/geocode` ofrece geocodificación opcional y desacoplada.
 
 ## Desarrollo
 ```bash
@@ -29,6 +30,7 @@ npm run dev
 # http://localhost:3000
 ```
 Docker NO obligatorio para desarrollo.
+La geocodificación de Delivery está desactivada por defecto. Puede conectarse a un servicio Nominatim-compatible mediante `DELIVERY_GEOCODING_PROVIDER`, `DELIVERY_GEOCODING_ENDPOINT` y `DELIVERY_GEOCODING_USER_AGENT`; las coordenadas manuales siguen disponibles sin proveedor externo.
 
 ## Producción
 - Standalone (`next start`).
@@ -51,6 +53,7 @@ Docker NO obligatorio para desarrollo.
 - Apertura únicamente por CLICK.
 - Cierre: click afuera, Escape, Tab-out.
 - Definición centralizada: `lib/admin-navigation.ts`.
+- Delivery es un grupo propio con Centro de delivery, Repartidores, Panel del repartidor y acceso directo a `Integraciones#delivery-map`. Cualquier usuario con membresía tenant activa puede abrir la vista personal; todas sus consultas y acciones resuelven exclusivamente el `DriverProfile` vinculado al usuario autenticado, sin suplantación.
 - Modos de navegación: `TOP` (mega menú barra superior) y `SIDEBAR` (sidebar dual-tier rail + panel contextual). Persistidos en `localStorage` via `hooks/use-navigation-mode.ts`.
 - Toggle de modo en `ProfileMenu` y en la barra inferior del sidebar.
 - Componentes: `ProfileMenu` (`components/admin/profile-menu.tsx`), `SidebarNavigation` (`components/admin/sidebar-navigation.tsx`), `AdminShellSidebar` (`components/admin/admin-shell-sidebar.tsx`).
@@ -102,7 +105,7 @@ Docker NO obligatorio para desarrollo.
 - Capacidad de sucursal = suma de cupos de licencias activas vigentes.
 
 ## Migraciones
-- 53 migraciones incrementales en `prisma/migrations/`.
+- 57 migraciones incrementales en `prisma/migrations/`.
 - Estrategia: incremental, nunca `prisma migrate reset`.
 - `prisma/bootstrap.sql` es dump histórico (phpMyAdmin, 2023); NO usado por migraciones actuales.
 - Para modificar schema: migración incremental segura + `prisma generate`.
@@ -129,14 +132,14 @@ Docker NO obligatorio para desarrollo.
 - Checkout de mesa: el formulario de pedido carga las mesas activas de la sucursal y las ofrece en un `<select>` (por `code`, etiqueta = nombre); si no hay mesas, cae a input libre. Valida con "Elegí la mesa desde la que vas a pedir.".
 - Iconografía: set SVG `components/admin/ui/icons.tsx` (`Icon` + `IconName`) reemplaza todos los emoticonos/emojis de la UI.
 - Vista de listas: sistema de 4 vistas (tarjeta, tarjeta compacta, lista, lista compacta) persistido por pantalla (`useViewMode`/`ViewModeToggle`), integrado en `DataTable` (con `viewStorageKey`), `CardGrid`, catálogo de productos, inventario y clientes frecuentes.
-- Navegación: grupos por proceso (Inicio, Operación, Productos, Compras, Finanzas, Reportes, Administración); Administración incluye Sucursales/Usuarios/Licencias (superadmin).
+- Navegación: grupos por proceso (Inicio, Atención, Salón, Delivery, Productos, Compras, Finanzas, Reportes, Administración); Administración incluye Sucursales/Usuarios/Licencias (superadmin).
 
 ## Decisiones arquitectónicas
 - URLs canónicas con tenant slug/GUID; el host solo es para superficies públicas.
 - Contexto de sucursal en URL cuando aplica; nunca solo por query param.
 - Costo histórico de venta: `OrderItem.costSnapshot` (snapshot inmutable).
 - Historial de costos de ingredientes: `IngredientCostHistory`.
-- Delivery propio: `OrderDelivery` + `OrderDeliveryItem` + `ExternalOrder`.
+- Delivery propio: `OrderDelivery` + `OrderDeliveryItem` + `ExternalOrder`. OpenFreeMap es el proveedor cartográfico predeterminado, sin API key y sin requerir un registro previo; `DeliveryProviderConfig` permite desactivarlo por tenant desde Integraciones. El mapa MapLibre se centra en la sucursal autorizada y muestra local, destinos y la última `DriverPosition` de cada repartidor. `DriverProfile.locationSharingEnabled` persiste la preferencia de GPS separada del watcher y de la última posición: el panel reinicia `watchPosition` automáticamente si el permiso ya está concedido, o solicita una nueva interacción si corresponde; al pausar detiene el watcher y guarda `false`. El envío conserva el control de tiempo/distancia, solo permite publicar la posición del perfil vinculado al usuario y el admin actualiza marcadores sin reconstruir el mapa. La app Driver es mobile-first, con home operativo, detalle en drawer, historial agrupado por entrega e incidencias separadas entre activas e históricas. La geocodificación de destinos es opcional, server-side y Nominatim-compatible, permanece desactivada por defecto para no enviar direcciones a terceros y exige confirmar un candidato; también admite coordenadas manuales. El historial `OrderDeliveryStatusLog` y la estructura del equipo siguen visibles solo con los permisos correspondientes.
 - Impresión declarativa: `PrintArea` + `PrintDestination` + `PrintJob`.
 - Finanzas: movimientos inmutables; corrección por reversión.
 - Reportes: `ReportsShell` es Client Component y maneja filtros URL-driven internamente; las páginas Server Components solo pasan defaults serializables y datos iniciales. No se pasan callbacks desde Server a Client.
@@ -146,7 +149,8 @@ Docker NO obligatorio para desarrollo.
 - Filtros compactos: barra de comandos con `SearchBox` + selects compactos + filtros avanzados en `Drawer`/panel. Filtros activos como `ActiveFilterChip`.
 - AdminShell: `BranchSwitcher` siempre visible (no oculto en mobile) para que el contexto de sucursal sea siempre claro.
 - Documentos tipo BC: Pedidos, Remitos y Facturas usan `DocumentHeader` + secciones (`FormSection`/`FactBox`) + `DocumentLines` + `RelatedDocuments` en lugar de modales chios.
-- Listas tipo BC: se prioriza `DataTable` con densidad (compacta/normal/cómoda), paginación común 25/50/100, columnas configurables, orden y las cuatro vistas (tarjeta, tarjeta compacta, lista, lista compacta) donde corresponda. En celular, `DataTable` en modo lista apila cada fila como tarjeta (label:valor); las tablas densas usan scroll horizontal (`overflow-x-auto`). Clientes y Archivos usan paginación server-side mediante `GET /api/admin/customers` y `GET /api/admin/media`, con búsqueda y filtros, para no transferir ni montar miles de registros.
+- Listas tipo BC: se prioriza `DataTable` con densidad (compacta/normal/cómoda), paginación común 25/50/100, columnas configurables, orden y las cuatro vistas (tarjeta, tarjeta compacta, lista, lista compacta) donde corresponda. En celular, `DataTable` en modo lista apila cada fila como tarjeta (label:valor); las tablas densas usan scroll horizontal (`overflow-x-auto`). Clientes, Archivos y Pedidos de compra usan paginación server-side; Productos, Delivery y Repartidores limitan el montaje por página a 25/50/100 registros.
+- Compras: las líneas estructurales solo se reemplazan en Borrador; tras enviar el pedido se conservan IDs y acumulados, pero siguen editables las cantidades de trabajo `quantityToReceive`/`quantityToInvoice`. Las recepciones recalculan el estado sobre todas las líneas y no limpian la preparación de facturación. Listado, detalle y mutaciones validan tenant y sucursales accesibles server-side.
 - Concurrencia de pedidos: `PATCH /api/admin/orders/[id]` acepta `expectedStatus`, conserva el guard atómico por estado y responde conflictos reales con `code: ORDER_STATE_CONFLICT` y el pedido fresco. `GET /api/admin/orders/[id]` permite refrescar únicamente la tarjeta afectada. Pedidos y Cocina bloquean mutaciones simultáneas propias por `orderId`.
 - Board operativo: `KanbanBoard` para estados; `SplitView` para lista+detalle; `Drawer` para edición lateral.
 - Modelo documental: Pedido → OrderDelivery (remito) → InvoiceRecord (factura). `OrderDeliveryItem` es la línea de remito; `InvoiceRecordItem` es la línea snapshot de factura (vinculable a orderItem o deliveryItem). La API de facturas permite emitir desde un remito (`deliveryId`) usando las cantidades efectivamente despachadas.

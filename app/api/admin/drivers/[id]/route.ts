@@ -42,7 +42,7 @@ export async function GET(
 const updateDriverInput = z.object({
   name: z.string().trim().min(1).max(160).optional(),
   phone: z.string().trim().min(1).max(60).optional(),
-  userId: z.number().int().positive().optional(),
+  userId: z.number().int().positive().nullable().optional(),
   status: z.enum(["AVAILABLE", "UNAVAILABLE", "INACTIVE"]).optional(),
   active: z.boolean().optional(),
   vehicleType: z.string().trim().max(80).optional().nullable(),

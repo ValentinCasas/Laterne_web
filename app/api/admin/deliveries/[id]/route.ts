@@ -13,8 +13,8 @@ const updateDeliveryInput = z.object({
   status: z.enum(["PENDING_ASSIGNMENT", "ASSIGNED", "PICKED_UP", "ON_THE_WAY", "DELIVERED", "FAILED", "CANCELLED", "INCIDENT"]).optional(),
   driverId: z.coerce.number().int().positive().optional(),
   driverProfileId: z.coerce.number().int().positive().optional(),
-  latitude: z.string().trim().max(32).optional(),
-  longitude: z.string().trim().max(32).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   contactPhone: z.string().trim().max(60).optional(),
   contactName: z.string().trim().max(160).optional(),
   instructions: z.string().trim().max(1000).optional(),
@@ -64,7 +64,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "No tenés acceso a la sucursal de este pedido" }, { status: 403 });
   }
 
-  if (FINAL_DELIVERY_STATUSES.has(delivery.status) && status && status !== delivery.status) {
+  if (
+    FINAL_DELIVERY_STATUSES.has(delivery.status) &&
+    ((status !== undefined && status !== delivery.status) || driverProfileId !== undefined || driverId !== undefined)
+  ) {
     return NextResponse.json({ error: "No se puede modificar una entrega finalizada" }, { status: 400 });
   }
 
@@ -91,8 +94,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     resolvedUserId = user.id;
   }
 
-  // Asignar un repartidor sin indicar estado implica pasar a ASIGNADO.
-  const nextStatus = status ?? (resolvedProfileId ? "ASSIGNED" : undefined);
+  // La primera asignación pasa a ASIGNADO; una reasignación conserva el punto
+  // real del recorrido para no hacer retroceder un envío retirado o en camino.
+  const nextStatus =
+    status ??
+    (resolvedProfileId && delivery.status === "PENDING_ASSIGNMENT" ? "ASSIGNED" : undefined);
   if (nextStatus === "ASSIGNED" && !resolvedProfileId) {
     return NextResponse.json({ error: "Indicá un repartidor para asignar la entrega" }, { status: 400 });
   }
@@ -105,14 +111,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       // Compra optimista: la entrega solo avanza si nadie la cambió en el interín.
       const guard: Record<string, unknown> = { id, tenantId: auth.tenant.id };
       if (nextStatus === "ASSIGNED") guard.status = previousStatus;
+      if (resolvedProfileId !== undefined) guard.driverProfileId = previousProfileId;
       const change = await tx.orderDelivery.updateMany({
         where: guard,
         data: {
           ...(nextStatus ? { status: nextStatus, ...deliveryStatusTimestamps(nextStatus) } : {}),
           ...(resolvedProfileId !== undefined ? { driverProfileId: resolvedProfileId } : {}),
           ...(resolvedUserId !== undefined ? { driverId: resolvedUserId } : {}),
-          ...(latitude !== undefined ? { latitude } : {}),
-          ...(longitude !== undefined ? { longitude } : {}),
+          ...(latitude !== undefined ? { latitude: String(latitude) } : {}),
+          ...(longitude !== undefined ? { longitude: String(longitude) } : {}),
           ...(contactPhone !== undefined ? { contactPhone } : {}),
           ...(contactName !== undefined ? { contactName } : {}),
           ...(instructions !== undefined ? { instructions } : {}),

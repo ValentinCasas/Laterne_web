@@ -72,6 +72,11 @@ export type MenuClickConfig = {
   emailApiKey: string;
   sessionCookieSecure: boolean;
   deploymentVersion: string;
+  deliveryGeocoding: {
+    provider: "disabled" | "nominatim";
+    endpoint: string;
+    userAgent: string;
+  };
 };
 
 let cachedConfig: MenuClickConfig | null = null;
@@ -107,6 +112,11 @@ export function getConfig(): MenuClickConfig {
     emailApiKey: envString("EMAIL_API_KEY"),
     sessionCookieSecure: isProduction,
     deploymentVersion: envString("DEPLOYMENT_VERSION"),
+    deliveryGeocoding: {
+      provider: envString("DELIVERY_GEOCODING_PROVIDER").toLocaleLowerCase("es") === "nominatim" ? "nominatim" : "disabled",
+      endpoint: envString("DELIVERY_GEOCODING_ENDPOINT"),
+      userAgent: envString("DELIVERY_GEOCODING_USER_AGENT"),
+    },
   };
 
   return cachedConfig;

@@ -22,7 +22,7 @@ export const deliveryDetailInclude = {
   },
   branch: { select: { id: true, name: true } },
   driver: { select: { id: true, name: true } },
-  driverProfile: { select: { id: true, name: true, phone: true } },
+  driverProfile: { select: { id: true, name: true, phone: true, user: { select: { imageUrl: true } } } },
   items: {
     select: {
       id: true,
@@ -30,6 +30,19 @@ export const deliveryDetailInclude = {
       productName: true,
       quantityDelivered: true,
       unitPrice: true,
+    },
+  },
+  statusLogs: {
+    orderBy: { changedAt: "desc" },
+    take: 40,
+    select: {
+      id: true,
+      status: true,
+      previousStatus: true,
+      reason: true,
+      changedAt: true,
+      driverProfile: { select: { id: true, name: true } },
+      changedBy: { select: { id: true, name: true } },
     },
   },
 } satisfies Prisma.OrderDeliveryInclude;
@@ -60,7 +73,12 @@ export type DeliveryDetail = {
   pickedUpAt?: string | Date | null;
   deliveredAt?: string | Date | null;
   driver?: { id: number; name: string } | null;
-  driverProfile?: { id: number; name: string; phone?: string | null } | null;
+  driverProfile?: {
+    id: number;
+    name: string;
+    phone?: string | null;
+    user?: { imageUrl?: string | null } | null;
+  } | null;
   branch?: { id: number; name: string } | null;
   order?: {
     id: number;
@@ -81,6 +99,15 @@ export type DeliveryDetail = {
     quantityDelivered: number;
     unitPrice: string | number | object;
   }>;
+  statusLogs: Array<{
+    id: number;
+    status: string;
+    previousStatus?: string | null;
+    reason?: string | null;
+    changedAt: string | Date;
+    driverProfile?: { id: number; name: string } | null;
+    changedBy?: { id: number; name: string } | null;
+  }>;
 };
 
 /** @summary Normaliza una entrega desde la API: garantiza `items` y `order` ante respuestas heredadas. */
@@ -88,6 +115,7 @@ export function normalizeDeliveryDetail(delivery: DeliveryDetail): DeliveryDetai
   return {
     ...delivery,
     items: Array.isArray(delivery.items) ? delivery.items : [],
+    statusLogs: Array.isArray(delivery.statusLogs) ? delivery.statusLogs : [],
     order: delivery.order ?? null,
   };
 }

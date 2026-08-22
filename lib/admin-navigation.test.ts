@@ -52,6 +52,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/entregas",
       "/admin/delivery",
       "/admin/repartidores",
+      "/admin/driver",
       "/admin/cobros",
       "/admin/clientes",
       "/admin/finanzas",
@@ -71,7 +72,8 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/recepcionista-ia",
     ]);
     for (const link of adminNavLinks()) {
-      expect(known.has(link.href), `ruta inexistente: ${link.href}`).toBe(true);
+      const pathname = link.href.split(/[?#]/, 1)[0] ?? link.href;
+      expect(known.has(pathname), `ruta inexistente: ${link.href}`).toBe(true);
       expect(link.permission.length).toBeGreaterThan(0);
     }
   });
@@ -95,8 +97,27 @@ describe("definición centralizada de navegación administrativa", () => {
       group.sections.flatMap((section) => section.items.map((i) => i.label)),
     );
     expect(labels).toContain("Pedidos");
+    expect(labels).toContain("Panel del repartidor");
     expect(labels).not.toContain("Productos");
     expect(filtered.length).toBeGreaterThan(0);
+  });
+
+  it("mantiene visible y accesible el panel personal sin un permiso específico", () => {
+    const filtered = adminGroupsForPermissions([
+      "admin.access",
+      "order.manage",
+      "driver.view",
+      "business.manage",
+    ]);
+    const delivery = filtered.find((group) => group.id === "delivery");
+    expect(delivery?.sections.flatMap((section) => section.items.map((item) => item.label))).toEqual([
+      "Centro de delivery",
+      "Repartidores",
+      "Panel del repartidor",
+      "Configuración de delivery",
+    ]);
+    const panel = delivery?.sections.flatMap((section) => section.items).find((item) => item.href === "/admin/driver");
+    expect(panel?.accessPermission).toBeUndefined();
   });
 
   it("localiza el grupo correcto de una ruta", () => {
@@ -109,6 +130,10 @@ describe("definición centralizada de navegación administrativa", () => {
     expect(adminGroupIdForHref("/admin/usuarios")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/planes")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/estadisticas")).toBe("administracion");
+    expect(adminGroupIdForHref("/admin/delivery")).toBe("delivery");
+    expect(adminGroupIdForHref("/admin/repartidores")).toBe("delivery");
+    expect(adminGroupIdForHref("/admin/driver")).toBe("delivery");
+    expect(adminGroupIdForHref("/admin/integraciones#delivery-map")).toBe("delivery");
     expect(adminGroupIdForHref("/admin/finanzas")).toBe("finanzas");
     expect(adminGroupIdForHref("/admin/finanzas/cuentas")).toBe("finanzas");
     expect(adminGroupIdForHref("/admin/finanzas/movimientos")).toBe("finanzas");
@@ -129,6 +154,8 @@ describe("resaltado de ruta activa del panel", () => {
     expect(adminLinkMatchScore("/admin/pedidos", "/admin/pedidos")).toBe(2);
     expect(adminLinkMatchScore("/admin/pedidos/123", "/admin/pedidos")).toBe(2);
     expect(adminLinkMatchScore("/admin/facturacion/45", "/admin/facturacion")).toBe(2);
+    expect(adminLinkMatchScore("/admin/integraciones", "/admin/integraciones#delivery-map")).toBe(0);
+    expect(adminLinkMatchScore("/admin/integraciones#delivery-map", "/admin/integraciones#delivery-map")).toBe(2);
   });
 
   it("no activa por prefijo de texto: /admin/productos vs /admin/productos-nuevos", () => {
@@ -154,6 +181,13 @@ describe("resaltado de ruta activa del panel", () => {
     const onOrders = findActiveAdminLink(groups, "/admin/pedidos/987");
     expect(onOrders?.href).toBe("/admin/pedidos");
     expect(onOrders?.label).toBe("Pedidos");
+
+    const deliveryGroups = adminGroupsForPermissions(["admin.access", "business.manage"]);
+    const onDeliverySettings = findActiveAdminLink(deliveryGroups, "/admin/integraciones#delivery-map");
+    expect(onDeliverySettings?.label).toBe("Configuración de delivery");
+
+    const onGenericIntegrations = findActiveAdminLink(deliveryGroups, "/admin/integraciones");
+    expect(onGenericIntegrations?.label).toBe("Integraciones");
   });
 
   it("no marca ninguna opción para rutas desconocidas", () => {

@@ -11,7 +11,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const context = await requirePermission("purchase.manage");
   const { id } = await params;
   try {
-    const order = await loadPurchaseOrder(context.tenant.id, Number(id));
+    const order = await loadPurchaseOrder(
+      context.tenant.id,
+      Number(id),
+      context.branches.map((branch) => branch.id),
+    );
     return { title: `${context.tenant.name} | ${order.number}` };
   } catch {
     return { title: `${context.tenant.name} | Pedido` };
@@ -21,6 +25,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function PedidoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await requirePermission("purchase.manage");
   const { id } = await params;
-  const order = await loadPurchaseOrder(context.tenant.id, Number(id)).catch(() => notFound());
+  const order = await loadPurchaseOrder(
+    context.tenant.id,
+    Number(id),
+    context.branches.map((branch) => branch.id),
+  ).catch(() => notFound());
   return <ComprasPedidoDetailClient order={serialize(order) as unknown as OrderDetail} currency="ARS" />;
 }

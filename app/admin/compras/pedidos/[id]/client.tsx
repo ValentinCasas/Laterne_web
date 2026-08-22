@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Swal from "sweetalert2";
 import { Icon, type IconName } from "@/components/admin/ui/icons";
 import { dateLabel, money } from "@/lib/helpers";
@@ -122,11 +122,12 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
     envio: false,
     notas: false,
   });
-  const [factBoxVisible, setFactBoxVisible] = useState(true);
+  const factBoxVisible = true;
 
   const canReceive = !["cancelled", "closed"].includes(order.status);
   const canEdit = order.status === "draft";
-  const canEditLines = ["draft", "sent", "partially_received"].includes(order.status);
+  const canEditLines = order.status === "draft";
+  const canPrepareInvoice = !["cancelled", "closed"].includes(order.status);
   const canCancel = !["cancelled", "closed"].includes(order.status);
   const canClose = ["received", "partially_received", "sent", "draft"].includes(order.status);
 
@@ -200,6 +201,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
       const lines = order.items.map((item) => {
         const d = lineDrafts[item.id];
         return {
+          orderItemId: item.id,
           productId: item.product.id,
           quantity: Number(d?.quantity || item.quantity),
           unit: item.unit,
@@ -285,6 +287,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
         const lines = order.items.map((item) => {
           const d = lineDrafts[item.id];
           return {
+            orderItemId: item.id,
             productId: item.product.id,
             quantity: Number(d?.quantity || item.quantity),
             unit: item.unit,
@@ -791,7 +794,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                           {received}
                         </Td>
                         <Td r>
-                          {canEditLines && pendingRec > 0 ? (
+                          {canReceive && pendingRec > 0 ? (
                             <InlineInput
                               value={draft.qtyToReceive}
                               onChange={(v) => updateLineDraft(item.id, "qtyToReceive", v)}
@@ -812,7 +815,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                           {invoiced}
                         </Td>
                         <Td r>
-                          {canEditLines && pendingInv > 0 ? (
+                          {canPrepareInvoice && pendingInv > 0 ? (
                             <InlineInput
                               value={draft.qtyToInvoice}
                               onChange={(v) => updateLineDraft(item.id, "qtyToInvoice", v)}

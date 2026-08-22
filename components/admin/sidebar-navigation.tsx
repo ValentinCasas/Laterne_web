@@ -18,6 +18,7 @@ type SidebarProps = {
   activeLinkHref: string | null;
   adminHref: (href: string) => Route;
   onNavigate: () => void;
+  onRestrictedNavigate: () => void;
   onLogout: () => void;
   userName?: string;
   userEmail?: string;
@@ -38,7 +39,7 @@ type SidebarProps = {
 };
 
 const RAIL_WIDTH = "w-[68px]";
-const PANEL_WIDTH = "w-[288px]";
+const PANEL_WIDTH = "w-[calc(100vw-68px)] max-w-[288px]";
 
 /** @summary Crea un efecto ripple (gota de agua) en el punto del click. */
 function createRipple(event: React.MouseEvent<HTMLButtonElement>, button: HTMLButtonElement) {
@@ -80,6 +81,14 @@ function RailIcon({ name, active = false }: { name: string; active?: boolean }) 
         <>
           <path d="M3 9l9-7 9 7v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M9 22V12h6v10" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+      {name === "delivery" && (
+        <>
+          <path d="M3 6h11v10H3z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M14 10h4l3 3v3h-7z" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="7" cy="18" r="2" />
+          <circle cx="18" cy="18" r="2" />
         </>
       )}
       {name === "catalogo" && (
@@ -141,6 +150,7 @@ export function SidebarNavigation({
   activeLinkHref,
   adminHref,
   onNavigate,
+  onRestrictedNavigate,
   onLogout,
   userName,
   userEmail,
@@ -170,14 +180,13 @@ export function SidebarNavigation({
 
   /**
    * @summary Resuelve qué grupo mostrar en el panel.
-   * Prioridad: selección explícita > cierre explícito (nada) > grupo activo de la URL > hover > nada.
+   * Solo una selección explícita por click abre un grupo.
    */
   const displayGroupId = useMemo(() => {
     if (selectedGroupId && groups.some((g) => g.id === selectedGroupId)) return selectedGroupId;
     if (panelExplicitlyClosed) return null;
-    if (hoveredRailId && compact && groups.some((g) => g.id === hoveredRailId)) return hoveredRailId;
     return null;
-  }, [groups, selectedGroupId, hoveredRailId, compact, panelExplicitlyClosed]);
+  }, [groups, selectedGroupId, panelExplicitlyClosed]);
 
   const displayGroup = useMemo(
     () => groups.find((g) => g.id === displayGroupId) ?? null,
@@ -216,6 +225,15 @@ export function SidebarNavigation({
     document.addEventListener("pointerdown", handlePointer);
     return () => document.removeEventListener("pointerdown", handlePointer);
   }, [selectedGroupId, compact]);
+
+  useEffect(() => {
+    if (!selectedGroupId) return;
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedGroupId(null);
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [selectedGroupId]);
 
   const initials = useMemo(() => {
     const parts = tenantName.trim().split(/\s+/).filter(Boolean);
@@ -349,7 +367,7 @@ export function SidebarNavigation({
       {displayGroup && !compact && (
         <nav
           data-sidebar-panel
-          className={`hidden md:flex shrink-0 flex-col border-l border-white/[.04] bg-zinc-950/60 ${PANEL_WIDTH} sidebar-panel-enter`}
+          className={`flex shrink-0 flex-col border-l border-white/[.04] bg-zinc-950/60 ${PANEL_WIDTH} sidebar-panel-enter`}
           aria-label={`Secciones de ${displayGroup.label}`}
         >
           <div className="flex h-16 shrink-0 items-center justify-between px-4">
@@ -381,11 +399,24 @@ export function SidebarNavigation({
                 <div className="space-y-0.5 px-2">
                   {section.items.map((item) => {
                     const itemActive = activeLinkHref === item.href;
+                    const restricted = Boolean(
+                      item.accessPermission && !permissions.includes(item.accessPermission),
+                    );
                     return (
                       <Link
                         key={item.href}
                         href={adminHref(item.href)}
-                        onClick={handleItemClick}
+                        aria-label={item.label}
+                        aria-current={itemActive ? "page" : undefined}
+                        onClick={(event) => {
+                          if (restricted) {
+                            event.preventDefault();
+                            setSelectedGroupId(null);
+                            onRestrictedNavigate();
+                            return;
+                          }
+                          handleItemClick();
+                        }}
                         className={`mega-item group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 ${
                           itemActive
                             ? "bg-white/[.05] text-white"

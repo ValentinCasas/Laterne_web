@@ -150,14 +150,14 @@ export async function GET(request: Request) {
 const createDriverInput = z.object({
   name: z.string().trim().min(1).max(160),
   phone: z.string().trim().min(1).max(60),
-  userId: z.coerce.number().int().positive().optional(),
+  userId: z.coerce.number().int().positive().nullable().optional(),
   status: z.enum(["AVAILABLE", "UNAVAILABLE", "INACTIVE"]).default("AVAILABLE"),
   active: z.boolean().default(true),
-  vehicleType: z.string().trim().max(80).optional(),
-  plate: z.string().trim().max(20).optional(),
-  color: z.string().trim().max(60).optional(),
-  capacity: z.coerce.number().int().positive().optional(),
-  notes: z.string().trim().max(2000).optional(),
+  vehicleType: z.string().trim().max(80).nullable().optional(),
+  plate: z.string().trim().max(20).nullable().optional(),
+  color: z.string().trim().max(60).nullable().optional(),
+  capacity: z.coerce.number().int().positive().nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
   branchIds: z.array(z.coerce.number().int().positive()).default([]),
 });
 

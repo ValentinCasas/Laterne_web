@@ -12,6 +12,7 @@ import {
   ActiveFilterChip,
   HoverPreview,
   NumberFlow,
+  Pagination,
 } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { handleImageError, productImageSrc } from "@/lib/image-fallback";
@@ -190,6 +191,8 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
   }, []);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editingId, setEditingId] = useState<number | null | "new">(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const currency = payload.currency ?? "ARS";
 
@@ -324,6 +327,10 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
     return rows;
   }, [filtered, sort]);
 
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const pagedProducts = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   const activeFilterCount = useMemo(() => {
     const entries = Object.entries(filters);
     let count = 0;
@@ -350,15 +357,15 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
 
   const hasActiveFilters = activeFilterCount > 0;
 
-  const allSelected = sorted.length > 0 && sorted.every((product) => selected.has(product.id));
+  const allSelected = pagedProducts.length > 0 && pagedProducts.every((product) => selected.has(product.id));
 
   const toggleAll = () => {
     setSelected((current) => {
       const next = new Set(current);
       if (allSelected) {
-        for (const product of sorted) next.delete(product.id);
+        for (const product of pagedProducts) next.delete(product.id);
       } else {
-        for (const product of sorted) next.add(product.id);
+        for (const product of pagedProducts) next.add(product.id);
       }
       return next;
     });
@@ -376,6 +383,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
   const clearFilters = () => {
     setFilters(emptyFilters);
     setSearch("");
+    setPage(1);
   };
 
   /** @summary Marca o desmarca un favorito sin abrir el editor. */
@@ -496,7 +504,10 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
     }
   };
 
-  const patch = (changes: Partial<Filters>) => setFilters((current) => ({ ...current, ...changes }));
+  const patch = (changes: Partial<Filters>) => {
+    setFilters((current) => ({ ...current, ...changes }));
+    setPage(1);
+  };
 
   return (
     <div>
@@ -514,7 +525,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-3 py-2 shadow-lg shadow-black/10 print:hidden">
         <div className="relative min-w-[200px] flex-1">
-          <SearchBox value={search} onChange={setSearch} placeholder="Buscar productos…" />
+          <SearchBox value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Buscar productos…" />
         </div>
         <button
           type="button"
@@ -525,7 +536,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
         </button>
         <select
           value={sort}
-          onChange={(event) => setSort(event.target.value as SortKey)}
+          onChange={(event) => { setSort(event.target.value as SortKey); setPage(1); }}
           className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300"
           aria-label="Ordenar"
         >
@@ -535,7 +546,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
             </option>
           ))}
         </select>
-        <ViewModeToggle value={view} onChange={setView} />
+        <ViewModeToggle value={view} onChange={(value) => { setView(value); setPage(1); }} />
         {isListView && (
           <select
             value={density}
@@ -708,7 +719,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
         <div
           className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 ${compactCards ? "gap-2.5" : "gap-4"}`}
         >
-          {sorted.map((product) => (
+          {pagedProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -725,7 +736,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
         </div>
       ) : (
         <ListTable
-          products={sorted}
+          products={pagedProducts}
           currency={currency}
           density={effectiveDensity}
           selected={selected}
@@ -746,6 +757,18 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
           onDuplicate={(product) => void duplicate(product)}
           onRemove={(product) => void removeMany([product.id], `Se eliminará “${product.name}”.`)}
         />
+      )}
+
+      {sorted.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--admin-border)]">
+          <Pagination
+            page={safePage}
+            pageSize={pageSize}
+            totalItems={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={(value) => { setPageSize(value); setPage(1); }}
+          />
+        </div>
       )}
 
       <p className="mt-4 text-sm text-[var(--admin-muted)]">

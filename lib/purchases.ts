@@ -118,6 +118,8 @@ function validateOrderLine(line: { quantity: unknown; unitCost: unknown }) {
 }
 
 export type PurchaseOrderLineInput = {
+  /** Identificador estable de la línea al editar pedidos ya enviados. */
+  orderItemId?: number;
   productId: number;
   quantity: number;
   unit: string;
@@ -187,9 +189,13 @@ export async function createPurchaseOrder(
 }
 
 /** @summary Recupera un pedido del tenant con sus relaciones completas. */
-export async function loadPurchaseOrder(tenantId: number, orderId: number) {
+export async function loadPurchaseOrder(tenantId: number, orderId: number, accessibleBranchIds?: number[]) {
   const order = await prisma.purchaseOrder.findFirst({
-    where: { id: orderId, tenantId },
+    where: {
+      id: orderId,
+      tenantId,
+      ...(accessibleBranchIds ? { branchId: { in: accessibleBranchIds } } : {}),
+    },
     include: {
       supplier: { select: { id: true, name: true, paymentTerms: true } },
       branch: { select: { id: true, name: true } },
@@ -241,7 +247,7 @@ export async function updatePurchaseOrder(
     const order = await transaction.purchaseOrder.findFirst({ where: { id: orderId, tenantId } });
     if (!order) throw new PurchaseError("El pedido no existe", 404);
     const isDraft = order.status === "draft";
-    const canEditLines = ["draft", "sent", "partially_received"].includes(order.status);
+    const canEditOperationalFields = !["closed", "cancelled"].includes(order.status);
 
     // Header changes (supplier, branch) only in draft
     if (!isDraft && (input.supplierId || input.branchId)) {
@@ -254,29 +260,40 @@ export async function updatePurchaseOrder(
 
     // Validate that new quantities don't go below receivedQuantity (BC-style safety).
     if (lines) {
-      const existingItems = await transaction.purchaseOrderItem.findMany({ where: { orderId }, select: { productId: true, receivedQuantity: true, invoicedQuantity: true } });
-      const receivedByProduct = new Map(existingItems.map((i) => [i.productId, { received: Number(i.receivedQuantity), invoiced: Number(i.invoicedQuantity) }]));
+      const existingItems = await transaction.purchaseOrderItem.findMany({
+        where: { orderId },
+        select: { id: true, productId: true, quantity: true, receivedQuantity: true, invoicedQuantity: true },
+      });
+      const existingById = new Map(existingItems.map((item) => [item.id, item]));
+      const existingByProduct = new Map(existingItems.map((item) => [item.productId, item]));
       for (const line of lines) {
-        const existing = receivedByProduct.get(line.productId);
-        const received = existing?.received ?? 0;
-        const invoiced = existing?.invoiced ?? 0;
-        if (line.quantity < received) {
+        const existing =
+          (line.orderItemId ? existingById.get(line.orderItemId) : undefined) ??
+          existingByProduct.get(line.productId);
+        const received = Number(existing?.receivedQuantity ?? 0);
+        const invoiced = Number(existing?.invoicedQuantity ?? 0);
+        const ordered = isDraft ? line.quantity : Number(existing?.quantity ?? line.quantity);
+        if (!existing && !isDraft) {
+          throw new PurchaseError("Una línea no pertenece al pedido", 400);
+        }
+        if (ordered < received) {
           throw new PurchaseError(`La cantidad de un producto no puede ser menor a la ya recibida (${received})`, 400);
         }
         // Validate operational fields (qtyToReceive / qtyToInvoice).
-        const pendingRec = line.quantity - received;
+        const pendingRec = ordered - received;
         if (line.quantityToReceive != null && (line.quantityToReceive < 0 || line.quantityToReceive > pendingRec)) {
           throw new PurchaseError(`La cantidad a recibir no puede superar el pendiente (${pendingRec})`, 400);
         }
-        const pendingInv = line.quantity - invoiced;
+        const pendingInv = ordered - invoiced;
         if (line.quantityToInvoice != null && (line.quantityToInvoice < 0 || line.quantityToInvoice > pendingInv)) {
           throw new PurchaseError(`La cantidad a facturar no puede superar el pendiente (${pendingInv})`, 400);
         }
       }
     }
 
-    // Replace lines only if editing is allowed for this status
-    if (lines && canEditLines) {
+    // La estructura documental se reemplaza exclusivamente en Borrador. Una vez
+    // enviado se conservan IDs, cantidades acumuladas y vínculos a recepciones.
+    if (lines && isDraft) {
       await transaction.purchaseOrderItem.deleteMany({ where: { orderId } });
       await transaction.purchaseOrderItem.createMany({
         data: lines.map((line, index) => ({
@@ -292,13 +309,14 @@ export async function updatePurchaseOrder(
           sortOrder: index,
         })),
       });
-    } else if (lines && !canEditLines) {
-      // Structural lines cannot be replaced in this status,
-      // but operational fields (qtyToReceive/qtyToInvoice) are always
-      // updatable. Persist them on existing items.
+    } else if (lines && canEditOperationalFields) {
+      // En estados operativos solo persiste la preparación de recepción/factura.
       for (const line of lines) {
         const existing = await transaction.purchaseOrderItem.findFirst({
-          where: { orderId, productId: line.productId },
+          where: {
+            orderId,
+            ...(line.orderItemId ? { id: line.orderItemId } : { productId: line.productId }),
+          },
           select: { id: true },
         });
         if (existing) {
@@ -426,7 +444,6 @@ export async function receivePurchaseOrder(
       },
     });
 
-    let fullyReceived = true;
     const movements: Array<{ stockId: number; quantity: number; unitCost: number | null; unit: string }> = [];
 
     for (const line of input.items) {
@@ -500,15 +517,23 @@ export async function receivePurchaseOrder(
       });
       movements.push({ stockId: stock.id, quantity: inStockUnit, unitCost: unitCostPerStockUnit, unit: stock.unit });
 
-      const newReceived = Number(ordered.receivedQuantity) + quantity;
-      if (newReceived < Number(ordered.quantity)) fullyReceived = false;
-
-      // Clear persisted operational fields after consumption.
+      // Consumir solo la preparación de recepción. La cantidad a facturar es
+      // un estado independiente y no debe perderse al ingresar mercadería.
       await transaction.purchaseOrderItem.update({
         where: { id: ordered.id },
-        data: { quantityToReceive: null, quantityToInvoice: null },
+        data: { quantityToReceive: null },
       });
     }
+
+    // Recalcular sobre TODAS las líneas. Un albarán que completa solo una
+    // selección no puede marcar recibido a un pedido con otras líneas pendientes.
+    const refreshedItems = await transaction.purchaseOrderItem.findMany({
+      where: { orderId: order.id },
+      select: { quantity: true, receivedQuantity: true },
+    });
+    const fullyReceived = refreshedItems.every(
+      (item) => Number(item.receivedQuantity) >= Number(item.quantity),
+    );
 
     // Recalcular estado del pedido: parcial o recibido por completo.
     if (order.status === "draft" || order.status === "sent") {
@@ -889,10 +914,23 @@ export async function updatePurchaseInvoice(
 /** @summary Lista pedidos con filtros de operación. */
 export async function listPurchaseOrders(
   tenantId: number,
-  filters: { branchId?: number | null; supplierId?: number | null; status?: string; query?: string; from?: string; to?: string; limit?: number; offset?: number },
+  filters: {
+    branchId?: number | null;
+    branchIds?: number[];
+    supplierId?: number | null;
+    status?: string;
+    query?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: "number" | "supplier" | "branch" | "orderDate" | "status";
+    sortDir?: "asc" | "desc";
+  },
 ) {
   const where: Prisma.PurchaseOrderWhereInput = { tenantId };
   if (filters.branchId) where.branchId = filters.branchId;
+  else if (filters.branchIds) where.branchId = { in: filters.branchIds };
   if (filters.supplierId) where.supplierId = filters.supplierId;
   if (filters.status) where.status = filters.status;
   if (filters.query) {
@@ -904,6 +942,17 @@ export async function listPurchaseOrders(
   }
   if (filters.from) where.orderDate = { ...(where.orderDate as object | undefined), gte: new Date(filters.from) };
   if (filters.to) where.orderDate = { ...(where.orderDate as object | undefined), lte: new Date(filters.to) };
+  const direction = filters.sortDir ?? "desc";
+  const orderBy: Prisma.PurchaseOrderOrderByWithRelationInput =
+    filters.sortBy === "number"
+      ? { number: direction }
+      : filters.sortBy === "supplier"
+        ? { supplier: { name: direction } }
+        : filters.sortBy === "branch"
+          ? { branch: { name: direction } }
+          : filters.sortBy === "status"
+            ? { status: direction }
+            : { orderDate: direction };
   const [items, total] = await Promise.all([
     prisma.purchaseOrder.findMany({
       where,
@@ -913,7 +962,7 @@ export async function listPurchaseOrders(
         items: { select: { quantity: true, receivedQuantity: true } },
         createdBy: { select: { id: true, name: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       take: filters.limit ?? 60,
       skip: filters.offset ?? 0,
     }),
