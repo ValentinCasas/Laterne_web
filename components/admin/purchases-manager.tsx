@@ -407,9 +407,9 @@ function OrdersTable({
             {orders.map((order) => {
               const pendingLines = order.items.filter((item) => Number(item.quantity) - Number(item.receivedQuantity) > 0).length;
               return (
-                <tr key={order.id} className="transition-colors hover:bg-white/[0.02]">
+                <tr key={order.id} className="transition-colors hover:bg-white/[0.02] cursor-pointer" onClick={() => onOpen(order.id)}>
                   <td className="px-4 py-3">
-                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={() => onOpen(order.id)}>
+                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={(e) => { e.stopPropagation(); onOpen(order.id); }}>
                       {order.number}
                     </button>
                     {order.externalReference && <p className="text-xs text-[var(--admin-muted)]">{order.externalReference}</p>}
@@ -523,9 +523,9 @@ function InvoicesTable({
             {invoices.map((invoice) => {
               const balance = Number(invoice.total) - Number(invoice.paidAmount);
               return (
-                <tr key={invoice.id} className="transition-colors hover:bg-white/[0.02]">
+                <tr key={invoice.id} className="transition-colors hover:bg-white/[0.02] cursor-pointer" onClick={() => onOpen(invoice.id)}>
                   <td className="px-4 py-3">
-                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={() => onOpen(invoice.id)}>
+                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={(e) => { e.stopPropagation(); onOpen(invoice.id); }}>
                       {invoice.number}
                     </button>
                     {invoice.externalNumber && <p className="text-xs text-[var(--admin-muted)]">Comp. {invoice.externalNumber}</p>}
@@ -686,10 +686,10 @@ function SuppliersTable({
             </thead>
             <tbody className="divide-y divide-[var(--admin-border)]/70">
               {visible.map((supplier) => (
-                <tr key={supplier.id} className="transition-colors hover:bg-white/[0.02]">
+                <tr key={supplier.id} className="transition-colors hover:bg-white/[0.02] cursor-pointer" onClick={() => onEdit(supplier)}>
                   <td className="px-4 py-3 text-xs text-[var(--admin-muted)]">{supplier.code ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={() => onEdit(supplier)}>
+                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={(e) => { e.stopPropagation(); onEdit(supplier); }}>
                       {supplier.name}
                     </button>
                   </td>

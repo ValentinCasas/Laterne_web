@@ -453,9 +453,9 @@ function ExpensesTable({
               const overdue =
                 expense.dueDate && new Date(expense.dueDate).getTime() < now && balance > 0 && !["paid", "cancelled"].includes(expense.status);
               return (
-                <tr key={expense.id} className="transition-colors hover:bg-white/[0.02]">
+                <tr key={expense.id} className="transition-colors hover:bg-white/[0.02] cursor-pointer" onClick={() => onOpen(expense.id)}>
                   <td className="px-4 py-3">
-                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={() => onOpen(expense.id)}>
+                    <button type="button" className="font-black text-pink-300 hover:underline" onClick={(e) => { e.stopPropagation(); onOpen(expense.id); }}>
                       {expense.number}
                     </button>
                     {expense.recurring?.name && <p className="inline-flex items-center gap-1 text-xs text-[var(--admin-muted)]"><Icon name="repeat" className="h-3 w-3" /> {expense.recurring.name}</p>}
@@ -480,14 +480,11 @@ function ExpensesTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1.5">
-                      <button type="button" className="btn btn-secondary px-2.5 py-1.5 text-xs" onClick={() => onOpen(expense.id)}>
-                        Ver / Pagar
-                      </button>
                       {!["paid", "cancelled"].includes(expense.status) && (
                         <button
                           type="button"
                           className="rounded-lg border border-red-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
-                          onClick={() => void annul(expense)}
+                          onClick={(e) => { e.stopPropagation(); void annul(expense); }}
                         >
                           Anular
                         </button>

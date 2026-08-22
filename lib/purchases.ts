@@ -124,6 +124,10 @@ export type PurchaseOrderLineInput = {
   unitCost: number;
   discountPercent?: number;
   taxPercent?: number;
+  /** Cantidad a recibir persistente (estado de trabajo). */
+  quantityToReceive?: number;
+  /** Cantidad a facturar persistente (estado de trabajo). */
+  quantityToInvoice?: number;
 };
 
 /**
@@ -236,8 +240,12 @@ export async function updatePurchaseOrder(
   return prisma.$transaction(async (transaction) => {
     const order = await transaction.purchaseOrder.findFirst({ where: { id: orderId, tenantId } });
     if (!order) throw new PurchaseError("El pedido no existe", 404);
-    if (order.status !== "draft") {
-      throw new PurchaseError("Solo se pueden editar pedidos en Borrador", 409);
+    const isDraft = order.status === "draft";
+    const canEditLines = ["draft", "sent", "partially_received"].includes(order.status);
+
+    // Header changes (supplier, branch) only in draft
+    if (!isDraft && (input.supplierId || input.branchId)) {
+      throw new PurchaseError("Proveedor y sucursal solo se pueden cambiar en Borrador", 409);
     }
     if (input.supplierId) await requireSupplier(tenantId, input.supplierId);
 
@@ -246,18 +254,30 @@ export async function updatePurchaseOrder(
 
     // Validate that new quantities don't go below receivedQuantity (BC-style safety).
     if (lines) {
-      const existingItems = await transaction.purchaseOrderItem.findMany({ where: { orderId }, select: { productId: true, receivedQuantity: true } });
-      const receivedByProduct = new Map(existingItems.map((i) => [i.productId, Number(i.receivedQuantity)]));
+      const existingItems = await transaction.purchaseOrderItem.findMany({ where: { orderId }, select: { productId: true, receivedQuantity: true, invoicedQuantity: true } });
+      const receivedByProduct = new Map(existingItems.map((i) => [i.productId, { received: Number(i.receivedQuantity), invoiced: Number(i.invoicedQuantity) }]));
       for (const line of lines) {
-        const received = receivedByProduct.get(line.productId) ?? 0;
+        const existing = receivedByProduct.get(line.productId);
+        const received = existing?.received ?? 0;
+        const invoiced = existing?.invoiced ?? 0;
         if (line.quantity < received) {
           throw new PurchaseError(`La cantidad de un producto no puede ser menor a la ya recibida (${received})`, 400);
+        }
+        // Validate operational fields (qtyToReceive / qtyToInvoice).
+        const pendingRec = line.quantity - received;
+        if (line.quantityToReceive != null && (line.quantityToReceive < 0 || line.quantityToReceive > pendingRec)) {
+          throw new PurchaseError(`La cantidad a recibir no puede superar el pendiente (${pendingRec})`, 400);
+        }
+        const pendingInv = line.quantity - invoiced;
+        if (line.quantityToInvoice != null && (line.quantityToInvoice < 0 || line.quantityToInvoice > pendingInv)) {
+          throw new PurchaseError(`La cantidad a facturar no puede superar el pendiente (${pendingInv})`, 400);
         }
       }
     }
 
-    await transaction.purchaseOrderItem.deleteMany({ where: { orderId } });
-    if (lines) {
+    // Replace lines only if editing is allowed for this status
+    if (lines && canEditLines) {
+      await transaction.purchaseOrderItem.deleteMany({ where: { orderId } });
       await transaction.purchaseOrderItem.createMany({
         data: lines.map((line, index) => ({
           orderId,
@@ -267,15 +287,37 @@ export async function updatePurchaseOrder(
           unitCost: line.unitCost,
           discountPercent: line.discountPercent ?? 0,
           taxPercent: line.taxPercent ?? 0,
+          quantityToReceive: line.quantityToReceive ?? null,
+          quantityToInvoice: line.quantityToInvoice ?? null,
           sortOrder: index,
         })),
       });
+    } else if (lines && !canEditLines) {
+      // Structural lines cannot be replaced in this status,
+      // but operational fields (qtyToReceive/qtyToInvoice) are always
+      // updatable. Persist them on existing items.
+      for (const line of lines) {
+        const existing = await transaction.purchaseOrderItem.findFirst({
+          where: { orderId, productId: line.productId },
+          select: { id: true },
+        });
+        if (existing) {
+          await transaction.purchaseOrderItem.update({
+            where: { id: existing.id },
+            data: {
+              quantityToReceive: line.quantityToReceive ?? null,
+              quantityToInvoice: line.quantityToInvoice ?? null,
+            },
+          });
+        }
+      }
     }
+
     return transaction.purchaseOrder.update({
       where: { id: orderId },
       data: {
-        ...(input.supplierId ? { supplierId: input.supplierId } : {}),
-        ...(input.branchId ? { branchId: input.branchId } : {}),
+        ...(isDraft && input.supplierId ? { supplierId: input.supplierId } : {}),
+        ...(isDraft && input.branchId ? { branchId: input.branchId } : {}),
         ...(input.orderDate ? { orderDate: new Date(input.orderDate) } : {}),
         ...(input.postingDate !== undefined ? { postingDate: input.postingDate ? new Date(input.postingDate) : new Date() } : {}),
         ...(input.expectedDate !== undefined ? { expectedDate: input.expectedDate ? new Date(input.expectedDate) : null } : {}),
@@ -460,6 +502,12 @@ export async function receivePurchaseOrder(
 
       const newReceived = Number(ordered.receivedQuantity) + quantity;
       if (newReceived < Number(ordered.quantity)) fullyReceived = false;
+
+      // Clear persisted operational fields after consumption.
+      await transaction.purchaseOrderItem.update({
+        where: { id: ordered.id },
+        data: { quantityToReceive: null, quantityToInvoice: null },
+      });
     }
 
     // Recalcular estado del pedido: parcial o recibido por completo.

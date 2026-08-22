@@ -2462,6 +2462,18 @@ model PurchaseOrderItem {
    * Cantidad facturada acumulada; la pendiente de facturar es `quantity - invoicedQuantity`.
    */
   invoicedQuantity Decimal               @default(0) @db.Decimal(12, 3)
+  /**
+   * Cantidad preparada para recibir (estado de trabajo persistente).
+   * El usuario escribe este valor y guarda; luego confirma la recepción.
+   * Debe cumplir: 0 <= quantityToReceive <= (quantity - receivedQuantity).
+   */
+  quantityToReceive Decimal?              @db.Decimal(12, 3)
+  /**
+   * Cantidad preparada para facturar (estado de trabajo persistente).
+   * El usuario escribe este valor y guarda; luego confirma la facturación.
+   * Debe cumplir: 0 <= quantityToInvoice <= (quantity - invoicedQuantity).
+   */
+  quantityToInvoice  Decimal?              @db.Decimal(12, 3)
   sortOrder        Int                   @default(0)
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt

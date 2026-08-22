@@ -79,7 +79,7 @@ export function ActionMenu({
     <button
       ref={triggerRef}
       type="button"
-      onClick={() => setOpen((current) => !current)}
+      onClick={(e) => { e.stopPropagation(); setOpen((current) => !current); }}
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-xs font-black text-zinc-300 transition-colors hover:bg-white/10"
       aria-haspopup="menu"
       aria-expanded={open}
@@ -106,7 +106,8 @@ export function ActionMenu({
                 key={index}
                 type="button"
                 role="menuitem"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setOpen(false);
                   item.onClick();
                 }}

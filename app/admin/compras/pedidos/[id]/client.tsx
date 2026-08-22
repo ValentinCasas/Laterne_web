@@ -21,6 +21,8 @@ type OrderItem = {
   unitCost: string | number;
   discountPercent?: string | number;
   taxPercent?: string | number;
+  quantityToReceive?: string | number | null;
+  quantityToInvoice?: string | number | null;
   product: { id: number; name: string; cost?: number | string | null; costUnit?: string | null };
   sortOrder: number;
 };
@@ -106,9 +108,9 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
 
   const canReceive = !["cancelled", "closed"].includes(order.status);
   const canEdit = order.status === "draft";
+  const canEditLines = ["draft", "sent", "partially_received"].includes(order.status);
   const canCancel = !["cancelled", "closed"].includes(order.status);
   const canClose = ["received", "partially_received", "sent", "draft"].includes(order.status);
-  const readOnly = !canEdit;
 
   useEffect(() => {
     const drafts: typeof lineDrafts = {};
@@ -116,7 +118,19 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
       const ordered = Number(item.quantity) || 0;
       const received = Number(item.receivedQuantity) || 0;
       const invoiced = Number(item.invoicedQuantity) || 0;
-      drafts[item.id] = { quantity: String(ordered), unitCost: String(Number(item.unitCost) || 0), discountPercent: String(Number(item.discountPercent) || 0), qtyToReceive: String(Math.max(0, ordered - received)), qtyToInvoice: String(Math.max(0, ordered - invoiced)) };
+      const pendingRec = Math.max(0, ordered - received);
+      const pendingInv = Math.max(0, ordered - invoiced);
+      // Use persisted quantityToReceive/quantityToInvoice from the server when available;
+      // fall back to pending defaults only when no persisted value exists.
+      const persistedRec = item.quantityToReceive != null ? Number(item.quantityToReceive) : null;
+      const persistedInv = item.quantityToInvoice != null ? Number(item.quantityToInvoice) : null;
+      drafts[item.id] = {
+        quantity: String(ordered),
+        unitCost: String(Number(item.unitCost) || 0),
+        discountPercent: String(Number(item.discountPercent) || 0),
+        qtyToReceive: persistedRec != null && !isNaN(persistedRec) ? String(Math.min(persistedRec, pendingRec)) : String(pendingRec),
+        qtyToInvoice: persistedInv != null && !isNaN(persistedInv) ? String(Math.min(persistedInv, pendingInv)) : String(pendingInv),
+      };
     }
     setLineDrafts(drafts);
   }, [order.items]);
@@ -134,35 +148,30 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
   const invoiceStatusLabel = invoiceStatus === "complete" ? "Completa" : invoiceStatus === "partial" ? "Parcial" : "Sin facturar";
   const hasPendingReceipt = order.items.some((item) => (Number(item.quantity) || 0) - (Number(item.receivedQuantity) || 0) > 0);
 
-  async function saveHeader() {
-    setSaving(true);
-    try {
-      const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0) }; });
-      await api(`/api/admin/compras/${order.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          supplierId: headerDraft.supplierId !== order.supplier.id ? headerDraft.supplierId : undefined,
-          branchId: headerDraft.branchId !== order.branch.id ? headerDraft.branchId : undefined,
-          orderDate: headerDraft.orderDate || undefined,
-          postingDate: headerDraft.postingDate || undefined,
-          expectedDate: headerDraft.expectedDate || null,
-          externalReference: headerDraft.externalReference || null,
-          notes: headerDraft.notes || null,
-          lines,
-        }),
-      });
-      setEditingHeader(false);
-      setDirty(false);
-      await Swal.fire({ title: "Cambios guardados", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
-      router.refresh();
-    } catch (reason) { await showError("No se pudo guardar", reason); } finally { setSaving(false); }
-  }
+  // saveHeader removed — merged into saveLines() which handles both header + lines
 
   async function saveLines() {
     setSaving(true);
     try {
-      const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0) }; });
-      await api(`/api/admin/compras/${order.id}`, { method: "PUT", body: JSON.stringify({ lines }) });
+      const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0), quantityToReceive: d?.qtyToReceive != null ? Number(d.qtyToReceive) : undefined, quantityToInvoice: d?.qtyToInvoice != null ? Number(d.qtyToInvoice) : undefined }; });
+      if (editingHeader) {
+        await api(`/api/admin/compras/${order.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            supplierId: headerDraft.supplierId !== order.supplier.id ? headerDraft.supplierId : undefined,
+            branchId: headerDraft.branchId !== order.branch.id ? headerDraft.branchId : undefined,
+            orderDate: headerDraft.orderDate || undefined,
+            postingDate: headerDraft.postingDate || undefined,
+            expectedDate: headerDraft.expectedDate || null,
+            externalReference: headerDraft.externalReference || null,
+            notes: headerDraft.notes || null,
+            lines,
+          }),
+        });
+        setEditingHeader(false);
+      } else {
+        await api(`/api/admin/compras/${order.id}`, { method: "PUT", body: JSON.stringify({ lines }) });
+      }
       setDirty(false);
       await Swal.fire({ title: "Cambios guardados", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       router.refresh();
@@ -179,7 +188,16 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
     const result = await Swal.fire({ title: conf.title, text: conf.text, icon: conf.icon, showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Cancelar", confirmButtonColor: nextStatus === "cancelled" ? "#ef4444" : "var(--admin-primary-strong)", background: "#18181b", color: "#fafafa", reverseButtons: true });
     if (!result.isConfirmed) return;
     setBusy(true);
-    try { await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) }); router.refresh(); }
+    try {
+      // Save pending line/header changes before changing status
+      if (dirty && canEdit) {
+        const lines = order.items.map((item) => { const d = lineDrafts[item.id]; return { productId: item.product.id, quantity: Number(d?.quantity || item.quantity), unit: item.unit, unitCost: Number(d?.unitCost || item.unitCost), discountPercent: Number(d?.discountPercent || 0), taxPercent: Number(item.taxPercent || 0) }; });
+        await api(`/api/admin/compras/${order.id}`, { method: "PUT", body: JSON.stringify({ lines }) });
+        setDirty(false);
+      }
+      await api(`/api/admin/compras/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) });
+      router.refresh();
+    }
     catch (reason) { await showError("No se pudo cambiar el estado", reason); } finally { setBusy(false); }
   }
 
@@ -199,8 +217,9 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
     if (!result.isConfirmed) return;
     setSaving(true);
     try {
-      const resp = await api<{ receipt: { number: string } }>(`/api/admin/compras/${order.id}/recepciones`, { method: "POST", body: JSON.stringify({ notes: receiveNotes || undefined, items }) });
-      await Swal.fire({ title: "Recepción registrada", html: `<p>Albarán <strong>${resp.receipt.number}</strong> creado correctamente.</p>`, icon: "success", timer: 2500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      const resp = await api<{ item: { number: string; id: number } }>(`/api/admin/compras/${order.id}/recepciones`, { method: "POST", body: JSON.stringify({ notes: receiveNotes || undefined, items }) });
+      const receiptNumber = resp.item?.number ?? "Sin número";
+      await Swal.fire({ title: "Recepción registrada", html: `<p>Albarán <strong>${receiptNumber}</strong> creado correctamente.</p>`, icon: "success", timer: 2500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
       router.refresh(); setReceivingFor(null);
     } catch (reason) { await showError("No se pudo registrar la recepción", reason); } finally { setSaving(false); }
   }
@@ -249,44 +268,35 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
         </div>
       )}
 
-      {/* ── Action Bar ── */}
+      {/* ── Action Bar (BC-style command bar) ── */}
       <div className="border-b" style={{ borderColor: "var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface) 60%, var(--admin-background))" }}>
-        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center px-8 py-2 text-xs gap-0">
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-stretch px-4 sm:px-8 py-1.5 gap-0 overflow-x-auto">
           {canEdit && (
-            <ActionGroup label="Pedido">
-              {editingHeader ? (
-                <>
-                  <ActionBtn label={saving ? "Guardando..." : "Guardar"} icon="save" onClick={() => void saveHeader()} disabled={saving} accent />
-                  <ActionBtn label="Cancelar" icon="x" onClick={() => { setEditingHeader(false); setDirty(false); router.refresh(); }} disabled={saving} />
-                </>
-              ) : (
-                <>
-                  <ActionBtn label="Editar" icon="edit" onClick={() => setEditingHeader(true)} disabled={busy || saving} />
-                  {dirty && <ActionBtn label="Guardar" icon="save" onClick={() => void saveLines()} disabled={saving} accent />}
-                </>
-              )}
-              <ActionBtn label="Enviar" icon="external-link" onClick={() => void changeStatus("sent")} disabled={busy} />
-            </ActionGroup>
+            <CommandGroup label="PEDIDO">
+              <CommandBtn label="Guardar" icon="save" onClick={() => void saveLines()} disabled={saving || !dirty} primary={dirty} />
+              <CommandBtn label="Editar cabecera" icon="edit" onClick={() => { setEditingHeader(!editingHeader); setDirty(true); }} disabled={busy || saving} active={editingHeader} />
+              <CommandBtn label="Enviar" icon="external-link" onClick={() => void changeStatus("sent")} disabled={busy || saving} />
+            </CommandGroup>
           )}
           {canReceive && hasPendingReceipt && (
-            <ActionGroup label="Registrar">
-              <ActionBtn label="Recibir" icon="package" onClick={() => void confirmReceipt()} disabled={busy || saving} accent />
-            </ActionGroup>
+            <CommandGroup label="REGISTRAR">
+              <CommandBtn label="Recibir" icon="package" onClick={() => void confirmReceipt()} disabled={busy || saving} primary />
+            </CommandGroup>
           )}
-          <ActionGroup label="Navegar">
-            <ActionBtn label="Albaranes" badge={totalReceipts} icon="document" onClick={() => totalReceipts > 0 ? setShowReceiptsModal(true) : undefined} disabled={totalReceipts === 0} />
-            <ActionBtn label="Facturas" badge={totalInvoices} icon="receipt" onClick={() => totalInvoices > 0 ? setShowInvoicesModal(true) : undefined} disabled={totalInvoices === 0} />
-          </ActionGroup>
+          <CommandGroup label="NAVEGAR">
+            <CommandBtn label="Albaranes" badge={totalReceipts} icon="document" onClick={() => totalReceipts > 0 ? setShowReceiptsModal(true) : undefined} disabled={totalReceipts === 0} />
+            <CommandBtn label="Facturas" badge={totalInvoices} icon="receipt" onClick={() => totalInvoices > 0 ? setShowInvoicesModal(true) : undefined} disabled={totalInvoices === 0} />
+          </CommandGroup>
           {canClose && (
-            <ActionGroup label="Estado">
-              <ActionBtn label="Cerrar" icon="check" onClick={() => void changeStatus("closed")} disabled={busy} />
-              {canCancel && <ActionBtn label="Cancelar" icon="x" onClick={() => void changeStatus("cancelled")} disabled={busy} danger />}
-            </ActionGroup>
+            <CommandGroup label="ESTADO">
+              <CommandBtn label="Cerrar" icon="check" onClick={() => void changeStatus("closed")} disabled={busy} />
+              {canCancel && <CommandBtn label="Cancelar" icon="x" onClick={() => void changeStatus("cancelled")} disabled={busy} danger />}
+            </CommandGroup>
           )}
           {canEdit && (
-            <ActionGroup label="Documento">
-              <ActionBtn label="Eliminar" icon="trash" onClick={() => void remove()} disabled={busy} danger />
-            </ActionGroup>
+            <CommandGroup label="">
+              <CommandBtn label="Eliminar" icon="trash" onClick={() => void remove()} disabled={busy} danger />
+            </CommandGroup>
           )}
         </div>
       </div>
@@ -326,7 +336,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
             {editingHeader && (
               <div className="flex justify-end gap-2 px-6 pb-5">
                 <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }} onClick={() => setEditingHeader(false)} disabled={saving}>Cancelar</button>
-                <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} onClick={() => void saveHeader()} disabled={saving}>{saving ? "Guardando..." : "Guardar cabecera"}</button>
+                <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} onClick={() => { setDirty(true); void saveLines(); }} disabled={saving}>{saving ? "Guardando..." : "Guardar cabecera"}</button>
               </div>
             )}
           </CollapsibleSection>
@@ -354,13 +364,13 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                         <Td>{String((idx + 1) * 10000).padStart(5, "0")}</Td>
                         <Td bold>{item.product.name}</Td>
                         <Td muted>{item.unit}</Td>
-                        <Td r>{readOnly ? <span className="tabular-nums font-semibold">{qty}</span> : <InlineInput value={draft.quantity} onChange={(v) => { updateLineDraft(item.id, "quantity", v); }} />}</Td>
+                        <Td r>{!canEditLines ? <span className="tabular-nums font-semibold">{qty}</span> : <InlineInput value={draft.quantity} onChange={(v) => { updateLineDraft(item.id, "quantity", v); }} />}</Td>
                         <Td r muted style={{ color: "var(--admin-success)" }}>{received}</Td>
-                        <Td r>{readOnly || pendingRec === 0 ? <span className="tabular-nums font-semibold" style={{ color: pendingRec === 0 ? "var(--admin-muted)" : "var(--admin-warning)" }}>{pendingRec}</span> : <InlineInput value={draft.qtyToReceive} onChange={(v) => updateLineDraft(item.id, "qtyToReceive", v)} accent />}</Td>
+                        <Td r>{canEditLines && pendingRec > 0 ? <InlineInput value={draft.qtyToReceive} onChange={(v) => updateLineDraft(item.id, "qtyToReceive", v)} accent /> : <span className="tabular-nums font-semibold" style={{ color: pendingRec === 0 ? "var(--admin-muted)" : "var(--admin-warning)" }}>{pendingRec}</span>}</Td>
                         <Td r muted style={{ color: "#60a5fa" }}>{invoiced}</Td>
-                        <Td r>{readOnly || pendingInv === 0 ? <span className="tabular-nums font-semibold" style={{ color: pendingInv === 0 ? "var(--admin-muted)" : "var(--admin-warning)" }}>{pendingInv}</span> : <InlineInput value={draft.qtyToInvoice} onChange={(v) => updateLineDraft(item.id, "qtyToInvoice", v)} accent />}</Td>
-                        <Td r>{readOnly ? <span className="tabular-nums">{money(unitCost, currency)}</span> : <InlineInput value={draft.unitCost} onChange={(v) => updateLineDraft(item.id, "unitCost", v)} wide />}</Td>
-                        <Td r>{readOnly ? <span className="tabular-nums">{discount > 0 ? `${discount}%` : "—"}</span> : <InlineInput value={draft.discountPercent} onChange={(v) => updateLineDraft(item.id, "discountPercent", v)} narrow />}</Td>
+                        <Td r>{canEditLines && pendingInv > 0 ? <InlineInput value={draft.qtyToInvoice} onChange={(v) => updateLineDraft(item.id, "qtyToInvoice", v)} accent /> : <span className="tabular-nums font-semibold" style={{ color: pendingInv === 0 ? "var(--admin-muted)" : "var(--admin-warning)" }}>{pendingInv}</span>}</Td>
+                        <Td r>{!canEditLines ? <span className="tabular-nums">{money(unitCost, currency)}</span> : <InlineInput value={draft.unitCost} onChange={(v) => updateLineDraft(item.id, "unitCost", v)} wide />}</Td>
+                        <Td r>{!canEditLines ? <span className="tabular-nums">{discount > 0 ? `${discount}%` : "—"}</span> : <InlineInput value={draft.discountPercent} onChange={(v) => updateLineDraft(item.id, "discountPercent", v)} narrow />}</Td>
                         <Td r bold>{money(lineNet, currency)}</Td>
                         <Td c>
                           {isComplete ? <span className="text-[10px] font-semibold" style={{ color: "var(--admin-success)" }}>Completa</span> : pendingRec > 0 ? <span className="text-[10px] font-semibold" style={{ color: "var(--admin-warning)" }}>Pendiente</span> : <span className="text-[10px]" style={{ color: "var(--admin-muted)" }}>—</span>}
@@ -461,25 +471,31 @@ function Pill({ color, label }: { color?: string; label: string }) {
   return <span className="rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: color ? `color-mix(in srgb, ${color} 15%, transparent)` : "color-mix(in srgb, var(--admin-muted) 10%, transparent)", color: color || "var(--admin-muted)" }}>{label}</span>;
 }
 
-function ActionGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function CommandGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center border-r px-3 py-1.5 last:border-r-0" style={{ borderColor: "color-mix(in srgb, var(--admin-border) 60%, transparent)" }}>
-      <span className="mr-2 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: "var(--admin-muted)" }}>{label}</span>
-      {children}
+    <div className="flex items-center border-r px-2 sm:px-3 py-1 last:border-r-0" style={{ borderColor: "color-mix(in srgb, var(--admin-border) 50%, transparent)" }}>
+      {label && <span className="mr-2.5 text-[9px] font-extrabold uppercase tracking-widest whitespace-nowrap hidden sm:inline" style={{ color: "var(--admin-muted)", minWidth: 'auto' }}>{label}</span>}
+      <div className="flex items-center gap-1 flex-wrap">{children}</div>
     </div>
   );
 }
 
-function ActionBtn({ label, icon, badge, onClick, disabled, accent, danger }: { label: string; icon?: string; badge?: number; onClick?: () => void; disabled?: boolean; accent?: boolean; danger?: boolean }) {
+function CommandBtn({ label, icon, badge, onClick, disabled, primary, danger, active }: { label: string; icon?: string; badge?: number; onClick?: () => void; disabled?: boolean; primary?: boolean; danger?: boolean; active?: boolean }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5"
-      style={{ color: danger ? "var(--admin-danger)" : accent ? "var(--admin-primary)" : "var(--admin-muted)", opacity: disabled ? 0.35 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
-      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-      {icon && <Icon name={icon as any} className="text-xs" />}
-      {label}
-      {badge !== undefined && badge > 0 && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "color-mix(in srgb, var(--admin-primary) 18%, transparent)", color: "var(--admin-primary)" }}>{badge}</span>}
+      className="rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 min-h-[36px]"
+      style={{
+        color: danger ? "var(--admin-danger)" : primary ? "#fff" : active ? "var(--admin-primary-strong)" : "var(--admin-muted)",
+        background: primary ? "var(--admin-primary-strong)" : active ? "color-mix(in srgb, var(--admin-primary) 12%, transparent)" : "transparent",
+        opacity: disabled ? 0.35 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        border: primary ? 'none' : active ? '1px solid color-mix(in srgb, var(--admin-primary) 25%, transparent)' : '1px solid transparent',
+      }}
+      onMouseEnter={(e) => { if (!disabled && !primary) e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"; }}
+      onMouseLeave={(e) => { if (!primary) e.currentTarget.style.background = active ? "color-mix(in srgb, var(--admin-primary) 12%, transparent)" : "transparent"; }}>
+      {icon && <Icon name={icon as any} className="text-sm" />}
+      <span className="hidden sm:inline">{label}</span>
+      {badge !== undefined && badge > 0 && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ background: primary ? "rgba(255,255,255,0.2)" : "color-mix(in srgb, var(--admin-primary) 18%, transparent)", color: primary ? "#fff" : "var(--admin-primary)" }}>{badge}</span>}
     </button>
   );
 }

@@ -17,6 +17,8 @@ const orderLineInput = z.object({
   unitCost: z.coerce.number().min(0),
   discountPercent: z.coerce.number().min(0).max(100).optional().default(0),
   taxPercent: z.coerce.number().min(0).max(100).optional().default(0),
+  quantityToReceive: z.coerce.number().min(0).optional(),
+  quantityToInvoice: z.coerce.number().min(0).optional(),
 });
 
 /** @summary Detalle completo de un pedido (con recepciones, facturas e historial). */
@@ -58,7 +60,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const order = await updatePurchaseOrder(auth.tenant.id, Number(id), {
       ...parsed.data,
       postingDate: parsed.data.postingDate,
-      lines: parsed.data.lines?.map((line) => ({ ...line, unit: line.unit || "unidad" })),
+      lines: parsed.data.lines?.map((line) => ({
+        ...line,
+        unit: line.unit || "unidad",
+        quantityToReceive: line.quantityToReceive,
+        quantityToInvoice: line.quantityToInvoice,
+      })),
     });
     await recordAudit({
       context: auth,

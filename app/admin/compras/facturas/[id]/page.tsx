@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { loadPurchaseInvoice } from "@/lib/purchases";
@@ -20,12 +21,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function FacturaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await requirePermission("purchase.manage");
   const { id } = await params;
-  const invoice = await loadPurchaseInvoice(context.tenant.id, Number(id));
-
-  return (
-    <ComprasFacturaDetailClient
-      invoice={serialize(invoice) as any}
-      currency="ARS"
-    />
-  );
+  try {
+    const invoice = await loadPurchaseInvoice(context.tenant.id, Number(id));
+    return (
+      <ComprasFacturaDetailClient
+        invoice={serialize(invoice) as any}
+        currency="ARS"
+      />
+    );
+  } catch {
+    notFound();
+  }
 }
