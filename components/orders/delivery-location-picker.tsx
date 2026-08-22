@@ -11,12 +11,14 @@ export type ConfirmedDeliveryLocation = {
 
 type BranchLocation = {
   name: string;
-  latitude?: number | null;
-  longitude?: number | null;
+  latitude?: unknown;
+  longitude?: unknown;
 };
 
-function validCoordinate(value: number | null | undefined, limit: number) {
-  return Number.isFinite(value) && Math.abs(value!) <= limit ? Number(value) : null;
+function validCoordinate(value: unknown, limit: number) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && Math.abs(parsed) <= limit ? parsed : null;
 }
 
 /** @summary Permite al cliente confirmar un destino distinto haciendo clic o arrastrando un marcador. */

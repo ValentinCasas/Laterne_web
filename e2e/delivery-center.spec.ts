@@ -27,6 +27,8 @@ let createdDriverProfileId = -1;
 let orderId = -1;
 let deliveryId = -1;
 let completedDeliveryNumber = "";
+let missingLocationDeliveryId = -1;
+let missingLocationDeliveryNumber = "";
 
 function privateHash(value: string) {
   return createHash("sha256")
@@ -252,6 +254,19 @@ test.describe.serial("Delivery GPS real", () => {
         deliveryDate: twoDaysAgo,
       },
     });
+    missingLocationDeliveryNumber = `D-NOPOINT-${randomBytes(4).toString("hex").toUpperCase()}`;
+    const missingLocationDelivery = await prisma.orderDelivery.create({
+      data: {
+        tenantId,
+        orderId: order.id,
+        branchId,
+        number: missingLocationDeliveryNumber,
+        customerName: "Cliente sin punto",
+        deliveryAddress: "Dirección sin punto confirmado",
+        status: "PENDING_ASSIGNMENT",
+      },
+    });
+    missingLocationDeliveryId = missingLocationDelivery.id;
   });
 
   test.afterAll(async () => {
@@ -283,6 +298,15 @@ test.describe.serial("Delivery GPS real", () => {
       "href",
       /\/admin\/integraciones#delivery-map$/,
     );
+    await page.getByRole("button", { name: `Abrir detalle de ${missingLocationDeliveryNumber}` }).click();
+    const manualDestinationMap = page.getByLabel("Elegir punto de entrega en el mapa");
+    await expect(manualDestinationMap).toBeVisible();
+    await manualDestinationMap.click({ position: { x: 120, y: 120 } });
+    await page.getByRole("button", { name: "Guardar punto" }).click();
+    await expect.poll(async () => {
+      const stored = await prisma.orderDelivery.findUniqueOrThrow({ where: { id: missingLocationDeliveryId } });
+      return Boolean(stored.latitude && stored.longitude);
+    }).toBe(true);
     const categories = page.getByRole("tablist", { name: "Categorías de entregas" });
     const completedDeliveryMarker = page.getByRole("button", { name: `Abrir entrega ${completedDeliveryNumber}` });
     await expect(categories.getByRole("tab", { name: /^En curso/ })).toHaveAttribute("aria-selected", "true");

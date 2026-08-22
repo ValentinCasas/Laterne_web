@@ -23,6 +23,10 @@ import { canRetireDelivery } from "@/lib/delivery-drivers";
 import { orderStatusLabel } from "@/lib/orders";
 import { normalizeDeliveryDetail, type DeliveryDetail } from "@/lib/delivery-detail";
 import { gpsFreshness } from "@/lib/delivery-tracking";
+import {
+  DeliveryLocationPicker,
+  type ConfirmedDeliveryLocation,
+} from "@/components/orders/delivery-location-picker";
 
 type Delivery = DeliveryDetail;
 
@@ -836,6 +840,7 @@ export function DeliveryCenter({
                 {pagedDeliveries.map((delivery) => (
                   <button
                     key={delivery.id}
+                    aria-label={`Abrir detalle de ${delivery.number}`}
                     className={`admin-row-enter w-full px-5 py-4 text-left transition-[transform,opacity,background-color] duration-150 hover:bg-[var(--admin-row-hover)] ${
                       selectedForView?.id === delivery.id
                         ? "bg-[var(--admin-primary-soft)] shadow-[inset_2px_0_var(--admin-primary)]"
@@ -892,6 +897,7 @@ export function DeliveryCenter({
           {selectedForView ? (
             <DeliveryDetailPanel
               delivery={selectedForView}
+              branch={branches.find((branch) => branch.id === selectedForView.branch?.id) ?? null}
               drivers={drivers}
               driverPosition={positions.find((position) => position.driverProfileId === selectedForView.driverProfile?.id) ?? null}
               gpsNow={gpsNow}
@@ -1065,6 +1071,7 @@ function DeliveryTeamHierarchy({ groups, drivers }: { groups: TeamGroup[]; drive
 /** @summary Panel de detalle de una entrega con secciones compactas. */
 function DeliveryDetailPanel({
   delivery,
+  branch,
   drivers,
   driverPosition,
   gpsNow,
@@ -1077,6 +1084,7 @@ function DeliveryDetailPanel({
   onReverse,
 }: {
   delivery: Delivery;
+  branch: Branch | null;
   drivers: Driver[];
   driverPosition: DeliveryMapPosition | null;
   gpsNow: number;
@@ -1321,14 +1329,58 @@ function DeliveryDetailPanel({
                 Buscar coordenadas de la dirección
               </button>
             )}
-            <DeliveryCoordinatesEditor
-              key={delivery.id}
-              saving={saving}
-              onSave={(latitude, longitude) => onUpdateCoordinates(delivery.id, latitude, longitude)}
-            />
+            {hasMap && (
+              <DeliveryDestinationMapEditor
+                key={`map-${delivery.id}`}
+                branch={branch}
+                saving={saving}
+                onSave={(latitude, longitude) => onUpdateCoordinates(delivery.id, latitude, longitude)}
+              />
+            )}
+            <details className="rounded-xl border border-[var(--admin-border)] p-3">
+              <summary className="cursor-pointer text-xs font-bold text-zinc-300">
+                Cargar latitud y longitud manualmente
+              </summary>
+              <div className="mt-3">
+                <DeliveryCoordinatesEditor
+                  key={`coordinates-${delivery.id}`}
+                  saving={saving}
+                  onSave={(latitude, longitude) => onUpdateCoordinates(delivery.id, latitude, longitude)}
+                />
+              </div>
+            </details>
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/** @summary Permite al administrador marcar y confirmar un destino omitido por el cliente. */
+function DeliveryDestinationMapEditor({
+  branch,
+  saving,
+  onSave,
+}: {
+  branch: Branch | null;
+  saving: boolean;
+  onSave: (latitude: number, longitude: number) => Promise<boolean>;
+}) {
+  const [candidate, setCandidate] = useState<ConfirmedDeliveryLocation | null>(null);
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-bold text-zinc-300">Marcá el destino en el mapa</p>
+      <DeliveryLocationPicker branch={branch} value={candidate} onChange={setCandidate} />
+      <button
+        type="button"
+        className="btn w-full"
+        disabled={saving || !candidate}
+        onClick={() => {
+          if (candidate) void onSave(candidate.latitude, candidate.longitude);
+        }}
+      >
+        {saving ? "Guardando…" : "Guardar punto"}
+      </button>
     </div>
   );
 }
