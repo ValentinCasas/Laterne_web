@@ -35,6 +35,7 @@ type Branch = {
   name: string;
   slug: string;
   address?: string | null;
+  phone?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
 };

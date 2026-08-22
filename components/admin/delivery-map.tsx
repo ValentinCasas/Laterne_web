@@ -4,6 +4,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import { avatarUrl } from "@/components/admin/profile-menu";
 import { gpsFreshness } from "@/lib/delivery-tracking";
+import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 
 export type DeliveryMapPosition = {
   id: number;
@@ -27,15 +28,25 @@ type DeliveryDestination = {
   number: string;
   customerName: string;
   status?: string;
-  latitude?: string | null;
-  longitude?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  deliveryAddress?: string | null;
+  contactPhone?: string | null;
   driverProfile?: { id: number; name: string } | null;
+  branch?: { id: number; name: string } | null;
+  order?: {
+    reference?: string;
+    requestedAt?: string | Date | null;
+    total?: unknown;
+    phone?: string | null;
+  } | null;
 };
 
 type MapBranch = {
   id: number;
   name: string;
   address?: string | null;
+  phone?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
 };
@@ -172,6 +183,52 @@ function createBranchMarker() {
   return element;
 }
 
+function popupText(className: string, text: string) {
+  const element = document.createElement("p");
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+/** @summary Muestra los datos operativos disponibles de un destino sin exponer información adicional. */
+function deliveryPopup(delivery: DeliveryDestination) {
+  const content = document.createElement("div");
+  content.className = "mc-map-popup";
+  content.append(
+    popupText("mc-map-popup__eyebrow", `Entrega ${delivery.number}`),
+    popupText("mc-map-popup__title", delivery.customerName),
+  );
+  if (delivery.deliveryAddress) content.append(popupText("mc-map-popup__primary", delivery.deliveryAddress));
+  if (delivery.status) content.append(popupText("mc-map-popup__row", `Estado: ${deliveryStatusMeta(delivery.status).label}`));
+  if (delivery.order?.reference) content.append(popupText("mc-map-popup__row", `Pedido: ${delivery.order.reference}`));
+  if (delivery.branch?.name) content.append(popupText("mc-map-popup__row", `Sucursal: ${delivery.branch.name}`));
+  if (delivery.driverProfile?.name) content.append(popupText("mc-map-popup__row", `Repartidor: ${delivery.driverProfile.name}`));
+  const phone = delivery.order?.phone ?? delivery.contactPhone;
+  if (phone) content.append(popupText("mc-map-popup__row", `Teléfono: ${phone}`));
+  if (delivery.order?.requestedAt) {
+    content.append(
+      popupText(
+        "mc-map-popup__row",
+        `Horario: ${new Date(delivery.order.requestedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`,
+      ),
+    );
+  }
+  return content;
+}
+
+/** @summary Identifica la sucursal que funciona como origen logístico. */
+function branchPopup(branch: MapBranch) {
+  const content = document.createElement("div");
+  content.className = "mc-map-popup";
+  content.append(
+    popupText("mc-map-popup__eyebrow", "Punto de salida"),
+    popupText("mc-map-popup__title", branch.name),
+  );
+  if (branch.address) content.append(popupText("mc-map-popup__primary", branch.address));
+  if (branch.phone) content.append(popupText("mc-map-popup__row", `Teléfono: ${branch.phone}`));
+  return content;
+}
+
 /** @summary Mapa operativo persistente con sucursal, destinos y repartidores del alcance autorizado. */
 export function DeliveryMap({
   branch,
@@ -288,9 +345,7 @@ export function DeliveryMap({
     branchMarker.current?.remove();
     branchMarker.current = null;
     if (!validBranch) return;
-    const popup = new maplibregl.Popup({ offset: 22 }).setText(
-      validBranch.address ? `${validBranch.name} · ${validBranch.address}` : validBranch.name,
-    );
+    const popup = new maplibregl.Popup({ offset: 22 }).setDOMContent(branchPopup(validBranch));
     branchMarker.current = new maplibregl.Marker({ element: createBranchMarker(), anchor: "bottom" })
       .setLngLat([validBranch.longitude, validBranch.latitude])
       .setPopup(popup)
@@ -320,7 +375,7 @@ export function DeliveryMap({
       element.addEventListener("click", () => onSelectDeliveryRef.current?.(delivery.id));
       const marker = new maplibregl.Marker({ element })
         .setLngLat([delivery.longitude, delivery.latitude])
-        .setPopup(new maplibregl.Popup({ offset: 18 }).setText(`${delivery.number} · ${delivery.customerName}`))
+        .setPopup(new maplibregl.Popup({ offset: 18 }).setDOMContent(deliveryPopup(delivery)))
         .addTo(instance);
       deliveryMarkers.current.set(delivery.id, marker);
     }
@@ -358,15 +413,24 @@ export function DeliveryMap({
       }
       updateDriverMarkerFreshness(entry.element, freshness.state, freshness.label);
       const detail = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = profile.name;
-      const state = document.createElement("p");
-      state.textContent = `${profile.status ?? "Sin estado"} · ${freshness.label}`;
-      detail.append(title, state);
+      detail.className = "mc-map-popup";
+      detail.append(
+        popupText("mc-map-popup__eyebrow", "Repartidor"),
+        popupText("mc-map-popup__title", profile.name),
+        popupText("mc-map-popup__primary", `${profile.status ?? "Sin estado"} · ${freshness.label}`),
+        popupText("mc-map-popup__row", `Última posición: ${new Date(position.recordedAt).toLocaleString("es-AR")}`),
+      );
+      if (position.accuracy) {
+        detail.append(popupText("mc-map-popup__row", `Precisión: ±${Math.round(Number(position.accuracy))} m`));
+      }
       if (assignment) {
-        const assigned = document.createElement("p");
-        assigned.textContent = `Entrega ${assignment.number} · ${assignment.customerName}`;
-        detail.append(assigned);
+        detail.append(
+          popupText("mc-map-popup__row", `Entrega: ${assignment.number}`),
+          popupText("mc-map-popup__row", `Cliente: ${assignment.customerName}`),
+        );
+        if (assignment.deliveryAddress) {
+          detail.append(popupText("mc-map-popup__row", `Destino: ${assignment.deliveryAddress}`));
+        }
       }
       entry.marker.setPopup(new maplibregl.Popup({ offset: 25 }).setDOMContent(detail));
     }

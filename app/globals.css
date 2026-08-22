@@ -1534,6 +1534,62 @@ button {
   animation: pub-bar-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* ── MapLibre: popups legibles sobre mapas claros en superficies oscuras ── */
+.maplibregl-popup-content {
+  min-width: 220px;
+  max-width: min(300px, calc(100vw - 40px));
+  border: 1px solid rgb(15 23 42 / 0.12);
+  border-radius: 14px;
+  background: #fff;
+  color: #111827 !important;
+  padding: 14px 16px;
+  box-shadow: 0 14px 36px rgb(15 23 42 / 0.24);
+  font-family: inherit;
+}
+.maplibregl-popup-content,
+.maplibregl-popup-content * {
+  color: #111827 !important;
+}
+.maplibregl-popup-close-button {
+  color: #111827 !important;
+  padding: 4px 7px;
+  font-size: 18px;
+}
+.maplibregl-popup-tip {
+  border-top-color: #fff !important;
+  border-bottom-color: #fff !important;
+}
+.mc-map-popup {
+  display: grid;
+  gap: 6px;
+  padding-right: 4px;
+  line-height: 1.35;
+}
+.mc-map-popup__eyebrow {
+  color: #be185d !important;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.mc-map-popup__title {
+  color: #111827 !important;
+  font-size: 14px;
+  font-weight: 900;
+}
+.mc-map-popup__primary {
+  color: #1f2937 !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mc-map-popup__row {
+  color: #374151 !important;
+  font-size: 11px;
+}
+.mc-map-popup__row strong {
+  font-weight: 800;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

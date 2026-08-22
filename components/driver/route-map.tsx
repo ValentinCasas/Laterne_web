@@ -9,12 +9,26 @@ import {
   type DeliveryRouteCoordinate,
 } from "@/lib/delivery-route";
 import { Icon } from "@/components/admin/ui/icons";
+import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 
 type RouteStop = DeliveryRouteCoordinate & {
   id: number;
   number: string;
   customerName: string;
   address: string;
+  status: string;
+  reference?: string;
+  phone?: string | null;
+  requestedAt?: string | Date | null;
+  total?: unknown;
+  currency?: string;
+  itemCount: number;
+};
+
+type RouteOriginInfo = {
+  name: string;
+  address?: string | null;
+  phone?: string | null;
 };
 
 function coordinate(value: unknown, limit: number) {
@@ -57,6 +71,61 @@ function originMarker() {
   return element;
 }
 
+function popupText(className: string, text: string) {
+  const element = document.createElement("p");
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+/** @summary Construye una ficha completa y legible para una parada del recorrido. */
+function routeStopPopup(stop: RouteStop, index: number) {
+  const content = document.createElement("div");
+  content.className = "mc-map-popup";
+  content.append(
+    popupText("mc-map-popup__eyebrow", `Parada ${index}`),
+    popupText("mc-map-popup__title", stop.customerName),
+    popupText("mc-map-popup__primary", stop.address),
+    popupText("mc-map-popup__row", `Entrega: ${stop.number}`),
+    popupText("mc-map-popup__row", `Estado: ${deliveryStatusMeta(stop.status).label}`),
+  );
+  if (stop.reference) content.append(popupText("mc-map-popup__row", `Pedido: ${stop.reference}`));
+  if (stop.phone) content.append(popupText("mc-map-popup__row", `Teléfono: ${stop.phone}`));
+  if (stop.requestedAt) {
+    content.append(
+      popupText(
+        "mc-map-popup__row",
+        `Horario: ${new Date(stop.requestedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`,
+      ),
+    );
+  }
+  content.append(popupText("mc-map-popup__row", `Productos: ${stop.itemCount}`));
+  const total = Number(stop.total);
+  if (Number.isFinite(total)) {
+    content.append(
+      popupText(
+        "mc-map-popup__row",
+        `Total: ${new Intl.NumberFormat("es-AR", { style: "currency", currency: stop.currency ?? "ARS", maximumFractionDigits: 0 }).format(total)}`,
+      ),
+    );
+  }
+  return content;
+}
+
+/** @summary Identifica el punto de salida con los datos disponibles de la sucursal. */
+function routeOriginPopup(origin: RouteOriginInfo | null, stops: number) {
+  const content = document.createElement("div");
+  content.className = "mc-map-popup";
+  content.append(
+    popupText("mc-map-popup__eyebrow", "Inicio del recorrido"),
+    popupText("mc-map-popup__title", origin?.name ?? "Punto de salida"),
+  );
+  if (origin?.address) content.append(popupText("mc-map-popup__primary", origin.address));
+  if (origin?.phone) content.append(popupText("mc-map-popup__row", `Teléfono: ${origin.phone}`));
+  content.append(popupText("mc-map-popup__row", `${stops} ${stops === 1 ? "parada asignada" : "paradas asignadas"}`));
+  return content;
+}
+
 /** @summary Dibuja el recorrido automático del repartidor sin reconstruir el mapa al actualizar entregas. */
 export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] }) {
   const container = useRef<HTMLDivElement>(null);
@@ -66,11 +135,15 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
 
   const route = useMemo(() => {
     let origin: DeliveryRouteCoordinate | null = null;
+    let originInfo: RouteOriginInfo | null = null;
     for (const delivery of deliveries) {
       const latitude = coordinate(delivery.branch?.latitude, 90);
       const longitude = coordinate(delivery.branch?.longitude, 180);
       if (latitude !== null && longitude !== null) {
         origin = { latitude, longitude };
+        originInfo = delivery.branch
+          ? { name: delivery.branch.name, address: delivery.branch.address, phone: delivery.branch.phone }
+          : null;
         break;
       }
     }
@@ -83,6 +156,13 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
           number: delivery.number,
           customerName: delivery.order?.customerName ?? delivery.customerName,
           address: delivery.order?.deliveryAddress ?? delivery.deliveryAddress ?? "Dirección no informada",
+          status: delivery.status,
+          reference: delivery.order?.reference,
+          phone: delivery.order?.phone ?? delivery.contactPhone,
+          requestedAt: delivery.order?.requestedAt,
+          total: delivery.order?.total,
+          currency: delivery.order?.currency,
+          itemCount: delivery.items?.length ?? 0,
           latitude,
           longitude,
         }];
@@ -91,6 +171,7 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
     const orderedStops = routeOrigin ? orderDeliveryRouteStops(routeOrigin, stops) : [];
     return {
       origin: routeOrigin,
+      originInfo,
       stops: orderedStops,
       navigationUrl: routeOrigin ? googleMapsRouteUrl(routeOrigin, orderedStops) : null,
       missingLocations: deliveries.length - stops.length,
@@ -99,6 +180,7 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
   const routeOrigin = route.origin;
   const hasRouteOrigin = Boolean(routeOrigin);
   const orderedStops = route.stops;
+  const originInfo = route.originInfo;
   const navigationUrl = route.navigationUrl;
   const missingLocations = route.missingLocations;
 
@@ -178,20 +260,14 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
       markers.current.push(
         new maplibregl.Marker({ element: originMarker() })
           .setLngLat([currentOrigin.longitude, currentOrigin.latitude])
-          .setPopup(new maplibregl.Popup({ offset: 18 }).setText("Salida desde el local"))
+          .setPopup(new maplibregl.Popup({ offset: 18 }).setDOMContent(routeOriginPopup(originInfo, orderedStops.length)))
           .addTo(currentMap),
       );
       orderedStops.forEach((stop, index) => {
-        const content = document.createElement("div");
-        const title = document.createElement("strong");
-        title.textContent = `${index + 1}. ${stop.customerName}`;
-        const address = document.createElement("p");
-        address.textContent = stop.address;
-        content.append(title, address);
         markers.current.push(
           new maplibregl.Marker({ element: stopMarker(index + 1), anchor: "bottom" })
             .setLngLat([stop.longitude, stop.latitude])
-            .setPopup(new maplibregl.Popup({ offset: 18 }).setDOMContent(content))
+            .setPopup(new maplibregl.Popup({ offset: 18 }).setDOMContent(routeStopPopup(stop, index + 1)))
             .addTo(currentMap),
         );
       });
@@ -207,7 +283,7 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
     return () => {
       currentMap.off("load", drawLine);
     };
-  }, [orderedStops, routeOrigin]);
+  }, [orderedStops, originInfo, routeOrigin]);
 
   if (!routeOrigin) {
     return (

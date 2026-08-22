@@ -340,6 +340,13 @@ test.describe.serial("Delivery GPS real", () => {
     const destination = page.getByRole("button", { name: new RegExp(`Abrir entrega ${deliveryId}|Abrir entrega D-GPS`) });
     await expect(destination).toBeVisible();
     await destination.click();
+    await expect(destination).toHaveCSS("width", "22px");
+    const destinationPopup = page.locator(".maplibregl-popup-content");
+    if ((await destinationPopup.count()) === 0) await destination.click();
+    await expect(destinationPopup).toContainText("Cliente GPS Test");
+    await expect(destinationPopup).toContainText("Estado:");
+    await expect(destinationPopup).toContainText("Pedido:");
+    expect(await destinationPopup.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(17, 24, 39)");
     if ((page.viewportSize()?.width ?? 1280) < 1024) {
       await expect(page.getByRole("tab", { name: "Entregas" })).toBeVisible();
       await expect(page.getByRole("tab", { name: "Detalle" })).toHaveAttribute("aria-selected", "true");
@@ -414,6 +421,13 @@ test.describe.serial("Delivery GPS real", () => {
     await expect(driverPage.getByRole("complementary", { name: "Preferencias de cookies" })).toHaveCount(0);
     await expect(driverPage.getByLabel("Mapa del recorrido del repartidor")).toBeVisible();
     await expect(driverPage.getByLabel("Parada 1")).toBeVisible();
+    await driverPage.getByLabel("Parada 1").click();
+    const stopPopup = driverPage.locator(".maplibregl-popup-content");
+    await expect(stopPopup).toContainText("Cliente GPS Test");
+    await expect(stopPopup).toContainText("Entrega:");
+    await expect(stopPopup).toContainText("Estado:");
+    expect(await stopPopup.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(17, 24, 39)");
+    await stopPopup.getByRole("button", { name: "Close popup" }).click();
     await expect(driverPage.getByRole("link", { name: "Abrir navegación" })).toHaveAttribute(
       "href",
       /^https:\/\/www\.google\.com\/maps\/dir\//,

@@ -37,7 +37,7 @@ export default async function AdminDeliveryPage() {
     }),
     prisma.branch.findMany({
       where: { tenantId: context.tenant.id, id: { in: accessibleBranchIds }, active: true },
-      select: { id: true, name: true, slug: true, address: true, latitude: true, longitude: true },
+      select: { id: true, name: true, slug: true, address: true, phone: true, latitude: true, longitude: true },
       orderBy: { name: "asc" },
     }),
     prisma.driverProfile.findMany({
