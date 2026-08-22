@@ -1,7 +1,20 @@
 import type { NextConfig } from "next";
+import { networkInterfaces } from "node:os";
 import { developmentAllowedOrigins } from "./lib/domains";
 
 const storageIsRemote = (process.env.STORAGE_DRIVER ?? "").trim().toLocaleLowerCase("es") === "s3";
+
+/** @summary Habilita en next dev las IPv4 privadas reales del equipo para probar desde celulares de la misma red. */
+function localNetworkDevOrigins() {
+  return [
+    ...new Set(
+      Object.values(networkInterfaces())
+        .flatMap((entries) => entries ?? [])
+        .filter((entry) => entry.family === "IPv4" && !entry.internal)
+        .map((entry) => entry.address),
+    ),
+  ];
+}
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -9,7 +22,10 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   // Next bloquea recursos internos de dev cuando se accede mediante hosts alternativos.
   // Solo se permiten los hosts .test configurados y los aliases locales básicos.
-  allowedDevOrigins: process.env.NODE_ENV === "development" ? developmentAllowedOrigins() : undefined,
+  allowedDevOrigins:
+    process.env.NODE_ENV === "development"
+      ? [...developmentAllowedOrigins(), ...localNetworkDevOrigins()]
+      : undefined,
   // Protección contra version skew durante despliegues en rolling. Opcional.
   ...(process.env.DEPLOYMENT_VERSION ? { deploymentId: process.env.DEPLOYMENT_VERSION } : {}),
   /** @summary Habilita seguimiento espacial únicamente para experiencias AR del mismo origen. */

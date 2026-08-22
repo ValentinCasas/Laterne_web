@@ -51,7 +51,7 @@ async function addSessionCookies(context: BrowserContext, page: Page, email: str
       return {
         name: pair.slice(0, separator).trim(),
         value: pair.slice(separator + 1).trim(),
-        url: "http://localhost:3000",
+        url: new URL(response.url()).origin,
         httpOnly: true,
         sameSite: "Strict" as const,
       };

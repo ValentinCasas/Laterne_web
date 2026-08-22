@@ -59,6 +59,30 @@ function baseHost(url: string) {
   return normalizeHost(new URL(url).hostname);
 }
 
+/** @summary Acepta loopback e IPs privadas como host administrativo únicamente bajo next dev. */
+function isAcceptedAdminHost(host: string) {
+  return (
+    host === baseHost(adminRootUrl()) ||
+    (process.env.NODE_ENV === "development" && isLocalDevelopmentHost(host))
+  );
+}
+
+/** @summary Conserva el origen LAN solicitado al normalizar rutas durante el desarrollo local. */
+function rootUrlForRequest(request: NextRequest, canonicalRoot: string) {
+  if (process.env.NODE_ENV === "development" && isLocalDevelopmentHost(requestHost(request))) {
+    return request.nextUrl.origin;
+  }
+  return canonicalRoot;
+}
+
+function adminRootUrlForRequest(request: NextRequest) {
+  return rootUrlForRequest(request, adminRootUrl());
+}
+
+function publicRootUrlForRequest(request: NextRequest) {
+  return rootUrlForRequest(request, publicRootUrl());
+}
+
 function contextHeaders(
   request: NextRequest,
   values: {
@@ -229,19 +253,19 @@ export async function proxy(request: NextRequest) {
     pathname === "/platform/recuperar-acceso" ||
     pathname === "/platform/restablecer-acceso"
   ) {
-    if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+    if (!isAcceptedAdminHost(host)) return redirectTo(request, adminRootUrlForRequest(request), pathname);
     return rewrite(request, pathname.replace(/^\/platform/, ""), { routeKind: "platform-admin" });
   }
 
   const canonical = parseCanonicalPath(pathname);
 
   if (canonical.surface === "platform-admin") {
-    if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+    if (!isAcceptedAdminHost(host)) return redirectTo(request, adminRootUrlForRequest(request), pathname);
     return rewrite(request, canonical.logicalPath, { routeKind: "platform-admin" });
   }
 
   if (canonical.surface === "tenant-admin" && canonical.tenantSlug) {
-    if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+    if (!isAcceptedAdminHost(host)) return redirectTo(request, adminRootUrlForRequest(request), pathname);
 
     // Identidad por GUID: se resuelve el negocio por su GUID y se normaliza el
     // slug de la URL al canónico (si cambió, redirigimos para no duplicar).
@@ -252,12 +276,12 @@ export async function proxy(request: NextRequest) {
         const canonicalPath = canonical.branchSlug
           ? tenantBranchAdminGuidPath(identity.publicGuid, identity.slug, canonical.branchSlug, canonical.logicalPath)
           : tenantAdminGuidPath(identity.publicGuid, identity.slug, canonical.logicalPath);
-        return redirectTo(request, adminRootUrl(), canonicalPath);
+        return redirectTo(request, adminRootUrlForRequest(request), canonicalPath);
       }
       if (canonical.branchSlug && !isBranchAdminLogicalPath(canonical.logicalPath)) {
         return redirectTo(
           request,
-          adminRootUrl(),
+          adminRootUrlForRequest(request),
           tenantAdminGuidPath(canonical.tenantGuid, canonical.tenantSlug, canonical.logicalPath),
         );
       }
@@ -276,7 +300,7 @@ export async function proxy(request: NextRequest) {
       const canonicalPath = canonical.branchSlug
         ? tenantBranchAdminGuidPath(legacyGuid, canonical.tenantSlug, canonical.branchSlug, canonical.logicalPath)
         : tenantAdminGuidPath(legacyGuid, canonical.tenantSlug, canonical.logicalPath);
-      return redirectTo(request, adminRootUrl(), canonicalPath);
+      return redirectTo(request, adminRootUrlForRequest(request), canonicalPath);
     }
 
     // Las secciones tenant-level (usuarios, marca, negocio, etc.) no aceptan un
@@ -284,7 +308,7 @@ export async function proxy(request: NextRequest) {
     if (canonical.branchSlug && !isBranchAdminLogicalPath(canonical.logicalPath)) {
       return redirectTo(
         request,
-        adminRootUrl(),
+        adminRootUrlForRequest(request),
         tenantAdminPath(canonical.tenantSlug, canonical.logicalPath),
       );
     }
@@ -297,14 +321,18 @@ export async function proxy(request: NextRequest) {
   }
 
   if (canonical.surface === "tenant-driver" && canonical.tenantSlug) {
-    if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+    if (!isAcceptedAdminHost(host)) return redirectTo(request, adminRootUrlForRequest(request), pathname);
 
     // Identidad por GUID: se resuelve el negocio y se normaliza el slug si cambió.
     if (canonical.tenantGuid) {
       const identity = await resolveTenantByGuid(canonical.tenantGuid);
       if (!identity) return rewrite(request, "/404", { routeKind: "platform-public" });
       if (identity.slug !== canonical.tenantSlug) {
-        return redirectTo(request, adminRootUrl(), tenantDriverGuidPath(identity.publicGuid, identity.slug, canonical.logicalPath));
+        return redirectTo(
+          request,
+          adminRootUrlForRequest(request),
+          tenantDriverGuidPath(identity.publicGuid, identity.slug, canonical.logicalPath),
+        );
       }
       return rewrite(request, canonical.logicalPath, {
         routeKind: "tenant-driver",
@@ -317,7 +345,7 @@ export async function proxy(request: NextRequest) {
     if (legacyGuid) {
       return redirectTo(
         request,
-        adminRootUrl(),
+        adminRootUrlForRequest(request),
         tenantDriverGuidPath(legacyGuid, canonical.tenantSlug, canonical.logicalPath),
       );
     }
@@ -330,7 +358,7 @@ export async function proxy(request: NextRequest) {
 
   if (canonical.surface === "tenant-public" && canonical.tenantSlug) {
     if (TENANT_AUTH_PATHS.has(canonical.logicalPath)) {
-      if (host !== baseHost(adminRootUrl())) return redirectTo(request, adminRootUrl(), pathname);
+      if (!isAcceptedAdminHost(host)) return redirectTo(request, adminRootUrlForRequest(request), pathname);
       return rewrite(request, canonical.logicalPath, {
         routeKind: "tenant-auth",
         tenantSlug: canonical.tenantSlug,
@@ -340,7 +368,7 @@ export async function proxy(request: NextRequest) {
     // En producción la superficie pública vive en el host público fijo. Esto
     // evita que una URL de carta/landing se quede accidentalmente en app.*.
     if (host === baseHost(adminRootUrl()) && host !== baseHost(publicRootUrl())) {
-      return redirectTo(request, publicRootUrl(), pathname);
+      return redirectTo(request, publicRootUrlForRequest(request), pathname);
     }
 
     // El árbol físico existente solo tiene páginas branch dedicadas para la
@@ -370,13 +398,13 @@ export async function proxy(request: NextRequest) {
 
   // Alias explícitos antiguos de Platform.
   if (pathname === "/superadmin" || pathname.startsWith("/superadmin/")) {
-    return redirectTo(request, adminRootUrl(), platformAdminPath(pathname));
+    return redirectTo(request, adminRootUrlForRequest(request), platformAdminPath(pathname));
   }
 
   // Alias /cliente/{slug} -> /t/{slug}.
   const tenantShortcut = pathname.match(/^\/cliente\/([^/]+)$/);
   if (tenantShortcut) {
-    return redirectTo(request, publicRootUrl(), tenantPublicPath(decodeURIComponent(tenantShortcut[1])));
+    return redirectTo(request, publicRootUrlForRequest(request), tenantPublicPath(decodeURIComponent(tenantShortcut[1])));
   }
 
   const classified = classifyHost(host);
@@ -388,7 +416,7 @@ export async function proxy(request: NextRequest) {
     if (branchLegacy) {
       return redirectTo(
         request,
-        adminRootUrl(),
+        adminRootUrlForRequest(request),
         tenantBranchAdminPath(
           classified.slug,
           decodeURIComponent(branchLegacy[1]),
@@ -397,10 +425,10 @@ export async function proxy(request: NextRequest) {
       );
     }
     if (pathname === "/login" || pathname === "/recuperar-acceso" || pathname === "/restablecer-acceso") {
-      return redirectTo(request, adminRootUrl(), tenantPublicPath(classified.slug, pathname));
+      return redirectTo(request, adminRootUrlForRequest(request), tenantPublicPath(classified.slug, pathname));
     }
     if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-      return redirectTo(request, adminRootUrl(), tenantAdminPath(classified.slug, pathname));
+      return redirectTo(request, adminRootUrlForRequest(request), tenantAdminPath(classified.slug, pathname));
     }
   }
 
@@ -410,20 +438,20 @@ export async function proxy(request: NextRequest) {
     const canonicalPath = branchLegacy
       ? tenantBranchPublicPath(classified.slug, decodeURIComponent(branchLegacy[1]), branchLegacy[2] || "")
       : tenantPublicPath(classified.slug, pathname === "/" ? "" : pathname);
-    return redirectTo(request, publicRootUrl(), canonicalPath);
+    return redirectTo(request, publicRootUrlForRequest(request), canonicalPath);
   }
 
   if (classified.kind === "unknown" && resolvedHost.kind === "tenant" && resolvedHost.slug) {
     // Los dominios personalizados son exclusivamente públicos. Cualquier acceso
     // administrativo se normaliza al host fijo app.* con tenant explícito.
     if (pathname === "/login" || pathname === "/recuperar-acceso" || pathname === "/restablecer-acceso") {
-      return redirectTo(request, adminRootUrl(), tenantPublicPath(resolvedHost.slug, pathname));
+      return redirectTo(request, adminRootUrlForRequest(request), tenantPublicPath(resolvedHost.slug, pathname));
     }
     const customAdminBranch = pathname.match(/^\/admin\/s\/([^/]+)(\/.*)?$/);
     if (customAdminBranch) {
       return redirectTo(
         request,
-        adminRootUrl(),
+        adminRootUrlForRequest(request),
         tenantBranchAdminPath(
           resolvedHost.slug,
           decodeURIComponent(customAdminBranch[1]),
@@ -432,7 +460,7 @@ export async function proxy(request: NextRequest) {
       );
     }
     if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-      return redirectTo(request, adminRootUrl(), tenantAdminPath(resolvedHost.slug, pathname));
+      return redirectTo(request, adminRootUrlForRequest(request), tenantAdminPath(resolvedHost.slug, pathname));
     }
 
     // Dominio personalizado: la URL del cliente se mantiene. Si la URL incluye una
@@ -479,7 +507,7 @@ export async function proxy(request: NextRequest) {
     const canonicalPath = branchLegacy
       ? tenantBranchPublicPath(slug, decodeURIComponent(branchLegacy[1]), branchLegacy[2] || "")
       : tenantPublicPath(slug, pathname);
-    return redirectTo(request, publicRootUrl(), canonicalPath);
+    return redirectTo(request, publicRootUrlForRequest(request), canonicalPath);
   }
 
   // El /admin heredado sobre host fijo/local se normaliza después de resolver la membresía.
@@ -495,14 +523,14 @@ export async function proxy(request: NextRequest) {
   // /t/:tenant/login.
   const isPlatformMarketing = pathname === "/" || startsWithAny(pathname, PLATFORM_MARKETING_PREFIXES);
   if (isPlatformMarketing && host === baseHost(adminRootUrl()) && host !== baseHost(publicRootUrl())) {
-    return redirectTo(request, publicRootUrl(), pathname);
+    return redirectTo(request, publicRootUrlForRequest(request), pathname);
   }
 
   // El acceso canónico de la plataforma es /platform/login. /login queda solo como
   // alias transicional y siempre se normaliza para que el contexto del acceso no
   // dependa del host ni de la membresía del usuario.
   if (pathname === "/login" || pathname === "/recuperar-acceso" || pathname === "/restablecer-acceso") {
-    return redirectTo(request, adminRootUrl(), platformAdminPath(pathname));
+    return redirectTo(request, adminRootUrlForRequest(request), platformAdminPath(pathname));
   }
 
   if (isPlatformMarketing) {

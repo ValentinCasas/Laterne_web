@@ -30,6 +30,7 @@ npm run dev
 # http://localhost:3000
 ```
 Docker NO obligatorio para desarrollo.
+En `next dev`, las IPv4 de red del equipo se agregan automáticamente a `allowedDevOrigins` y las rutas canónicas conservan el origen LAN solicitado. Esto permite abrir Login/Admin/Driver desde otro dispositivo de la misma red con `http://{IP_DEL_EQUIPO}:3000/t/{tenantSlug}/...` sin redirigirlo a `localhost`; el GPS real del navegador móvil sigue requiriendo un origen HTTPS seguro.
 La geocodificación de Delivery está desactivada por defecto. Puede conectarse a un servicio Nominatim-compatible mediante `DELIVERY_GEOCODING_PROVIDER`, `DELIVERY_GEOCODING_ENDPOINT` y `DELIVERY_GEOCODING_USER_AGENT`; las coordenadas manuales siguen disponibles sin proveedor externo.
 
 ## Producción
