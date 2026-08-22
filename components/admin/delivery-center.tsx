@@ -78,6 +78,9 @@ type DeliveryStatus =
   | "FAILED"
   | "CANCELLED";
 
+type DeliveryCategory = "ACTIVE" | "UNASSIGNED" | "DELIVERED" | "ISSUES" | "ALL";
+type DeliveryPeriod = "TODAY" | "7_DAYS" | "30_DAYS" | "ALL";
+
 const STATUS_LABELS: Record<DeliveryStatus, string> = {
   PENDING_ASSIGNMENT: "Sin asignar",
   ASSIGNED: "Asignado",
@@ -101,6 +104,49 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const FINAL_DELIVERY_STATUSES = new Set(["DELIVERED", "FAILED", "CANCELLED"]);
+const ACTIVE_DELIVERY_STATUSES = new Set(["PENDING_ASSIGNMENT", "ASSIGNED", "PICKED_UP", "ON_THE_WAY", "INCIDENT"]);
+const ISSUE_DELIVERY_STATUSES = new Set(["INCIDENT", "FAILED", "CANCELLED"]);
+
+const DELIVERY_CATEGORIES: Array<{ value: DeliveryCategory; label: string }> = [
+  { value: "ACTIVE", label: "En curso" },
+  { value: "UNASSIGNED", label: "Sin asignar" },
+  { value: "DELIVERED", label: "Entregados" },
+  { value: "ISSUES", label: "Problemas" },
+  { value: "ALL", label: "Todos" },
+];
+
+/** @summary Agrupa entregas por intención operativa sin esconder pendientes antiguos. */
+function matchesDeliveryCategory(delivery: Delivery, category: DeliveryCategory) {
+  if (category === "ACTIVE") return ACTIVE_DELIVERY_STATUSES.has(delivery.status);
+  if (category === "UNASSIGNED") return delivery.status === "PENDING_ASSIGNMENT";
+  if (category === "DELIVERED") return delivery.status === "DELIVERED";
+  if (category === "ISSUES") return ISSUE_DELIVERY_STATUSES.has(delivery.status);
+  return true;
+}
+
+/** @summary Obtiene la fecha de la última actividad útil para ordenar y filtrar el historial. */
+function deliveryActivityTime(delivery: Delivery) {
+  const value = delivery.deliveredAt ?? delivery.statusLogs?.[0]?.changedAt ?? delivery.createdAt;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+/** @summary Limita únicamente vistas históricas para evitar una lista interminable de días anteriores. */
+function matchesDeliveryPeriod(delivery: Delivery, period: DeliveryPeriod, now = Date.now()) {
+  if (period === "ALL") return true;
+  const timestamp = deliveryActivityTime(delivery);
+  if (period === "TODAY") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return timestamp >= start.getTime();
+  }
+  const days = period === "7_DAYS" ? 7 : 30;
+  return timestamp >= now - days * 24 * 60 * 60 * 1000;
+}
+
+function categoryUsesPeriod(category: DeliveryCategory) {
+  return category === "DELIVERED" || category === "ISSUES" || category === "ALL";
+}
 
 function statusColor(status: string) {
   return STATUS_COLORS[status] ?? "bg-zinc-500/15 text-zinc-300";
@@ -131,11 +177,14 @@ export function DeliveryCenter({
   const pathname = usePathname();
   const [deliveries, setDeliveries] = useState<Delivery[]>(initialDeliveries);
   const [positions, setPositions] = useState<DeliveryMapPosition[]>(initialPositions);
-  const [filterStatus, setFilterStatus] = useState("");
+  const [category, setCategory] = useState<DeliveryCategory>("ACTIVE");
+  const [historyPeriod, setHistoryPeriod] = useState<DeliveryPeriod>("TODAY");
   const [filterBranch, setFilterBranch] = useState("");
   const [filterDriver, setFilterDriver] = useState("");
   const [filterQ, setFilterQ] = useState("");
-  const [selected, setSelected] = useState<Delivery | null>(initialDeliveries[0] ?? null);
+  const [selected, setSelected] = useState<Delivery | null>(
+    initialDeliveries.find((delivery) => matchesDeliveryCategory(delivery, "ACTIVE")) ?? null,
+  );
   const [saving, setSaving] = useState(false);
   const [mobileTab, setMobileTab] = useState<"deliveries" | "detail">("deliveries");
   const [showMap, setShowMap] = useState(true);
@@ -215,8 +264,9 @@ export function DeliveryCenter({
 
   const visible = useMemo(() => {
     const q = filterQ.trim().toLocaleLowerCase("es");
-    return deliveries.filter((d) => {
-      if (filterStatus && d.status !== filterStatus) return false;
+    const filtered = deliveries.filter((d) => {
+      if (!matchesDeliveryCategory(d, category)) return false;
+      if (categoryUsesPeriod(category) && !matchesDeliveryPeriod(d, historyPeriod)) return false;
       if (filterBranch && d.branch?.id !== Number(filterBranch)) return false;
       if (filterDriver && d.driverProfile?.id !== Number(filterDriver)) return false;
       if (!q) return true;
@@ -224,7 +274,14 @@ export function DeliveryCenter({
         .filter(Boolean)
         .some((value) => value!.toLocaleLowerCase("es").includes(q));
     });
-  }, [deliveries, filterStatus, filterBranch, filterDriver, filterQ]);
+    if (categoryUsesPeriod(category)) {
+      filtered.sort((a, b) => deliveryActivityTime(b) - deliveryActivityTime(a));
+    }
+    return filtered;
+  }, [category, deliveries, filterBranch, filterDriver, filterQ, historyPeriod]);
+
+  const selectedForView =
+    (selected ? visible.find((delivery) => delivery.id === selected.id) : null) ?? visible[0] ?? null;
 
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const safePage = Math.min(page, pageCount);
@@ -253,13 +310,20 @@ export function DeliveryCenter({
     if (window.matchMedia("(max-width: 1023px)").matches) setMobileTab("detail");
   }, [deliveries]);
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const d of deliveries) {
-      counts[d.status] = (counts[d.status] || 0) + 1;
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<DeliveryCategory, number>();
+    for (const item of DELIVERY_CATEGORIES) {
+      counts.set(
+        item.value,
+        deliveries.filter(
+          (delivery) =>
+            matchesDeliveryCategory(delivery, item.value) &&
+            (!categoryUsesPeriod(item.value) || matchesDeliveryPeriod(delivery, historyPeriod)),
+        ).length,
+      );
     }
     return counts;
-  }, [deliveries]);
+  }, [deliveries, historyPeriod]);
 
   const driverCounts = useMemo(() => {
     const counts = new Map<number, number>();
@@ -469,37 +533,39 @@ export function DeliveryCenter({
         </div>
       )}
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => { setFilterStatus(""); setPage(1); }}
-          className={`min-h-10 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-            !filterStatus ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Todos (<NumberFlow value={deliveries.length} />)
-        </button>
-        {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => (
+      <div className="admin-custom-scroll mb-3 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Categorías de entregas">
+        {DELIVERY_CATEGORIES.map((item) => (
           <button
-            key={status}
+            key={item.value}
             type="button"
-            onClick={() => { setFilterStatus(filterStatus === status ? "" : status); setPage(1); }}
-            className={`min-h-10 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-              filterStatus === status ? statusColor(status) : "text-zinc-400 hover:text-white"
+            role="tab"
+            aria-selected={category === item.value}
+            onClick={() => {
+              setCategory(item.value);
+              setAssignmentDeliveryId(null);
+              setMobileTab("deliveries");
+              setPage(1);
+            }}
+            className={`min-h-11 shrink-0 rounded-xl border px-4 py-2 text-sm font-bold transition-colors ${
+              category === item.value
+                ? "border-[var(--admin-primary)]/55 bg-[var(--admin-primary-soft)] text-white"
+                : "border-[var(--admin-border)] bg-[var(--admin-surface)] text-zinc-400 hover:text-white"
             }`}
           >
-            {STATUS_LABELS[status]}
-            {statusCounts[status] ? (
-              <>
-                {" "}
-                <NumberFlow value={statusCounts[status]} />
-              </>
-            ) : (
-              ""
-            )}
+            {item.label} <span className="ml-1 text-xs opacity-75"><NumberFlow value={categoryCounts.get(item.value) ?? 0} /></span>
           </button>
         ))}
       </div>
+
+      <p className="mb-5 text-xs text-[var(--admin-muted)]">
+        {category === "ACTIVE"
+          ? "Vista operativa: muestra todo lo pendiente, aunque sea de un día anterior, y separa el historial terminado."
+          : category === "DELIVERED"
+            ? "Historial de entregas completadas. Elegí el período que necesitás consultar."
+            : categoryUsesPeriod(category)
+              ? "Esta categoría usa el período seleccionado para no mezclar todos los días."
+              : "Los envíos pendientes nunca se ocultan por fecha."}
+      </p>
 
       <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 sm:p-4">
         <SearchBox
@@ -534,6 +600,19 @@ export function DeliveryCenter({
             </option>
           ))}
         </select>
+        {categoryUsesPeriod(category) && (
+          <select
+            className="input min-h-11 w-auto text-sm"
+            value={historyPeriod}
+            onChange={(event) => { setHistoryPeriod(event.target.value as DeliveryPeriod); setPage(1); }}
+            aria-label="Período del historial"
+          >
+            <option value="TODAY">Hoy</option>
+            <option value="7_DAYS">Últimos 7 días</option>
+            <option value="30_DAYS">Últimos 30 días</option>
+            <option value="ALL">Todo el historial</option>
+          </select>
+        )}
         {hasMap && (
           <button
             type="button"
@@ -724,7 +803,7 @@ export function DeliveryCenter({
             branch={selectedMapBranch}
             positions={mapPositions}
             deliveries={visible}
-            selectedDeliveryId={selected?.id}
+            selectedDeliveryId={selectedForView?.id}
             onSelectDelivery={selectDelivery}
             onSelectDriver={setSelectedDriverId}
           />
@@ -758,7 +837,7 @@ export function DeliveryCenter({
                   <button
                     key={delivery.id}
                     className={`admin-row-enter w-full px-5 py-4 text-left transition-[transform,opacity,background-color] duration-150 hover:bg-[var(--admin-row-hover)] ${
-                      selected?.id === delivery.id
+                      selectedForView?.id === delivery.id
                         ? "bg-[var(--admin-primary-soft)] shadow-[inset_2px_0_var(--admin-primary)]"
                         : ""
                     } ${draggedDeliveryId === delivery.id ? "scale-[.99] opacity-55" : ""}`}
@@ -807,14 +886,14 @@ export function DeliveryCenter({
 
         <div
           className={`${mobileTab === "detail" ? "block" : "hidden"} h-[560px] overflow-y-auto overscroll-contain rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-6 lg:block lg:h-[680px] ${
-            !selected ? "items-center justify-center" : ""
+            !selectedForView ? "items-center justify-center" : ""
           }`}
         >
-          {selected ? (
+          {selectedForView ? (
             <DeliveryDetailPanel
-              delivery={selected}
+              delivery={selectedForView}
               drivers={drivers}
-              driverPosition={positions.find((position) => position.driverProfileId === selected.driverProfile?.id) ?? null}
+              driverPosition={positions.find((position) => position.driverProfileId === selectedForView.driverProfile?.id) ?? null}
               gpsNow={gpsNow}
               hasMap={hasMap}
               saving={saving}

@@ -26,6 +26,7 @@ let alternateDriverProfileId = -1;
 let createdDriverProfileId = -1;
 let orderId = -1;
 let deliveryId = -1;
+let completedDeliveryNumber = "";
 
 function privateHash(value: string) {
   return createHash("sha256")
@@ -232,6 +233,25 @@ test.describe.serial("Delivery GPS real", () => {
       },
     });
     deliveryId = delivery.id;
+    completedDeliveryNumber = `D-DONE-${randomBytes(4).toString("hex").toUpperCase()}`;
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    await prisma.orderDelivery.create({
+      data: {
+        tenantId,
+        orderId: order.id,
+        branchId,
+        number: completedDeliveryNumber,
+        customerName: "Cliente entrega terminada",
+        deliveryAddress: order.deliveryAddress,
+        status: "DELIVERED",
+        driverId: driver.id,
+        driverProfileId: profile.id,
+        assignedAt: twoDaysAgo,
+        pickedUpAt: twoDaysAgo,
+        deliveredAt: twoDaysAgo,
+        deliveryDate: twoDaysAgo,
+      },
+    });
   });
 
   test.afterAll(async () => {
@@ -263,6 +283,16 @@ test.describe.serial("Delivery GPS real", () => {
       "href",
       /\/admin\/integraciones#delivery-map$/,
     );
+    const categories = page.getByRole("tablist", { name: "Categorías de entregas" });
+    const completedDeliveryMarker = page.getByRole("button", { name: `Abrir entrega ${completedDeliveryNumber}` });
+    await expect(categories.getByRole("tab", { name: /^En curso/ })).toHaveAttribute("aria-selected", "true");
+    await expect(completedDeliveryMarker).toHaveCount(0);
+    await categories.getByRole("tab", { name: /^Entregados/ }).click();
+    await expect(page.getByLabel("Período del historial")).toHaveValue("TODAY");
+    await expect(completedDeliveryMarker).toHaveCount(0);
+    await page.getByLabel("Período del historial").selectOption("7_DAYS");
+    await expect(completedDeliveryMarker).toBeVisible();
+    await categories.getByRole("tab", { name: /^En curso/ }).click();
     const assignmentCard = page.getByRole("button", { name: /Preparar envío D-GPS-.* para reasignar/ });
     const alternateDriver = page.locator(`[data-driver-profile-id="${alternateDriverProfileId}"]`);
     await expect(assignmentCard).toBeVisible();
