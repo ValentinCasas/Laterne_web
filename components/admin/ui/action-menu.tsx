@@ -53,6 +53,9 @@ export function ActionMenu({
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(reposition);
+    const focusFrame = requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLButtonElement>("[role='menuitem']")?.focus();
+    });
 
     const handlePointer = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -60,7 +63,25 @@ export function ActionMenu({
       setOpen(false);
     };
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (!panelRef.current || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      const entries = [...panelRef.current.querySelectorAll<HTMLButtonElement>("[role='menuitem']")];
+      if (!entries.length) return;
+      event.preventDefault();
+      const current = entries.indexOf(document.activeElement as HTMLButtonElement);
+      const next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? entries.length - 1
+            : event.key === "ArrowDown"
+              ? (current + 1) % entries.length
+              : (current - 1 + entries.length) % entries.length;
+      entries[next]?.focus();
     };
     document.addEventListener("scroll", reposition, true);
     window.addEventListener("resize", reposition);
@@ -68,6 +89,7 @@ export function ActionMenu({
     document.addEventListener("keydown", handleKey);
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(focusFrame);
       document.removeEventListener("scroll", reposition, true);
       window.removeEventListener("resize", reposition);
       document.removeEventListener("pointerdown", handlePointer);
@@ -79,11 +101,15 @@ export function ActionMenu({
     <button
       ref={triggerRef}
       type="button"
-      onClick={(e) => { e.stopPropagation(); setOpen((current) => !current); }}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-xs font-black text-zinc-300 transition-colors hover:bg-white/10"
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpen((current) => !current);
+      }}
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm font-bold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white"
       aria-haspopup="menu"
       aria-expanded={open}
       aria-controls={panelId}
+      aria-label="Abrir acciones"
     >
       ⋯
     </button>
@@ -99,7 +125,7 @@ export function ActionMenu({
             id={panelId}
             role="menu"
             style={{ position: "fixed", top: coords.top, left: coords.left }}
-            className="z-[100] w-44 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 p-1 shadow-xl shadow-black/30"
+            className="dropdown-enter z-[100] w-48 overflow-hidden rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-1.5 shadow-2xl shadow-black/35"
           >
             {items.map((item, index) => (
               <button
@@ -111,7 +137,7 @@ export function ActionMenu({
                   setOpen(false);
                   item.onClick();
                 }}
-                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-0 ${
                   item.tone === "danger"
                     ? "text-red-300 hover:bg-red-500/10"
                     : item.tone === "primary"

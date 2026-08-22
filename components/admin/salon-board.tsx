@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import type { Route } from "next";
-import { PageHeader, EmptyState, SearchBox, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, EmptyState, SearchBox, StatusBadge, NumberFlow } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
@@ -32,16 +32,7 @@ export type SalonBoardProps = {
   canManageOrders: boolean;
 };
 
-type ModalName =
-  | "open"
-  | "order"
-  | "bill"
-  | "move"
-  | "transfer"
-  | "split"
-  | "merge"
-  | "sectors"
-  | "newTable";
+type ModalName = "open" | "order" | "bill" | "move" | "transfer" | "split" | "merge" | "sectors" | "newTable";
 
 /** @summary Formatea un importe con la moneda de la sucursal activa. */
 function money(value: number, currency: string) {
@@ -131,8 +122,19 @@ function MoreMenu({
             onClick={() => setOpen(false)}
             role="menuitem"
           >
-            <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm4 2v6m4-6v6m4-6v6" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              aria-hidden
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm4 2v6m4-6v6m4-6v6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             Mesas y QR
           </Link>
@@ -145,7 +147,14 @@ function MoreMenu({
             }}
             role="menuitem"
           >
-            <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg
+              aria-hidden
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
               <rect x="3" y="3" width="7" height="7" rx="1.5" />
               <rect x="14" y="3" width="7" height="7" rx="1.5" />
               <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -162,7 +171,14 @@ function MoreMenu({
             }}
             role="menuitem"
           >
-            <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg
+              aria-hidden
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
               <path d="M20 11a8 8 0 1 0-.5 4.5M20 4v7h-7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             {refreshing ? "Actualizando…" : "Refrescar"}
@@ -231,7 +247,7 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
     try {
       const payload = await api<SalonPayload>("/api/admin/salon", { method: "GET" });
       setData(payload);
-      setSelected((current) => (current ? payload.tables.find((t) => t.id === current.id) ?? null : null));
+      setSelected((current) => (current ? (payload.tables.find((t) => t.id === current.id) ?? null) : null));
     } catch {
       /* si el refresco falla se conserva la vista actual */
     } finally {
@@ -263,15 +279,15 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
       }
       if (statusFilter !== "all" && tableStatus(table) !== statusFilter) return false;
       if (!normalized) return true;
-      return `${table.name} ${table.sector ?? ""} ${table.code}`
-        .toLocaleLowerCase("es")
-        .includes(normalized);
+      return `${table.name} ${table.sector ?? ""} ${table.code}`.toLocaleLowerCase("es").includes(normalized);
     });
   }, [data.tables, query, sectorFilter, statusFilter]);
 
   const sectorOptions = useMemo(() => {
     const seen = new Set<number>();
-    const options = data.sectors.filter((sector) => sector.active && !seen.has(sector.id) && seen.add(sector.id));
+    const options = data.sectors.filter(
+      (sector) => sector.active && !seen.has(sector.id) && seen.add(sector.id),
+    );
     return options.sort((a, b) => a.branchId - b.branchId || a.sortOrder - b.sortOrder);
   }, [data.sectors]);
 
@@ -452,7 +468,7 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
                   count > 0 ? "" : "opacity-50"
                 }`}
               >
-                {count}
+                <NumberFlow value={count} />
               </span>
             </button>
           );
@@ -460,12 +476,7 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <SearchBox
-          value={query}
-          onChange={setQuery}
-          placeholder="Buscar mesa…"
-          className="w-full sm:w-64"
-        />
+        <SearchBox value={query} onChange={setQuery} placeholder="Buscar mesa…" className="w-full sm:w-64" />
         <select
           className="input w-full sm:w-56"
           value={sectorFilter}
@@ -488,7 +499,9 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
           {(["map", "list"] as const).map((option) => (
             <button
               className={`rounded-lg px-3.5 py-1.5 text-sm font-bold transition ${
-                view === option ? "bg-[var(--admin-primary-strong)] text-white" : "text-zinc-500 hover:text-zinc-200"
+                view === option
+                  ? "bg-[var(--admin-primary-strong)] text-white"
+                  : "text-zinc-500 hover:text-zinc-200"
               }`}
               key={option}
               onClick={() => {
@@ -521,17 +534,35 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
           />
         ) : (
           <EmptyState
-            title={emptySectorId ? "Todavía no hay mesas en este sector" : "No hay mesas que coincidan con esta vista"}
-            description={emptySectorId ? "Agregá una mesa a este sector o explorá el resto del salón." : "Probá con otra búsqueda o quitá los filtros para ver todas las mesas."}
-            action={emptySectorId ? (
-              <button className="btn" onClick={() => setModal("newTable")} type="button">
-                + Agregar mesa en este sector
-              </button>
-            ) : (
-              <button className="btn btn-secondary" onClick={() => { setQuery(""); setSectorFilter("all"); setStatusFilter("all"); }} type="button">
-                Limpiar filtros
-              </button>
-            )}
+            title={
+              emptySectorId
+                ? "Todavía no hay mesas en este sector"
+                : "No hay mesas que coincidan con esta vista"
+            }
+            description={
+              emptySectorId
+                ? "Agregá una mesa a este sector o explorá el resto del salón."
+                : "Probá con otra búsqueda o quitá los filtros para ver todas las mesas."
+            }
+            action={
+              emptySectorId ? (
+                <button className="btn" onClick={() => setModal("newTable")} type="button">
+                  + Agregar mesa en este sector
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setQuery("");
+                    setSectorFilter("all");
+                    setStatusFilter("all");
+                  }}
+                  type="button"
+                >
+                  Limpiar filtros
+                </button>
+              )
+            }
           />
         )
       ) : view === "map" ? (
@@ -570,7 +601,11 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
           onChangeOrderStatus={(orderId, status) => void changeOrderStatus(orderId, status)}
           onCloseSession={() => {
             if (!selected.session) return;
-            void closeSession(selected.session.id, selected.name, selected.session.orders.filter((o) => !["delivered", "cancelled"].includes(o.status)).length);
+            void closeSession(
+              selected.session.id,
+              selected.name,
+              selected.session.orders.filter((o) => !["delivered", "cancelled"].includes(o.status)).length,
+            );
           }}
         />
       )}
@@ -624,7 +659,11 @@ export function SalonBoard({ initial, canManageOrders }: SalonBoardProps) {
           onCloseSession={() => {
             if (!selected.session) return;
             setModal(null);
-            void closeSession(selected.session.id, selected.name, selected.session.orders.filter((o) => !["delivered", "cancelled"].includes(o.status)).length);
+            void closeSession(
+              selected.session.id,
+              selected.name,
+              selected.session.orders.filter((o) => !["delivered", "cancelled"].includes(o.status)).length,
+            );
           }}
         />
       )}
@@ -757,11 +796,20 @@ function FloorMap({
   const [moved, setMoved] = useState(false);
   const dragOffset = useRef({ dx: 0, dy: 0 });
   const dragSize = useRef({ width: 120, height: 84 });
+  const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
+  const panStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!layoutMode) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setViewport({ zoom: 1, x: 0, y: 0 });
+  }, [layoutMode]);
 
   /** @summary Grilla por defecto: solo mesas sin coordenadas, evitando las ya posicionadas. */
   const gridForMissing = useMemo(() => {
     const missing = tables.filter(
-      (candidate) => !overrides[candidate.id] && !isValidTablePosition(candidate.positionX, candidate.positionY),
+      (candidate) =>
+        !overrides[candidate.id] && !isValidTablePosition(candidate.positionX, candidate.positionY),
     );
     if (missing.length === 0) return {};
     const positioned = tables.filter((candidate) => !missing.includes(candidate));
@@ -854,6 +902,38 @@ function FloorMap({
     }
   }
 
+  /** @summary Ajusta el zoom del plano manteniéndolo dentro de un rango operativo. */
+  function changeZoom(delta: number) {
+    setViewport((current) => ({ ...current, zoom: Math.min(1.55, Math.max(0.75, current.zoom + delta)) }));
+  }
+
+  /** @summary Inicia el desplazamiento del plano cuando el puntero parte del fondo. */
+  function startPan(event: React.PointerEvent<HTMLDivElement>) {
+    if (layoutMode || (event.target as HTMLElement).closest("button")) return;
+    panStart.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      x: viewport.x,
+      y: viewport.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function movePan(event: React.PointerEvent<HTMLDivElement>) {
+    if (!panStart.current) return;
+    const nextX = panStart.current.x + event.clientX - panStart.current.pointerX;
+    const nextY = panStart.current.y + event.clientY - panStart.current.pointerY;
+    setViewport((current) => ({
+      ...current,
+      x: Math.min(180, Math.max(-180, nextX)),
+      y: Math.min(140, Math.max(-140, nextY)),
+    }));
+  }
+
+  function endPan() {
+    panStart.current = null;
+  }
+
   return (
     <div
       className={`salon-floor relative h-[calc(100dvh-330px)] min-h-[400px] w-full overflow-hidden rounded-3xl border border-white/10 ${
@@ -862,6 +942,11 @@ function FloorMap({
       ref={floorRef}
       role="group"
       aria-label="Plano del salón"
+      onWheel={(event) => {
+        if (layoutMode) return;
+        event.preventDefault();
+        changeZoom(event.deltaY < 0 ? 0.08 : -0.08);
+      }}
     >
       <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-xs font-bold text-zinc-300 backdrop-blur">
         <span className="h-2 w-2 rounded-full bg-[var(--admin-primary)]" />
@@ -875,78 +960,116 @@ function FloorMap({
         </div>
       )}
 
-      {tables.map((table) => {
-        const position = drag?.tableId === table.id ? drag : positionOf(table);
-        const status = tableStatus(table);
-        const styles = tableStatusStyles[status] ?? tableStatusStyles.free;
-        const glow = tableStatusGlowColor(status);
-        const isSelected = selectedId === table.id;
-        const sizeClass = table.capacity <= 2 ? "w-[96px]" : table.capacity <= 6 ? "w-[116px]" : "w-[136px]";
-        const shadows = `0 10px 24px rgba(0,0,0,.45), 0 0 26px ${glow}40${
-          drag?.tableId === table.id
-            ? ", 0 0 0 2px rgba(255,255,255,.65)"
-            : isSelected
-              ? ", 0 0 0 2px var(--admin-primary)"
-              : ""
-        }`;
-        return (
+      <div
+        className={`absolute inset-0 origin-center transition-transform duration-200 ${layoutMode ? "" : "cursor-grab active:cursor-grabbing"}`}
+        style={{ transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.zoom})` }}
+        onPointerDown={startPan}
+        onPointerMove={movePan}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+      >
+        {tables.map((table) => {
+          const position = drag?.tableId === table.id ? drag : positionOf(table);
+          const status = tableStatus(table);
+          const styles = tableStatusStyles[status] ?? tableStatusStyles.free;
+          const glow = tableStatusGlowColor(status);
+          const isSelected = selectedId === table.id;
+          const sizeClass =
+            table.capacity <= 2 ? "w-[96px]" : table.capacity <= 6 ? "w-[116px]" : "w-[136px]";
+          const shadows = `0 10px 24px rgba(0,0,0,.45), 0 0 26px ${glow}40${
+            drag?.tableId === table.id
+              ? ", 0 0 0 2px rgba(255,255,255,.65)"
+              : isSelected
+                ? ", 0 0 0 2px var(--admin-primary)"
+                : ""
+          }`;
+          return (
+            <button
+              className={`absolute z-10 flex flex-col items-center justify-center gap-0.5 rounded-2xl border-2 bg-[var(--admin-surface)]/95 px-2 py-2 backdrop-blur-sm transition ${
+                layoutMode ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+              } ${sizeClass} ${styles.chip} ${drag?.tableId === table.id ? "z-30 scale-110" : ""} ${
+                isSelected && !layoutMode ? "z-30 scale-105" : ""
+              }`}
+              style={{
+                left: `${position.x / 10}%`,
+                top: `${position.y / 10}%`,
+                transform: "translate(-50%, -50%)",
+                boxShadow: shadows,
+              }}
+              key={table.id}
+              onClick={() => {
+                if (!layoutMode) onSelect(table);
+              }}
+              onPointerDown={(event) => startDrag(event, table)}
+              onPointerMove={moveDrag}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              type="button"
+              aria-label={`Mesa ${table.name} · ${tableStatusLabel(status)}`}
+            >
+              <span className="flex w-full items-center justify-center gap-1.5">
+                <span className="text-base font-black leading-none sm:text-lg">{table.name}</span>
+                <span className={`h-2 w-2 shrink-0 rounded-full ${styles.dot}`} />
+              </span>
+              {table.session ? (
+                <>
+                  <span className="text-[11px] font-bold leading-tight text-white/80">
+                    <NumberFlow value={table.session.partySize} />{" "}
+                    {table.session.partySize === 1 ? "comensal" : "comensales"}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] font-black leading-tight text-white">
+                    <SessionTime iso={table.session.openedAt} />
+                    {table.session.totals.total > 0 && (
+                      <>
+                        <span className="text-white/30">·</span>
+                        <span>{money(table.session.totals.total, currency)}</span>
+                      </>
+                    )}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[11px] font-bold leading-tight text-white/50">
+                    {table.capacity} {table.capacity === 1 ? "persona" : "personas"}
+                  </span>
+                  <span className="text-[10px] font-black uppercase leading-tight tracking-wide">
+                    {tableStatusLabel(status)}
+                  </span>
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {!layoutMode && (
+        <div className="absolute bottom-4 left-4 z-20 flex items-center rounded-lg border border-[var(--admin-border)] bg-black/60 p-1 shadow-lg backdrop-blur">
           <button
-            className={`absolute z-10 flex flex-col items-center justify-center gap-0.5 rounded-2xl border-2 bg-[var(--admin-surface)]/95 px-2 py-2 backdrop-blur-sm transition ${
-              layoutMode ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-            } ${sizeClass} ${styles.chip} ${drag?.tableId === table.id ? "z-30 scale-110" : ""} ${
-              isSelected && !layoutMode ? "z-30 scale-105" : ""
-            }`}
-            style={{
-              left: `${position.x / 10}%`,
-              top: `${position.y / 10}%`,
-              transform: "translate(-50%, -50%)",
-              boxShadow: shadows,
-            }}
-            key={table.id}
-            onClick={() => {
-              if (!layoutMode) onSelect(table);
-            }}
-            onPointerDown={(event) => startDrag(event, table)}
-            onPointerMove={moveDrag}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
             type="button"
-            aria-label={`Mesa ${table.name} · ${tableStatusLabel(status)}`}
+            onClick={() => changeZoom(-0.1)}
+            className="grid h-8 w-8 place-items-center rounded-md text-sm font-bold text-zinc-300 hover:bg-white/10"
+            aria-label="Alejar plano"
           >
-            <span className="flex w-full items-center justify-center gap-1.5">
-              <span className="text-base font-black leading-none sm:text-lg">{table.name}</span>
-              <span
-                className={`h-2 w-2 shrink-0 rounded-full ${styles.dot} ${table.session ? "animate-pulse" : ""}`}
-              />
-            </span>
-            {table.session ? (
-              <>
-                <span className="text-[11px] font-bold leading-tight text-white/80">
-                  {table.session.partySize} {table.session.partySize === 1 ? "comensal" : "comensales"}
-                </span>
-                <span className="flex items-center gap-1 text-[11px] font-black leading-tight text-white">
-                  <SessionTime iso={table.session.openedAt} />
-                  {table.session.totals.total > 0 && (
-                    <>
-                      <span className="text-white/30">·</span>
-                      <span>{money(table.session.totals.total, currency)}</span>
-                    </>
-                  )}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-[11px] font-bold leading-tight text-white/50">
-                  {table.capacity} {table.capacity === 1 ? "persona" : "personas"}
-                </span>
-                <span className="text-[10px] font-black uppercase leading-tight tracking-wide">
-                  {tableStatusLabel(status)}
-                </span>
-              </>
-            )}
+            −
           </button>
-        );
-      })}
+          <button
+            type="button"
+            onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })}
+            className="min-w-12 rounded-md px-2 py-1.5 text-[10px] font-bold tabular-nums text-zinc-400 hover:bg-white/10 hover:text-white"
+            aria-label="Restablecer vista"
+          >
+            {Math.round(viewport.zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={() => changeZoom(0.1)}
+            className="grid h-8 w-8 place-items-center rounded-md text-sm font-bold text-zinc-300 hover:bg-white/10"
+            aria-label="Acercar plano"
+          >
+            +
+          </button>
+        </div>
+      )}
 
       {layoutMode && (
         <button
@@ -954,7 +1077,14 @@ function FloorMap({
           type="button"
           onClick={() => void autoArrange()}
         >
-          <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg
+            aria-hidden
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
             <rect x="3" y="3" width="7" height="7" rx="1.5" />
             <rect x="14" y="3" width="7" height="7" rx="1.5" />
             <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -1347,8 +1477,6 @@ function eventLabel(eventType: string) {
   return labels[eventType] ?? eventType;
 }
 
-
-
 /** @summary Tarjeta de una comanda con sus productos y avance de estado. */
 function ComandaCard({
   order,
@@ -1508,7 +1636,12 @@ function OpenTableModal({
         </div>
         <label>
           <span className="label">Nota interna</span>
-          <input className="input" name="notes" maxLength={2000} placeholder="Ej.: mesa cerca de la ventana" />
+          <input
+            className="input"
+            name="notes"
+            maxLength={2000}
+            placeholder="Ej.: mesa cerca de la ventana"
+          />
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input name="reserved" type="checkbox" /> Marcar como reservada (la mesa queda apartada)
@@ -1521,7 +1654,9 @@ function OpenTableModal({
             {submitting ? "Abriendo…" : "Abrir mesa"}
           </button>
         </div>
-        <p className="text-xs text-zinc-600">La mesa quedará asociada a {table.code} · {currency}.</p>
+        <p className="text-xs text-zinc-600">
+          La mesa quedará asociada a {table.code} · {currency}.
+        </p>
       </form>
     </Overlay>
   );
@@ -1539,13 +1674,15 @@ function AddOrderModal({
   products: SalonPayload["products"];
   currency: string;
   onClose: () => void;
-  onSaved: (items: Array<{
-    productId: number;
-    quantity: number;
-    variantId: number | null;
-    extraIds: number[];
-    notes?: string;
-  }>) => Promise<void>;
+  onSaved: (
+    items: Array<{
+      productId: number;
+      quantity: number;
+      variantId: number | null;
+      extraIds: number[];
+      notes?: string;
+    }>,
+  ) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<SalonProduct | null>(null);
@@ -1599,7 +1736,9 @@ function AddOrderModal({
   }
 
   function toggleExtra(extraId: number) {
-    setExtraIds((current) => (current.includes(extraId) ? current.filter((id) => id !== extraId) : [...current, extraId]));
+    setExtraIds((current) =>
+      current.includes(extraId) ? current.filter((id) => id !== extraId) : [...current, extraId],
+    );
   }
 
   function addToCart() {
@@ -1615,7 +1754,10 @@ function AddOrderModal({
         variantName: detail.variants.find((item) => item.id === variantId)?.name ?? null,
         variantPrice: detail.variants.find((item) => item.id === variantId)?.priceAdjustment ?? 0,
         extraIds,
-        extrasTotal: unitPrice - (detail.promotionalPrice ?? detail.price) - (detail.variants.find((item) => item.id === variantId)?.priceAdjustment ?? 0),
+        extrasTotal:
+          unitPrice -
+          (detail.promotionalPrice ?? detail.price) -
+          (detail.variants.find((item) => item.id === variantId)?.priceAdjustment ?? 0),
         lineTotal: unitPrice * quantity,
         note,
       },
@@ -1672,7 +1814,9 @@ function AddOrderModal({
                     {product.extras.length > 0 ? ` · ${product.extras.length} agregados` : ""}
                   </p>
                 </div>
-                <strong className="shrink-0">{money(product.promotionalPrice ?? product.price, currency)}</strong>
+                <strong className="shrink-0">
+                  {money(product.promotionalPrice ?? product.price, currency)}
+                </strong>
               </button>
             ))}
             {visible.length === 0 && (
@@ -1688,7 +1832,12 @@ function AddOrderModal({
             <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-black">{detail.name}</h3>
-                <button className="text-zinc-500" onClick={() => setDetail(null)} type="button" aria-label="Volver">
+                <button
+                  className="text-zinc-500"
+                  onClick={() => setDetail(null)}
+                  type="button"
+                  aria-label="Volver"
+                >
                   ←
                 </button>
               </div>
@@ -1749,7 +1898,13 @@ function AddOrderModal({
               </div>
               <label className="mt-3 block">
                 <span className="label">Nota (opcional)</span>
-                <input className="input" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ej.: sin cebolla" />
+                <input
+                  className="input"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  maxLength={500}
+                  placeholder="Ej.: sin cebolla"
+                />
               </label>
               <button className="btn mt-4 w-full" onClick={addToCart} type="button">
                 Agregar a la comanda
@@ -1762,12 +1917,19 @@ function AddOrderModal({
           )}
 
           <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Comanda ({cart.length})</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">
+              Comanda ({cart.length})
+            </h3>
             <div className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
               {cart.map((item, index) => (
-                <p className="flex items-start justify-between gap-2 text-sm" key={`${item.productId}-${index}`}>
+                <p
+                  className="flex items-start justify-between gap-2 text-sm"
+                  key={`${item.productId}-${index}`}
+                >
                   <span className="min-w-0">
-                    <strong>{item.quantity} × {item.name}</strong>
+                    <strong>
+                      {item.quantity} × {item.name}
+                    </strong>
                     {item.variantName ? <span className="text-zinc-400"> · {item.variantName}</span> : null}
                   </span>
                   <span className="shrink-0 font-bold">{money(item.lineTotal, currency)}</span>
@@ -1779,7 +1941,12 @@ function AddOrderModal({
               <span className="text-zinc-400">Total</span>
               <strong>{money(cartTotal, currency)}</strong>
             </p>
-            <button className="btn mt-3 w-full" disabled={cart.length === 0 || submitting} onClick={() => void confirm()} type="button">
+            <button
+              className="btn mt-3 w-full"
+              disabled={cart.length === 0 || submitting}
+              onClick={() => void confirm()}
+              type="button"
+            >
               {submitting ? "Cargando…" : "Confirmar comanda"}
             </button>
           </div>
@@ -1861,7 +2028,12 @@ function BillModal({
           <button className="btn btn-secondary" onClick={onCreateInvoice} type="button">
             Ir a Pedidos
           </button>
-          <button className="btn btn-secondary" disabled title="Dividir cuenta estará disponible próximamente." type="button">
+          <button
+            className="btn btn-secondary"
+            disabled
+            title="Dividir cuenta estará disponible próximamente."
+            type="button"
+          >
             Dividir cuenta
           </button>
           {canManageOrders && (
@@ -1907,7 +2079,11 @@ function MoveTableModal({
         La sesión y sus comandas abiertas pasan a la mesa elegida. El destino debe estar libre y pertenecer a
         la misma sucursal.
       </p>
-      <select className="input mb-4" value={targetId ?? ""} onChange={(event) => setTargetId(event.target.value ? Number(event.target.value) : null)}>
+      <select
+        className="input mb-4"
+        value={targetId ?? ""}
+        onChange={(event) => setTargetId(event.target.value ? Number(event.target.value) : null)}
+      >
         <option value="">Elegí la mesa destino…</option>
         {candidates.map((candidate) => (
           <option key={candidate.id} value={candidate.id}>
@@ -1924,7 +2100,12 @@ function MoveTableModal({
         <button className="btn btn-secondary" onClick={onClose} type="button">
           Cancelar
         </button>
-        <button className="btn" disabled={!targetId || submitting} onClick={() => void confirm()} type="button">
+        <button
+          className="btn"
+          disabled={!targetId || submitting}
+          onClick={() => void confirm()}
+          type="button"
+        >
           {submitting ? "Trasladando…" : "Trasladar mesa"}
         </button>
       </div>
@@ -1955,7 +2136,9 @@ function TransferOrdersModal({
       : [],
   );
   function toggle(orderId: number) {
-    setSelected((current) => (current.includes(orderId) ? current.filter((id) => id !== orderId) : [...current, orderId]));
+    setSelected((current) =>
+      current.includes(orderId) ? current.filter((id) => id !== orderId) : [...current, orderId],
+    );
   }
   async function confirm() {
     if (selected.length === 0 || !targetSessionId) return;
@@ -1970,7 +2153,9 @@ function TransferOrdersModal({
     <Overlay title={`Mover comandas de ${table.name}`} onClose={onClose} wide>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-zinc-500">Comandas a mover</h3>
+          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-zinc-500">
+            Comandas a mover
+          </h3>
           <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
             {openOrders.map((order) => (
               <label
@@ -1984,7 +2169,9 @@ function TransferOrdersModal({
                 />
                 <span className="min-w-0">
                   <strong>{order.reference}</strong>
-                  <span className="ml-2 text-zinc-500">{order.items.reduce((n, item) => n + item.quantity, 0)} productos</span>
+                  <span className="ml-2 text-zinc-500">
+                    {order.items.reduce((n, item) => n + item.quantity, 0)} productos
+                  </span>
                 </span>
               </label>
             ))}
@@ -2054,7 +2241,9 @@ function SplitOrdersModal({
     (candidate) => !candidate.session && candidate.id !== table.id && candidate.branchId === table.branchId,
   );
   function toggle(orderId: number) {
-    setSelected((current) => (current.includes(orderId) ? current.filter((id) => id !== orderId) : [...current, orderId]));
+    setSelected((current) =>
+      current.includes(orderId) ? current.filter((id) => id !== orderId) : [...current, orderId],
+    );
   }
   async function confirm() {
     if (selected.length === 0 || !targetTableId) return;
@@ -2068,19 +2257,25 @@ function SplitOrdersModal({
   return (
     <Overlay title={`Separar comandas de ${table.name}`} onClose={onClose} wide>
       <p className="mb-4 text-sm text-zinc-400">
-        Las comandas seleccionadas pasan a una mesa libre como una nueva sesión. Ideal para separar cuentas
-        de un grupo.
+        Las comandas seleccionadas pasan a una mesa libre como una nueva sesión. Ideal para separar cuentas de
+        un grupo.
       </p>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-zinc-500">Comandas a separar</h3>
+          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-zinc-500">
+            Comandas a separar
+          </h3>
           <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
             {openOrders.map((order) => (
               <label
                 className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] p-3 text-sm"
                 key={order.id}
               >
-                <input type="checkbox" checked={selected.includes(order.id)} onChange={() => toggle(order.id)} />
+                <input
+                  type="checkbox"
+                  checked={selected.includes(order.id)}
+                  onChange={() => toggle(order.id)}
+                />
                 <span className="min-w-0">
                   <strong>{order.reference}</strong>
                   <span className="ml-2 text-zinc-500">{money(order.total, order.currency)}</span>
@@ -2095,7 +2290,9 @@ function SplitOrdersModal({
           </div>
         </div>
         <div>
-          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-zinc-500">Mesa libre destino</h3>
+          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-zinc-500">
+            Mesa libre destino
+          </h3>
           <select
             className="input"
             value={targetTableId ?? ""}
@@ -2188,7 +2385,12 @@ function MergeTablesModal({
         <button className="btn btn-secondary" onClick={onClose} type="button">
           Cancelar
         </button>
-        <button className="btn" disabled={!targetSessionId || submitting} onClick={() => void confirm()} type="button">
+        <button
+          className="btn"
+          disabled={!targetSessionId || submitting}
+          onClick={() => void confirm()}
+          type="button"
+        >
           {submitting ? "Uniendo…" : "Unir mesas"}
         </button>
       </div>
@@ -2329,7 +2531,11 @@ function SectorsModal({
         </label>
         <label>
           <span className="label">Sucursal</span>
-          <select className="input" value={branchId ?? ""} onChange={(event) => setBranchId(event.target.value ? Number(event.target.value) : null)}>
+          <select
+            className="input"
+            value={branchId ?? ""}
+            onChange={(event) => setBranchId(event.target.value ? Number(event.target.value) : null)}
+          >
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branch.name}
@@ -2357,16 +2563,34 @@ function SectorsModal({
               </p>
             </div>
             <div className="flex items-center gap-1.5">
-              <button className="rounded-lg bg-white/5 px-2 py-1 text-xs" onClick={() => void reorder(sector, -1)} type="button" aria-label="Subir">
+              <button
+                className="rounded-lg bg-white/5 px-2 py-1 text-xs"
+                onClick={() => void reorder(sector, -1)}
+                type="button"
+                aria-label="Subir"
+              >
                 ↑
               </button>
-              <button className="rounded-lg bg-white/5 px-2 py-1 text-xs" onClick={() => void reorder(sector, 1)} type="button" aria-label="Bajar">
+              <button
+                className="rounded-lg bg-white/5 px-2 py-1 text-xs"
+                onClick={() => void reorder(sector, 1)}
+                type="button"
+                aria-label="Bajar"
+              >
                 ↓
               </button>
-              <button className="rounded-lg bg-white/5 px-2 py-1 text-xs" onClick={() => void rename(sector)} type="button">
+              <button
+                className="rounded-lg bg-white/5 px-2 py-1 text-xs"
+                onClick={() => void rename(sector)}
+                type="button"
+              >
                 Renombrar
               </button>
-              <button className="rounded-lg bg-white/5 px-2 py-1 text-xs" onClick={() => void toggle(sector)} type="button">
+              <button
+                className="rounded-lg bg-white/5 px-2 py-1 text-xs"
+                onClick={() => void toggle(sector)}
+                type="button"
+              >
                 {sector.active ? "Ocultar" : "Activar"}
               </button>
               <button
@@ -2423,7 +2647,7 @@ function NewTableModal({
     const resolvedSectorId =
       sectorId && branchSectors.some((sector) => sector.id === sectorId) ? sectorId : null;
     const sectorName = resolvedSectorId
-      ? branchSectors.find((sector) => sector.id === resolvedSectorId)?.name ?? ""
+      ? (branchSectors.find((sector) => sector.id === resolvedSectorId)?.name ?? "")
       : "";
     setSubmitting(true);
     try {
@@ -2486,7 +2710,15 @@ function NewTableModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label>
             <span className="label">Capacidad</span>
-            <input className="input" name="capacity" type="number" min={1} max={100} defaultValue={4} required />
+            <input
+              className="input"
+              name="capacity"
+              type="number"
+              min={1}
+              max={100}
+              defaultValue={4}
+              required
+            />
           </label>
           <label className="flex min-h-12 items-center gap-2 text-sm">
             <input name="active" type="checkbox" defaultChecked /> Activa (QR disponible)
@@ -2518,7 +2750,10 @@ function Overlay({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[130] grid place-items-center bg-black/80 p-4 backdrop-blur" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[130] grid place-items-center bg-black/80 p-4 backdrop-blur"
+      onClick={onClose}
+    >
       <div
         className={`max-h-[92vh] w-full ${wide ? "max-w-4xl" : "max-w-xl"} overflow-y-auto rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl`}
         onClick={(event) => event.stopPropagation()}

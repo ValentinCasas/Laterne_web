@@ -2,7 +2,14 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, Tabs, StatusBadge, EmptyState } from "@/components/admin/ui";
+import {
+  AnimatedProgress,
+  NumberFlow,
+  PageHeader,
+  Tabs,
+  StatusBadge,
+  EmptyState,
+} from "@/components/admin/ui";
 import { stockMovementTypeLabels } from "@/lib/order-stock";
 import { scopedFetch } from "@/lib/client-routing";
 import { useViewMode, ViewModeToggle } from "@/components/admin/view-mode-toggle";
@@ -319,7 +326,10 @@ export function InventoryManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ branchId, productId: product.id, quantity, reason }),
     });
-    const body = (await response.json().catch(() => ({}))) as { result?: { stockId: number }; error?: string };
+    const body = (await response.json().catch(() => ({}))) as {
+      result?: { stockId: number };
+      error?: string;
+    };
     if (!response.ok || !body.result) {
       await showError("No se pudo registrar la merma", new Error(body.error ?? "Error desconocido"));
       return false;
@@ -413,7 +423,11 @@ export function InventoryManager({
 
   const money = (value: number | null | undefined) => {
     if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-    return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   const dateTime = (value: string) =>
@@ -446,22 +460,55 @@ export function InventoryManager({
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <div className="card p-5">
               <p className="text-sm font-bold text-[var(--admin-muted)]">Valor del inventario</p>
-              <p className="mt-1 text-3xl font-black tabular-nums text-emerald-300">{money(dashboard.value)}</p>
-              <p className="mt-1 text-xs text-[var(--admin-muted)]">
-                {dashboard.valuedProducts} de {dashboard.totalStocks} existencias con costo
+              <p className="mt-1 text-3xl font-black tabular-nums text-emerald-300">
+                {money(dashboard.value)}
               </p>
+              <p className="mt-1 text-xs text-[var(--admin-muted)]">
+                <NumberFlow value={dashboard.valuedProducts} /> de{" "}
+                <NumberFlow value={dashboard.totalStocks} /> existencias con costo
+              </p>
+              <AnimatedProgress
+                className="mt-3"
+                label="Existencias con costo cargado"
+                tone="success"
+                value={dashboard.totalStocks ? (dashboard.valuedProducts / dashboard.totalStocks) * 100 : 0}
+              />
             </div>
-            <button type="button" onClick={() => { setTab("stock"); applyKpi("low"); }} className="card p-5 text-left transition hover:border-amber-500/40">
+            <button
+              type="button"
+              onClick={() => {
+                setTab("stock");
+                applyKpi("low");
+              }}
+              className="card p-5 text-left transition hover:border-amber-500/40"
+            >
               <p className="text-sm font-bold text-[var(--admin-muted)]">Stock bajo mínimo</p>
-              <p className="mt-1 text-3xl font-black tabular-nums text-amber-300">{dashboard.lowCount}</p>
+              <p className="mt-1 text-3xl font-black text-amber-300">
+                <NumberFlow value={dashboard.lowCount} />
+              </p>
             </button>
-            <button type="button" onClick={() => { setTab("stock"); applyKpi("out"); }} className="card p-5 text-left transition hover:border-red-500/40">
+            <button
+              type="button"
+              onClick={() => {
+                setTab("stock");
+                applyKpi("out");
+              }}
+              className="card p-5 text-left transition hover:border-red-500/40"
+            >
               <p className="text-sm font-bold text-[var(--admin-muted)]">Sin stock</p>
-              <p className="mt-1 text-3xl font-black tabular-nums text-red-300">{dashboard.outCount}</p>
+              <p className="mt-1 text-3xl font-black text-red-300">
+                <NumberFlow value={dashboard.outCount} />
+              </p>
             </button>
-            <button type="button" onClick={() => setTab("movimientos")} className="card p-5 text-left transition hover:border-orange-500/40">
+            <button
+              type="button"
+              onClick={() => setTab("movimientos")}
+              className="card p-5 text-left transition hover:border-orange-500/40"
+            >
               <p className="text-sm font-bold text-[var(--admin-muted)]">Mermas (30 días)</p>
-              <p className="mt-1 text-3xl font-black tabular-nums text-orange-300">{dashboard.wasteCount}</p>
+              <p className="mt-1 text-3xl font-black text-orange-300">
+                <NumberFlow value={dashboard.wasteCount} />
+              </p>
               <p className="mt-1 text-xs text-[var(--admin-muted)]">
                 {dashboard.wasteQuantity} unidades · costo {money(dashboard.wasteCost)}
               </p>
@@ -495,7 +542,9 @@ export function InventoryManager({
                 {dashboard.lowStocks.slice(0, 6).map((item) => (
                   <li key={item.productId} className="flex items-center justify-between gap-3 text-sm">
                     <span className="truncate font-semibold">{item.name}</span>
-                    <span className={`tabular-nums font-bold ${item.current <= 0 ? "text-red-300" : "text-amber-300"}`}>
+                    <span
+                      className={`tabular-nums font-bold ${item.current <= 0 ? "text-red-300" : "text-amber-300"}`}
+                    >
                       {item.current} / mín {item.minimum} {item.unit}
                     </span>
                   </li>
@@ -512,20 +561,26 @@ export function InventoryManager({
             <div className="mt-3 divide-y divide-white/10">
               {dashboard.recentMovements.map((movement) => (
                 <div key={movement.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5 text-sm">
-                  <span className="text-xs tabular-nums text-[var(--admin-muted)]">{dateTime(movement.createdAt)}</span>
+                  <span className="text-xs tabular-nums text-[var(--admin-muted)]">
+                    {dateTime(movement.createdAt)}
+                  </span>
                   <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-semibold">
                     {stockMovementTypeLabels[movement.type] ?? movement.type}
                   </span>
                   <span className="font-semibold">{movement.product}</span>
                   <span className="text-[var(--admin-muted)]">{movement.branch}</span>
-                  <span className={`ml-auto font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  <span
+                    className={`ml-auto font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}
+                  >
                     {Number(movement.quantity) > 0 ? "+" : ""}
                     {Number(movement.quantity)}
                   </span>
                 </div>
               ))}
               {dashboard.recentMovements.length === 0 && (
-                <p className="py-4 text-sm text-[var(--admin-muted)]">Todavía no hay movimientos registrados.</p>
+                <p className="py-4 text-sm text-[var(--admin-muted)]">
+                  Todavía no hay movimientos registrados.
+                </p>
               )}
             </div>
           </div>
@@ -545,7 +600,9 @@ export function InventoryManager({
                 title="Aplicar filtro"
               >
                 <span className="text-sm font-bold text-[var(--admin-muted)]">{kpi.label}</span>
-                <span className={`text-3xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</span>
+                <span className={`text-3xl font-black ${kpi.color}`}>
+                  <NumberFlow value={kpi.value} />
+                </span>
               </button>
             ))}
           </div>
@@ -587,7 +644,11 @@ export function InventoryManager({
                 ))}
               </select>
               <label className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-bold">
-                <input type="checkbox" checked={onlyLow} onChange={(event) => setOnlyLow(event.target.checked)} />{" "}
+                <input
+                  type="checkbox"
+                  checked={onlyLow}
+                  onChange={(event) => setOnlyLow(event.target.checked)}
+                />{" "}
                 Solo alertas
               </label>
               <ViewModeToggle value={view} onChange={setView} />
@@ -658,7 +719,9 @@ export function InventoryManager({
                     type="button"
                   >
                     <span className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-[var(--admin-muted)]">
-                      <span className={`inline-block transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>
+                      <span
+                        className={`inline-block transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                      >
                         ▾
                       </span>
                       {groupName}
@@ -705,23 +768,30 @@ export function InventoryManager({
                                   </div>
                                   <div className="flex items-center gap-4 text-sm tabular-nums">
                                     <span className="text-zinc-400">
-                                      Físico <strong className="text-white">{Number(stock?.current ?? 0)}</strong>
+                                      Físico{" "}
+                                      <strong className="text-white">{Number(stock?.current ?? 0)}</strong>
                                     </span>
                                     {stock?.tracked && (
                                       <>
                                         <span className="text-zinc-500">
                                           Disp.{" "}
-                                          <strong className={available < 0 ? "text-red-300" : "text-zinc-300"}>
+                                          <strong
+                                            className={available < 0 ? "text-red-300" : "text-zinc-300"}
+                                          >
                                             {available}
                                           </strong>
                                         </span>
                                         <span className="text-zinc-500">
-                                          Res. <strong className="text-sky-300">{Number(stock?.reserved ?? 0)}</strong>
+                                          Res.{" "}
+                                          <strong className="text-sky-300">
+                                            {Number(stock?.reserved ?? 0)}
+                                          </strong>
                                         </span>
                                       </>
                                     )}
                                     <span className="text-zinc-500">
-                                      Mín <strong className="text-zinc-300">{Number(stock?.minimum ?? 0)}</strong>
+                                      Mín{" "}
+                                      <strong className="text-zinc-300">{Number(stock?.minimum ?? 0)}</strong>
                                     </span>
                                   </div>
                                   <span className="text-xs text-zinc-500">{stock?.unit ?? "unidad"}</span>
@@ -769,7 +839,9 @@ export function InventoryManager({
                         })}
                       </div>
                     ) : (
-                      <div className={`grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 ${compactCards ? "gap-2.5" : "gap-3"}`}>
+                      <div
+                        className={`grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 ${compactCards ? "gap-2.5" : "gap-3"}`}
+                      >
                         {groupProducts.map((product) => {
                           const { stock, state } = stockState(product);
                           const label = !stock?.tracked
@@ -791,7 +863,9 @@ export function InventoryManager({
                               <dl className="mt-4 grid grid-cols-3 gap-2">
                                 <div>
                                   <dt className="text-[10px] uppercase text-zinc-600">Físico</dt>
-                                  <dd className="text-lg font-black tabular-nums">{Number(stock?.current ?? 0)}</dd>
+                                  <dd className="text-lg font-black tabular-nums">
+                                    {Number(stock?.current ?? 0)}
+                                  </dd>
                                 </div>
                                 <div>
                                   <dt className="text-[10px] uppercase text-zinc-600">Disp.</dt>
@@ -801,7 +875,9 @@ export function InventoryManager({
                                 </div>
                                 <div>
                                   <dt className="text-[10px] uppercase text-zinc-600">Mínimo</dt>
-                                  <dd className="text-lg font-black tabular-nums">{Number(stock?.minimum ?? 0)}</dd>
+                                  <dd className="text-lg font-black tabular-nums">
+                                    {Number(stock?.minimum ?? 0)}
+                                  </dd>
                                 </div>
                               </dl>
                               <span
@@ -834,7 +910,10 @@ export function InventoryManager({
               );
             })}
             {!visible.length && (
-              <EmptyState title="No hay productos que coincidan con estos filtros" description="Probá modificar la búsqueda o los filtros aplicados." />
+              <EmptyState
+                title="No hay productos que coincidan con estos filtros"
+                description="Probá modificar la búsqueda o los filtros aplicados."
+              />
             )}
           </div>
         </>
@@ -845,11 +924,7 @@ export function InventoryManager({
 
       {/* ============ CONTEOS ============ */}
       {tab === "conteos" && (
-        <CountSections
-          branches={branches}
-          initialCounts={initialCounts}
-          initialBranchId={branchId}
-        />
+        <CountSections branches={branches} initialCounts={initialCounts} initialBranchId={branchId} />
       )}
 
       {/* ============ TRANSFERENCIAS ============ */}
@@ -918,7 +993,12 @@ export function InventoryManager({
           description="La merma descuenta stock con su motivo y el costo se estima con el snapshot del producto."
           fields={[
             { name: "quantity", label: "Cantidad", type: "number", placeholder: "0" },
-            { name: "reason", label: "Motivo", type: "text", placeholder: "Ej. Se rompió, caducó, error de producción" },
+            {
+              name: "reason",
+              label: "Motivo",
+              type: "text",
+              placeholder: "Ej. Se rompió, caducó, error de producción",
+            },
           ]}
           confirmText="Registrar merma"
           onCancel={() => setWasteFor(null)}
@@ -977,7 +1057,10 @@ function ActionModal({
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/85 p-4"
+      onClick={onCancel}
+    >
       <form
         className="w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-6"
         onClick={(event) => event.stopPropagation()}
@@ -1138,7 +1221,7 @@ function MovementsHistory({ branches, products }: { branches: Branch[]; products
           error?: string;
         };
         if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar los movimientos");
-        setRows((current) => (append ? [...current, ...(body.movements ?? [])] : body.movements ?? []));
+        setRows((current) => (append ? [...current, ...(body.movements ?? [])] : (body.movements ?? [])));
         setTotal(body.total ?? 0);
       } catch (reason) {
         await showError("No se pudieron cargar los movimientos", reason);
@@ -1268,7 +1351,9 @@ function MovementsHistory({ branches, products }: { branches: Branch[]; products
                     </td>
                     <td className="px-4 py-2.5 font-semibold">{movement.stock.product.name}</td>
                     <td className="px-4 py-2.5 text-[var(--admin-muted)]">{movement.stock.branch.name}</td>
-                    <td className={`px-4 py-2.5 text-right font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    <td
+                      className={`px-4 py-2.5 text-right font-black tabular-nums ${Number(movement.quantity) > 0 ? "text-emerald-300" : "text-red-300"}`}
+                    >
                       {Number(movement.quantity) > 0 ? "+" : ""}
                       {Number(movement.quantity)}
                     </td>
@@ -1337,7 +1422,10 @@ function CountSections({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ branchId: countBranch, note: note || undefined }),
       });
-      const body = (await response.json().catch(() => ({}))) as { session?: CountSessionDetail; error?: string };
+      const body = (await response.json().catch(() => ({}))) as {
+        session?: CountSessionDetail;
+        error?: string;
+      };
       if (!response.ok || !body.session) throw new Error(body.error ?? "No se pudo abrir el conteo");
       setOpen(body.session);
       setNote("");
@@ -1392,8 +1480,13 @@ function CountSections({
     if (!confirm.isConfirmed) return;
     setBusy(true);
     try {
-      const response = await scopedFetch(`/api/admin/inventory/counts/${open.id}/complete`, { method: "POST" });
-      const body = (await response.json().catch(() => ({}))) as { result?: { adjustments: number }; error?: string };
+      const response = await scopedFetch(`/api/admin/inventory/counts/${open.id}/complete`, {
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        result?: { adjustments: number };
+        error?: string;
+      };
       if (!response.ok || !body.result) throw new Error(body.error ?? "No se pudo completar el conteo");
       setOpen(null);
       await refresh();
@@ -1449,7 +1542,11 @@ function CountSections({
       <div className="card flex flex-wrap items-end gap-3 p-5">
         <label className="block">
           <span className="block text-xs font-semibold text-[var(--admin-muted)]">Sucursal</span>
-          <select className="input mt-1" value={countBranch} onChange={(event) => setCountBranch(Number(event.target.value))}>
+          <select
+            className="input mt-1"
+            value={countBranch}
+            onChange={(event) => setCountBranch(Number(event.target.value))}
+          >
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branch.name}
@@ -1459,7 +1556,12 @@ function CountSections({
         </label>
         <label className="block min-w-52 flex-1">
           <span className="block text-xs font-semibold text-[var(--admin-muted)]">Nota (opcional)</span>
-          <input className="input mt-1" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ej. Cierre de mes" />
+          <input
+            className="input mt-1"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Ej. Cierre de mes"
+          />
         </label>
         <button type="button" className="btn" onClick={() => void startSession()} disabled={busy}>
           {busy ? "Abriendo…" : "+ Nueva sesión de conteo"}
@@ -1478,13 +1580,23 @@ function CountSections({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-secondary" onClick={() => void saveCounted()} disabled={busy}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void saveCounted()}
+                disabled={busy}
+              >
                 Guardar cantidades
               </button>
               <button type="button" className="btn" onClick={() => void completeSession()} disabled={busy}>
                 Completar y ajustar
               </button>
-              <button type="button" className="btn btn-secondary" onClick={() => void cancelSession()} disabled={busy}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void cancelSession()}
+                disabled={busy}
+              >
                 Cancelar
               </button>
             </div>
@@ -1517,7 +1629,11 @@ function CountSections({
                     </td>
                     <td
                       className={`px-3 py-2 text-right font-black tabular-nums ${
-                        Number(item.difference) > 0 ? "text-emerald-300" : Number(item.difference) < 0 ? "text-red-300" : "text-[var(--admin-muted)]"
+                        Number(item.difference) > 0
+                          ? "text-emerald-300"
+                          : Number(item.difference) < 0
+                            ? "text-red-300"
+                            : "text-[var(--admin-muted)]"
                       }`}
                     >
                       {Number(item.difference) > 0 ? "+" : ""}
@@ -1549,28 +1665,45 @@ function CountSections({
                 <tr key={count.id} className="border-b border-[var(--admin-border)]/60 last:border-0">
                   <td className="px-4 py-2.5 font-semibold">{count.reference}</td>
                   <td className="px-4 py-2.5">{count.branch?.name ?? "—"}</td>
-                   <td className="px-4 py-2.5">
-                     <StatusBadge status={count.status === "completed" ? "completed" : count.status === "cancelled" ? "cancelled" : "in_progress"} />
-                   </td>
+                  <td className="px-4 py-2.5">
+                    <StatusBadge
+                      status={
+                        count.status === "completed"
+                          ? "completed"
+                          : count.status === "cancelled"
+                            ? "cancelled"
+                            : "in_progress"
+                      }
+                    />
+                  </td>
                   <td className="px-4 py-2.5 tabular-nums">{count._count.items}</td>
                   <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
-                    {new Date(count.startedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
+                    {new Date(count.startedAt).toLocaleString("es-AR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
                     {count.startedBy ? ` · ${count.startedBy.name}` : ""}
                   </td>
                   <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                     {count.completedAt
-                      ? new Date(count.completedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })
+                      ? new Date(count.completedAt).toLocaleString("es-AR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
                       : "—"}
                   </td>
                 </tr>
               ))}
-               {counts.length === 0 && (
-                 <tr>
-                   <td colSpan={6} className="px-4 py-10 text-center">
-                     <EmptyState title="No hay sesiones de conteo todavía" description="Abrí una nueva sesión desde la sección de conteos físicos." />
-                   </td>
-                 </tr>
-               )}
+              {counts.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center">
+                    <EmptyState
+                      title="No hay sesiones de conteo todavía"
+                      description="Abrí una nueva sesión desde la sección de conteos físicos."
+                    />
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -1590,7 +1723,14 @@ function TransfersSection({
   initialTransfers: TransferRow[];
 }) {
   const [transfers, setTransfers] = useState(initialTransfers);
-  const [form, setForm] = useState({ fromBranchId: "", toBranchId: "", productId: "", quantity: "1", unit: "", note: "" });
+  const [form, setForm] = useState({
+    fromBranchId: "",
+    toBranchId: "",
+    productId: "",
+    quantity: "1",
+    unit: "",
+    note: "",
+  });
   const [busy, setBusy] = useState(false);
 
   const refresh = async () => {
@@ -1650,7 +1790,11 @@ function TransfersSection({
         <div className="mt-4 grid gap-3 lg:grid-cols-6">
           <label className="block">
             <span className="block text-xs font-semibold text-[var(--admin-muted)]">Origen</span>
-            <select className="input mt-1" value={form.fromBranchId} onChange={(event) => setForm({ ...form, fromBranchId: event.target.value })}>
+            <select
+              className="input mt-1"
+              value={form.fromBranchId}
+              onChange={(event) => setForm({ ...form, fromBranchId: event.target.value })}
+            >
               <option value="">Elegí sucursal</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
@@ -1661,7 +1805,11 @@ function TransfersSection({
           </label>
           <label className="block">
             <span className="block text-xs font-semibold text-[var(--admin-muted)]">Destino</span>
-            <select className="input mt-1" value={form.toBranchId} onChange={(event) => setForm({ ...form, toBranchId: event.target.value })}>
+            <select
+              className="input mt-1"
+              value={form.toBranchId}
+              onChange={(event) => setForm({ ...form, toBranchId: event.target.value })}
+            >
               <option value="">Elegí sucursal</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
@@ -1672,7 +1820,11 @@ function TransfersSection({
           </label>
           <label className="block">
             <span className="block text-xs font-semibold text-[var(--admin-muted)]">Producto</span>
-            <select className="input mt-1" value={form.productId} onChange={(event) => setForm({ ...form, productId: event.target.value })}>
+            <select
+              className="input mt-1"
+              value={form.productId}
+              onChange={(event) => setForm({ ...form, productId: event.target.value })}
+            >
               <option value="">Elegí producto</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
@@ -1683,11 +1835,23 @@ function TransfersSection({
           </label>
           <label className="block">
             <span className="block text-xs font-semibold text-[var(--admin-muted)]">Cantidad</span>
-            <input className="input mt-1" type="number" min={0.001} step="0.001" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+            <input
+              className="input mt-1"
+              type="number"
+              min={0.001}
+              step="0.001"
+              value={form.quantity}
+              onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+            />
           </label>
           <label className="block">
             <span className="block text-xs font-semibold text-[var(--admin-muted)]">Unidad (opcional)</span>
-            <input className="input mt-1" value={form.unit} onChange={(event) => setForm({ ...form, unit: event.target.value })} placeholder="unidad, kg, ml…" />
+            <input
+              className="input mt-1"
+              value={form.unit}
+              onChange={(event) => setForm({ ...form, unit: event.target.value })}
+              placeholder="unidad, kg, ml…"
+            />
           </label>
           <div className="flex items-end">
             <button type="button" className="btn w-full" onClick={() => void create()} disabled={busy}>
@@ -1697,7 +1861,12 @@ function TransfersSection({
         </div>
         <label className="mt-3 block">
           <span className="block text-xs font-semibold text-[var(--admin-muted)]">Nota (opcional)</span>
-          <input className="input mt-1" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="Ej. Reposición para fin de semana" />
+          <input
+            className="input mt-1"
+            value={form.note}
+            onChange={(event) => setForm({ ...form, note: event.target.value })}
+            placeholder="Ej. Reposición para fin de semana"
+          />
         </label>
       </div>
 
@@ -1726,18 +1895,24 @@ function TransfersSection({
                     {Number(transfer.quantity)} {transfer.unit}
                   </td>
                   <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
-                    {new Date(transfer.createdAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
+                    {new Date(transfer.createdAt).toLocaleString("es-AR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
                   </td>
                   <td className="px-4 py-2.5 text-[var(--admin-muted)]">{transfer.createdBy?.name ?? "—"}</td>
                 </tr>
               ))}
-               {transfers.length === 0 && (
-                 <tr>
-                   <td colSpan={6} className="px-4 py-10 text-center">
-                     <EmptyState title="No hay transferencias todavía" description="Creá la primera para mover stock entre sucursales." />
-                   </td>
-                 </tr>
-               )}
+              {transfers.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center">
+                    <EmptyState
+                      title="No hay transferencias todavía"
+                      description="Creá la primera para mover stock entre sucursales."
+                    />
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

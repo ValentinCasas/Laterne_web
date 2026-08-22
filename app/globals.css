@@ -60,17 +60,24 @@
   --brand-button-radius: 0.75rem;
   --brand-card-radius: 1rem;
   --admin-background: #101116;
-  --admin-surface: #191c24;
-  --admin-surface-elevated: #222733;
+  --admin-surface: #181a20;
+  --admin-surface-subtle: #14161b;
+  --admin-surface-elevated: #20232b;
+  --admin-surface-overlay: #20232a;
   --admin-text: #f5f7fb;
   --admin-muted: #a8b0bf;
-  --admin-border: rgb(255 255 255 / 0.13);
+  --admin-border: rgb(255 255 255 / 0.095);
+  --admin-border-strong: rgb(255 255 255 / 0.18);
   --admin-primary: #f472b6;
   --admin-primary-strong: #ec4899;
+  --admin-primary-soft: rgb(236 72 153 / 0.1);
   --admin-success: #52d6a3;
   --admin-warning: #f5c15d;
   --admin-danger: #fb7185;
   --admin-glow: rgb(236 72 153 / 0.14);
+  --admin-row-hover: rgb(255 255 255 / 0.035);
+  --admin-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2), 0 1px 0 rgb(255 255 255 / 0.025) inset;
+  --admin-shadow-md: 0 12px 28px rgb(0 0 0 / 0.2), 0 1px 0 rgb(255 255 255 / 0.035) inset;
   --color-primary: #ec4899;
   --color-secondary: #f5c542;
   --color-accent: #f9a8d4;
@@ -166,13 +173,62 @@ button {
 }
 /* Contenedor del panel administrativo: más ancho que la superficie pública. */
 .admin-shell-inner {
-  width: min(1536px, calc(100% - 1.5rem));
+  width: min(1600px, calc(100% - 1.25rem));
   margin-inline: auto;
 }
 @media (min-width: 640px) {
   .admin-shell-inner {
-    width: min(1536px, calc(100% - 2rem));
+    width: min(1600px, calc(100% - 2rem));
   }
+}
+
+@keyframes admin-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-skeleton {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.admin-row-enter {
+  animation: admin-row-enter 0.18s ease-out both;
+}
+
+.admin-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--admin-surface-elevated);
+}
+
+.admin-skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.045), transparent);
+  animation: admin-skeleton 1.4s ease-in-out infinite;
 }
 /* Plano del salón: retícula sutil y brillo de ambiente. */
 .salon-floor {
@@ -277,7 +333,9 @@ button {
   background: var(--admin-primary-strong, #ec4899);
   opacity: 0.2;
   flex-shrink: 0;
-  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .mega-accent-bar.is-active {
   opacity: 0.85;
@@ -346,12 +404,20 @@ button {
 
 /* ── Modal backdrop + panel ── */
 @keyframes modal-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes modal-backdrop-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 @keyframes modal-panel-in {
   from {
@@ -418,9 +484,19 @@ button {
   .modal-backdrop-in,
   .modal-backdrop-out,
   .modal-panel-in,
-  .modal-panel-out {
+  .modal-panel-out,
+  .admin-row-enter,
+  .admin-main > *,
+  .admin-skeleton::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+  .admin-theme [class*="animate-"] {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -433,11 +509,11 @@ button {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--admin-border, #3f3f46);
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   background: var(--admin-surface-elevated, #18181b);
-  padding: 0.75rem 1rem;
+  padding: 0.55rem 0.75rem;
   color: var(--admin-text, white);
-  min-height: 2.9rem;
+  min-height: 2.35rem;
 }
 .input:focus {
   outline: 2px solid #ec4899;
@@ -447,27 +523,95 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--brand-button-radius);
+  min-height: 2.25rem;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 76%, white 8%);
+  border-radius: 0.5rem;
   background: var(--brand-primary);
-  padding: 0.7rem 1.1rem;
-  font-weight: 700;
+  padding: 0.48rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 650;
   color: white;
 }
 .btn:hover {
-  filter: brightness(0.9);
+  filter: brightness(1.07);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--brand-primary) 18%, transparent);
 }
 .btn-secondary {
   background: var(--admin-surface-elevated, #27272a);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: none;
 }
 .admin-theme {
   color: var(--admin-text);
   font-size: 1rem;
   line-height: 1.55;
 }
-.admin-theme .card,
+.admin-shell {
+  background-color: var(--admin-background) !important;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.012) 1px, transparent 1px) !important;
+  background-size: 32px 32px !important;
+}
+.admin-main > * {
+  animation: admin-content-enter 0.2s ease-out both;
+}
 .admin-theme .admin-page-header {
+  background: transparent;
+}
+.admin-theme .card,
+.admin-theme .admin-card {
   border-color: var(--admin-border);
   background-color: var(--admin-surface);
+}
+.admin-theme [class~="rounded-3xl"] {
+  border-radius: 0.875rem;
+}
+.admin-theme [class~="rounded-2xl"] {
+  border-radius: 0.75rem;
+}
+.admin-theme
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="color"]
+  ) {
+  border-color: var(--admin-border);
+  background-color: var(--admin-surface-elevated);
+  color: var(--admin-text);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.admin-theme :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus {
+  border-color: color-mix(in srgb, var(--admin-primary) 58%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary) 11%, transparent);
+  outline: none;
+}
+.admin-theme textarea {
+  line-height: 1.55;
+}
+.admin-theme select option {
+  background: var(--admin-surface-overlay);
+  color: var(--admin-text);
+}
+.admin-theme table {
+  font-variant-numeric: tabular-nums;
+}
+.admin-theme .admin-control {
+  min-height: 2.25rem;
+}
+.admin-toolbar {
+  position: relative;
+  z-index: 20;
+}
+.admin-kpi-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  content: "";
+  background: var(--admin-primary-strong);
+  opacity: 0.72;
 }
 .admin-theme .label {
   display: block;
@@ -488,12 +632,16 @@ button {
   --admin-background: #17191d;
   --admin-surface: #24272d;
   --admin-surface-elevated: #2d323a;
+  --admin-surface-subtle: #1e2126;
+  --admin-surface-overlay: #2b2f36;
   --admin-glow: rgb(148 163 184 / 0.12);
 }
 .admin-theme-medianoche {
   --admin-background: #0e1726;
   --admin-surface: #172337;
   --admin-surface-elevated: #20314b;
+  --admin-surface-subtle: #121d2d;
+  --admin-surface-overlay: #1d2c43;
   --admin-glow: rgb(96 165 250 / 0.13);
 }
 .admin-theme-alto-contraste {
@@ -502,6 +650,7 @@ button {
   --admin-surface-elevated: #282d35;
   --admin-muted: #d1d5db;
   --admin-border: rgb(255 255 255 / 0.24);
+  --admin-border-strong: rgb(255 255 255 / 0.4);
   --admin-glow: rgb(255 255 255 / 0.1);
 }
 .platform-input {
@@ -1306,18 +1455,38 @@ button {
   transform: translate(-50%, -50%);
 }
 @keyframes ripple-expand {
-  0% { width: 0; height: 0; opacity: 0.22; }
-  100% { width: 120px; height: 120px; opacity: 0; }
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.22;
+  }
+  100% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
 }
 
 /* ── Public: product detail modal ── */
 @keyframes pub-modal-in {
-  from { opacity: 0; transform: scale(0.96) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 @keyframes pub-modal-out {
-  from { opacity: 1; transform: scale(1) translateY(0); }
-  to { opacity: 0; transform: scale(0.97) translateY(6px); }
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
 }
 .pub-modal-in {
   animation: pub-modal-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -1328,12 +1497,20 @@ button {
 
 /* ── Public: bottom-sheet slide up (mobile product detail / cart) ── */
 @keyframes pub-sheet-in {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 @keyframes pub-sheet-out {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
 }
 .pub-sheet-in {
   animation: pub-sheet-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -1344,8 +1521,14 @@ button {
 
 /* ── Public: floating cart bar entrance ── */
 @keyframes pub-bar-in {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .pub-bar-in {
   animation: pub-bar-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;

@@ -15,8 +15,10 @@ export function SectionHeader({
   return (
     <div className={`flex flex-wrap items-start justify-between gap-3 ${className ?? ""}`}>
       <div>
-        <h2 className="text-lg font-black text-zinc-100">{title}</h2>
-        {description && <p className="mt-1 text-sm text-[var(--admin-muted)]">{description}</p>}
+        <h2 className="text-base font-bold tracking-tight text-zinc-100 sm:text-lg">{title}</h2>
+        {description && (
+          <p className="mt-1 max-w-2xl text-sm leading-5 text-[var(--admin-muted)]">{description}</p>
+        )}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

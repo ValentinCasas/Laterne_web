@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { loadPurchaseOrder } from "@/lib/purchases";
-import { ComprasPedidoDetailClient } from "./client";
+import { ComprasPedidoDetailClient, type OrderDetail } from "./client";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +21,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function PedidoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await requirePermission("purchase.manage");
   const { id } = await params;
-  try {
-    const order = await loadPurchaseOrder(context.tenant.id, Number(id));
-    return (
-      <ComprasPedidoDetailClient
-        order={serialize(order) as any}
-        currency="ARS"
-      />
-    );
-  } catch {
-    notFound();
-  }
+  const order = await loadPurchaseOrder(context.tenant.id, Number(id)).catch(() => notFound());
+  return <ComprasPedidoDetailClient order={serialize(order) as unknown as OrderDetail} currency="ARS" />;
 }

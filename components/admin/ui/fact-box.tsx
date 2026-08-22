@@ -23,19 +23,15 @@ export function FactBox({
   };
   return (
     <div
-      className={`rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 sm:p-5 ${
+      className={`rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-[var(--admin-shadow-sm)] sm:p-5 ${
         className ?? ""
       }`}
     >
       <div className="flex items-center gap-2">
         {icon && <span className="text-[var(--admin-primary)]">{icon}</span>}
-        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-          {title}
-        </p>
+        <p className="text-[10px] font-bold uppercase tracking-[.16em] text-zinc-500">{title}</p>
       </div>
-      <div className={`mt-2 text-sm ${accents[tone] ?? accents.default}`}>
-        {children}
-      </div>
+      <div className={`mt-2 text-sm ${accents[tone] ?? accents.default}`}>{children}</div>
     </div>
   );
 }

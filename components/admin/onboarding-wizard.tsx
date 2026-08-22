@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, StatusBadge } from "@/components/admin/ui";
+import { AnimatedProgress, NumberFlow, PageHeader, StatusBadge } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from "@/lib/routes";
 
@@ -78,13 +78,10 @@ export function OnboardingWizard({
         section="onboarding"
       >
         <div className="mt-6 flex items-end gap-4">
-          <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
-            <span
-              className="block h-full rounded-full bg-pink-500 transition-all"
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <strong className="text-3xl text-pink-300">{percentage}%</strong>
+          <AnimatedProgress className="flex-1" label="Progreso de configuración" value={percentage} />
+          <strong className="text-3xl text-pink-300">
+            <NumberFlow value={percentage} suffix="%" />
+          </strong>
         </div>
         {publishedAt && (
           <p className="mt-3 text-sm text-emerald-300">
@@ -113,9 +110,7 @@ export function OnboardingWizard({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-black">{title}</h2>
-                     {automatic && (
-                       <StatusBadge status="Detectado" tone="success" />
-                     )}
+                    {automatic && <StatusBadge status="Detectado" tone="success" />}
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">{description}</p>
                   <Link className="mt-3 inline-block text-sm font-bold text-pink-300" href={stepHref(href)}>

@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, EmptyState, Drawer, FilterPanel, StatusBadge, ActionMenu, ActiveFilterChip } from "@/components/admin/ui";
+import {
+  PageHeader,
+  EmptyState,
+  Drawer,
+  FilterPanel,
+  StatusBadge,
+  ActionMenu,
+  ActiveFilterChip,
+  NumberFlow,
+} from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import type { KdsOrder, KdsPayload, KdsStation } from "@/lib/kds-data";
 import { allowedTransitions, asOrderType, type OrderType } from "@/lib/order-status";
@@ -139,10 +148,14 @@ function timerLevel(minutes: number, settings: KdsSettings): TimerLevel {
 
 const timerStyle: Record<TimerLevel, { text: string; card: string; badge: string }> = {
   ontime: { text: "text-zinc-300", card: "", badge: "bg-white/5 text-zinc-300" },
-  delayed: { text: "text-amber-300", card: "ring-2 ring-amber-500/40", badge: "bg-amber-500/15 text-amber-300" },
+  delayed: {
+    text: "text-amber-300",
+    card: "ring-2 ring-amber-500/40",
+    badge: "bg-amber-500/15 text-amber-300",
+  },
   critical: {
     text: "text-red-300",
-    card: "ring-2 ring-red-500/60 animate-pulse",
+    card: "border-red-400/55 ring-1 ring-red-500/35",
     badge: "bg-red-500/15 text-red-300",
   },
 };
@@ -283,6 +296,8 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
   const [showSettings, setShowSettings] = useState(false);
   const [showStations, setShowStations] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null);
+  const [dragTarget, setDragTarget] = useState<ColumnId | null>(null);
 
   const { chime } = useChime(settings.sound);
   const knownIds = useRef<Set<number>>(new Set(initial.orders.map((order) => order.id)));
@@ -426,10 +441,34 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
 
   const activeOrders = data.orders.filter((order) => order.status !== "delivered");
   const delayedCount = activeOrders.filter(
-    (order) => timerLevel(Math.floor((now - new Date(order.createdAt).getTime()) / 60_000), settings) !== "ontime",
+    (order) =>
+      timerLevel(Math.floor((now - new Date(order.createdAt).getTime()) / 60_000), settings) !== "ontime",
   ).length;
 
   const activeStations = data.stations.filter((station) => station.active);
+
+  /** @summary Resuelve el estado operativo representado por cada columna del KDS. */
+  function columnTarget(columnId: ColumnId): OrderStatus {
+    if (columnId === "nuevo") return "confirmed";
+    if (columnId === "preparando") return "preparing";
+    if (columnId === "listo") return "ready";
+    return "delivered";
+  }
+
+  /** @summary Valida y ejecuta un movimiento por drag and drop sin saltar transiciones de negocio. */
+  async function dropOrder(columnId: ColumnId) {
+    const order = data.orders.find((item) => item.id === draggedOrderId);
+    setDraggedOrderId(null);
+    setDragTarget(null);
+    if (!order) return;
+    const target = columnTarget(columnId);
+    if (
+      order.status === target ||
+      !buildPath(order.status as OrderStatus, asOrderType(order.orderType), target).length
+    )
+      return;
+    await advanceOrder(order, target);
+  }
 
   return (
     <section className="flex min-h-0 flex-col">
@@ -475,16 +514,28 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
           sourceFilter !== "all") && (
           <div className="flex flex-wrap items-center gap-1.5">
             {sectorFilter !== "all" && (
-              <ActiveFilterChip label={`Sector: ${sectorFilter === "none" ? "Sin mesa" : sectorFilter}`} onRemove={() => setSectorFilter("all")} />
+              <ActiveFilterChip
+                label={`Sector: ${sectorFilter === "none" ? "Sin mesa" : sectorFilter}`}
+                onRemove={() => setSectorFilter("all")}
+              />
             )}
             {stationFilter !== "all" && (
-              <ActiveFilterChip label={`Estación: ${stationFilter === "none" ? "Sin estación" : stationFilter}`} onRemove={() => setStationFilter("all")} />
+              <ActiveFilterChip
+                label={`Estación: ${stationFilter === "none" ? "Sin estación" : stationFilter}`}
+                onRemove={() => setStationFilter("all")}
+              />
             )}
             {channelFilter !== "all" && (
-              <ActiveFilterChip label={`Canal: ${modalityLabel[channelFilter] ?? channelFilter}`} onRemove={() => setChannelFilter("all")} />
+              <ActiveFilterChip
+                label={`Canal: ${modalityLabel[channelFilter] ?? channelFilter}`}
+                onRemove={() => setChannelFilter("all")}
+              />
             )}
             {sourceFilter !== "all" && (
-              <ActiveFilterChip label={`Origen: ${sourceName(sourceFilter)}`} onRemove={() => setSourceFilter("all")} />
+              <ActiveFilterChip
+                label={`Origen: ${sourceName(sourceFilter)}`}
+                onRemove={() => setSourceFilter("all")}
+              />
             )}
             <button
               className="text-xs font-bold text-zinc-400 hover:text-white"
@@ -503,24 +554,33 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
         <div className="ml-auto flex items-center gap-2 text-sm text-zinc-500">
           {delayedCount > 0 && (
             <span className="rounded-full bg-amber-500/15 px-3 py-1 font-black text-amber-300">
-              {delayedCount} demorad{delayedCount === 1 ? "o" : "os"}
+              <NumberFlow value={delayedCount} /> demorad{delayedCount === 1 ? "o" : "os"}
             </span>
           )}
           <span className="rounded-full bg-white/5 px-3 py-1 font-bold">
-            {activeOrders.length} activo{activeOrders.length === 1 ? "" : "s"}
+            <NumberFlow value={activeOrders.length} /> activo{activeOrders.length === 1 ? "" : "s"}
           </span>
         </div>
       </div>
 
       <Drawer open={showFilters} onClose={() => setShowFilters(false)} title="Filtros del monitor">
-        <FilterPanel title="Filtros activos" actions={
-          <button type="button" className="text-xs font-semibold text-zinc-400 hover:text-zinc-200" onClick={() => {
-            setSectorFilter("all");
-            setStationFilter("all");
-            setChannelFilter("all");
-            setSourceFilter("all");
-          }}>Limpiar todo</button>
-        }>
+        <FilterPanel
+          title="Filtros activos"
+          actions={
+            <button
+              type="button"
+              className="text-xs font-semibold text-zinc-400 hover:text-zinc-200"
+              onClick={() => {
+                setSectorFilter("all");
+                setStationFilter("all");
+                setChannelFilter("all");
+                setSourceFilter("all");
+              }}
+            >
+              Limpiar todo
+            </button>
+          }
+        >
           <div className="space-y-3">
             <div>
               <label className="text-sm font-bold text-zinc-300">Sector</label>
@@ -601,32 +661,77 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
             const columnOrders = visibleOrders.filter((order) => column.statuses.includes(order.status));
             return (
               <section
-                className={`w-[min(88vw,340px)] shrink-0 snap-start rounded-3xl border p-4 lg:w-auto lg:flex-1 ${column.border}`}
+                className={`flex w-[min(88vw,340px)] shrink-0 snap-start flex-col rounded-xl border p-3 shadow-[var(--admin-shadow-sm)] transition-[border-color,background-color,box-shadow] duration-150 lg:w-auto lg:flex-1 ${column.border} ${
+                  dragTarget === column.id
+                    ? "border-[var(--admin-primary)]/70 bg-[var(--admin-primary-soft)] shadow-[0_0_0_3px_var(--admin-primary-soft)]"
+                    : "bg-[var(--admin-surface-subtle)]"
+                }`}
                 key={column.id}
+                onDragOver={(event) => {
+                  const order = data.orders.find((item) => item.id === draggedOrderId);
+                  if (!order) return;
+                  const target = columnTarget(column.id);
+                  if (
+                    order.status === target ||
+                    !buildPath(order.status as OrderStatus, asOrderType(order.orderType), target).length
+                  )
+                    return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDragTarget(column.id);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragTarget(null);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  void dropOrder(column.id);
+                }}
               >
                 <header className="mb-3 flex items-center justify-between px-1 py-1">
                   <h2 className="flex items-center gap-2 font-black">
                     <span className={`h-2.5 w-2.5 rounded-full ${column.dot}`} />
                     {column.label}
                   </h2>
-                  <span className="rounded-full bg-black/30 px-2.5 py-1 text-xs font-bold">
-                    {columnOrders.length}
+                  <span className="rounded-full border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-2.5 py-1 text-xs font-bold">
+                    <NumberFlow value={columnOrders.length} />
                   </span>
                 </header>
-                <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-520px)] lg:min-h-[360px]">
+                <div className="admin-custom-scroll min-h-[360px] flex-1 space-y-3 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-24rem)]">
+                  {dragTarget === column.id && draggedOrderId !== null && (
+                    <div className="rounded-lg border border-dashed border-[var(--admin-primary)]/60 bg-[var(--admin-primary-soft)] p-3 text-center text-xs font-semibold text-[var(--admin-primary)]">
+                      Soltar en {column.label.toLocaleLowerCase("es")}
+                    </div>
+                  )}
                   {columnOrders.map((order) => (
-                    <KitchenCard
+                    <div
                       key={order.id}
-                      order={order}
-                      settings={settings}
-                      now={now}
-                      onOpen={() => setSelected(order)}
-                      onAdvance={() =>
-                        column.action && void advanceOrder(order, column.action.target)
+                      draggable={
+                        buildPath(order.status as OrderStatus, asOrderType(order.orderType), "delivered")
+                          .length > 0
                       }
-                      actionLabel={column.action?.label}
-                      onCancel={() => void cancelOrder(order)}
-                    />
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", String(order.id));
+                        setDraggedOrderId(order.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedOrderId(null);
+                        setDragTarget(null);
+                      }}
+                      className={`admin-row-enter transition-[transform,opacity] duration-150 ${draggedOrderId === order.id ? "scale-[1.02] opacity-55" : ""}`}
+                      aria-grabbed={draggedOrderId === order.id}
+                    >
+                      <KitchenCard
+                        order={order}
+                        settings={settings}
+                        now={now}
+                        onOpen={() => setSelected(order)}
+                        onAdvance={() => column.action && void advanceOrder(order, column.action.target)}
+                        actionLabel={column.action?.label}
+                        onCancel={() => void cancelOrder(order)}
+                      />
+                    </div>
                   ))}
                   {!columnOrders.length && (
                     <p className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-zinc-600">
@@ -651,11 +756,7 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
       )}
 
       {showSettings && (
-        <SettingsModal
-          settings={settings}
-          onChange={updateSettings}
-          onClose={() => setShowSettings(false)}
-        />
+        <SettingsModal settings={settings} onChange={updateSettings} onClose={() => setShowSettings(false)} />
       )}
 
       {showStations && (
@@ -699,18 +800,23 @@ function KitchenCard({
 
   return (
     <article
-      className={`relative rounded-3xl border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black/30 ${styles.card}`}
+      className={`relative rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-[var(--admin-shadow-md)] transition-[border-color,box-shadow] duration-150 hover:border-[var(--admin-border-strong)] ${styles.card}`}
     >
-      <button className="block w-full text-left" onClick={onOpen} type="button" aria-label={`Abrir ${order.reference}`}>
+      <button
+        className="block w-full text-left"
+        onClick={onOpen}
+        type="button"
+        aria-label={`Abrir ${order.reference}`}
+      >
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-widest text-[var(--admin-primary)]">
+            <p className="text-[11px] font-bold uppercase tracking-[.15em] text-[var(--admin-primary)]">
               {order.reference}
             </p>
-            <p className="mt-1 truncate text-lg font-black">{order.customerName}</p>
+            <p className="mt-1 truncate text-base font-bold">{order.customerName}</p>
           </div>
           <span
-            className={`shrink-0 rounded-xl px-3 py-1.5 text-base font-black tabular-nums ${styles.badge}`}
+            className={`shrink-0 rounded-lg border border-current/10 px-2.5 py-1 text-sm font-bold tabular-nums ${styles.badge}`}
           >
             {elapsedLabel(order.createdAt, now)}
           </span>
@@ -731,11 +837,11 @@ function KitchenCard({
             const extras = extrasText(item.extras);
             return (
               <div className="flex items-start gap-2.5" key={item.id}>
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/10 text-sm font-black">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm font-bold">
                   {item.quantity}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-base font-bold leading-tight">{item.productName}</p>
+                  <p className="text-sm font-semibold leading-tight text-zinc-100">{item.productName}</p>
                   {item.variantName && <p className="text-sm text-zinc-300">{item.variantName}</p>}
                   {extras && <p className="text-sm text-zinc-400">+ {extras}</p>}
                   {item.notes && <p className="text-sm italic text-amber-200/80">{item.notes}</p>}
@@ -749,7 +855,10 @@ function KitchenCard({
           {stations.length > 0 && (
             <p className="flex flex-wrap gap-1.5 pt-0.5">
               {stations.map((station) => (
-                <span key={station} className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
+                <span
+                  key={station}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold text-zinc-400"
+                >
                   <Icon name="gear" className="h-3 w-3" /> {station}
                 </span>
               ))}
@@ -760,10 +869,17 @@ function KitchenCard({
         <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
           <span>{sourceName(order.source)}</span>
           <span>·</span>
-          <span>{totalItems} {totalItems === 1 ? "ítem" : "ítems"}</span>
+          <span>
+            {totalItems} {totalItems === 1 ? "ítem" : "ítems"}
+          </span>
           <span>·</span>
           <span>{hourLabel(order.createdAt)}</span>
-          <StatusBadge status={order.status} tone={order.status === "cancelled" ? "danger" : order.status === "delivered" ? "success" : "warning"} />
+          <StatusBadge
+            status={order.status}
+            tone={
+              order.status === "cancelled" ? "danger" : order.status === "delivered" ? "success" : "warning"
+            }
+          />
         </p>
 
         {importantNote && (
@@ -777,7 +893,7 @@ function KitchenCard({
 
       <div className="mt-4 flex gap-2">
         {actionLabel && (
-          <button className="btn flex-1 py-4 text-lg font-black" onClick={onAdvance} type="button">
+          <button className="btn min-h-10 flex-1 text-sm font-bold" onClick={onAdvance} type="button">
             {actionLabel}
           </button>
         )}
@@ -876,7 +992,9 @@ function OrderDetailModal({
                     {extras && <p className="mt-1 text-sm text-zinc-400">+ {extras}</p>}
                     {item.notes && <p className="mt-1 text-sm italic text-amber-200/80">{item.notes}</p>}
                     {item.stationName && (
-                      <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-zinc-500"><Icon name="gear" className="h-3 w-3" /> {item.stationName}</p>
+                      <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-zinc-500">
+                        <Icon name="gear" className="h-3 w-3" /> {item.stationName}
+                      </p>
                     )}
                   </div>
                 );
@@ -941,9 +1059,7 @@ function OrderDetailModal({
         </div>
 
         <section className="mt-6">
-          <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">
-            Historial de cambios
-          </h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Historial de cambios</h3>
           {order.history.length === 0 ? (
             <p className="mt-2 text-sm text-zinc-500">Sin movimientos registrados.</p>
           ) : (
@@ -966,7 +1082,11 @@ function OrderDetailModal({
 
         <footer className="mt-7 grid gap-3 sm:grid-cols-2">
           {current === "received" || current === "confirmed" ? (
-            <button className="btn py-4 text-lg font-black" onClick={() => onAdvance("preparing")} type="button">
+            <button
+              className="btn py-4 text-lg font-black"
+              onClick={() => onAdvance("preparing")}
+              type="button"
+            >
               EMPEZAR PREPARACIÓN
             </button>
           ) : null}
@@ -976,7 +1096,11 @@ function OrderDetailModal({
             </button>
           ) : null}
           {current === "ready" ? (
-            <button className="btn py-4 text-lg font-black" onClick={() => onAdvance("delivered")} type="button">
+            <button
+              className="btn py-4 text-lg font-black"
+              onClick={() => onAdvance("delivered")}
+              type="button"
+            >
               ENTREGAR
             </button>
           ) : null}
@@ -1060,7 +1184,10 @@ function SettingsModal({
                   type="checkbox"
                   checked={settings.columns[column.id]}
                   onChange={(event) =>
-                    onChange({ ...settings, columns: { ...settings.columns, [column.id]: event.target.checked } })
+                    onChange({
+                      ...settings,
+                      columns: { ...settings.columns, [column.id]: event.target.checked },
+                    })
                   }
                 />
                 <span className={`h-2.5 w-2.5 rounded-full ${column.dot}`} />
@@ -1239,7 +1366,13 @@ function StationsModal({
     });
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) {
-      await Swal.fire({ title: "No se pudo renombrar", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "No se pudo renombrar",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
       return;
     }
     await refresh();
@@ -1281,12 +1414,21 @@ function StationsModal({
       onChanged();
     } else {
       const body = (await response.json().catch(() => ({}))) as { error?: string };
-      await Swal.fire({ title: "No se pudo eliminar", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "No se pudo eliminar",
+        text: body.error ?? "Intentá nuevamente.",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[120] grid place-items-center overflow-y-auto bg-black/85 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[120] grid place-items-center overflow-y-auto bg-black/85 p-4"
+      onClick={onClose}
+    >
       <article
         className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-zinc-950 p-6 sm:p-8"
         onClick={(event) => event.stopPropagation()}

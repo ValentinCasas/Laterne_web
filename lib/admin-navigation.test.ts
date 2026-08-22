@@ -29,6 +29,8 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/recetas",
       "/admin/inventario",
       "/admin/compras",
+      "/admin/compras/pedidos",
+      "/admin/compras/facturas",
       "/admin/gastos",
       "/admin/marca",
       "/admin/landing",
@@ -66,6 +68,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/reportes/sucursales",
       "/admin/reportes/consolidado",
       "/admin/reportes/ingenieria-menu",
+      "/admin/recepcionista-ia",
     ]);
     for (const link of adminNavLinks()) {
       expect(known.has(link.href), `ruta inexistente: ${link.href}`).toBe(true);
@@ -97,10 +100,10 @@ describe("definición centralizada de navegación administrativa", () => {
   });
 
   it("localiza el grupo correcto de una ruta", () => {
-    expect(adminGroupIdForHref("/admin/pedidos")).toBe("operacion");
-    expect(adminGroupIdForHref("/admin/productos")).toBe("productos");
-    expect(adminGroupIdForHref("/admin/compras")).toBe("compras");
-    expect(adminGroupIdForHref("/admin/inventario")).toBe("productos");
+    expect(adminGroupIdForHref("/admin/pedidos")).toBe("atencion");
+    expect(adminGroupIdForHref("/admin/productos")).toBe("catalogo");
+    expect(adminGroupIdForHref("/admin/compras/pedidos")).toBe("compras");
+    expect(adminGroupIdForHref("/admin/inventario")).toBe("catalogo");
     expect(adminGroupIdForHref("/admin/marca")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/sucursales")).toBe("administracion");
     expect(adminGroupIdForHref("/admin/usuarios")).toBe("administracion");

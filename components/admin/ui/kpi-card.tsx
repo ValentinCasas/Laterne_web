@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { NumberFlow } from "./number-flow";
 
 /** @summary Tarjeta KPI genérica para cualquier módulo del admin. */
 export function KpiCard({
@@ -8,6 +9,8 @@ export function KpiCard({
   change,
   icon,
   size = "default",
+  format,
+  locale = "es-AR",
 }: {
   label: string;
   value: string | number;
@@ -15,11 +18,13 @@ export function KpiCard({
   change?: { value: number; label: string };
   icon?: ReactNode;
   size?: "default" | "compact";
+  format?: Intl.NumberFormatOptions;
+  locale?: string;
 }) {
   const compact = size === "compact";
   return (
     <div
-      className={`group rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 transition-colors hover:border-white/20 sm:p-5 ${
+      className={`admin-kpi-card group relative overflow-hidden rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-[var(--admin-shadow-sm)] transition-[transform,border-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:shadow-[var(--admin-shadow-md)] sm:p-5 ${
         compact ? "" : "sm:p-6"
       }`}
     >
@@ -28,23 +33,17 @@ export function KpiCard({
           {label}
         </p>
         {icon && (
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-[var(--admin-primary)]">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-[var(--admin-primary)]">
             {icon}
           </span>
         )}
       </div>
-      <p
-        className={`mt-3 truncate font-black tabular-nums ${tone} ${
-          compact ? "text-2xl" : "text-3xl"
-        }`}
-      >
-        {typeof value === "number" ? value.toLocaleString("es-AR") : value}
+      <p className={`mt-3 truncate font-black tabular-nums ${tone} ${compact ? "text-2xl" : "text-3xl"}`}>
+        {typeof value === "number" ? <NumberFlow value={value} locale={locale} format={format} /> : value}
       </p>
       {change !== undefined && (
         <p
-          className={`mt-2 text-xs font-semibold ${
-            change.value >= 0 ? "text-emerald-300" : "text-red-300"
-          }`}
+          className={`mt-2 text-xs font-semibold ${change.value >= 0 ? "text-emerald-300" : "text-red-300"}`}
         >
           {change.value >= 0 ? "+" : ""}
           {change.value.toFixed(1)}% {change.label}

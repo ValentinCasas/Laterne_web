@@ -3,11 +3,24 @@
 import type { ReactNode } from "react";
 
 /** @summary Vista dividida con panel principal y lateral ajustable. */
-export function SplitView({ primary, sidebar, sidebarWidth = "320px" }: { primary: ReactNode; sidebar: ReactNode; sidebarWidth?: string }) {
+export function SplitView({
+  primary,
+  sidebar,
+  sidebarWidth = "320px",
+}: {
+  primary: ReactNode;
+  sidebar: ReactNode;
+  sidebarWidth?: string;
+}) {
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_var(--tw-sidebar-width)]" style={{ "--tw-sidebar-width": sidebarWidth } as React.CSSProperties}>
-      <section className="min-w-0 space-y-6">{primary}</section>
-      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:h-fit">{sidebar}</aside>
+    <div
+      className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_var(--tw-sidebar-width)]"
+      style={{ "--tw-sidebar-width": sidebarWidth } as React.CSSProperties}
+    >
+      <section className="min-w-0 space-y-5">{primary}</section>
+      <aside className="min-w-0 space-y-5 lg:sticky lg:top-5 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
+        {sidebar}
+      </aside>
     </div>
   );
 }

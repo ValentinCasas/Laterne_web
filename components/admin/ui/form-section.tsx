@@ -29,14 +29,18 @@ export function FormSection({
   columns?: FormColumns;
 }) {
   return (
-    <div className={`rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-6 ${className ?? ""}`}>
+    <section
+      className={`rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-[var(--admin-shadow-sm)] sm:p-5 ${className ?? ""}`}
+    >
       {(title || description) && (
-        <div className="mb-5 border-b border-white/5 pb-4">
-          {title && <h3 className="text-base font-black text-zinc-100">{title}</h3>}
-          {description && <p className="mt-1 text-xs text-[var(--admin-muted)]">{description}</p>}
+        <div className="mb-5 border-b border-[var(--admin-border)] pb-4">
+          {title && <h3 className="text-base font-bold text-zinc-100">{title}</h3>}
+          {description && (
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--admin-muted)]">{description}</p>
+          )}
         </div>
       )}
       <div className={`grid gap-4 ${COLUMN_CLASSES[columns]}`}>{children}</div>
-    </div>
+    </section>
   );
 }

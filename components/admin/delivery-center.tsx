@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, StatusBadge, ActionMenu } from "@/components/admin/ui";
+import { PageHeader, SearchBox, StatusBadge, ActionMenu, NumberFlow } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { canRetireDelivery } from "@/lib/delivery-drivers";
@@ -78,6 +78,8 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
   const [selected, setSelected] = useState<Delivery | null>(null);
   const [saving, setSaving] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+  const [draggedDeliveryId, setDraggedDeliveryId] = useState<number | null>(null);
+  const [draggedOverDriverId, setDraggedOverDriverId] = useState<number | null>(null);
 
   const hasMap = mapProviders.length > 0;
 
@@ -122,6 +124,15 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
     return counts;
   }, [deliveries]);
 
+  const driverCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const delivery of deliveries) {
+      const driverId = delivery.driverProfile?.id;
+      if (driverId) counts.set(driverId, (counts.get(driverId) ?? 0) + 1);
+    }
+    return counts;
+  }, [deliveries]);
+
   async function assignDriver(deliveryId: number, driverProfileId: number) {
     setSaving(true);
     try {
@@ -133,12 +144,25 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
       const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
       const delivery = body.delivery ? normalizeDeliveryDetail(body.delivery) : undefined;
       if (!response.ok || !delivery) {
-        await Swal.fire({ title: "No se pudo asignar", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
+        await Swal.fire({
+          title: "No se pudo asignar",
+          text: body.error ?? "Intentá nuevamente.",
+          icon: "error",
+          background: "#18181b",
+          color: "#fafafa",
+        });
         return;
       }
       setDeliveries((current) => current.map((d) => (d.id === deliveryId ? delivery : d)));
       setSelected((current) => (current?.id === deliveryId ? delivery : current));
-      await Swal.fire({ title: "Repartidor asignado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Repartidor asignado",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } finally {
       setSaving(false);
     }
@@ -155,7 +179,13 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
       const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
       const delivery = body.delivery ? normalizeDeliveryDetail(body.delivery) : undefined;
       if (!response.ok || !delivery) {
-        await Swal.fire({ title: "No se pudo actualizar", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
+        await Swal.fire({
+          title: "No se pudo actualizar",
+          text: body.error ?? "Intentá nuevamente.",
+          icon: "error",
+          background: "#18181b",
+          color: "#fafafa",
+        });
         return;
       }
       setDeliveries((current) => current.map((d) => (d.id === deliveryId ? delivery : d)));
@@ -187,12 +217,26 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
       const body = (await response.json().catch(() => ({}))) as { delivery?: Delivery; error?: string };
       const delivery = body.delivery ? normalizeDeliveryDetail(body.delivery) : undefined;
       if (!response.ok || !delivery) {
-        await Swal.fire({ title: "No se pudo anular", text: body.error ?? "Intentá nuevamente.", icon: "error", background: "#18181b", color: "#fafafa" });
+        await Swal.fire({
+          title: "No se pudo anular",
+          text: body.error ?? "Intentá nuevamente.",
+          icon: "error",
+          background: "#18181b",
+          color: "#fafafa",
+        });
         return;
       }
       setDeliveries((current) => current.map((d) => (d.id === deliveryId ? delivery : d)));
       setSelected((current) => (current?.id === deliveryId ? delivery : current));
-      await Swal.fire({ title: "Entrega anulada", text: "Las cantidades volvieron al pedido.", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Entrega anulada",
+        text: "Las cantidades volvieron al pedido.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } finally {
       setSaving(false);
     }
@@ -222,7 +266,7 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
             !filterStatus ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white"
           }`}
         >
-          Todos ({deliveries.length})
+          Todos (<NumberFlow value={deliveries.length} />)
         </button>
         {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => (
           <button
@@ -233,27 +277,102 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
               filterStatus === status ? statusColor(status) : "text-zinc-400 hover:text-white"
             }`}
           >
-            {STATUS_LABELS[status]}{statusCounts[status] ? ` ${statusCounts[status]}` : ""}
+            {STATUS_LABELS[status]}
+            {statusCounts[status] ? (
+              <>
+                {" "}
+                <NumberFlow value={statusCounts[status]} />
+              </>
+            ) : (
+              ""
+            )}
           </button>
         ))}
       </div>
 
       {/* Toolbar compacta */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <SearchBox value={filterQ} onChange={setFilterQ} placeholder="Buscar por número, pedido o cliente…" className="min-w-[200px] flex-1" />
-        <select className="input w-auto text-xs" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} aria-label="Sucursal">
+        <SearchBox
+          value={filterQ}
+          onChange={setFilterQ}
+          placeholder="Buscar por número, pedido o cliente…"
+          className="min-w-[200px] flex-1"
+        />
+        <select
+          className="input w-auto text-xs"
+          value={filterBranch}
+          onChange={(e) => setFilterBranch(e.target.value)}
+          aria-label="Sucursal"
+        >
           <option value="">Todas las sucursales</option>
           {branches.map((branch) => (
-            <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
+            <option key={branch.id} value={String(branch.id)}>
+              {branch.name}
+            </option>
           ))}
         </select>
-        <select className="input w-auto text-xs" value={filterDriver} onChange={(e) => setFilterDriver(e.target.value)} aria-label="Repartidor">
+        <select
+          className="input w-auto text-xs"
+          value={filterDriver}
+          onChange={(e) => setFilterDriver(e.target.value)}
+          aria-label="Repartidor"
+        >
           <option value="">Todos los repartidores</option>
           {drivers.map((driver) => (
-            <option key={driver.id} value={String(driver.id)}>{driver.name}</option>
+            <option key={driver.id} value={String(driver.id)}>
+              {driver.name}
+            </option>
           ))}
         </select>
       </div>
+
+      {drivers.length > 0 && (
+        <div
+          className="admin-custom-scroll mb-3 hidden gap-2 overflow-x-auto pb-1 md:flex"
+          aria-label="Asignación rápida de repartidores"
+        >
+          <div className="flex shrink-0 items-center px-2 text-[10px] font-bold uppercase tracking-[.14em] text-[var(--admin-muted)]">
+            Arrastrá una entrega
+          </div>
+          {drivers.map((driver) => (
+            <div
+              key={driver.id}
+              onDragOver={(event) => {
+                if (draggedDeliveryId === null || saving) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDraggedOverDriverId(driver.id);
+              }}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                  setDraggedOverDriverId(null);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const deliveryId = draggedDeliveryId;
+                setDraggedDeliveryId(null);
+                setDraggedOverDriverId(null);
+                if (deliveryId !== null) void assignDriver(deliveryId, driver.id);
+              }}
+              className={`flex min-w-40 shrink-0 items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color,box-shadow] duration-150 ${
+                draggedOverDriverId === driver.id
+                  ? "border-[var(--admin-primary)]/70 bg-[var(--admin-primary-soft)] shadow-[0_0_0_3px_var(--admin-primary-soft)]"
+                  : "border-[var(--admin-border)] bg-[var(--admin-surface)]"
+              }`}
+            >
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--admin-surface-elevated)] text-[10px] font-bold text-zinc-300">
+                {driver.name.slice(0, 2).toLocaleUpperCase("es")}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-semibold text-zinc-200">{driver.name}</span>
+                <span className="block text-[10px] text-[var(--admin-muted)]">
+                  <NumberFlow value={driverCounts.get(driver.id) ?? 0} /> asignadas
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Layout split */}
       <div className="flex min-h-0 flex-1 gap-3 overflow-hidden">
@@ -261,7 +380,7 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
         <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] lg:w-2/5">
           <div className="shrink-0 border-b border-[var(--admin-border)] px-4 py-2.5">
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
-              Entregas ({visible.length})
+              Entregas (<NumberFlow value={visible.length} />)
             </span>
           </div>
           <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -274,18 +393,35 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
                 {visible.map((delivery) => (
                   <button
                     key={delivery.id}
-                    className={`w-full px-4 py-3 text-left transition-colors hover:bg-white/[0.02] ${
-                      selected?.id === delivery.id ? "bg-pink-500/[0.06]" : ""
-                    }`}
+                    className={`admin-row-enter w-full px-4 py-3 text-left transition-[transform,opacity,background-color] duration-150 hover:bg-[var(--admin-row-hover)] ${
+                      selected?.id === delivery.id
+                        ? "bg-[var(--admin-primary-soft)] shadow-[inset_2px_0_var(--admin-primary)]"
+                        : ""
+                    } ${draggedDeliveryId === delivery.id ? "scale-[.99] opacity-55" : ""}`}
                     onClick={() => {
                       setSelected(delivery);
                       setShowMobileDetail(true);
                     }}
+                    draggable={!saving && !["DELIVERED", "CANCELLED"].includes(delivery.status)}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", String(delivery.id));
+                      setDraggedDeliveryId(delivery.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedDeliveryId(null);
+                      setDraggedOverDriverId(null);
+                    }}
+                    aria-grabbed={draggedDeliveryId === delivery.id}
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusColor(delivery.status).split(" ")[0]}`} />
+                      <span
+                        className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusColor(delivery.status).split(" ")[0]}`}
+                      />
                       <span className="truncate text-sm font-bold text-white">{delivery.customerName}</span>
-                      <span className="ml-auto shrink-0 text-xs text-[var(--admin-muted)]">{delivery.number}</span>
+                      <span className="ml-auto shrink-0 text-xs text-[var(--admin-muted)]">
+                        {delivery.number}
+                      </span>
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--admin-muted)]">
                       <span>{delivery.order?.reference ?? "—"}</span>
@@ -306,9 +442,11 @@ export function DeliveryCenter({ initialDeliveries, branches, drivers, mapProvid
         </div>
 
         {/* Panel derecho: detalle */}
-        <div className={`hidden flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 lg:block ${
-          !selected ? "items-center justify-center" : ""
-        }`}>
+        <div
+          className={`hidden flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 lg:block ${
+            !selected ? "items-center justify-center" : ""
+          }`}
+        >
           {selected ? (
             <DeliveryDetailPanel
               delivery={selected}
@@ -387,18 +525,40 @@ function DeliveryDetailPanel({
         <ActionMenu
           align="right"
           items={[
-            { label: "Ver pedido origen", onClick: () => window.open(adminHrefFromPathname(pathname, `/admin/pedidos?id=${delivery.order?.id ?? ""}`), "_blank") },
-            { label: "Ver remito", onClick: () => window.open(adminHrefFromPathname(pathname, `/admin/entregas/${delivery.id}`), "_blank") },
+            {
+              label: "Ver pedido origen",
+              onClick: () =>
+                window.open(
+                  adminHrefFromPathname(pathname, `/admin/pedidos?id=${delivery.order?.id ?? ""}`),
+                  "_blank",
+                ),
+            },
+            {
+              label: "Ver remito",
+              onClick: () =>
+                window.open(adminHrefFromPathname(pathname, `/admin/entregas/${delivery.id}`), "_blank"),
+            },
             { label: "Anular entrega", tone: "danger", onClick: () => onReverse(delivery.id) },
           ]}
         />
       </div>
 
-      <StatusBadge status={statusLabel(delivery.status)} tone={delivery.status === "DELIVERED" ? "success" : delivery.status === "INCIDENT" || delivery.status === "FAILED" ? "danger" : "warning"} />
+      <StatusBadge
+        status={statusLabel(delivery.status)}
+        tone={
+          delivery.status === "DELIVERED"
+            ? "success"
+            : delivery.status === "INCIDENT" || delivery.status === "FAILED"
+              ? "danger"
+              : "warning"
+        }
+      />
 
       {/* Cliente */}
       <section className="rounded-xl border border-[var(--admin-border)] p-4">
-        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">Cliente</h4>
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+          Cliente
+        </h4>
         <p className="text-sm font-semibold text-white">{delivery.customerName}</p>
         <p className="text-xs text-[var(--admin-muted)]">{delivery.contactPhone}</p>
         <p className="text-xs text-[var(--admin-muted)]">{delivery.deliveryAddress}</p>
@@ -406,17 +566,33 @@ function DeliveryDetailPanel({
 
       {/* Pedido */}
       <section className="rounded-xl border border-[var(--admin-border)] p-4">
-        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">Pedido</h4>
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+          Pedido
+        </h4>
         <dl className="space-y-1.5 text-sm">
-          <div className="flex justify-between"><span className="text-[var(--admin-muted)]">Estado</span><StatusBadge status={orderStatusLabel(delivery.order?.status ?? "—")} tone={delivery.order?.status === "delivered" ? "success" : "info"} /></div>
-          <div className="flex justify-between"><span className="text-[var(--admin-muted)]">Referencia</span><strong>{delivery.order?.reference ?? "—"}</strong></div>
-          <div className="flex justify-between"><span className="text-[var(--admin-muted)]">Total</span><strong className="tabular-nums">{delivery.order ? String(delivery.order.total) : "—"}</strong></div>
+          <div className="flex justify-between">
+            <span className="text-[var(--admin-muted)]">Estado</span>
+            <StatusBadge
+              status={orderStatusLabel(delivery.order?.status ?? "—")}
+              tone={delivery.order?.status === "delivered" ? "success" : "info"}
+            />
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[var(--admin-muted)]">Referencia</span>
+            <strong>{delivery.order?.reference ?? "—"}</strong>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[var(--admin-muted)]">Total</span>
+            <strong className="tabular-nums">{delivery.order ? String(delivery.order.total) : "—"}</strong>
+          </div>
         </dl>
       </section>
 
       {/* Items */}
       <section className="rounded-xl border border-[var(--admin-border)] p-4">
-        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">Items ({delivery.items?.length ?? 0})</h4>
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+          Items ({delivery.items?.length ?? 0})
+        </h4>
         <div className="divide-y divide-[var(--admin-border)]/50">
           {(delivery.items ?? []).map((item) => (
             <div key={item.id} className="flex items-center justify-between py-1.5 text-sm">
@@ -429,16 +605,24 @@ function DeliveryDetailPanel({
 
       {/* Repartidor */}
       <section className="rounded-xl border border-[var(--admin-border)] p-4">
-        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">Repartidor</h4>
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+          Repartidor
+        </h4>
         <select
           className="input w-full text-xs"
           defaultValue={delivery.driverProfile?.id ? String(delivery.driverProfile.id) : ""}
-          onChange={(e) => { const val = e.target.value; if (!val) return; onAssignDriver(delivery.id, Number(val)); }}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (!val) return;
+            onAssignDriver(delivery.id, Number(val));
+          }}
           aria-label="Asignar repartidor"
         >
           <option value="">Asignar repartidor…</option>
           {drivers.map((driver) => (
-            <option key={driver.id} value={String(driver.id)}>{driver.name}</option>
+            <option key={driver.id} value={String(driver.id)}>
+              {driver.name}
+            </option>
           ))}
         </select>
         {delivery.driverProfile && <p className="mt-1.5 text-sm text-white">{delivery.driverProfile.name}</p>}
@@ -446,7 +630,9 @@ function DeliveryDetailPanel({
 
       {/* Transiciones de estado */}
       <section className="rounded-xl border border-[var(--admin-border)] p-4">
-        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">Cambiar estado</h4>
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+          Cambiar estado
+        </h4>
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => {
             const blocked = status === "PICKED_UP" && !canRetireDelivery(delivery.order?.status);
@@ -475,8 +661,12 @@ function DeliveryDetailPanel({
 
       {hasMap && delivery.latitude && delivery.longitude && (
         <section className="rounded-xl border border-[var(--admin-border)] p-4">
-          <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">Ubicación</h4>
-          <p className="text-xs text-[var(--admin-muted)]">Lat: {delivery.latitude} · Lng: {delivery.longitude}</p>
+          <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+            Ubicación
+          </h4>
+          <p className="text-xs text-[var(--admin-muted)]">
+            Lat: {delivery.latitude} · Lng: {delivery.longitude}
+          </p>
         </section>
       )}
     </div>

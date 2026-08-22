@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export type Density = "compact" | "normal" | "comfortable";
 
@@ -31,7 +31,10 @@ type ViewOptionsProps<T extends string> = {
   onChange?: (options: ViewOptions<T>) => void;
 };
 
-function loadOptions<T extends string>(storageKey: string, columns: Array<{ key: T; label: string }>): ViewOptions<T> {
+function loadOptions<T extends string>(
+  storageKey: string,
+  columns: Array<{ key: T; label: string }>,
+): ViewOptions<T> {
   try {
     const stored = window.localStorage.getItem(`${STORAGE_KEY}:${storageKey}`);
     if (!stored) {
@@ -71,8 +74,25 @@ function saveOptions(storageKey: string, options: ViewOptions<string>) {
 export function ViewOptions<T extends string>({ storageKey, columns, onChange }: ViewOptionsProps<T>) {
   const [options, setOptions] = useState<ViewOptions<T>>(() => loadOptions(storageKey, columns));
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const visibleColumnKeys = useMemo(() => new Set(options.visibleColumns), [options.visibleColumns]);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
 
   function update(patch: Partial<ViewOptions<T>>) {
     const next = { ...options, ...patch };
@@ -103,17 +123,17 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-zinc-300 transition-colors hover:bg-white/10"
+        className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-3 text-sm font-semibold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white"
       >
         <span>Columnas / Vista</span>
         <span className="text-xs text-zinc-500">▼</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
+        <div className="dropdown-enter absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-4 shadow-2xl">
           <div className="space-y-4">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Densidad</label>
@@ -133,21 +153,33 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Filas por página</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Filas por página
+              </label>
               <select
                 value={options.pageSize}
                 onChange={(e) => update({ pageSize: Number(e.target.value) })}
                 className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 outline-none focus:border-pink-500/50"
               >
                 {[10, 20, 50, 100].map((size) => (
-                  <option key={size} value={size}>{size}</option>
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Columnas</label>
-                <button type="button" onClick={resetColumns} className="text-[10px] font-semibold text-pink-300 hover:text-pink-200">Restablecer</button>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  Columnas
+                </label>
+                <button
+                  type="button"
+                  onClick={resetColumns}
+                  className="text-[10px] font-semibold text-pink-300 hover:text-pink-200"
+                >
+                  Restablecer
+                </button>
               </div>
               <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
                 {options.columnOrder.map((key) => {
@@ -155,14 +187,19 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
                   if (!column) return null;
                   const visible = visibleColumnKeys.has(key);
                   return (
-                    <div key={key} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5">
+                    <div
+                      key={key}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5"
+                    >
                       <input
                         type="checkbox"
                         checked={visible}
                         onChange={() => toggleColumn(key)}
                         className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink-500 focus:ring-pink-500"
                       />
-                      <span className={`flex-1 text-sm ${visible ? "text-zinc-200" : "text-zinc-500"}`}>{column.label}</span>
+                      <span className={`flex-1 text-sm ${visible ? "text-zinc-200" : "text-zinc-500"}`}>
+                        {column.label}
+                      </span>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"

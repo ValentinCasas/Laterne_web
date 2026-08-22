@@ -2,9 +2,15 @@
 
 import type { ReactNode } from "react";
 import { useViewMode, ViewModeToggle, type ViewMode } from "@/components/admin/view-mode-toggle";
-import { DENSITY_CLASSES, DENSITY_CELL_CLASSES } from "./view-options";
+import { DENSITY_CELL_CLASSES } from "./view-options";
 
-type Column = { key: string; label: string; align?: "left" | "right"; width?: string; hideOnMobile?: boolean };
+type Column = {
+  key: string;
+  label: string;
+  align?: "left" | "right";
+  width?: string;
+  hideOnMobile?: boolean;
+};
 
 /**
  * @summary Tabla de datos consistente con header sticky, hover, acciones, estado vacío,
@@ -66,7 +72,9 @@ export function DataTable({
   const renderLabelValue = (row: Record<string, unknown>) =>
     bodyColumns.map((column) => (
       <div key={column.key} className="flex items-center justify-between gap-3">
-        <dt className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">{column.label}</dt>
+        <dt className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--admin-muted)]">
+          {column.label}
+        </dt>
         <dd className={`min-w-0 text-right font-semibold ${compact ? "text-xs" : "text-sm"}`}>
           {row[column.key] as ReactNode}
         </dd>
@@ -75,6 +83,13 @@ export function DataTable({
 
   const renderRowActions = (row: Record<string, unknown>) =>
     rowActions && <div onClick={(event) => event.stopPropagation()}>{rowActions(row)}</div>;
+
+  function handleRowPointer(event: React.MouseEvent, row: Record<string, unknown>) {
+    if (!onRowClick) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("a, button, input, select, textarea, [role='menuitem']")) return;
+    onRowClick(row);
+  }
 
   if (isCards) {
     return (
@@ -88,10 +103,21 @@ export function DataTable({
           {data.map((row, rowIndex) => (
             <div
               key={keyExtractor(row, rowIndex)}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 ${
+              onClick={(event) => handleRowPointer(event, row)}
+              onKeyDown={
+                onRowClick
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onRowClick ? 0 : undefined}
+              className={`admin-row-enter rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-[var(--admin-shadow-sm)] ${
                 compact ? "p-3" : "p-4"
-              } transition-colors duration-150 hover:bg-white/[0.02] ${onRowClick ? "cursor-pointer" : ""}`}
+              } transition-[transform,border-color,background-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:bg-[var(--admin-row-hover)] hover:shadow-[var(--admin-shadow-md)] ${onRowClick ? "cursor-pointer" : ""}`}
             >
               <div className={`flex items-start justify-between gap-3 ${compact ? "text-sm" : "text-base"}`}>
                 <div className="font-bold">{row[titleColumn.key] as ReactNode}</div>
@@ -117,8 +143,19 @@ export function DataTable({
           {data.map((row, rowIndex) => (
             <div
               key={`mobile-${keyExtractor(row, rowIndex)}`}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 p-3 transition-colors duration-150 hover:bg-white/[0.02] cursor-pointer"
+              onClick={(event) => handleRowPointer(event, row)}
+              onKeyDown={
+                onRowClick
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onRowClick ? 0 : undefined}
+              className={`admin-row-enter rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-[var(--admin-shadow-sm)] transition-colors duration-150 hover:bg-[var(--admin-row-hover)] ${onRowClick ? "cursor-pointer" : ""}`}
             >
               <div className="flex items-start justify-between gap-3 text-sm">
                 <div className="font-bold">{row[titleColumn.key] as ReactNode}</div>
@@ -129,10 +166,12 @@ export function DataTable({
           ))}
         </div>
       </div>
-      <div className="hidden overflow-x-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 sm:block">
+      <div className="hidden max-h-[calc(100dvh-19rem)] overflow-auto rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-[var(--admin-shadow-sm)] sm:block">
         <table className={`w-full text-left text-sm`}>
-          <thead>
-            <tr className={`border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)] ${cellClass}`}>
+          <thead className="sticky top-0 z-10">
+            <tr
+              className={`border-b border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-[10px] uppercase tracking-[.12em] text-[var(--admin-muted)] ${cellClass}`}
+            >
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -149,8 +188,19 @@ export function DataTable({
             {data.map((row, rowIndex) => (
               <tr
                 key={keyExtractor(row, rowIndex)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={`transition-colors duration-150 hover:bg-white/[0.02] ${onRowClick ? "cursor-pointer" : ""}`}
+                onClick={(event) => handleRowPointer(event, row)}
+                onKeyDown={
+                  onRowClick
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onRowClick(row);
+                        }
+                      }
+                    : undefined
+                }
+                tabIndex={onRowClick ? 0 : undefined}
+                className={`admin-row-enter transition-colors duration-150 hover:bg-[var(--admin-row-hover)] focus-visible:bg-[var(--admin-row-hover)] ${onRowClick ? "cursor-pointer" : ""}`}
               >
                 {columns.map((column) => (
                   <td key={column.key} style={{ textAlign: column.align ?? "left" }} className={cellClass}>

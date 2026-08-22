@@ -48,34 +48,44 @@ export function UserAvatar({
   src,
   size = "md",
   className,
+  status,
 }: {
   name: string;
   src?: string | null;
   size?: AvatarSize;
   className?: string;
+  status?: "online" | "away";
 }) {
   const [errored, setErrored] = useState(false);
   const showImage = Boolean(src) && !errored;
 
-  if (showImage) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src!}
-        alt={name}
-        referrerPolicy="no-referrer"
-        onError={() => setErrored(true)}
-        className={`${SIZES[size]} shrink-0 rounded-full object-cover overflow-hidden flex-shrink-0 ${className ?? ""}`}
-      />
-    );
-  }
-
-  return (
+  const visual = showImage ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src!}
+      alt={name}
+      referrerPolicy="no-referrer"
+      onError={() => setErrored(true)}
+      className={`${SIZES[size]} shrink-0 rounded-full object-cover overflow-hidden flex-shrink-0 ${className ?? ""}`}
+    />
+  ) : (
     <span
       aria-hidden="true"
       className={`${SIZES[size]} grid shrink-0 place-items-center rounded-full font-black ${colorFor(name)} ${className ?? ""}`}
     >
       {initials(name)}
+    </span>
+  );
+
+  if (!status) return visual;
+  return (
+    <span className="relative inline-grid shrink-0">
+      {visual}
+      <span
+        className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[var(--admin-surface-overlay)] ${status === "online" ? "bg-emerald-400" : "bg-amber-400"}`}
+        aria-label={status === "online" ? "En línea" : "Ausente"}
+        title={status === "online" ? "En línea" : "Ausente"}
+      />
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { ComprasAlbaranDetailClient } from "./client";
+import { ComprasAlbaranDetailClient, type AlbaranDetail } from "./client";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +52,14 @@ export default async function AlbaranDetailPage({ params }: { params: Promise<{ 
       invoices: {
         include: {
           invoice: {
-            select: { id: true, number: true, status: true, total: true, paidAmount: true, documentDate: true },
+            select: {
+              id: true,
+              number: true,
+              status: true,
+              total: true,
+              paidAmount: true,
+              documentDate: true,
+            },
           },
         },
       },
@@ -63,5 +70,7 @@ export default async function AlbaranDetailPage({ params }: { params: Promise<{ 
     return <div className="p-8 text-center text-[var(--admin-muted)]">Albarán no encontrado.</div>;
   }
 
-  return <ComprasAlbaranDetailClient receipt={serialize(receipt) as any} currency="ARS" />;
+  return (
+    <ComprasAlbaranDetailClient receipt={serialize(receipt) as unknown as AlbaranDetail} currency="ARS" />
+  );
 }

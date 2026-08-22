@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SectionHeader, StatusBadge, EmptyState, FormSection, DocumentLines, RelatedDocuments } from "@/components/admin/ui";
+import {
+  PageHeader,
+  SectionHeader,
+  StatusBadge,
+  EmptyState,
+  FormSection,
+  DocumentLines,
+  RelatedDocuments,
+  NumberFlow,
+} from "@/components/admin/ui";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
@@ -133,6 +142,8 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<OrderTypeFilter>("all");
   const [selected, setSelected] = useState<AdminOrder | null>(null);
+  const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null);
+  const [dragTarget, setDragTarget] = useState<OrderStatus | null>(null);
 
   /** @summary Abre el detalle del pedido indicado por `?id=` al cargar la página. */
   useEffect(() => {
@@ -203,6 +214,19 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
           }
         : current,
     );
+  }
+
+  /** @summary Valida y aplica un cambio de columna iniciado por drag and drop. */
+  async function dropOrder(target: OrderStatus) {
+    const order = orders.find((item) => item.id === draggedOrderId);
+    setDragTarget(null);
+    setDraggedOrderId(null);
+    if (!order || order.status === target) return;
+    const valid = allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).includes(
+      target,
+    );
+    if (!valid) return;
+    await updateStatus(order, target);
   }
 
   /** @summary Crea un comprobante para el pedido y habilita la vista de impresión. */
@@ -311,7 +335,9 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                 placeholder="Buscar…"
                 className="w-48 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 pl-8 text-xs text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-white/20 focus:bg-white/[.07]"
               />
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-zinc-500"><Icon name="search" className="h-3.5 w-3.5" /></span>
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-zinc-500">
+                <Icon name="search" className="h-3.5 w-3.5" />
+              </span>
             </div>
           </div>
         }
@@ -338,7 +364,11 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
           >
             {option.label}
             <span className="ml-1.5 text-[10px] opacity-60">
-              {orders.filter((order) => option.value === "all" || order.orderType === option.value).length}
+              <NumberFlow
+                value={
+                  orders.filter((order) => option.value === "all" || order.orderType === option.value).length
+                }
+              />
             </span>
           </button>
         ))}
@@ -348,25 +378,81 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         <EmptyState
           title="Todavía no recibiste pedidos"
           description="Los pedidos que hagan tus clientes desde la carta aparecerán acá. También podés probar con una orden de prueba usando el enlace público de tu carta."
-          action={<Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin")}>Ir al resumen</Link>}
+          action={
+            <Link className="btn mt-6" href={adminHrefFromPathname(pathname, "/admin")}>
+              Ir al resumen
+            </Link>
+          }
         />
       ) : (
-        <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">              {orderStatuses.map((status) => {
+        <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">
+          {" "}
+          {orderStatuses.map((status) => {
             const statusOrders = visibleOrders.filter((order) => order.status === status);
             return (
               <section
-                className={`w-[min(86vw,320px)] shrink-0 snap-start rounded-2xl border ${statusStyle[status]}`}
+                className={`flex max-h-[calc(100dvh-17rem)] w-[min(86vw,320px)] shrink-0 snap-start flex-col overflow-hidden rounded-xl border shadow-[var(--admin-shadow-sm)] transition-[border-color,background-color,box-shadow] duration-150 ${statusStyle[status]} ${
+                  dragTarget === status
+                    ? "border-[var(--admin-primary)]/70 bg-[var(--admin-primary-soft)] shadow-[0_0_0_3px_var(--admin-primary-soft)]"
+                    : ""
+                }`}
                 key={status}
+                onDragOver={(event) => {
+                  const order = orders.find((item) => item.id === draggedOrderId);
+                  if (!order) return;
+                  const valid = allowedTransitions(
+                    order.status as OrderStatus,
+                    asOrderType(order.orderType),
+                  ).includes(status);
+                  if (!valid) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDragTarget(status);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragTarget(null);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  void dropOrder(status);
+                }}
               >
                 <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[.06] bg-[var(--admin-surface)] px-3 py-2.5">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">{orderStatusLabel(status)}</h3>
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-zinc-500">{statusOrders.length}</span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                    {orderStatusLabel(status)}
+                  </h3>
+                  <span className="rounded-full border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-2 py-0.5 text-[10px] font-bold text-zinc-400">
+                    <NumberFlow value={statusOrders.length} />
+                  </span>
                 </header>
-                <div className="max-h-[64vh] space-y-2 overflow-y-auto overscroll-contain p-2.5">
+                <div className="admin-custom-scroll min-h-28 flex-1 space-y-2 overflow-y-auto overscroll-contain p-2.5">
+                  {dragTarget === status && draggedOrderId !== null && (
+                    <div className="rounded-lg border border-dashed border-[var(--admin-primary)]/60 bg-[var(--admin-primary-soft)] p-3 text-center text-[11px] font-semibold text-[var(--admin-primary)]">
+                      Soltar para mover a {orderStatusLabel(status).toLocaleLowerCase("es")}
+                    </div>
+                  )}
                   {statusOrders.map((order) => (
                     <article
-                      className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 transition-all duration-150 hover:border-white/[.15] hover:shadow-md"
+                      className={`admin-row-enter rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-[var(--admin-shadow-sm)] transition-[transform,opacity,border-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:shadow-[var(--admin-shadow-md)] ${
+                        draggedOrderId === order.id
+                          ? "scale-[1.02] border-[var(--admin-primary)]/60 opacity-55 shadow-xl"
+                          : ""
+                      }`}
                       key={order.id}
+                      draggable={
+                        allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).length >
+                        0
+                      }
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", String(order.id));
+                        setDraggedOrderId(order.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedOrderId(null);
+                        setDragTarget(null);
+                      }}
+                      aria-grabbed={draggedOrderId === order.id}
                     >
                       <button
                         className="block w-full text-left"
@@ -383,26 +469,24 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                                 {elapsedLabel(order.createdAt)}
                               </span>
                             </div>
-                            <h3 className="mt-0.5 truncate text-sm font-bold text-white">{order.customerName}</h3>
+                            <h3 className="mt-0.5 truncate text-sm font-bold text-white">
+                              {order.customerName}
+                            </h3>
                           </div>
-                          <span className="shrink-0 text-sm font-bold tabular-nums text-white">{formatPrice(order.total, order.currency)}</span>
+                          <span className="shrink-0 text-sm font-bold tabular-nums text-white">
+                            {formatPrice(order.total, order.currency)}
+                          </span>
                         </div>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span
                             className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}
                           >
-                            {orderTypeLabel(order.orderType)}{order.table ? ` ${order.table.name}` : ""}
+                            {orderTypeLabel(order.orderType)}
+                            {order.table ? ` ${order.table.name}` : ""}
                           </span>
                           <span className="text-[10px] text-zinc-500">
                             {order.items.reduce((sum, item) => sum + item.quantity, 0)} items
                           </span>
-                          {(order.status === "received" || order.status === "preparing") && (
-                            <span className={`text-[10px] font-bold ${
-                              order.status === "received" ? "text-sky-300" : "text-amber-300"
-                            }`}>
-                              {elapsedLabel(order.createdAt)}
-                            </span>
-                          )}
                         </div>
                       </button>
                       {nextStatus(order) && (
@@ -525,39 +609,94 @@ function OrderDetail({
             <div className="lg:col-span-2 space-y-6">
               <FormSection title="Cliente" description="Datos del cliente y sucursal.">
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between"><span className="text-zinc-500">Nombre</span><strong>{order.customerName}</strong></div>
-                  {order.phone && <div className="flex justify-between"><span className="text-zinc-500">Teléfono</span><strong>{order.phone}</strong></div>}
-                  {order.email && <div className="flex justify-between"><span className="text-zinc-500">Email</span><strong className="text-right">{order.email}</strong></div>}
-                  {order.branch && <div className="flex justify-between"><span className="text-zinc-500">Sucursal</span><strong>{order.branch.name}</strong></div>}
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Nombre</span>
+                    <strong>{order.customerName}</strong>
+                  </div>
+                  {order.phone && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Teléfono</span>
+                      <strong>{order.phone}</strong>
+                    </div>
+                  )}
+                  {order.email && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Email</span>
+                      <strong className="text-right">{order.email}</strong>
+                    </div>
+                  )}
+                  {order.branch && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Sucursal</span>
+                      <strong>{order.branch.name}</strong>
+                    </div>
+                  )}
                 </div>
               </FormSection>
 
               <FormSection title="Entrega" description="Modalidad y estado logístico.">
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between"><span className="text-zinc-500">Modalidad</span><strong>{orderTypeLabel(order.orderType)}{order.table ? ` · ${order.table.name}` : ""}</strong></div>
-                  {order.deliveryAddress && <div className="flex justify-between"><span className="text-zinc-500">Dirección</span><strong className="text-right max-w-xs">{order.deliveryAddress}</strong></div>}
-                  {order.delivery && <div className="flex justify-between"><span className="text-zinc-500">Reparto</span><strong>{deliveryStatusMeta(order.delivery.status).label}{order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}{order.delivery.number ? ` · ${order.delivery.number}` : ""}</strong></div>}
-                  {order.requestedAt && <div className="flex justify-between"><span className="text-zinc-500">Para</span><strong>{new Date(order.requestedAt).toLocaleString("es-AR")}</strong></div>}
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Modalidad</span>
+                    <strong>
+                      {orderTypeLabel(order.orderType)}
+                      {order.table ? ` · ${order.table.name}` : ""}
+                    </strong>
+                  </div>
+                  {order.deliveryAddress && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Dirección</span>
+                      <strong className="text-right max-w-xs">{order.deliveryAddress}</strong>
+                    </div>
+                  )}
+                  {order.delivery && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Reparto</span>
+                      <strong>
+                        {deliveryStatusMeta(order.delivery.status).label}
+                        {order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}
+                        {order.delivery.number ? ` · ${order.delivery.number}` : ""}
+                      </strong>
+                    </div>
+                  )}
+                  {order.requestedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Para</span>
+                      <strong>{new Date(order.requestedAt).toLocaleString("es-AR")}</strong>
+                    </div>
+                  )}
                 </div>
               </FormSection>
 
               <section>
-                <SectionHeader title="Productos" description={`${order.items.reduce((sum, item) => sum + item.quantity, 0)} productos en el pedido.`} />
+                <SectionHeader
+                  title="Productos"
+                  description={`${order.items.reduce((sum, item) => sum + item.quantity, 0)} productos en el pedido.`}
+                />
                 <div className="mt-3">
                   <DocumentLines headers={["Producto", "Pedido", "Entregado", "Pendiente", "Importe"]}>
                     {order.items.map((item) => {
                       const extras = extrasText(item.extras);
-                      const pending = item.pendingQuantity ?? Math.max(0, item.quantity - item.deliveredQuantity);
+                      const pending =
+                        item.pendingQuantity ?? Math.max(0, item.quantity - item.deliveredQuantity);
                       return (
                         <tr key={item.id}>
                           <td className="px-4 py-2 text-sm text-zinc-200">
                             {item.productName}
-                            {item.variantName && <span className="ml-1 text-xs text-zinc-500">· {item.variantName}</span>}
+                            {item.variantName && (
+                              <span className="ml-1 text-xs text-zinc-500">· {item.variantName}</span>
+                            )}
                             {extras && <span className="ml-1 text-xs text-zinc-500">+ {extras}</span>}
-                            {item.notes && <span className="ml-1 text-xs italic text-zinc-600">{item.notes}</span>}
+                            {item.notes && (
+                              <span className="ml-1 text-xs italic text-zinc-600">{item.notes}</span>
+                            )}
                           </td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums text-zinc-200">x{item.quantity}</td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums text-emerald-300">x{item.deliveredQuantity}</td>
+                          <td className="px-4 py-2 text-right text-sm tabular-nums text-zinc-200">
+                            x{item.quantity}
+                          </td>
+                          <td className="px-4 py-2 text-right text-sm tabular-nums text-emerald-300">
+                            x{item.deliveredQuantity}
+                          </td>
                           <td className="px-4 py-2 text-right text-sm tabular-nums text-zinc-400">
                             {pending > 0 ? `x${pending}` : "—"}
                           </td>
@@ -573,7 +712,8 @@ function OrderDetail({
 
               {order.notes && (
                 <div className="rounded-2xl border border-white/10 bg-white/[.02] p-4 text-sm text-zinc-300">
-                  <strong className="mr-2">Nota del cliente:</strong>{order.notes}
+                  <strong className="mr-2">Nota del cliente:</strong>
+                  {order.notes}
                 </div>
               )}
 
@@ -589,7 +729,10 @@ function OrderDetail({
                       <div className="min-w-0">
                         <p className="text-sm font-bold">{entry.label}</p>
                         <p className="text-xs text-zinc-500">
-                          {new Date(entry.time).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(entry.time).toLocaleTimeString("es-AR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                           {entry.note ? ` · ${entry.note}` : ""}
                         </p>
                       </div>
@@ -603,12 +746,40 @@ function OrderDetail({
               <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5">
                 <SectionHeader title="Resumen" description="Totales del pedido." />
                 <div className="mt-4 space-y-3 text-sm">
-                  <p className="flex justify-between"><span className="text-zinc-500">Subtotal</span><strong className="tabular-nums">{formatPrice(order.subtotal, order.currency)}</strong></p>
-                  {Number(order.discount) > 0 && <p className="flex justify-between"><span className="text-zinc-500">Descuento</span><strong className="tabular-nums text-emerald-300">-{formatPrice(order.discount, order.currency)}</strong></p>}
-                  {Number(order.deliveryFee) > 0 && <p className="flex justify-between"><span className="text-zinc-500">Envío</span><strong className="tabular-nums">{formatPrice(order.deliveryFee, order.currency)}</strong></p>}
-                  {Number(order.tip) > 0 && <p className="flex justify-between"><span className="text-zinc-500">Propina</span><strong className="tabular-nums">{formatPrice(order.tip, order.currency)}</strong></p>}
-                  <p className="flex justify-between border-t border-white/10 pt-3 text-lg"><span className="text-zinc-400">Total</span><strong className="tabular-nums">{formatPrice(order.total, order.currency)}</strong></p>
-                  <p className="flex justify-between border-t border-white/10 pt-3 text-sm"><span className="text-zinc-500">Pago</span><strong>{order.paymentStatus}</strong></p>
+                  <p className="flex justify-between">
+                    <span className="text-zinc-500">Subtotal</span>
+                    <strong className="tabular-nums">{formatPrice(order.subtotal, order.currency)}</strong>
+                  </p>
+                  {Number(order.discount) > 0 && (
+                    <p className="flex justify-between">
+                      <span className="text-zinc-500">Descuento</span>
+                      <strong className="tabular-nums text-emerald-300">
+                        -{formatPrice(order.discount, order.currency)}
+                      </strong>
+                    </p>
+                  )}
+                  {Number(order.deliveryFee) > 0 && (
+                    <p className="flex justify-between">
+                      <span className="text-zinc-500">Envío</span>
+                      <strong className="tabular-nums">
+                        {formatPrice(order.deliveryFee, order.currency)}
+                      </strong>
+                    </p>
+                  )}
+                  {Number(order.tip) > 0 && (
+                    <p className="flex justify-between">
+                      <span className="text-zinc-500">Propina</span>
+                      <strong className="tabular-nums">{formatPrice(order.tip, order.currency)}</strong>
+                    </p>
+                  )}
+                  <p className="flex justify-between border-t border-white/10 pt-3 text-lg">
+                    <span className="text-zinc-400">Total</span>
+                    <strong className="tabular-nums">{formatPrice(order.total, order.currency)}</strong>
+                  </p>
+                  <p className="flex justify-between border-t border-white/10 pt-3 text-sm">
+                    <span className="text-zinc-500">Pago</span>
+                    <strong>{order.paymentStatus}</strong>
+                  </p>
                 </div>
               </section>
 
@@ -626,7 +797,8 @@ function OrderDetail({
                           href: adminHrefFromPathname(pathname, `/admin/facturacion/${order.invoice.id}`),
                           label: `Comprobante ${order.invoice.number ?? `#${order.invoice.id}`}`,
                           count: 1,
-                          tone: (order.invoice.status === "cancelled" ? "danger" : "success") as "danger" | "success",
+                          tone: (order.invoice.status === "cancelled" ? "danger" : "success") as
+                            "danger" | "success",
                         },
                       ]
                     : []),
@@ -642,35 +814,67 @@ function OrderDetail({
                 <SectionHeader title="Acciones" description="Cambios de estado y comprobantes." />
                 <div className="mt-4 flex flex-col gap-2">
                   {next && (
-                    <button className="btn w-full" onClick={() => void onStatusChange(order, next)} type="button">
-                      {next === "confirmed" ? "Confirmar pedido" : next === "preparing" ? "Empezar preparación" : next === "ready" ? "Marcar listo" : next === "on_the_way" ? "Enviar a delivery" : "Marcar entregado"}
+                    <button
+                      className="btn w-full"
+                      onClick={() => void onStatusChange(order, next)}
+                      type="button"
+                    >
+                      {next === "confirmed"
+                        ? "Confirmar pedido"
+                        : next === "preparing"
+                          ? "Empezar preparación"
+                          : next === "ready"
+                            ? "Marcar listo"
+                            : next === "on_the_way"
+                              ? "Enviar a delivery"
+                              : "Marcar entregado"}
                     </button>
                   )}
                   {order.status !== "cancelled" && (
-                    <button className="btn btn-secondary w-full" onClick={() => void onStatusChange(order, "cancelled")} type="button">
+                    <button
+                      className="btn btn-secondary w-full"
+                      onClick={() => void onStatusChange(order, "cancelled")}
+                      type="button"
+                    >
                       Cancelar
                     </button>
                   )}
                   <div className="flex flex-col gap-2 pt-2">
                     {order.phone && (
-                      <a className="btn btn-secondary w-full" href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName}!\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`} target="_blank" rel="noreferrer">
+                      <a
+                        className="btn btn-secondary w-full"
+                        href={`https://wa.me/${order.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${order.customerName}!\nPodés seguir el estado de tu pedido ${order.reference} acá:\n${trackingUrl}`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         WhatsApp
                       </a>
                     )}
                     {trackingHref && <CopyTrackingLink href={trackingHref} compact />}
                     {order.invoice ? (
                       <>
-                        <Link className="btn w-full" href={adminHrefFromPathname(pathname, `/admin/facturacion/${order.invoice.id}`)}>
+                        <Link
+                          className="btn w-full"
+                          href={adminHrefFromPathname(pathname, `/admin/facturacion/${order.invoice.id}`)}
+                        >
                           Ver comprobante
                         </Link>
                         {order.invoice.status !== "cancelled" && (
-                          <button className="btn btn-secondary w-full" onClick={() => void onCancelInvoice(order)} type="button">
+                          <button
+                            className="btn btn-secondary w-full"
+                            onClick={() => void onCancelInvoice(order)}
+                            type="button"
+                          >
                             Anular
                           </button>
                         )}
                       </>
                     ) : (
-                      <button className="btn w-full" onClick={() => void onCreateInvoice(order)} type="button">
+                      <button
+                        className="btn w-full"
+                        onClick={() => void onCreateInvoice(order)}
+                        type="button"
+                      >
                         Crear comprobante
                       </button>
                     )}

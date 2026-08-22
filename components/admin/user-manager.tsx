@@ -14,8 +14,8 @@ import {
   Tabs,
   FactBox,
   UserAvatar,
-
 } from "@/components/admin/ui";
+import { avatarUrl } from "@/components/admin/profile-menu";
 import { scopedFetch } from "@/lib/client-routing";
 
 /** @summary Datos de un usuario en la lista principal. */
@@ -36,7 +36,15 @@ export type UserListItem = {
 
 /** @summary Detalle completo de un usuario (ficha). */
 type UserDetail = {
-  user: { id: number; name: string; email: string; imageUrl: string; hasPin: boolean; createdAt: string; updatedAt: string };
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    imageUrl: string;
+    hasPin: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
   membership: { id: number; status: string; allBranches: boolean };
   role: { id: number; key: string; name: string; description: string | null };
   permissions: string[];
@@ -44,12 +52,20 @@ type UserDetail = {
   lastAccessAt: string | null;
   activeSessions: number;
   auditLogs: Array<{
-    id: number; action: string; createdAt: string;
+    id: number;
+    action: string;
+    createdAt: string;
     oldValues: Record<string, unknown> | null;
     newValues: Record<string, unknown> | null;
     user: { name: string; email: string };
   }>;
-  availableRoles: Array<{ id: number; key: string; name: string; description: string | null; system: boolean }>;
+  availableRoles: Array<{
+    id: number;
+    key: string;
+    name: string;
+    description: string | null;
+    system: boolean;
+  }>;
   allBranches: Array<{ id: number; name: string; slug: string }>;
   allPermissions: string[];
 };
@@ -85,7 +101,14 @@ type UserForm = {
   allBranches: boolean;
 };
 
-const emptyForm: UserForm = { name: "", email: "", password: "", roleId: 0, branchIds: [], allBranches: false };
+const emptyForm: UserForm = {
+  name: "",
+  email: "",
+  password: "",
+  roleId: 0,
+  branchIds: [],
+  allBranches: false,
+};
 
 /** @summary Preset de rol para carga rápida de permisos comunes. */
 const ROLE_PRESETS: Array<{ label: string; description: string; roleKey: string }> = [
@@ -100,7 +123,13 @@ function formatDate(iso: string | null | undefined) {
   if (!iso) return "Nunca";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Nunca";
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /**
@@ -125,9 +154,7 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
 
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("es");
-    return q
-      ? users.filter((u) => `${u.name} ${u.email}`.toLocaleLowerCase("es").includes(q))
-      : users;
+    return q ? users.filter((u) => `${u.name} ${u.email}`.toLocaleLowerCase("es").includes(q)) : users;
   }, [users, query]);
 
   /** @summary Carga los roles disponibles con la matriz de permisos. */
@@ -139,7 +166,9 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
         const data = (await response.json()) as RolesResponse;
         setRolesData(data);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [rolesData]);
 
   /** @summary Abre la ficha de un usuario con todos sus datos. */
@@ -196,15 +225,33 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
   /** @summary Guarda un usuario nuevo o editado. */
   async function saveUser() {
     if (!form.name.trim() || !form.email.trim()) {
-      await Swal.fire({ title: "Campos requeridos", text: "Nombre y email son obligatorios.", icon: "warning", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Campos requeridos",
+        text: "Nombre y email son obligatorios.",
+        icon: "warning",
+        background: "#18181b",
+        color: "#fafafa",
+      });
       return;
     }
     if (creating && !form.password) {
-      await Swal.fire({ title: "Contraseña requerida", text: "Ingresá una contraseña para el nuevo usuario.", icon: "warning", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Contraseña requerida",
+        text: "Ingresá una contraseña para el nuevo usuario.",
+        icon: "warning",
+        background: "#18181b",
+        color: "#fafafa",
+      });
       return;
     }
     if (form.roleId === 0) {
-      await Swal.fire({ title: "Rol requerido", text: "Elegí un rol para el usuario.", icon: "warning", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Rol requerido",
+        text: "Elegí un rol para el usuario.",
+        icon: "warning",
+        background: "#18181b",
+        color: "#fafafa",
+      });
       return;
     }
 
@@ -290,12 +337,23 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
         body: JSON.stringify({ status: newStatus }),
       });
       if (!response.ok) throw new Error("No se pudo cambiar el estado");
-      setUsers((current) =>
-        current.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)),
-      );
-      await Swal.fire({ title: `Usuario ${action}do`, icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      setUsers((current) => current.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
+      await Swal.fire({
+        title: `Usuario ${action}do`,
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } catch (error) {
-      await Swal.fire({ title: "Error", text: error instanceof Error ? error.message : "Intentá nuevamente", icon: "error", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Error",
+        text: error instanceof Error ? error.message : "Intentá nuevamente",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     }
   }
 
@@ -322,9 +380,22 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
       }
       setUsers((current) => current.filter((u) => u.id !== user.id));
       if (detail?.user.id === user.id) setDrawerOpen(false);
-      await Swal.fire({ title: "Usuario eliminado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Usuario eliminado",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } catch (error) {
-      await Swal.fire({ title: "Error", text: error instanceof Error ? error.message : "Intentá nuevamente", icon: "error", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Error",
+        text: error instanceof Error ? error.message : "Intentá nuevamente",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     }
   }
 
@@ -337,7 +408,12 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
         section="usuarios"
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <SearchBox value={query} onChange={setQuery} placeholder="Buscar nombre o email" className="min-w-[220px] flex-1" />
+            <SearchBox
+              value={query}
+              onChange={setQuery}
+              placeholder="Buscar nombre o email"
+              className="min-w-[220px] flex-1"
+            />
             <button type="button" className="btn" onClick={() => void openCreate()}>
               + Nuevo usuario
             </button>
@@ -351,10 +427,14 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
           <p className="text-2xl font-black">{users.length}</p>
         </FactBox>
         <FactBox title="Activos">
-          <p className="text-2xl font-black text-emerald-300">{users.filter((u) => u.status === "active").length}</p>
+          <p className="text-2xl font-black text-emerald-300">
+            {users.filter((u) => u.status === "active").length}
+          </p>
         </FactBox>
         <FactBox title="Inactivos">
-          <p className="text-2xl font-black text-amber-300">{users.filter((u) => u.status !== "active").length}</p>
+          <p className="text-2xl font-black text-amber-300">
+            {users.filter((u) => u.status !== "active").length}
+          </p>
         </FactBox>
         <FactBox title="Con PIN">
           <p className="text-2xl font-black text-sky-300">{users.filter((u) => u.hasPin).length}</p>
@@ -365,7 +445,11 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
         <EmptyState
           title="No hay usuarios"
           description="Creá el primer usuario para que tu equipo pueda operar el panel."
-          action={<button type="button" className="btn" onClick={() => void openCreate()}>+ Nuevo usuario</button>}
+          action={
+            <button type="button" className="btn" onClick={() => void openCreate()}>
+              + Nuevo usuario
+            </button>
+          }
         />
       ) : (
         <div className="shadow-xl shadow-black/10">
@@ -383,18 +467,31 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
               id: user.id,
               name: (
                 <div className="flex items-center gap-3">
-                  <UserAvatar name={user.name} src={user.imageUrl} size="sm" />
+                  <UserAvatar name={user.name} src={avatarUrl(user.imageUrl)} size="sm" />
                   <div className="min-w-0">
                     <p className="truncate font-bold">{user.name}</p>
                     <p className="truncate text-xs text-zinc-500">{user.email}</p>
                   </div>
                 </div>
               ),
-              role: <StatusBadge status={user.role.name} tone={user.role.key === "owner" ? "success" : user.role.key === "administrator" ? "info" : "default"} />,
+              role: (
+                <StatusBadge
+                  status={user.role.name}
+                  tone={
+                    user.role.key === "owner"
+                      ? "success"
+                      : user.role.key === "administrator"
+                        ? "info"
+                        : "default"
+                  }
+                />
+              ),
               branches: user.allBranches ? (
                 <span className="text-xs font-semibold text-sky-300">Todas</span>
               ) : (
-                <span className="text-xs text-zinc-400">{user.branches.map((b) => b.name).join(", ") || "Sin acceso"}</span>
+                <span className="text-xs text-zinc-400">
+                  {user.branches.map((b) => b.name).join(", ") || "Sin acceso"}
+                </span>
               ),
               status: (
                 <StatusBadge
@@ -409,7 +506,11 @@ export function UserManager({ initialUsers }: { initialUsers: UserListItem[] }) 
                   items={[
                     { label: "Ver ficha", onClick: () => void openDetail(user) },
                     { label: "Editar", onClick: () => void openDetail(user) },
-                    { label: user.status === "active" ? "Desactivar" : "Activar", tone: user.status === "active" ? "danger" : "primary", onClick: () => void toggleStatus(user) },
+                    {
+                      label: user.status === "active" ? "Desactivar" : "Activar",
+                      tone: user.status === "active" ? "danger" : "primary",
+                      onClick: () => void toggleStatus(user),
+                    },
                     { label: "Eliminar", tone: "danger", onClick: () => void removeUser(user) },
                   ]}
                 />
@@ -534,34 +635,64 @@ function UserFormEditor({
       <FormSection title="Datos personales" description="Información básica del usuario.">
         <div>
           <label className="mb-1 block text-xs font-bold text-zinc-400">Nombre *</label>
-          <input className="input w-full" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre completo" />
+          <input
+            className="input w-full"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            placeholder="Nombre completo"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs font-bold text-zinc-400">Email *</label>
-          <input className="input w-full" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@ejemplo.com" />
+          <input
+            className="input w-full"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            placeholder="email@ejemplo.com"
+          />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-bold text-zinc-400">Contraseña {form.roleId ? "" : "*"}</label>
-          <input className="input w-full" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Mínimo 8 caracteres" />
+          <label className="mb-1 block text-xs font-bold text-zinc-400">
+            Contraseña {form.roleId ? "" : "*"}
+          </label>
+          <input
+            className="input w-full"
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            placeholder="Mínimo 8 caracteres"
+          />
         </div>
       </FormSection>
 
-      <FormSection title="Rol y permisos" description="El rol determina qué puede hacer el usuario en el panel.">
+      <FormSection
+        title="Rol y permisos"
+        description="El rol determina qué puede hacer el usuario en el panel."
+      >
         <div>
           <label className="mb-1 block text-xs font-bold text-zinc-400">Rol *</label>
-          <select className="input w-full" value={form.roleId} onChange={(e) => setForm((f) => ({ ...f, roleId: Number(e.target.value) }))}>
+          <select
+            className="input w-full"
+            value={form.roleId}
+            onChange={(e) => setForm((f) => ({ ...f, roleId: Number(e.target.value) }))}
+          >
             <option value={0}>Seleccionar rol…</option>
             {roles.map((role) => (
-              <option key={role.id} value={role.id}>{role.name}{role.system ? " (sistema)" : ""}</option>
+              <option key={role.id} value={role.id}>
+                {role.name}
+                {role.system ? " (sistema)" : ""}
+              </option>
             ))}
           </select>
-          {selectedRole && (
-            <p className="mt-1 text-xs text-zinc-500">{selectedRole.description}</p>
-          )}
+          {selectedRole && <p className="mt-1 text-xs text-zinc-500">{selectedRole.description}</p>}
         </div>
       </FormSection>
 
-      <FormSection title="Acceso a sucursales" description="Definí a qué sucursales puede acceder el usuario.">
+      <FormSection
+        title="Acceso a sucursales"
+        description="Definí a qué sucursales puede acceder el usuario."
+      >
         <div>
           <label className="flex items-center gap-2">
             <input
@@ -576,7 +707,10 @@ function UserFormEditor({
         {!form.allBranches && (
           <div className="grid gap-2 sm:grid-cols-2">
             {allBranches.map((branch) => (
-              <label key={branch.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+              <label
+                key={branch.id}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"
+              >
                 <input
                   type="checkbox"
                   checked={form.branchIds.includes(branch.id)}
@@ -598,7 +732,9 @@ function UserFormEditor({
       </FormSection>
 
       <div className="flex justify-end gap-2 border-t border-[var(--admin-border)] pt-4">
-        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>Cancelar</button>
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
+          Cancelar
+        </button>
         <button type="button" className="btn" onClick={onSave} disabled={saving}>
           {saving ? "Guardando…" : "Guardar"}
         </button>
@@ -684,7 +820,8 @@ function UserDetailView({
         {activeTab === "permisos" && (
           <div>
             <p className="mb-3 text-xs text-zinc-500">
-              Permisos del rol <strong>{detail.role.name}</strong>: {detail.permissions.length} permisos activos.
+              Permisos del rol <strong>{detail.role.name}</strong>: {detail.permissions.length} permisos
+              activos.
             </p>
             <div className="space-y-3">
               {Object.entries(PERMISSION_GROUPS).map(([group, keys]) => {
@@ -717,14 +854,22 @@ function UserDetailView({
         {activeTab === "sucursales" && (
           <div>
             {detail.membership.allBranches ? (
-              <p className="text-sm text-zinc-300">Acceso a <strong>todas las sucursales</strong>.</p>
+              <p className="text-sm text-zinc-300">
+                Acceso a <strong>todas las sucursales</strong>.
+              </p>
             ) : detail.branches.length === 0 ? (
               <p className="text-sm text-zinc-500">Sin acceso a sucursales específicas.</p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {detail.branches.map((branch) => (
-                  <div key={branch.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                    <StatusBadge status={branch.active ? "Activa" : "Inactiva"} tone={branch.active ? "success" : "warning"} />
+                  <div
+                    key={branch.id}
+                    className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"
+                  >
+                    <StatusBadge
+                      status={branch.active ? "Activa" : "Inactiva"}
+                      tone={branch.active ? "success" : "warning"}
+                    />
                     <span className="text-sm font-semibold">{branch.name}</span>
                   </div>
                 ))}
@@ -749,21 +894,36 @@ function UserDetailView({
             ) : (
               <div className="space-y-2">
                 {detail.auditLogs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"
+                  >
                     <StatusBadge
-                      status={log.action === "create" ? "Creación" : log.action === "update" ? "Edición" : "Eliminación"}
+                      status={
+                        log.action === "create"
+                          ? "Creación"
+                          : log.action === "update"
+                            ? "Edición"
+                            : "Eliminación"
+                      }
                       tone={log.action === "create" ? "success" : log.action === "update" ? "info" : "danger"}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-zinc-500">{formatDate(log.createdAt)}</p>
                       {log.oldValues && (
                         <p className="mt-0.5 text-xs text-zinc-600">
-                          Antes: {Object.entries(log.oldValues).map(([k, v]) => `${k}: ${String(v)}`).join(", ")}
+                          Antes:{" "}
+                          {Object.entries(log.oldValues)
+                            .map(([k, v]) => `${k}: ${String(v)}`)
+                            .join(", ")}
                         </p>
                       )}
                       {log.newValues && (
                         <p className="mt-0.5 text-xs text-zinc-400">
-                          Ahora: {Object.entries(log.newValues).map(([k, v]) => `${k}: ${String(v)}`).join(", ")}
+                          Ahora:{" "}
+                          {Object.entries(log.newValues)
+                            .map(([k, v]) => `${k}: ${String(v)}`)
+                            .join(", ")}
                         </p>
                       )}
                     </div>
@@ -780,14 +940,42 @@ function UserDetailView({
 
 /** @summary Agrupación de permisos por módulo para la vista de permisos. */
 const PERMISSION_GROUPS: Record<string, string[]> = {
-  "Operación": ["admin.access", "order.manage", "table.manage", "kitchen.manage", "reservation.manage", "customer.manage"],
-  "Productos": ["product.manage", "category.manage", "inventory.manage"],
-  "Compras": ["purchase.manage"],
-  "Finanzas": ["finance.view", "finance.manage", "finance.transfer", "finance.payment", "finance.export", "finance.reversal"],
-  "Delivery": ["driver.view", "driver.self"],
-  "Reportes": ["analytics.read"],
-  "Contenido": ["event.manage", "hours.manage", "promotion.manage", "brand.manage", "content.manage", "testimonial.moderate"],
-  "Configuración": ["business.manage", "user.manage", "notification.manage", "media.manage", "support.manage", "audit.read"],
+  Operación: [
+    "admin.access",
+    "order.manage",
+    "table.manage",
+    "kitchen.manage",
+    "reservation.manage",
+    "customer.manage",
+  ],
+  Productos: ["product.manage", "category.manage", "inventory.manage"],
+  Compras: ["purchase.manage"],
+  Finanzas: [
+    "finance.view",
+    "finance.manage",
+    "finance.transfer",
+    "finance.payment",
+    "finance.export",
+    "finance.reversal",
+  ],
+  Delivery: ["driver.view", "driver.self"],
+  Reportes: ["analytics.read"],
+  Contenido: [
+    "event.manage",
+    "hours.manage",
+    "promotion.manage",
+    "brand.manage",
+    "content.manage",
+    "testimonial.moderate",
+  ],
+  Configuración: [
+    "business.manage",
+    "user.manage",
+    "notification.manage",
+    "media.manage",
+    "support.manage",
+    "audit.read",
+  ],
 };
 
 /**
@@ -811,11 +999,23 @@ function PinSection({
 
   async function savePin() {
     if (!/^\d{6}$/.test(pin)) {
-      await Swal.fire({ title: "PIN inválido", text: "El PIN debe ser exactamente 6 dígitos numéricos.", icon: "warning", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "PIN inválido",
+        text: "El PIN debe ser exactamente 6 dígitos numéricos.",
+        icon: "warning",
+        background: "#18181b",
+        color: "#fafafa",
+      });
       return;
     }
     if (pin !== confirmPin) {
-      await Swal.fire({ title: "Los PINs no coinciden", text: "Ingresá el mismo PIN dos veces.", icon: "warning", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Los PINs no coinciden",
+        text: "Ingresá el mismo PIN dos veces.",
+        icon: "warning",
+        background: "#18181b",
+        color: "#fafafa",
+      });
       return;
     }
 
@@ -830,9 +1030,22 @@ function PinSection({
       setPin("");
       setConfirmPin("");
       onRefresh();
-      await Swal.fire({ title: "PIN actualizado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "PIN actualizado",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } catch (error) {
-      await Swal.fire({ title: "Error", text: error instanceof Error ? error.message : "Intentá nuevamente", icon: "error", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Error",
+        text: error instanceof Error ? error.message : "Intentá nuevamente",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } finally {
       setBusy(false);
     }
@@ -856,9 +1069,22 @@ function PinSection({
       const response = await scopedFetch(`/api/admin/usuarios/${userId}/pin`, { method: "DELETE" });
       if (!response.ok) throw new Error("No se pudo eliminar el PIN");
       onRefresh();
-      await Swal.fire({ title: "PIN eliminado", icon: "success", timer: 1500, showConfirmButton: false, background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "PIN eliminado",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } catch (error) {
-      await Swal.fire({ title: "Error", text: error instanceof Error ? error.message : "Intentá nuevamente", icon: "error", background: "#18181b", color: "#fafafa" });
+      await Swal.fire({
+        title: "Error",
+        text: error instanceof Error ? error.message : "Intentá nuevamente",
+        icon: "error",
+        background: "#18181b",
+        color: "#fafafa",
+      });
     } finally {
       setBusy(false);
     }
@@ -869,14 +1095,20 @@ function PinSection({
       <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
         <p className="text-sm font-semibold text-amber-200">PIN de acceso rápido</p>
         <p className="mt-1 text-xs text-amber-300/80">
-          El PIN permite login rápido desde dispositivos compartidos (caja, cocina). Se almacena como hash bcrypt y nunca se guarda en texto plano.
+          El PIN permite login rápido desde dispositivos compartidos (caja, cocina). Se almacena como hash
+          bcrypt y nunca se guarda en texto plano.
         </p>
       </div>
 
       {hasPin && (
         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
           <StatusBadge status="PIN configurado" tone="success" />
-          <button type="button" className="btn btn-secondary text-xs" onClick={() => void removePin()} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-secondary text-xs"
+            onClick={() => void removePin()}
+            disabled={busy}
+          >
             Eliminar PIN
           </button>
         </div>
@@ -911,7 +1143,12 @@ function PinSection({
         </div>
       </div>
 
-      <button type="button" className="btn" onClick={() => void savePin()} disabled={busy || pin.length !== 6 || confirmPin.length !== 6}>
+      <button
+        type="button"
+        className="btn"
+        onClick={() => void savePin()}
+        disabled={busy || pin.length !== 6 || confirmPin.length !== 6}
+      >
         {busy ? "Guardando…" : hasPin ? "Cambiar PIN" : "Establecer PIN"}
       </button>
     </div>

@@ -20,14 +20,19 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="admin-page-header mb-6 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-sm sm:p-7">
+    <header className="admin-page-header relative mb-6 overflow-hidden border-b border-[var(--admin-border)] pb-5 pt-1 sm:mb-7 sm:pb-6">
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-2 text-xs text-[var(--admin-muted)]">
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-3 flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs text-[var(--admin-muted)]"
+        >
           {breadcrumbs.map((crumb, index) => (
             <span key={index} className="flex items-center gap-2">
               {index > 0 && <span className="text-[var(--admin-border)]">/</span>}
               {crumb.href ? (
-                <a href={crumb.href} className="transition hover:text-zinc-300">{crumb.label}</a>
+                <a href={crumb.href} className="transition hover:text-zinc-300">
+                  {crumb.label}
+                </a>
               ) : (
                 <span className="text-zinc-300">{crumb.label}</span>
               )}
@@ -35,22 +40,29 @@ export function PageHeader({
           ))}
         </nav>
       )}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 max-w-3xl">
           {eyebrow && (
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--admin-primary-strong)]">{eyebrow}</p>
+            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-[var(--admin-primary-strong)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+              {eyebrow}
+            </p>
           )}
-          <div className="mt-2 flex items-center gap-3">
-            <h1 className="text-xl font-black tracking-tight sm:text-2xl lg:text-3xl">{title}</h1>
+          <div className={`${eyebrow ? "mt-2" : ""} flex items-center gap-3`}>
+            <h1 className="text-2xl font-bold tracking-[-0.025em] text-[var(--admin-text)] sm:text-[1.75rem]">
+              {title}
+            </h1>
             <AdminPageHelp section={section} />
           </div>
           {description && (
-            <p className="mt-3 text-sm leading-relaxed text-[var(--admin-muted)] sm:text-base">{description}</p>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--admin-muted)]">{description}</p>
           )}
           {children}
         </div>
         {actions && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            {actions}
+          </div>
         )}
       </div>
     </header>

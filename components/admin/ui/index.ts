@@ -33,3 +33,6 @@ export { Drawer } from "./drawer";
 export { FilterPanel } from "./filter-panel";
 export { ActiveFilterChip } from "./active-filter-chip";
 export { UserAvatar, type AvatarSize } from "./avatar";
+export { NumberFlow } from "./number-flow";
+export { AnimatedProgress } from "./animated-progress";
+export { HoverPreview } from "./hover-preview";

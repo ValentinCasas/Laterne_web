@@ -20,17 +20,22 @@ export function Tabs({
   }
 
   return (
-    <div className="flex flex-wrap gap-2 border-b border-[var(--admin-border)] pb-1">
+    <div
+      className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1"
+      role="tablist"
+    >
       {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
           disabled={tab.disabled}
           onClick={() => handleSelect(tab.key)}
-          className={`rounded-t-lg px-4 py-2 text-sm font-bold transition-colors ${
+          role="tab"
+          aria-selected={active === tab.key}
+          className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
             active === tab.key
-              ? "border-b-2 border-pink-500 text-pink-300"
-              : "text-zinc-400 hover:text-zinc-200"
+              ? "bg-[var(--admin-surface-elevated)] text-white shadow-[var(--admin-shadow-sm)]"
+              : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"
           } ${tab.disabled ? "opacity-50" : ""}`}
         >
           {tab.label}

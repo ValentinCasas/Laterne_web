@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { ProductEditor } from "@/components/admin/product-editor";
-import { PageHeader, SearchBox, StatusBadge, ActionMenu, EmptyState, ActiveFilterChip } from "@/components/admin/ui";
+import {
+  PageHeader,
+  SearchBox,
+  StatusBadge,
+  ActionMenu,
+  EmptyState,
+  ActiveFilterChip,
+  HoverPreview,
+  NumberFlow,
+} from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { handleImageError, productImageSrc } from "@/lib/image-fallback";
 import { marginPercent } from "@/lib/product-catalog";
@@ -67,8 +76,18 @@ const sortOptions: Array<{ key: SortKey; label: string }> = [
 ];
 
 type SortKey =
-  | "name-asc" | "name-desc" | "price-asc" | "price-desc" | "cost-asc" | "cost-desc"
-  | "margin-asc" | "margin-desc" | "stock-asc" | "stock-desc" | "recent" | "category";
+  | "name-asc"
+  | "name-desc"
+  | "price-asc"
+  | "price-desc"
+  | "cost-asc"
+  | "cost-desc"
+  | "margin-asc"
+  | "margin-desc"
+  | "stock-asc"
+  | "stock-desc"
+  | "recent"
+  | "category";
 
 type Filters = {
   categoryId: string;
@@ -121,7 +140,9 @@ function money(value: string | number | null | undefined, currency: string) {
   if (value === null || value === undefined || value === "") return "—";
   const number = Number(value);
   if (!Number.isFinite(number)) return "—";
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(number);
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 2 }).format(
+    number,
+  );
 }
 
 /** @summary Estado de stock de la fila según la sucursal activa. */
@@ -307,7 +328,18 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
     const entries = Object.entries(filters);
     let count = 0;
     for (const [key, value] of entries) {
-      if (key === "favorite" || key === "availability" || key === "stock" || key === "margin" || key === "recipe" || key === "combo" || key === "modifiers" || key === "image" || key === "model3d" || key === "channelPrices") {
+      if (
+        key === "favorite" ||
+        key === "availability" ||
+        key === "stock" ||
+        key === "margin" ||
+        key === "recipe" ||
+        key === "combo" ||
+        key === "modifiers" ||
+        key === "image" ||
+        key === "model3d" ||
+        key === "channelPrices"
+      ) {
         if (value !== "any") count += 1;
       } else if (value !== "") {
         count += 1;
@@ -389,7 +421,12 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
     if (status === product.status) return;
     setBusy(true);
     try {
-      const map: Record<string, string> = { published: "publish", draft: "draft", hidden: "hide", archived: "archive" };
+      const map: Record<string, string> = {
+        published: "publish",
+        draft: "draft",
+        hidden: "hide",
+        archived: "archive",
+      };
       await api("/api/admin/products/bulk", {
         method: "POST",
         body: JSON.stringify({ action: map[status] ?? "draft", ids: [product.id] }),
@@ -493,7 +530,9 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
           aria-label="Ordenar"
         >
           {sortOptions.map((option) => (
-            <option key={option.key} value={option.key}>{option.label}</option>
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
           ))}
         </select>
         <ViewModeToggle value={view} onChange={setView} />
@@ -512,12 +551,38 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
 
       {/* Filtros rápidos */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {([
-          { key: "favorite", label: "Favoritos", active: filters.favorite === "yes", onClick: () => patch({ favorite: filters.favorite === "yes" ? "any" : "yes" }) },
-          { key: "availability", label: "Disponible", active: filters.availability === "disponible", onClick: () => patch({ availability: filters.availability === "disponible" ? "any" : "disponible" }) },
-          { key: "agotado", label: "Agotado", active: filters.availability === "agotado", onClick: () => patch({ availability: filters.availability === "agotado" ? "any" : "agotado" }) },
-          { key: "stock-low", label: "Bajo stock", active: filters.stock === "low", onClick: () => patch({ stock: filters.stock === "low" ? "any" : "low" }) },
-          { key: "stock-out", label: "Sin stock", active: filters.stock === "out", onClick: () => patch({ stock: filters.stock === "out" ? "any" : "out" }) },
+        {[
+          {
+            key: "favorite",
+            label: "Favoritos",
+            active: filters.favorite === "yes",
+            onClick: () => patch({ favorite: filters.favorite === "yes" ? "any" : "yes" }),
+          },
+          {
+            key: "availability",
+            label: "Disponible",
+            active: filters.availability === "disponible",
+            onClick: () =>
+              patch({ availability: filters.availability === "disponible" ? "any" : "disponible" }),
+          },
+          {
+            key: "agotado",
+            label: "Agotado",
+            active: filters.availability === "agotado",
+            onClick: () => patch({ availability: filters.availability === "agotado" ? "any" : "agotado" }),
+          },
+          {
+            key: "stock-low",
+            label: "Bajo stock",
+            active: filters.stock === "low",
+            onClick: () => patch({ stock: filters.stock === "low" ? "any" : "low" }),
+          },
+          {
+            key: "stock-out",
+            label: "Sin stock",
+            active: filters.stock === "out",
+            onClick: () => patch({ stock: filters.stock === "out" ? "any" : "out" }),
+          },
         ].map((chip) => (
           <button
             key={chip.key}
@@ -531,7 +596,7 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
           >
             {chip.label}
           </button>
-        )))}
+        ))}
         <span className="ml-auto text-sm text-[var(--admin-muted)]">
           {sorted.length} producto{sorted.length === 1 ? "" : "s"}
           {payload.activeBranch ? ` · ${payload.activeBranch.name}` : ""}
@@ -619,16 +684,30 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
       {/* Contenido: Tarjetas o Lista */}
       {sorted.length === 0 ? (
         <EmptyState
-          title={payload.products.length > 0 ? "No encontramos productos con estos filtros" : "Todavía no tenés productos"}
-          description={payload.products.length > 0 ? "Probá quitar algún filtro o cambiar la búsqueda." : "Creá el primero para comenzar a armar tu carta."}
+          title={
+            payload.products.length > 0
+              ? "No encontramos productos con estos filtros"
+              : "Todavía no tenés productos"
+          }
+          description={
+            payload.products.length > 0
+              ? "Probá quitar algún filtro o cambiar la búsqueda."
+              : "Creá el primero para comenzar a armar tu carta."
+          }
           action={
-            <button type="button" className={payload.products.length > 0 ? "btn btn-secondary" : "btn"} onClick={payload.products.length > 0 ? clearFilters : () => setEditingId("new")}>
+            <button
+              type="button"
+              className={payload.products.length > 0 ? "btn btn-secondary" : "btn"}
+              onClick={payload.products.length > 0 ? clearFilters : () => setEditingId("new")}
+            >
               {payload.products.length > 0 ? "Limpiar filtros" : "+ Nuevo producto"}
             </button>
           }
         />
       ) : isCardsView ? (
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 ${compactCards ? "gap-2.5" : "gap-4"}`}>
+        <div
+          className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 ${compactCards ? "gap-2.5" : "gap-4"}`}
+        >
           {sorted.map((product) => (
             <ProductCard
               key={product.id}
@@ -671,7 +750,9 @@ export function ProductCatalogBoard({ initial }: { initial: ProductCatalogPayloa
 
       <p className="mt-4 text-sm text-[var(--admin-muted)]">
         {sorted.length} productos ·{" "}
-        {payload.activeBranch ? `Viendo la carta de ${payload.activeBranch.name}` : "Viendo todas las sucursales"}
+        {payload.activeBranch
+          ? `Viendo la carta de ${payload.activeBranch.name}`
+          : "Viendo todas las sucursales"}
         {priceSummary(sorted, currency)}
       </p>
 
@@ -731,18 +812,28 @@ function buildFilterChips(
     });
   }
   if (filters.status) {
-    chips.push({ label: `Estado: ${statusLabels[filters.status] ?? filters.status}`, onRemove: () => patch({ status: "" }) });
+    chips.push({
+      label: `Estado: ${statusLabels[filters.status] ?? filters.status}`,
+      onRemove: () => patch({ status: "" }),
+    });
   }
-  if (filters.favorite === "yes") chips.push({ label: "Favoritos", onRemove: () => patch({ favorite: "any" }) });
-  if (filters.favorite === "no") chips.push({ label: "Sin favorito", onRemove: () => patch({ favorite: "any" }) });
-  if (filters.availability === "disponible") chips.push({ label: "Disponible", onRemove: () => patch({ availability: "any" }) });
-  if (filters.availability === "agotado") chips.push({ label: "Agotado", onRemove: () => patch({ availability: "any" }) });
+  if (filters.favorite === "yes")
+    chips.push({ label: "Favoritos", onRemove: () => patch({ favorite: "any" }) });
+  if (filters.favorite === "no")
+    chips.push({ label: "Sin favorito", onRemove: () => patch({ favorite: "any" }) });
+  if (filters.availability === "disponible")
+    chips.push({ label: "Disponible", onRemove: () => patch({ availability: "any" }) });
+  if (filters.availability === "agotado")
+    chips.push({ label: "Agotado", onRemove: () => patch({ availability: "any" }) });
   if (filters.stock === "out") chips.push({ label: "Sin stock", onRemove: () => patch({ stock: "any" }) });
   if (filters.stock === "low") chips.push({ label: "Stock bajo", onRemove: () => patch({ stock: "any" }) });
   if (filters.stock === "in") chips.push({ label: "Con stock", onRemove: () => patch({ stock: "any" }) });
   if (filters.branchId) {
     const branch = payload.branches.find((entry) => String(entry.id) === filters.branchId);
-    chips.push({ label: `Sucursal: ${branch?.name ?? filters.branchId}`, onRemove: () => patch({ branchId: "" }) });
+    chips.push({
+      label: `Sucursal: ${branch?.name ?? filters.branchId}`,
+      onRemove: () => patch({ branchId: "" }),
+    });
   }
   if (filters.priceMin || filters.priceMax) {
     chips.push({
@@ -764,15 +855,21 @@ function buildFilterChips(
     "40+": "Margen > 40%",
   };
   if (filters.margin !== "any") {
-    chips.push({ label: marginLabels[filters.margin] ?? filters.margin, onRemove: () => patch({ margin: "any" }) });
+    chips.push({
+      label: marginLabels[filters.margin] ?? filters.margin,
+      onRemove: () => patch({ margin: "any" }),
+    });
   }
   if (filters.recipe === "yes") chips.push({ label: "Con receta", onRemove: () => patch({ recipe: "any" }) });
   if (filters.combo === "yes") chips.push({ label: "Con combo", onRemove: () => patch({ combo: "any" }) });
-  if (filters.modifiers === "yes") chips.push({ label: "Con modificadores", onRemove: () => patch({ modifiers: "any" }) });
+  if (filters.modifiers === "yes")
+    chips.push({ label: "Con modificadores", onRemove: () => patch({ modifiers: "any" }) });
   if (filters.image === "yes") chips.push({ label: "Con imagen", onRemove: () => patch({ image: "any" }) });
   if (filters.image === "no") chips.push({ label: "Sin imagen", onRemove: () => patch({ image: "any" }) });
-  if (filters.model3d === "yes") chips.push({ label: "Con 3D/AR", onRemove: () => patch({ model3d: "any" }) });
-  if (filters.channelPrices === "yes") chips.push({ label: "Precio por canal", onRemove: () => patch({ channelPrices: "any" }) });
+  if (filters.model3d === "yes")
+    chips.push({ label: "Con 3D/AR", onRemove: () => patch({ model3d: "any" }) });
+  if (filters.channelPrices === "yes")
+    chips.push({ label: "Precio por canal", onRemove: () => patch({ channelPrices: "any" }) });
   if (station) chips.push({ label: `Estación: ${station.name}`, onRemove: () => patch({ stationId: "" }) });
   if (chips.length === 0) chips.push({ label: "Filtros", onRemove: openDrawer });
   return chips;
@@ -805,16 +902,27 @@ function ProductCard({
   const cost = product.cost === null ? null : Number(product.cost);
   const margin = marginPercent(cost, price);
   const availabilityLabel =
-    product.availability === "agotado" ? "Agotado" : product.availability === "" || product.availability === null ? "Disponible" : "Disponible";
+    product.availability === "agotado"
+      ? "Agotado"
+      : product.availability === "" || product.availability === null
+        ? "Disponible"
+        : "Disponible";
 
   return (
     <article
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-[var(--admin-surface)] shadow-lg shadow-black/10 transition-all duration-150 hover:-translate-y-0.5 hover:border-white/20 hover:shadow-xl ${
-        selected ? "border-pink-500/60 ring-1 ring-pink-500/40" : "border-[var(--admin-border)]"
+      className={`admin-row-enter group relative flex flex-col overflow-hidden rounded-xl border bg-[var(--admin-surface)] shadow-[var(--admin-shadow-sm)] transition-[transform,border-color,background-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:shadow-[var(--admin-shadow-md)] ${
+        selected
+          ? "border-[var(--admin-primary)]/60 bg-[var(--admin-primary-soft)] ring-1 ring-[var(--admin-primary)]/25"
+          : "border-[var(--admin-border)]"
       }`}
     >
       {/* Imagen protagonista */}
-      <button type="button" onClick={onEdit} className="relative block aspect-[4/3] w-full overflow-hidden" aria-label={`Editar ${product.name}`}>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="relative block h-36 w-full overflow-hidden sm:h-40"
+        aria-label={`Editar ${product.name}`}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={productImageSrc(product.imageUrl)}
@@ -831,7 +939,10 @@ function ProductCard({
           )}
         </span>
         {product.favorite && (
-          <span className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-amber-400 backdrop-blur-sm" title="Favorito">
+          <span
+            className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-amber-400 backdrop-blur-sm"
+            title="Favorito"
+          >
             <Icon name="star-filled" className="h-4 w-4" />
           </span>
         )}
@@ -864,7 +975,9 @@ function ProductCard({
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-xl font-black tabular-nums">{money(price, currency)}</p>
           {product.stationName && (
-            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-zinc-300">{product.stationName}</span>
+            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-zinc-300">
+              {product.stationName}
+            </span>
           )}
         </div>
 
@@ -874,8 +987,14 @@ function ProductCard({
           ) : (
             <>
               Costo {money(cost, currency)} ·{" "}
-              {margin === null ? "—" : (
-                <span className={margin < 0 ? "text-rose-300" : margin < 20 ? "text-amber-300" : "text-emerald-300"}>
+              {margin === null ? (
+                "—"
+              ) : (
+                <span
+                  className={
+                    margin < 0 ? "text-rose-300" : margin < 20 ? "text-amber-300" : "text-emerald-300"
+                  }
+                >
                   Margen {margin.toFixed(1)}%
                 </span>
               )}
@@ -886,13 +1005,21 @@ function ProductCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           {product.tracked && product.stock !== null && (
             <span title={`Físico ${product.stock} · Reservado ${product.reserved ?? 0}`}>
-              <span className={`font-bold ${stock === "out" ? "text-rose-300" : stock === "low" ? "text-amber-300" : "text-zinc-200"}`}>
-                Stock {product.available ?? product.stock}
+              <span
+                className={`font-bold ${stock === "out" ? "text-rose-300" : stock === "low" ? "text-amber-300" : "text-zinc-200"}`}
+              >
+                Stock{" "}
+                <NumberFlow
+                  value={Number(product.available ?? product.stock)}
+                  format={{ maximumFractionDigits: 2 }}
+                />
               </span>
               <span className="text-zinc-500"> ({product.stock} físico)</span>
             </span>
           )}
-          <span className="text-[var(--admin-muted)]">{product.branchCount} sucursal{product.branchCount === 1 ? "" : "es"}</span>
+          <span className="text-[var(--admin-muted)]">
+            {product.branchCount} sucursal{product.branchCount === 1 ? "" : "es"}
+          </span>
           <StatusBadge status={product.status} />
         </div>
 
@@ -970,15 +1097,115 @@ function ListTable({
           <thead>
             <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
               <th className={`${cell} w-10`}>
-                <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Seleccionar todos" />
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={onToggleAll}
+                  aria-label="Seleccionar todos"
+                />
               </th>
-              <ColumnHeader label="Producto" column="search" sortKey="name-asc" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
-              <ColumnHeader label="Precio / costo" column="price" sortKey="price-asc" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
-              <ColumnHeader label="Margen" column="margin" sortKey="margin-asc" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
-              <ColumnHeader label="Stock" column="stock" sortKey="stock-asc" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
-              <ColumnHeader label="Disp." column="availability" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
-              <ColumnHeader label="Sucursales" column="branches" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
-              <ColumnHeader label="Estado" column="status" cell={cell} sort={sort} onSort={onSort} columnFilter={columnFilter} onColumnFilter={onColumnFilter} filters={filters} onPatchFilters={onPatchFilters} categoryGroups={categoryGroups} activeBranchId={activeBranchId} branches={branches} />
+              <ColumnHeader
+                label="Producto"
+                column="search"
+                sortKey="name-asc"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
+              <ColumnHeader
+                label="Precio / costo"
+                column="price"
+                sortKey="price-asc"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
+              <ColumnHeader
+                label="Margen"
+                column="margin"
+                sortKey="margin-asc"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
+              <ColumnHeader
+                label="Stock"
+                column="stock"
+                sortKey="stock-asc"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
+              <ColumnHeader
+                label="Disp."
+                column="availability"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
+              <ColumnHeader
+                label="Sucursales"
+                column="branches"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
+              <ColumnHeader
+                label="Estado"
+                column="status"
+                cell={cell}
+                sort={sort}
+                onSort={onSort}
+                columnFilter={columnFilter}
+                onColumnFilter={onColumnFilter}
+                filters={filters}
+                onPatchFilters={onPatchFilters}
+                categoryGroups={categoryGroups}
+                activeBranchId={activeBranchId}
+                branches={branches}
+              />
               <th className={`${cell} text-right`}>Acciones</th>
             </tr>
           </thead>
@@ -1004,39 +1231,105 @@ function ListTable({
                     />
                   </td>
                   <td className={cell}>
-                    <button className="flex items-center gap-3 text-left" onClick={() => onEdit(product.id)}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={productImageSrc(product.imageUrl)}
-                        alt={product.name}
-                        data-fallback-src="/images/image_defect/product_default.png"
-                        onError={handleImageError}
-                        className={`shrink-0 rounded-xl border border-[var(--admin-border)] object-cover ${density === "compact" ? "h-10 w-10" : "h-14 w-14"}`}
-                      />
-                      <span className="min-w-0">
-                        <span className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-sm font-bold leading-snug">{product.name}</span>
-                          {product.favorite && <span title="Favorito"><Icon name="star-filled" className="h-3.5 w-3.5 text-amber-400" /></span>}
-                          {(product.hasRecipe || product.hasCombo || product.hasModifiers) && (
-                            <span className="flex gap-0.5">
-                              {product.hasRecipe && <span className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-emerald-300" title="Con receta">R</span>}
-                              {product.hasCombo && <span className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-sky-300" title="Es combo">C</span>}
-                              {product.hasModifiers && <span className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-pink-300" title="Con modificadores">M</span>}
+                    <HoverPreview
+                      content={
+                        <span className="flex gap-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={productImageSrc(product.imageUrl)}
+                            alt=""
+                            data-fallback-src="/images/image_defect/product_default.png"
+                            onError={handleImageError}
+                            className="h-20 w-20 shrink-0 rounded-lg border border-[var(--admin-border)] object-cover"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold text-zinc-100">
+                              {product.name}
                             </span>
-                          )}
-                          {product.stationName && (
-                            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-zinc-300">{product.stationName}</span>
-                          )}
+                            <span className="mt-0.5 block truncate text-xs text-[var(--admin-muted)]">
+                              {product.categoryBreadcrumb || "Sin categoría"}
+                            </span>
+                            <span className="mt-2 flex items-center justify-between gap-2 text-xs">
+                              <strong>{money(price, currency)}</strong>
+                              <StatusBadge status={product.status} size="sm" />
+                            </span>
+                            <span
+                              className={`mt-1 block text-xs ${stock === "out" ? "text-rose-300" : stock === "low" ? "text-amber-300" : "text-zinc-400"}`}
+                            >
+                              {product.tracked
+                                ? `Stock disponible: ${product.available ?? product.stock ?? "—"}`
+                                : "Sin control de stock"}
+                            </span>
+                          </span>
                         </span>
-                        <span className="mt-0.5 block truncate text-xs text-[var(--admin-muted)]">
-                          {product.categoryBreadcrumb || "Sin categoría"}
+                      }
+                    >
+                      <button
+                        className="flex items-center gap-3 text-left"
+                        onClick={() => onEdit(product.id)}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={productImageSrc(product.imageUrl)}
+                          alt={product.name}
+                          data-fallback-src="/images/image_defect/product_default.png"
+                          onError={handleImageError}
+                          className={`shrink-0 rounded-xl border border-[var(--admin-border)] object-cover ${density === "compact" ? "h-10 w-10" : "h-14 w-14"}`}
+                        />
+                        <span className="min-w-0">
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-sm font-bold leading-snug">{product.name}</span>
+                            {product.favorite && (
+                              <span title="Favorito">
+                                <Icon name="star-filled" className="h-3.5 w-3.5 text-amber-400" />
+                              </span>
+                            )}
+                            {(product.hasRecipe || product.hasCombo || product.hasModifiers) && (
+                              <span className="flex gap-0.5">
+                                {product.hasRecipe && (
+                                  <span
+                                    className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-emerald-300"
+                                    title="Con receta"
+                                  >
+                                    R
+                                  </span>
+                                )}
+                                {product.hasCombo && (
+                                  <span
+                                    className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-sky-300"
+                                    title="Es combo"
+                                  >
+                                    C
+                                  </span>
+                                )}
+                                {product.hasModifiers && (
+                                  <span
+                                    className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-black text-pink-300"
+                                    title="Con modificadores"
+                                  >
+                                    M
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {product.stationName && (
+                              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-zinc-300">
+                                {product.stationName}
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-[var(--admin-muted)]">
+                            {product.categoryBreadcrumb || "Sin categoría"}
+                          </span>
                         </span>
-                      </span>
-                    </button>
+                      </button>
+                    </HoverPreview>
                   </td>
                   <td className={cell}>
                     <div className="text-sm font-bold tabular-nums">{money(price, currency)}</div>
-                    <div className={`text-xs ${cost === null ? "text-amber-300/80" : "text-[var(--admin-muted)]"}`}>
+                    <div
+                      className={`text-xs ${cost === null ? "text-amber-300/80" : "text-[var(--admin-muted)]"}`}
+                    >
                       {cost === null ? "Costo no cargado" : `Costo ${money(cost, currency)}`}
                     </div>
                   </td>
@@ -1044,7 +1337,9 @@ function ListTable({
                     {margin === null ? (
                       <span className="text-xs text-[var(--admin-muted)]">—</span>
                     ) : (
-                      <span className={`text-sm font-bold tabular-nums ${margin < 0 ? "text-rose-300" : margin < 20 ? "text-amber-300" : "text-emerald-300"}`}>
+                      <span
+                        className={`text-sm font-bold tabular-nums ${margin < 0 ? "text-rose-300" : margin < 20 ? "text-amber-300" : "text-emerald-300"}`}
+                      >
                         {margin.toFixed(1)}%
                       </span>
                     )}
@@ -1052,10 +1347,18 @@ function ListTable({
                   <td className={cell}>
                     {product.tracked && product.stock !== null ? (
                       <div className="text-sm">
-                        <span className={`font-bold tabular-nums ${stock === "out" ? "text-rose-300" : stock === "low" ? "text-amber-300" : "text-zinc-200"}`}>
-                          {product.available ?? product.stock}
+                        <span
+                          className={`font-bold tabular-nums ${stock === "out" ? "text-rose-300" : stock === "low" ? "text-amber-300" : "text-zinc-200"}`}
+                        >
+                          <NumberFlow
+                            value={Number(product.available ?? product.stock)}
+                            format={{ maximumFractionDigits: 2 }}
+                          />
                         </span>
-                        <span className="ml-1 text-[10px] text-zinc-500" title={`Físico ${product.stock} · Reservado ${product.reserved ?? 0}`}>
+                        <span
+                          className="ml-1 text-[10px] text-zinc-500"
+                          title={`Físico ${product.stock} · Reservado ${product.reserved ?? 0}`}
+                        >
                           / {product.stock}
                         </span>
                       </div>
@@ -1066,7 +1369,9 @@ function ListTable({
                   <td className={cell}>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                        product.availability === "agotado" ? "bg-rose-500/15 text-rose-300" : "bg-emerald-500/15 text-emerald-300"
+                        product.availability === "agotado"
+                          ? "bg-rose-500/15 text-rose-300"
+                          : "bg-emerald-500/15 text-emerald-300"
                       }`}
                     >
                       {product.availability === "agotado" ? "Agotado" : "Disponible"}
@@ -1084,7 +1389,10 @@ function ListTable({
                       items={[
                         { label: "Editar", onClick: () => onEdit(product.id) },
                         { label: "Duplicar", onClick: () => onDuplicate(product) },
-                        { label: product.favorite ? "Quitar favorito" : "Marcar favorito", onClick: () => onToggleFavorite(product) },
+                        {
+                          label: product.favorite ? "Quitar favorito" : "Marcar favorito",
+                          onClick: () => onToggleFavorite(product),
+                        },
                         { label: "Eliminar", tone: "danger", onClick: () => onRemove(product) },
                       ]}
                     />
@@ -1192,10 +1500,28 @@ function ColumnFilterPanel({
   const field = "input w-full py-1.5 text-xs";
   return (
     <>
-      <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={onClose} tabIndex={-1} />
+      <button
+        type="button"
+        aria-hidden
+        className="fixed inset-0 z-10 cursor-default"
+        onClick={onClose}
+        tabIndex={-1}
+      />
       <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-xl border border-white/10 bg-zinc-900 p-3 shadow-2xl">
         <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-          {column === "search" ? "Producto" : column === "price" ? "Precio y costo" : column === "margin" ? "Margen" : column === "stock" ? "Stock" : column === "availability" ? "Disponibilidad" : column === "branches" ? "Sucursales" : "Estado"}
+          {column === "search"
+            ? "Producto"
+            : column === "price"
+              ? "Precio y costo"
+              : column === "margin"
+                ? "Margen"
+                : column === "stock"
+                  ? "Stock"
+                  : column === "availability"
+                    ? "Disponibilidad"
+                    : column === "branches"
+                      ? "Sucursales"
+                      : "Estado"}
         </p>
         {column === "search" && (
           <input
@@ -1203,20 +1529,28 @@ function ColumnFilterPanel({
             className={field}
             placeholder="Buscar por nombre…"
             value={filters.categoryId ? "" : undefined}
-            onChange={() => onPatch({ categoryId: "", subcategoryId: "", status: "", availability: "any", stock: "any" })}
+            onChange={() =>
+              onPatch({ categoryId: "", subcategoryId: "", status: "", availability: "any", stock: "any" })
+            }
           />
         )}
         {column === "search" && (
           <div className="mt-2 space-y-2">
             <label className="block">
               <span className="text-[10px] font-bold text-zinc-500">Categoría</span>
-              <select className={field} value={filters.categoryId} onChange={(event) => onPatch({ categoryId: event.target.value, subcategoryId: "" })}>
+              <select
+                className={field}
+                value={filters.categoryId}
+                onChange={(event) => onPatch({ categoryId: event.target.value, subcategoryId: "" })}
+              >
                 <option value="">Todas</option>
                 {categoryGroups.map((parent) => (
                   <optgroup key={parent.id} label={parent.name}>
                     <option value={String(parent.id)}>{parent.name}</option>
                     {parent.children.map((child) => (
-                      <option key={child.id} value={String(child.id)}>{parent.name} › {child.name}</option>
+                      <option key={child.id} value={String(child.id)}>
+                        {parent.name} › {child.name}
+                      </option>
                     ))}
                   </optgroup>
                 ))}
@@ -1224,10 +1558,16 @@ function ColumnFilterPanel({
             </label>
             <label className="block">
               <span className="text-[10px] font-bold text-zinc-500">Estado</span>
-              <select className={field} value={filters.status} onChange={(event) => onPatch({ status: event.target.value })}>
+              <select
+                className={field}
+                value={filters.status}
+                onChange={(event) => onPatch({ status: event.target.value })}
+              >
                 <option value="">Todos</option>
                 {Object.entries(statusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
                 ))}
               </select>
             </label>
@@ -1237,24 +1577,56 @@ function ColumnFilterPanel({
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <span className="text-[10px] font-bold text-zinc-500">Precio mín.</span>
-              <input className={field} type="number" min={0} value={filters.priceMin} onChange={(event) => onPatch({ priceMin: event.target.value })} placeholder="0" />
+              <input
+                className={field}
+                type="number"
+                min={0}
+                value={filters.priceMin}
+                onChange={(event) => onPatch({ priceMin: event.target.value })}
+                placeholder="0"
+              />
             </label>
             <label className="block">
               <span className="text-[10px] font-bold text-zinc-500">Precio máx.</span>
-              <input className={field} type="number" min={0} value={filters.priceMax} onChange={(event) => onPatch({ priceMax: event.target.value })} placeholder="∞" />
+              <input
+                className={field}
+                type="number"
+                min={0}
+                value={filters.priceMax}
+                onChange={(event) => onPatch({ priceMax: event.target.value })}
+                placeholder="∞"
+              />
             </label>
             <label className="block">
               <span className="text-[10px] font-bold text-zinc-500">Costo mín.</span>
-              <input className={field} type="number" min={0} value={filters.costMin} onChange={(event) => onPatch({ costMin: event.target.value })} placeholder="0" />
+              <input
+                className={field}
+                type="number"
+                min={0}
+                value={filters.costMin}
+                onChange={(event) => onPatch({ costMin: event.target.value })}
+                placeholder="0"
+              />
             </label>
             <label className="block">
               <span className="text-[10px] font-bold text-zinc-500">Costo máx.</span>
-              <input className={field} type="number" min={0} value={filters.costMax} onChange={(event) => onPatch({ costMax: event.target.value })} placeholder="∞" />
+              <input
+                className={field}
+                type="number"
+                min={0}
+                value={filters.costMax}
+                onChange={(event) => onPatch({ costMax: event.target.value })}
+                placeholder="∞"
+              />
             </label>
           </div>
         )}
         {column === "margin" && (
-          <select className={field} value={filters.margin} onChange={(event) => onPatch({ margin: event.target.value as Filters["margin"] })}>
+          <select
+            className={field}
+            value={filters.margin}
+            onChange={(event) => onPatch({ margin: event.target.value as Filters["margin"] })}
+          >
             <option value="any">Cualquier margen</option>
             <option value="no-cost">Sin costo</option>
             <option value="negative">Margen negativo</option>
@@ -1264,7 +1636,11 @@ function ColumnFilterPanel({
           </select>
         )}
         {column === "stock" && (
-          <select className={field} value={filters.stock} onChange={(event) => onPatch({ stock: event.target.value as Filters["stock"] })}>
+          <select
+            className={field}
+            value={filters.stock}
+            onChange={(event) => onPatch({ stock: event.target.value as Filters["stock"] })}
+          >
             <option value="any">Cualquier stock</option>
             <option value="out">Sin stock</option>
             <option value="low">Bajo mínimo</option>
@@ -1272,29 +1648,49 @@ function ColumnFilterPanel({
           </select>
         )}
         {column === "availability" && (
-          <select className={field} value={filters.availability} onChange={(event) => onPatch({ availability: event.target.value as Filters["availability"] })}>
+          <select
+            className={field}
+            value={filters.availability}
+            onChange={(event) => onPatch({ availability: event.target.value as Filters["availability"] })}
+          >
             <option value="any">Disponible y agotado</option>
             <option value="disponible">Disponible</option>
             <option value="agotado">Agotado</option>
           </select>
         )}
         {column === "branches" && (
-          <select className={field} value={filters.branchId} onChange={(event) => onPatch({ branchId: event.target.value })}>
+          <select
+            className={field}
+            value={filters.branchId}
+            onChange={(event) => onPatch({ branchId: event.target.value })}
+          >
             <option value="">{activeBranchId ? "Sucursal actual" : "Todas las sucursales"}</option>
             {branches.map((branch) => (
-              <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
+              <option key={branch.id} value={String(branch.id)}>
+                {branch.name}
+              </option>
             ))}
           </select>
         )}
         {column === "status" && (
-          <select className={field} value={filters.status} onChange={(event) => onPatch({ status: event.target.value })}>
+          <select
+            className={field}
+            value={filters.status}
+            onChange={(event) => onPatch({ status: event.target.value })}
+          >
             <option value="">Todos los estados</option>
             {Object.entries(statusLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         )}
-        <button type="button" className="mt-3 w-full rounded-lg border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:bg-white/5" onClick={onClose}>
+        <button
+          type="button"
+          className="mt-3 w-full rounded-lg border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:bg-white/5"
+          onClick={onClose}
+        >
           Listo
         </button>
       </div>
@@ -1337,7 +1733,12 @@ function FilterDrawer({
             <h2 className="text-xl font-black">Filtros</h2>
             <p className="text-sm text-[var(--admin-muted)]">Combiná condiciones para afinar la carta.</p>
           </div>
-          <button type="button" className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl" onClick={onClose} aria-label="Cerrar filtros">
+          <button
+            type="button"
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-xl"
+            onClick={onClose}
+            aria-label="Cerrar filtros"
+          >
             ×
           </button>
         </div>
@@ -1348,13 +1749,19 @@ function FilterDrawer({
             <div className="space-y-3">
               <label className="block">
                 <span className="block text-xs font-semibold text-[var(--admin-muted)]">Categoría</span>
-                <select className={field} value={filters.categoryId} onChange={(event) => onPatch({ categoryId: event.target.value, subcategoryId: "" })}>
+                <select
+                  className={field}
+                  value={filters.categoryId}
+                  onChange={(event) => onPatch({ categoryId: event.target.value, subcategoryId: "" })}
+                >
                   <option value="">Todas</option>
                   {categoryGroups.map((parent) => (
                     <optgroup key={parent.id} label={parent.name}>
                       <option value={String(parent.id)}>{parent.name}</option>
                       {parent.children.map((child) => (
-                        <option key={child.id} value={String(child.id)}>{parent.name} › {child.name}</option>
+                        <option key={child.id} value={String(child.id)}>
+                          {parent.name} › {child.name}
+                        </option>
                       ))}
                     </optgroup>
                   ))}
@@ -1363,28 +1770,46 @@ function FilterDrawer({
               {filters.categoryId && (
                 <label className="block">
                   <span className="block text-xs font-semibold text-[var(--admin-muted)]">Subcategoría</span>
-                  <select className={field} value={filters.subcategoryId} onChange={(event) => onPatch({ subcategoryId: event.target.value })}>
+                  <select
+                    className={field}
+                    value={filters.subcategoryId}
+                    onChange={(event) => onPatch({ subcategoryId: event.target.value })}
+                  >
                     <option value="">Todas las subcategorías</option>
                     {categoryGroups
                       .find((parent) => String(parent.id) === filters.categoryId)
                       ?.children.map((child) => (
-                        <option key={child.id} value={String(child.id)}>{child.name}</option>
+                        <option key={child.id} value={String(child.id)}>
+                          {child.name}
+                        </option>
                       ))}
                   </select>
                 </label>
               )}
               <label className="block">
-                <span className="block text-xs font-semibold text-[var(--admin-muted)]">Estado editorial</span>
-                <select className={field} value={filters.status} onChange={(event) => onPatch({ status: event.target.value })}>
+                <span className="block text-xs font-semibold text-[var(--admin-muted)]">
+                  Estado editorial
+                </span>
+                <select
+                  className={field}
+                  value={filters.status}
+                  onChange={(event) => onPatch({ status: event.target.value })}
+                >
                   <option value="">Todos</option>
                   {Object.entries(statusLabels).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className="block">
                 <span className="block text-xs font-semibold text-[var(--admin-muted)]">Favorito</span>
-                <select className={field} value={filters.favorite} onChange={(event) => onPatch({ favorite: event.target.value as Filters["favorite"] })}>
+                <select
+                  className={field}
+                  value={filters.favorite}
+                  onChange={(event) => onPatch({ favorite: event.target.value as Filters["favorite"] })}
+                >
                   <option value="any">Todos</option>
                   <option value="yes">Solo favoritos</option>
                   <option value="no">Sin favorito</option>
@@ -1399,24 +1824,56 @@ function FilterDrawer({
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="block text-xs font-semibold text-[var(--admin-muted)]">Precio mín.</span>
-                  <input className={field} type="number" min={0} value={filters.priceMin} onChange={(event) => onPatch({ priceMin: event.target.value })} placeholder="0" />
+                  <input
+                    className={field}
+                    type="number"
+                    min={0}
+                    value={filters.priceMin}
+                    onChange={(event) => onPatch({ priceMin: event.target.value })}
+                    placeholder="0"
+                  />
                 </label>
                 <label className="block">
                   <span className="block text-xs font-semibold text-[var(--admin-muted)]">Precio máx.</span>
-                  <input className={field} type="number" min={0} value={filters.priceMax} onChange={(event) => onPatch({ priceMax: event.target.value })} placeholder="∞" />
+                  <input
+                    className={field}
+                    type="number"
+                    min={0}
+                    value={filters.priceMax}
+                    onChange={(event) => onPatch({ priceMax: event.target.value })}
+                    placeholder="∞"
+                  />
                 </label>
                 <label className="block">
                   <span className="block text-xs font-semibold text-[var(--admin-muted)]">Costo mín.</span>
-                  <input className={field} type="number" min={0} value={filters.costMin} onChange={(event) => onPatch({ costMin: event.target.value })} placeholder="0" />
+                  <input
+                    className={field}
+                    type="number"
+                    min={0}
+                    value={filters.costMin}
+                    onChange={(event) => onPatch({ costMin: event.target.value })}
+                    placeholder="0"
+                  />
                 </label>
                 <label className="block">
                   <span className="block text-xs font-semibold text-[var(--admin-muted)]">Costo máx.</span>
-                  <input className={field} type="number" min={0} value={filters.costMax} onChange={(event) => onPatch({ costMax: event.target.value })} placeholder="∞" />
+                  <input
+                    className={field}
+                    type="number"
+                    min={0}
+                    value={filters.costMax}
+                    onChange={(event) => onPatch({ costMax: event.target.value })}
+                    placeholder="∞"
+                  />
                 </label>
               </div>
               <label className="block">
                 <span className="block text-xs font-semibold text-[var(--admin-muted)]">Margen</span>
-                <select className={field} value={filters.margin} onChange={(event) => onPatch({ margin: event.target.value as Filters["margin"] })}>
+                <select
+                  className={field}
+                  value={filters.margin}
+                  onChange={(event) => onPatch({ margin: event.target.value as Filters["margin"] })}
+                >
                   <option value="any">Cualquiera</option>
                   <option value="no-cost">Sin costo cargado</option>
                   <option value="negative">Margen negativo</option>
@@ -1426,8 +1883,16 @@ function FilterDrawer({
                 </select>
               </label>
               <label className="block">
-                <span className="block text-xs font-semibold text-[var(--admin-muted)]">Precio por canal</span>
-                <select className={field} value={filters.channelPrices} onChange={(event) => onPatch({ channelPrices: event.target.value as Filters["channelPrices"] })}>
+                <span className="block text-xs font-semibold text-[var(--admin-muted)]">
+                  Precio por canal
+                </span>
+                <select
+                  className={field}
+                  value={filters.channelPrices}
+                  onChange={(event) =>
+                    onPatch({ channelPrices: event.target.value as Filters["channelPrices"] })
+                  }
+                >
                   <option value="any">Cualquiera</option>
                   <option value="yes">Con precio por canal</option>
                 </select>
@@ -1440,7 +1905,13 @@ function FilterDrawer({
             <div className="space-y-3">
               <label className="block">
                 <span className="block text-xs font-semibold text-[var(--admin-muted)]">Disponibilidad</span>
-                <select className={field} value={filters.availability} onChange={(event) => onPatch({ availability: event.target.value as Filters["availability"] })}>
+                <select
+                  className={field}
+                  value={filters.availability}
+                  onChange={(event) =>
+                    onPatch({ availability: event.target.value as Filters["availability"] })
+                  }
+                >
                   <option value="any">Disponible y agotado</option>
                   <option value="disponible">Disponible</option>
                   <option value="agotado">Agotado</option>
@@ -1448,7 +1919,11 @@ function FilterDrawer({
               </label>
               <label className="block">
                 <span className="block text-xs font-semibold text-[var(--admin-muted)]">Nivel de stock</span>
-                <select className={field} value={filters.stock} onChange={(event) => onPatch({ stock: event.target.value as Filters["stock"] })}>
+                <select
+                  className={field}
+                  value={filters.stock}
+                  onChange={(event) => onPatch({ stock: event.target.value as Filters["stock"] })}
+                >
                   <option value="any">Cualquiera</option>
                   <option value="out">Sin stock</option>
                   <option value="low">Bajo mínimo</option>
@@ -1457,11 +1932,19 @@ function FilterDrawer({
               </label>
               {!activeBranchId && (
                 <label className="block">
-                  <span className="block text-xs font-semibold text-[var(--admin-muted)]">Publicados en sucursal</span>
-                  <select className={field} value={filters.branchId} onChange={(event) => onPatch({ branchId: event.target.value })}>
+                  <span className="block text-xs font-semibold text-[var(--admin-muted)]">
+                    Publicados en sucursal
+                  </span>
+                  <select
+                    className={field}
+                    value={filters.branchId}
+                    onChange={(event) => onPatch({ branchId: event.target.value })}
+                  >
                     <option value="">Todas</option>
                     {branches.map((branch) => (
-                      <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
+                      <option key={branch.id} value={String(branch.id)}>
+                        {branch.name}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -1472,26 +1955,38 @@ function FilterDrawer({
           <section className={group}>
             <h3 className={groupTitle}>Preparación</h3>
             <div className="grid grid-cols-2 gap-3">
-              {([
-                { key: "recipe", label: "Con receta" },
-                { key: "combo", label: "Es combo" },
-                { key: "modifiers", label: "Con modificadores" },
-              ] as const).map((option) => (
+              {(
+                [
+                  { key: "recipe", label: "Con receta" },
+                  { key: "combo", label: "Es combo" },
+                  { key: "modifiers", label: "Con modificadores" },
+                ] as const
+              ).map((option) => (
                 <label key={option.key} className="flex items-center gap-2 text-sm font-semibold">
                   <input
                     type="checkbox"
                     checked={filters[option.key] === "yes"}
-                    onChange={(event) => onPatch({ [option.key]: event.target.checked ? "yes" : "any" } as Partial<Filters>)}
+                    onChange={(event) =>
+                      onPatch({ [option.key]: event.target.checked ? "yes" : "any" } as Partial<Filters>)
+                    }
                   />
                   {option.label}
                 </label>
               ))}
               <label className="col-span-2 block">
-                <span className="block text-xs font-semibold text-[var(--admin-muted)]">Estación de preparación</span>
-                <select className={field} value={filters.stationId} onChange={(event) => onPatch({ stationId: event.target.value })}>
+                <span className="block text-xs font-semibold text-[var(--admin-muted)]">
+                  Estación de preparación
+                </span>
+                <select
+                  className={field}
+                  value={filters.stationId}
+                  onChange={(event) => onPatch({ stationId: event.target.value })}
+                >
                   <option value="">Todas</option>
                   {stations.map((station) => (
-                    <option key={station.id} value={String(station.id)}>{station.name}</option>
+                    <option key={station.id} value={String(station.id)}>
+                      {station.name}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -1501,15 +1996,19 @@ function FilterDrawer({
           <section className={group}>
             <h3 className={groupTitle}>Multimedia</h3>
             <div className="grid grid-cols-2 gap-3">
-              {([
-                { key: "image", label: "Con imagen" },
-                { key: "model3d", label: "Con 3D o AR" },
-              ] as const).map((option) => (
+              {(
+                [
+                  { key: "image", label: "Con imagen" },
+                  { key: "model3d", label: "Con 3D o AR" },
+                ] as const
+              ).map((option) => (
                 <label key={option.key} className="flex items-center gap-2 text-sm font-semibold">
                   <input
                     type="checkbox"
                     checked={filters[option.key] === "yes"}
-                    onChange={(event) => onPatch({ [option.key]: event.target.checked ? "yes" : "any" } as Partial<Filters>)}
+                    onChange={(event) =>
+                      onPatch({ [option.key]: event.target.checked ? "yes" : "any" } as Partial<Filters>)
+                    }
                   />
                   {option.label}
                 </label>
@@ -1519,8 +2018,12 @@ function FilterDrawer({
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-white/10 px-5 py-4">
-          <button type="button" className="btn btn-secondary" onClick={onClear}>Limpiar filtros</button>
-          <button type="button" className="btn" onClick={onClose}>Ver resultados</button>
+          <button type="button" className="btn btn-secondary" onClick={onClear}>
+            Limpiar filtros
+          </button>
+          <button type="button" className="btn" onClick={onClose}>
+            Ver resultados
+          </button>
         </div>
       </aside>
     </div>

@@ -39,7 +39,7 @@ export function CardGrid<T>({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.01] p-12 text-center text-[var(--admin-muted)]">
+      <div className="rounded-xl border border-dashed border-[var(--admin-border-strong)] bg-[var(--admin-surface)] p-8 text-center text-sm text-[var(--admin-muted)]">
         {emptyMessage}
       </div>
     );
@@ -52,15 +52,26 @@ export function CardGrid<T>({
         <ViewModeToggle value={viewMode} onChange={applyMode} />
       </div>
       {isCards ? (
-        <div className={`grid ${compact ? "grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" : "grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"}`}>
+        <div
+          className={`grid ${compact ? "grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" : "grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"}`}
+        >
           {items.map((item, index) => (
             <div key={keyExtractor(item, index)}>{renderCard(item)}</div>
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]">
+        <div className="overflow-x-auto rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-[var(--admin-shadow-sm)]">
           <table className={`w-full text-left ${compact ? "text-xs" : "text-sm"}`}>
-            <tbody className="divide-y divide-[var(--admin-border)]">{items.map((item, index) => <tr key={keyExtractor(item, index)}>{renderListRow?.(item)}</tr>)}</tbody>
+            <tbody className="divide-y divide-[var(--admin-border)]">
+              {items.map((item, index) => (
+                <tr
+                  className="admin-row-enter transition-colors hover:bg-[var(--admin-row-hover)]"
+                  key={keyExtractor(item, index)}
+                >
+                  {renderListRow?.(item)}
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       )}

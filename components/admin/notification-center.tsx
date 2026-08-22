@@ -80,17 +80,19 @@ function unlockBodyScroll() {
  * mediante React Portal hacia document.body para que sea totalmente
  * independiente del layout de la aplicación.
  */
-export function NotificationCenter({ compact = false, sidebarMode = false }: { compact?: boolean; sidebarMode?: boolean }) {
+export function NotificationCenter({
+  compact = false,
+  sidebarMode = false,
+}: {
+  compact?: boolean;
+  sidebarMode?: boolean;
+}) {
   const pathname = usePathname();
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
   useEffect(() => {
     let active = true;
     async function refresh() {
@@ -225,7 +227,9 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-3">
-                      <strong className="min-w-0 truncate text-sm font-semibold text-white">{item.title}</strong>
+                      <strong className="min-w-0 truncate text-sm font-semibold text-white">
+                        {item.title}
+                      </strong>
                       <time className="shrink-0 text-[11px] text-zinc-500">
                         {relativeTime(item.createdAt)}
                       </time>
@@ -285,26 +289,28 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
             </span>
           )}
         </button>
-        {mounted && open && createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
-              aria-hidden="true"
-            />
-            <div
-              ref={panelRef}
-              className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
+        {open &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
+                aria-hidden="true"
+              />
+              <div
+                ref={panelRef}
+                className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
                 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
                 sm:left-auto sm:right-6 sm:translate-x-0 sm:translate-y-0 sm:top-[4.5rem]"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Notificaciones"
-            >
-              {notificationPanelContent}
-            </div>
-          </>,
-          document.body,
-        )}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Notificaciones"
+              >
+                {notificationPanelContent}
+              </div>
+            </>,
+            document.body,
+          )}
       </div>
     );
   }
@@ -313,7 +319,37 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
     return (
       <>
         {bellButton}
-        {mounted && open && createPortal(
+        {open &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
+                aria-hidden="true"
+              />
+              <div
+                ref={panelRef}
+                className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
+                left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Notificaciones"
+              >
+                {notificationPanelContent}
+              </div>
+            </>,
+            document.body,
+          )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {bellButton}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
           <>
             <div
               className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
@@ -322,7 +358,8 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
             <div
               ref={panelRef}
               className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
-                left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              right-4 top-[4.5rem]
+              max-sm:left-4 max-sm:right-4 max-sm:top-1/2 max-sm:-translate-y-1/2 max-sm:translate-x-0"
               role="dialog"
               aria-modal="true"
               aria-label="Notificaciones"
@@ -332,33 +369,6 @@ export function NotificationCenter({ compact = false, sidebarMode = false }: { c
           </>,
           document.body,
         )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      {bellButton}
-      {mounted && open && createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-[2px] modal-backdrop-in"
-            aria-hidden="true"
-          />
-          <div
-            ref={panelRef}
-            className="fixed z-[310] flex max-h-[min(calc(100vh-2rem),80vh)] w-[min(480px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-white/[.08] bg-zinc-950 shadow-2xl shadow-black/50 modal-panel-in
-              right-4 top-[4.5rem]
-              max-sm:left-4 max-sm:right-4 max-sm:top-1/2 max-sm:-translate-y-1/2 max-sm:translate-x-0"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Notificaciones"
-          >
-            {notificationPanelContent}
-          </div>
-        </>,
-        document.body,
-      )}
     </>
   );
 }

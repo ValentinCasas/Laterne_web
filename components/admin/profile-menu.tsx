@@ -125,15 +125,12 @@ export function ProfileMenu({
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
-  const [mounted, setMounted] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
   const displayName = userName?.trim() || tenantName;
   const avatarSrc = avatarUrl(userImageUrl);
-
-  useEffect(() => setMounted(true), []);
 
   const menuItems = useMemo(
     () => [
@@ -163,8 +160,10 @@ export function ProfileMenu({
 
     function handlePointer(event: PointerEvent) {
       if (
-        popoverRef.current && !popoverRef.current.contains(event.target as Node) &&
-        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
       ) {
         setOpen(false);
         setFocusIndex(-1);
@@ -199,12 +198,7 @@ export function ProfileMenu({
 
   function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
     if (menuItems.length === 0) return;
-    if (
-      event.key === "ArrowDown" ||
-      event.key === "ArrowUp" ||
-      event.key === "Home" ||
-      event.key === "End"
-    ) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
       event.preventDefault();
       let next = focusIndex;
       if (event.key === "ArrowDown") next += 1;
@@ -220,7 +214,7 @@ export function ProfileMenu({
   const popoverContent = (
     <div
       ref={popoverRef}
-      className="fixed z-[250] w-[272px] overflow-hidden rounded-xl border border-white/[.08] bg-zinc-900/95 p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl dropdown-enter"
+      className="dropdown-enter fixed z-[250] w-[288px] overflow-hidden rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl"
       style={{ top: popoverPos.top, left: popoverPos.left }}
       role="menu"
       aria-label="Menú de perfil"
@@ -228,10 +222,17 @@ export function ProfileMenu({
     >
       {/* Header: avatar + info */}
       <div className="flex items-center gap-3 rounded-lg px-3 py-3">
-        <UserAvatar name={displayName} src={avatarSrc} size="md" className="text-sm shrink-0 shadow-[2px_2px_6px_rgba(0,0,0,0.45),-1px_-1px_4px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.04)]" />
+        <UserAvatar
+          name={displayName}
+          src={avatarSrc}
+          size="md"
+          status="online"
+          className="text-sm shrink-0 ring-1 ring-white/10 shadow-[var(--admin-shadow-sm)]"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-white">{displayName}</p>
           <p className="truncate text-xs text-zinc-500">{userEmail || tenantName}</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-emerald-300">Sesión activa</p>
         </div>
       </div>
       <div className="mx-2 my-1 h-px bg-white/[.06]" />
@@ -243,10 +244,15 @@ export function ProfileMenu({
             <Link
               key={entry.key}
               role="menuitem"
-              ref={(element) => { itemRefs.current[index] = element; }}
+              ref={(element) => {
+                itemRefs.current[index] = element;
+              }}
               href={helpHref}
               tabIndex={tabIndex}
-              onClick={() => { setOpen(false); setFocusIndex(-1); }}
+              onClick={() => {
+                setOpen(false);
+                setFocusIndex(-1);
+              }}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
             >
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.05] text-sm font-black text-zinc-400">
@@ -261,10 +267,15 @@ export function ProfileMenu({
             <Link
               key={entry.key}
               role="menuitem"
-              ref={(element) => { itemRefs.current[index] = element; }}
+              ref={(element) => {
+                itemRefs.current[index] = element;
+              }}
               href={adminHref("/admin/cuenta")}
               tabIndex={tabIndex}
-              onClick={() => { setOpen(false); setFocusIndex(-1); }}
+              onClick={() => {
+                setOpen(false);
+                setFocusIndex(-1);
+              }}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
             >
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.05] text-sm font-black text-zinc-400">
@@ -280,9 +291,15 @@ export function ProfileMenu({
               key={entry.key}
               type="button"
               role="menuitem"
-              ref={(element) => { itemRefs.current[index] = element; }}
+              ref={(element) => {
+                itemRefs.current[index] = element;
+              }}
               tabIndex={tabIndex}
-              onClick={() => { onSwitchNavigationMode(); setOpen(false); setFocusIndex(-1); }}
+              onClick={() => {
+                onSwitchNavigationMode();
+                setOpen(false);
+                setFocusIndex(-1);
+              }}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
             >
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.05] text-sm font-black text-zinc-400">
@@ -297,7 +314,9 @@ export function ProfileMenu({
             key={entry.key}
             type="button"
             role="menuitem"
-            ref={(element) => { itemRefs.current[index] = element; }}
+            ref={(element) => {
+              itemRefs.current[index] = element;
+            }}
             tabIndex={tabIndex}
             onClick={onLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-300 transition-colors duration-150 hover:bg-red-500/10"
@@ -323,11 +342,17 @@ export function ProfileMenu({
         aria-label="Menú de perfil"
         onClick={toggle}
       >
-        <UserAvatar name={displayName} src={avatarSrc} size="sm" className="ring-1 ring-white/10 shadow-[2px_2px_6px_rgba(0,0,0,0.45),-1px_-1px_4px_rgba(255,255,255,0.03),inset_0_0_0_1px_rgba(255,255,255,0.04)]" />
+        <UserAvatar
+          name={displayName}
+          src={avatarSrc}
+          size="sm"
+          status="online"
+          className="ring-1 ring-white/10 shadow-[var(--admin-shadow-sm)]"
+        />
         {!compact && <span className="hidden max-w-20 truncate 2xl:block">{tenantName}</span>}
         {!compact && <ChevronDownIcon open={open} className="hidden text-zinc-500 2xl:block" />}
       </button>
-      {mounted && open && createPortal(popoverContent, document.body)}
+      {open && typeof document !== "undefined" && createPortal(popoverContent, document.body)}
     </div>
   );
 }

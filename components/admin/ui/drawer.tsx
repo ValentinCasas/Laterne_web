@@ -3,7 +3,19 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 /** @summary Drawer lateral para formularios, detalles o filtros avanzados. */
-export function Drawer({ open, onClose, title, width = "480px", children }: { open: boolean; onClose: () => void; title: string; width?: string; children: ReactNode }) {
+export function Drawer({
+  open,
+  onClose,
+  title,
+  width = "480px",
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  width?: string;
+  children: ReactNode;
+}) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<Element | null>(null);
 
@@ -19,6 +31,23 @@ export function Drawer({ open, onClose, title, width = "480px", children }: { op
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
+        return;
+      }
+      if (event.key === "Tab") {
+        const panel = closeButtonRef.current?.closest("aside");
+        const focusable = panel?.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        );
+        if (!focusable?.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -27,19 +56,33 @@ export function Drawer({ open, onClose, title, width = "480px", children }: { op
 
   useEffect(() => {
     if (!open) {
-      (previousActiveElement.current as HTMLElement | null)?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true }));
+      (previousActiveElement.current as HTMLElement | null)?.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true }),
+      );
       (previousActiveElement.current as HTMLElement | null)?.focus();
     }
   }, [open]);
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[120]">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <aside className="absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-white/10 bg-zinc-950 shadow-2xl sm:w-auto" style={{ maxWidth: width }}>
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-zinc-950/90 px-5 py-4 backdrop-blur">
-          <h2 className="text-lg font-black">{title}</h2>
-          <button ref={closeButtonRef} type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full bg-white/5 text-sm text-zinc-400 transition-colors hover:bg-white/10 hover:text-white" aria-label="Cerrar">
+    <div className="fixed inset-0 z-[120]" role="presentation">
+      <div className="modal-backdrop-in absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <aside
+        className="salon-drawer absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] shadow-2xl sm:w-auto"
+        style={{ maxWidth: width }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] px-5 py-4 backdrop-blur">
+          <h2 className="text-lg font-bold">{title}</h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm text-zinc-400 transition-colors hover:text-white"
+            aria-label="Cerrar"
+          >
             ×
           </button>
         </header>
