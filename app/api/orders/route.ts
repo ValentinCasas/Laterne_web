@@ -51,6 +51,14 @@ const orderInput = z.object({
       accuracy: z.coerce.number().min(0).max(10_000).optional(),
     })
     .optional(),
+  deliveryLocation: z
+    .object({
+      latitude: z.coerce.number().min(-90).max(90),
+      longitude: z.coerce.number().min(-180).max(180),
+      accuracy: z.coerce.number().min(0).max(10_000).optional(),
+      source: z.enum(["current", "map"]),
+    })
+    .optional(),
   items: z
     .array(
       z.object({
@@ -194,6 +202,9 @@ export async function POST(request: Request) {
   }
   if (parsed.data.orderType === "delivery" && !parsed.data.address) {
     return NextResponse.json({ error: "Ingresá la dirección de entrega" }, { status: 400 });
+  }
+  if (parsed.data.orderType === "delivery" && !parsed.data.deliveryLocation) {
+    return NextResponse.json({ error: "Confirmá el punto exacto de entrega" }, { status: 400 });
   }
 
   const productIds = [...new Set(parsed.data.items.map((item) => item.productId))];
@@ -510,6 +521,8 @@ export async function POST(request: Request) {
           customerId: order.customerId,
           customerName: order.customerName,
           deliveryAddress: order.deliveryAddress,
+          latitude: parsed.data.deliveryLocation?.latitude,
+          longitude: parsed.data.deliveryLocation?.longitude,
           items: order.items.map((item) => ({
             id: item.id,
             productId: item.productId,

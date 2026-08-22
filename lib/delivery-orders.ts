@@ -70,6 +70,8 @@ export type DeliveryOrderInput = {
   customerId: number | null;
   customerName: string;
   deliveryAddress: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   items: Array<{
     id: number;
     productId: number | null;
@@ -114,6 +116,8 @@ export async function ensureDeliveryForOrder(
       customerId: order.customerId ?? undefined,
       customerName: order.customerName,
       deliveryAddress: order.deliveryAddress ?? undefined,
+      latitude: order.latitude === null || order.latitude === undefined ? undefined : String(order.latitude),
+      longitude: order.longitude === null || order.longitude === undefined ? undefined : String(order.longitude),
       deliveryType: "full",
       provider: "MENUCLICK",
       status: "PENDING_ASSIGNMENT",

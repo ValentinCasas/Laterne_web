@@ -5,6 +5,7 @@ import { DriverActiveDeliveries, type DriverDelivery } from "@/components/driver
 import { DriverLocationSharing } from "@/components/driver/location-sharing";
 import { DriverProfileCard } from "@/components/driver/profile-card";
 import { DriverSummaryCards } from "@/components/driver/summary-cards";
+import { DriverRouteMap } from "@/components/driver/route-map";
 import { scopedFetch } from "@/lib/client-routing";
 
 type DriverProfile = Parameters<typeof DriverProfileCard>[0]["driver"];
@@ -52,6 +53,7 @@ export function DriverDashboard({
   return (
     <div className="space-y-4">
       <DriverSummaryCards active={deliveries.length} deliveredToday={deliveredTodayCount} averageMinutes={averageMinutes} incidents={incidentCount} />
+      <DriverRouteMap deliveries={deliveries} />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,.8fr)]">
         <div className="space-y-4 lg:col-start-1">
           <DriverProfileCard driver={driver} activeDeliveries={deliveries.length} />

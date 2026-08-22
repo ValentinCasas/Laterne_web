@@ -168,6 +168,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
               customerId: order.customerId,
               customerName: order.customerName,
               deliveryAddress: order.deliveryAddress,
+              latitude: delivery.latitude,
+              longitude: delivery.longitude,
               items: order.items.map((item) => ({
                 id: item.id,
                 productId: item.productId,
@@ -277,6 +279,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
           customerId: order.customerId,
           customerName: order.customerName,
           deliveryAddress: order.deliveryAddress,
+          latitude: delivery.latitude,
+          longitude: delivery.longitude,
           items: order.items.map((item) => ({
             id: item.id,
             productId: item.productId,

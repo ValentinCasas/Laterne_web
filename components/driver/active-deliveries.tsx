@@ -34,7 +34,14 @@ export type DriverDelivery = {
     currency?: string;
     requestedAt?: string | Date | null;
   } | null;
-  branch?: { id: number; name: string; address?: string | null; phone?: string | null } | null;
+  branch?: {
+    id: number;
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    latitude?: unknown;
+    longitude?: unknown;
+  } | null;
   items?: Array<{ id: number; productName: string; quantityDelivered: number; unitPrice: string | number | object; notes?: string | null }>;
   incidents?: Array<{ id: number; type: string; description: string; resolved: boolean; reportedAt: string | Date }>;
   statusLogs?: Array<{ id?: number; status: string; previousStatus: string | null; changedAt: string | Date; reason?: string | null }>;

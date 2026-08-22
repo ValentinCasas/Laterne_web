@@ -357,6 +357,24 @@ test.describe.serial("Delivery GPS real", () => {
     expect(created.driver.name).toBe("Repartidor alta válida");
   });
 
+  test("el cliente elige ubicación actual o un punto distinto sin GPS automático", async ({ page }) => {
+    await page.context().grantPermissions(["geolocation"]);
+    await page.context().setGeolocation({ latitude: -33.1884, longitude: -66.3215, accuracy: 9 });
+    await page.goto(`/t/${tenantSlug}/pedido`);
+    await page.getByRole("button", { name: "Delivery", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Usar mi ubicación actual" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Elegir otro punto en el mapa" })).toBeVisible();
+    await expect(page.getByText("Ubicación actual confirmada")).toHaveCount(0);
+    await page.getByRole("button", { name: "Usar mi ubicación actual" }).click();
+    await expect(page.getByText(/Ubicación actual confirmada/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Elegir otro punto en el mapa" }).click();
+    const locationMap = page.getByLabel("Elegir punto de entrega en el mapa");
+    await expect(locationMap).toBeVisible();
+    await locationMap.click({ position: { x: 120, y: 120 } });
+    await expect(page.getByText(/Punto confirmado/)).toBeVisible();
+  });
+
   test("un usuario vinculado sin driver.self comparte, mueve y pausa su ubicación con aislamiento", async ({ browser }) => {
     const driverContext = await browser.newContext({
       geolocation: { latitude: -33.188565, longitude: -66.3217242, accuracy: 8 },
@@ -370,6 +388,12 @@ test.describe.serial("Delivery GPS real", () => {
     await expect(driverPage).toHaveURL(/\/t\/[^/]+\/[^/]+\/driver$/);
     await expect(driverPage.getByRole("navigation", { name: "Navegación principal" })).toHaveCount(0);
     await expect(driverPage.getByRole("complementary", { name: "Preferencias de cookies" })).toHaveCount(0);
+    await expect(driverPage.getByLabel("Mapa del recorrido del repartidor")).toBeVisible();
+    await expect(driverPage.getByLabel("Parada 1")).toBeVisible();
+    await expect(driverPage.getByRole("link", { name: "Abrir navegación" })).toHaveAttribute(
+      "href",
+      /^https:\/\/www\.google\.com\/maps\/dir\//,
+    );
     await expect(driverPage.getByRole("button", { name: "Compartir ubicación" })).toBeVisible();
     const firstPost = driverPage.waitForResponse(
       (response) => response.request().method() === "POST" && response.url().includes("/drivers/positions"),

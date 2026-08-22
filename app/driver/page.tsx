@@ -30,7 +30,7 @@ export default async function DriverPage() {
     prisma.orderDelivery.findMany({
       where: { tenantId: context.tenant.id, driverProfileId: driverProfile.id, status: { in: ["ASSIGNED", "PICKED_UP", "ON_THE_WAY"] } },
       include: {
-        branch: { select: { id: true, name: true, address: true, phone: true } },
+        branch: { select: { id: true, name: true, address: true, phone: true, latitude: true, longitude: true } },
         order: { select: { id: true, reference: true, status: true, customerName: true, phone: true, deliveryAddress: true, notes: true, total: true, currency: true, requestedAt: true } },
         items: { select: { id: true, productName: true, quantityDelivered: true, unitPrice: true, notes: true } },
         incidents: { select: { id: true, type: true, description: true, resolved: true, reportedAt: true } },

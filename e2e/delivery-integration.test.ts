@@ -98,6 +98,15 @@ describe("integración delivery (DB real)", () => {
     expect(total).toBe(1);
   });
 
+  it("conserva el punto exacto confirmado por el cliente", async () => {
+    const order = await makeOrder("delivery");
+    order.latitude = -33.3017123;
+    order.longitude = -66.3378456;
+    const delivery = await ensureDeliveryForOrder(prisma, order);
+    expect(Number(delivery.latitude)).toBeCloseTo(-33.3017123, 6);
+    expect(Number(delivery.longitude)).toBeCloseTo(-66.3378456, 6);
+  });
+
   it("reintentar la creación no duplica la entrega (idempotente)", async () => {
     const order = await makeOrder("delivery");
     const first = await ensureDeliveryForOrder(prisma, order);

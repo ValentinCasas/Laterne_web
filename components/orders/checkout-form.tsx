@@ -14,6 +14,10 @@ import {
 } from "@/lib/order-scheduling";
 import { publicHrefForVisiblePath } from "@/lib/routes";
 import { PRODUCT_IMAGE_FALLBACK } from "@/lib/image-fallback";
+import {
+  DeliveryLocationPicker,
+  type ConfirmedDeliveryLocation,
+} from "@/components/orders/delivery-location-picker";
 
 type StoredCartItem = {
   id: number;
@@ -47,6 +51,7 @@ type BranchOption = {
 
 type CheckoutStep = "details" | "payment" | "review";
 type OrderType = "takeaway" | "dine_in" | "delivery";
+type DeliveryLocationMode = "" | "current" | "map";
 
 const checkoutSteps: Array<{ id: CheckoutStep; label: string }> = [
   { id: "details", label: "Datos + modalidad" },
@@ -128,6 +133,10 @@ export function CheckoutForm({
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [deliveryReference, setDeliveryReference] = useState("");
+  const [deliveryLocationMode, setDeliveryLocationMode] = useState<DeliveryLocationMode>("");
+  const [deliveryLocation, setDeliveryLocation] = useState<ConfirmedDeliveryLocation | null>(null);
+  const [requestingDeliveryLocation, setRequestingDeliveryLocation] = useState(false);
+  const [deliveryLocationError, setDeliveryLocationError] = useState("");
   const [notes, setNotes] = useState("");
   const [requestedTime, setRequestedTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -168,6 +177,28 @@ export function CheckoutForm({
         { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 },
       );
     });
+  }
+
+  /** @summary Pide GPS solo después del clic del cliente y conserva la precisión informada por el navegador. */
+  async function requestCurrentDeliveryLocation() {
+    setDeliveryLocationMode("current");
+    setDeliveryLocation(null);
+    setDeliveryLocationError("");
+    setRequestingDeliveryLocation(true);
+    const location = await requestGeolocation();
+    setRequestingDeliveryLocation(false);
+    if (!location) {
+      setDeliveryLocationError("No pudimos acceder a tu ubicación. Podés habilitar el permiso o elegir el punto en el mapa.");
+      return;
+    }
+    setDeliveryLocation(location);
+  }
+
+  /** @summary Abre la elección manual sin reutilizar silenciosamente una posición GPS anterior. */
+  function chooseAnotherDeliveryLocation() {
+    setDeliveryLocationMode("map");
+    setDeliveryLocation(null);
+    setDeliveryLocationError("");
   }
 
   useEffect(() => {
@@ -246,6 +277,9 @@ export function CheckoutForm({
     if (phone.trim().length < 6) return "Escribí un teléfono o WhatsApp válido.";
     if (email && !/^\S+@\S+\.\S+$/.test(email.trim())) return "Revisá el email ingresado.";
     if (orderType === "delivery" && address.trim().length < 5) return "Ingresá la dirección de entrega.";
+    if (orderType === "delivery" && !deliveryLocation) {
+      return "Confirmá el punto de entrega usando tu ubicación actual o el mapa.";
+    }
     if (orderType === "dine_in" && !tableCode.trim()) return "Elegí la mesa desde la que vas a pedir.";
     if (orderType !== "dine_in" && !effectiveRequestedTime) {
       return "No hay horarios disponibles para esta modalidad. Elegí otra sucursal o consultá al local.";
@@ -318,6 +352,14 @@ export function CheckoutForm({
       loyaltyToken: readBrowserText("laterne_cliente_token") || undefined,
       idempotencyKey: idempotencyKey(),
       ...(geolocation ? { geolocation } : {}),
+      ...(orderType === "delivery" && deliveryLocation
+        ? {
+            deliveryLocation: {
+              ...deliveryLocation,
+              source: deliveryLocationMode === "current" ? "current" : "map",
+            },
+          }
+        : {}),
       items: items.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
@@ -400,7 +442,12 @@ export function CheckoutForm({
                   <select
                     className="input"
                     value={selectedBranch?.id ?? 0}
-                    onChange={(event) => setBranchId(Number(event.target.value))}
+                    onChange={(event) => {
+                      setBranchId(Number(event.target.value));
+                      setDeliveryLocationMode("");
+                      setDeliveryLocation(null);
+                      setDeliveryLocationError("");
+                    }}
                   >
                     {selectableBranches.map((branch) => (
                       <option key={branch.id} value={branch.id}>
@@ -491,6 +538,57 @@ export function CheckoutForm({
                       placeholder="Piso, timbre, entre calles…"
                     />
                   </label>
+                  <fieldset className="sm:col-span-2">
+                    <legend className="text-sm font-bold text-zinc-300">Punto exacto de entrega</legend>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      Lo usamos para que el repartidor encuentre tu ubicación. El GPS solo se solicita si elegís usarlo.
+                    </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        className={`min-h-14 rounded-2xl border p-4 text-left text-sm font-black transition ${
+                          deliveryLocationMode === "current"
+                            ? "border-pink-500 bg-pink-500/15 text-pink-100"
+                            : "border-white/10 bg-white/[.03] text-zinc-200 hover:bg-white/[.06]"
+                        }`}
+                        onClick={() => void requestCurrentDeliveryLocation()}
+                        disabled={requestingDeliveryLocation}
+                      >
+                        {requestingDeliveryLocation ? "Buscando ubicación…" : "Usar mi ubicación actual"}
+                      </button>
+                      <button
+                        type="button"
+                        className={`min-h-14 rounded-2xl border p-4 text-left text-sm font-black transition ${
+                          deliveryLocationMode === "map"
+                            ? "border-pink-500 bg-pink-500/15 text-pink-100"
+                            : "border-white/10 bg-white/[.03] text-zinc-200 hover:bg-white/[.06]"
+                        }`}
+                        onClick={chooseAnotherDeliveryLocation}
+                      >
+                        Elegir otro punto en el mapa
+                      </button>
+                    </div>
+                    {deliveryLocationMode === "current" && deliveryLocation && (
+                      <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300">
+                        Ubicación actual confirmada
+                        {deliveryLocation.accuracy ? ` · precisión aproximada ${Math.round(deliveryLocation.accuracy)} m` : ""}
+                      </p>
+                    )}
+                    {deliveryLocationError && (
+                      <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-200">
+                        {deliveryLocationError}
+                      </p>
+                    )}
+                    {deliveryLocationMode === "map" && (
+                      <div className="mt-3">
+                        <DeliveryLocationPicker
+                          branch={selectedBranch}
+                          value={deliveryLocation}
+                          onChange={setDeliveryLocation}
+                        />
+                      </div>
+                    )}
+                  </fieldset>
                 </div>
               )}
 
@@ -647,6 +745,9 @@ export function CheckoutForm({
                   ],
                   ["Forma de pago", paymentLabels[paymentMethod] ?? paymentMethod],
                   ...(orderType === "delivery" ? [["Dirección", address]] : []),
+                  ...(orderType === "delivery"
+                    ? [["Punto de entrega", deliveryLocation ? "Ubicación confirmada" : "Sin confirmar"]]
+                    : []),
                 ].map(([label, value]) => (
                   <div className="rounded-xl bg-white/[.04] p-4" key={label}>
                     <dt className="text-xs font-black uppercase tracking-wider text-zinc-500">{label}</dt>
