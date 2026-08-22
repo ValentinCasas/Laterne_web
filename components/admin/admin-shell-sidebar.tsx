@@ -92,7 +92,7 @@ export function AdminShellSidebar({
   return (
     <div className="flex h-dvh">
       {/* Mobile header */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-white/[.06] bg-zinc-950/95 px-4 lg:hidden">
+      <div data-admin-navbar="true" className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-white/[.06] bg-zinc-950/95 px-4 lg:hidden">
         <button
           type="button"
           onClick={() => setSidebarMobileOpen(true)}
@@ -149,7 +149,7 @@ export function AdminShellSidebar({
       )}
 
       {/* Main content */}
-      <main className="admin-main admin-shell-inner flex-1 overflow-auto px-3 py-5 sm:px-4 sm:py-6 lg:px-6 lg:py-8 min-w-0">
+      <main className="admin-main admin-shell-inner min-w-0 flex-1 overflow-auto px-3 pb-5 pt-[4.75rem] sm:px-4 sm:pb-6 sm:pt-20 lg:px-6 lg:py-8">
         {children}
       </main>
     </div>

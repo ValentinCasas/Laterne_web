@@ -41,6 +41,12 @@ test.describe("carta pública responsive", () => {
       await page.goto("/t/laterne/carta");
       await acceptPrivacy(page);
 
+      const siteNavbar = page.locator('[data-site-navbar="true"]');
+      const menuToolbar = page.getByLabel("Navegación y búsqueda de la carta");
+      await expect(siteNavbar).toHaveCSS("position", "fixed");
+      await expect(menuToolbar).toHaveCSS("position", "sticky");
+      await expect(menuToolbar).toHaveCSS("top", "64px");
+
       const categories = page.locator('a[href^="#category-"]');
       await expect(categories.first()).toBeVisible();
       expect(await categories.count()).toBeGreaterThan(1);
@@ -51,6 +57,8 @@ test.describe("carta pública responsive", () => {
       expect(await rail.evaluate((element) => element.scrollWidth > element.clientWidth)).toBeTruthy();
       await rail.evaluate((element) => element.scrollTo({ left: element.scrollWidth, behavior: "instant" }));
       await expect(categories.last()).toBeInViewport();
+      await page.evaluate(() => window.scrollTo({ top: Math.max(500, document.body.scrollHeight / 3), behavior: "instant" }));
+      expect(Math.round((await menuToolbar.boundingBox())?.y ?? -1)).toBe(64);
       await expectNoGlobalOverflow(page);
     });
   }

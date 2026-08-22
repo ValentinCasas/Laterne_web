@@ -998,7 +998,9 @@ button {
   color: var(--mc-background) !important;
 }
 .mc-platform-topbar {
-  position: sticky;
+  position: fixed;
+  right: 0;
+  left: 0;
   top: 0;
   z-index: 40;
   border-bottom: 1px solid var(--mc-border);
@@ -1126,7 +1128,9 @@ button {
   padding: 1rem;
 }
 .mc-marketing-header {
-  position: sticky;
+  position: fixed;
+  right: 0;
+  left: 0;
   top: 0;
   z-index: 50;
   border-bottom: 1px solid var(--mc-border);

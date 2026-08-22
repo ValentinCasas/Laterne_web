@@ -679,7 +679,8 @@ export function AdminShell({
         <>
           <header
         ref={headerRef}
-        className="sticky top-0 z-50 border-b border-white/[.06] bg-zinc-950/85 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.03)_inset] print:hidden"
+        data-admin-navbar="true"
+        className="fixed inset-x-0 top-0 z-50 border-b border-white/[.06] bg-zinc-950/85 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.03)_inset] print:hidden"
       >
         <div className="admin-shell-inner flex h-14 items-center gap-1.5 px-3 sm:gap-2 sm:px-4 lg:px-6">
           <button
@@ -1019,7 +1020,7 @@ export function AdminShell({
         </div>
       )}
 
-      <main className="admin-main admin-shell-inner px-3 py-5 sm:px-4 sm:py-6 lg:px-0 lg:py-8">{children}</main>
+      <main className="admin-main admin-shell-inner px-3 pb-5 pt-[4.75rem] sm:px-4 sm:pb-6 sm:pt-20 lg:px-0 lg:pb-8 lg:pt-[5.5rem]">{children}</main>
 
       {mobileMenuOpen && (
         <>

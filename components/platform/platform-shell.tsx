@@ -115,6 +115,7 @@ export function PlatformShell({
           </div>
         </div>
       </header>
+      <div className="h-20 shrink-0" aria-hidden="true" />
       <div className="mx-auto grid max-w-[1440px] gap-6 px-5 py-6 lg:grid-cols-[250px_minmax(0,1fr)] lg:py-8">
         <aside className="mc-platform-sidebar">
           <div className="mc-sidebar-heading">

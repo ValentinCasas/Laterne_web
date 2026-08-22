@@ -379,7 +379,8 @@ export function MenuClient({
 
       <section
         ref={toolbarRef}
-        className="z-30 border-b border-white/10 bg-black/95 py-3 backdrop-blur-xl md:sticky md:top-16 md:py-4"
+        aria-label="Navegación y búsqueda de la carta"
+        className="sticky top-16 z-30 border-b border-white/10 bg-black/95 py-3 shadow-lg shadow-black/20 backdrop-blur-xl md:py-4"
       >
         <div className="shell">
           <div

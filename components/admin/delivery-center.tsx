@@ -815,7 +815,7 @@ export function DeliveryCenter({
         </div>
       )}
 
-      <div className="mb-3 grid grid-cols-2 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1 lg:hidden" role="tablist" aria-label="Contenido de Delivery">
+      <div className="sticky top-14 z-30 mb-3 grid grid-cols-2 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-overlay)]/95 p-1 shadow-lg shadow-black/20 backdrop-blur-xl lg:hidden" role="tablist" aria-label="Contenido de Delivery">
         <button type="button" role="tab" aria-selected={mobileTab === "deliveries"} className={`min-h-11 rounded-lg text-sm font-bold ${mobileTab === "deliveries" ? "bg-[var(--admin-primary-soft)] text-white" : "text-[var(--admin-muted)]"}`} onClick={() => setMobileTab("deliveries")}>
           Entregas
         </button>
@@ -891,7 +891,8 @@ export function DeliveryCenter({
         </div>
 
         <div
-          className={`${mobileTab === "detail" ? "block" : "hidden"} h-[560px] overflow-y-auto overscroll-contain rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 sm:p-6 lg:block lg:h-[680px] ${
+          aria-label={selectedForView ? `Detalle de la entrega ${selectedForView.number}` : "Detalle de la entrega"}
+          className={`${mobileTab === "detail" ? "block" : "hidden"} min-h-64 overflow-visible rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 sm:p-5 lg:block lg:h-[680px] lg:overflow-y-auto lg:overscroll-contain lg:p-6 ${
             !selectedForView ? "items-center justify-center" : ""
           }`}
         >
@@ -1136,10 +1137,10 @@ function DeliveryDetailPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-xl font-black text-white">Entrega {delivery.number}</h3>
-          <p className="text-sm text-[var(--admin-muted)]">{delivery.customerName}</p>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="break-words text-lg font-black text-white sm:text-xl">Entrega {delivery.number}</h3>
+          <p className="break-words text-sm text-[var(--admin-muted)]">{delivery.customerName}</p>
         </div>
         <ActionMenu
           align="right"
@@ -1173,43 +1174,43 @@ function DeliveryDetailPanel({
         }
       />
 
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           General
         </h4>
         <dl className="space-y-3 text-sm">
           <div><dt className="text-[var(--admin-muted)]">Cliente</dt><dd className="mt-1 font-semibold text-white">{delivery.customerName}</dd></div>
-          <div><dt className="text-[var(--admin-muted)]">Dirección</dt><dd className="mt-1 text-zinc-200">{delivery.deliveryAddress || "Sin dirección"}</dd></div>
-          <div><dt className="text-[var(--admin-muted)]">Contacto</dt><dd className="mt-1 text-zinc-200">{delivery.contactPhone || "Sin teléfono"}</dd></div>
+          <div><dt className="text-[var(--admin-muted)]">Dirección</dt><dd className="mt-1 break-words text-zinc-200">{delivery.deliveryAddress || "Sin dirección"}</dd></div>
+          <div><dt className="text-[var(--admin-muted)]">Contacto</dt><dd className="mt-1 break-words text-zinc-200">{delivery.contactPhone || "Sin teléfono"}</dd></div>
         </dl>
       </section>
 
       {/* Pedido */}
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           Pedido
         </h4>
         <dl className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-[var(--admin-muted)]">Estado</span>
-            <StatusBadge
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3">
+            <dt className="text-[var(--admin-muted)]">Estado</dt>
+            <dd className="flex justify-end"><StatusBadge
               status={orderStatusLabel(delivery.order?.status ?? "—")}
               tone={delivery.order?.status === "delivered" ? "success" : "info"}
-            />
+            /></dd>
           </div>
-          <div className="flex justify-between">
-            <span className="text-[var(--admin-muted)]">Referencia</span>
-            <strong>{delivery.order?.reference ?? "—"}</strong>
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3">
+            <dt className="text-[var(--admin-muted)]">Referencia</dt>
+            <dd className="break-all text-right font-bold">{delivery.order?.reference ?? "—"}</dd>
           </div>
-          <div className="flex justify-between">
-            <span className="text-[var(--admin-muted)]">Total</span>
-            <strong className="tabular-nums">{delivery.order ? String(delivery.order.total) : "—"}</strong>
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3">
+            <dt className="text-[var(--admin-muted)]">Total</dt>
+            <dd className="break-all text-right font-bold tabular-nums">{delivery.order ? String(delivery.order.total) : "—"}</dd>
           </div>
         </dl>
       </section>
 
       {/* Repartidor */}
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           Repartidor
         </h4>
@@ -1233,7 +1234,7 @@ function DeliveryDetailPanel({
         {delivery.driverProfile && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <UserAvatar name={delivery.driverProfile.name} src={avatarUrl(delivery.driverProfile.user?.imageUrl ?? undefined)} size="md" />
-            <div className="min-w-0"><p className="text-sm font-semibold text-white">{delivery.driverProfile.name}</p><p className="text-xs text-[var(--admin-muted)]">{delivery.driverProfile.phone ?? "Sin teléfono"}</p></div>
+            <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-white">{delivery.driverProfile.name}</p><p className="break-words text-xs text-[var(--admin-muted)]">{delivery.driverProfile.phone ?? "Sin teléfono"}</p></div>
             <StatusBadge
               status={driverPosition ? gpsFreshness(driverPosition.recordedAt, gpsNow).label : "Sin ubicación"}
               tone={driverPosition && gpsFreshness(driverPosition.recordedAt, gpsNow).state === "live" ? "success" : "default"}
@@ -1242,26 +1243,26 @@ function DeliveryDetailPanel({
         )}
       </section>
 
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           Items ({delivery.items?.length ?? 0})
         </h4>
         <div className="divide-y divide-[var(--admin-border)]/50">
           {(delivery.items ?? []).map((item) => (
-            <div key={item.id} className="flex items-center justify-between py-2.5 text-sm">
-              <span className="text-zinc-200">{item.productName}</span>
-              <span className="tabular-nums text-[var(--admin-muted)]">x{item.quantityDelivered}</span>
+            <div key={item.id} className="flex min-w-0 items-start justify-between gap-3 py-2.5 text-sm">
+              <span className="min-w-0 break-words text-zinc-200">{item.productName}</span>
+              <span className="shrink-0 tabular-nums text-[var(--admin-muted)]">x{item.quantityDelivered}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* Transiciones de estado */}
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           Cambiar estado
         </h4>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-1.5">
           {(Object.keys(STATUS_LABELS) as DeliveryStatus[]).map((status) => {
             const blocked = status === "PICKED_UP" && !canRetireDelivery(delivery.order?.status);
             return (
@@ -1269,7 +1270,7 @@ function DeliveryDetailPanel({
                 key={status}
                 type="button"
                 title={blocked ? "El pedido todavía no está listo para retirar" : undefined}
-                className={`min-h-9 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                className={`min-h-11 rounded-lg px-2 py-2 text-xs font-bold transition-colors sm:min-h-9 sm:rounded-full sm:px-3 sm:py-1.5 ${
                   delivery.status === status ? statusColor(status) : "text-zinc-400 hover:text-white"
                 } ${blocked ? "opacity-40" : ""}`}
                 onClick={() => onUpdateStatus(delivery.id, status)}
@@ -1287,7 +1288,7 @@ function DeliveryDetailPanel({
         )}
       </section>
 
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           Historial operativo
         </h4>
@@ -1312,12 +1313,12 @@ function DeliveryDetailPanel({
         />
       </section>
 
-      <section className="rounded-xl border border-[var(--admin-border)] p-5">
+      <section className="rounded-xl border border-[var(--admin-border)] p-4 sm:p-5">
         <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)]">
           Ubicación del destino
         </h4>
         {delivery.latitude && delivery.longitude ? (
-          <p className="text-xs text-[var(--admin-muted)]">
+          <p className="break-all text-xs text-[var(--admin-muted)]">
             Lat: {delivery.latitude} · Lng: {delivery.longitude}
           </p>
         ) : (

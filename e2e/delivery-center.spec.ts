@@ -348,8 +348,16 @@ test.describe.serial("Delivery GPS real", () => {
     await expect(destinationPopup).toContainText("Pedido:");
     expect(await destinationPopup.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(17, 24, 39)");
     if ((page.viewportSize()?.width ?? 1280) < 1024) {
+      await expect(page.locator('[data-admin-navbar="true"]')).toHaveCSS("position", "fixed");
+      await expect(page.getByRole("tablist", { name: "Contenido de Delivery" })).toHaveCSS("position", "sticky");
       await expect(page.getByRole("tab", { name: "Entregas" })).toBeVisible();
       await expect(page.getByRole("tab", { name: "Detalle" })).toHaveAttribute("aria-selected", "true");
+      const deliveryDetail = page.getByLabel(/Detalle de la entrega D-GPS/);
+      await expect(deliveryDetail).toBeVisible();
+      await expect(deliveryDetail).toHaveCSS("overflow-y", "visible");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        await page.evaluate(() => document.documentElement.clientWidth),
+      );
     }
 
     const deliveryMenu = await openDeliveryNavigation(page);
@@ -418,6 +426,7 @@ test.describe.serial("Delivery GPS real", () => {
     await deliveryMenu.getByRole("link", { name: "Panel del repartidor", exact: true }).click();
     await expect(driverPage).toHaveURL(/\/t\/[^/]+\/[^/]+\/driver$/);
     await expect(driverPage.getByRole("navigation", { name: "Navegación principal" })).toHaveCount(0);
+    await expect(driverPage.locator('[data-driver-navbar="true"]')).toHaveCSS("position", "fixed");
     await expect(driverPage.getByRole("complementary", { name: "Preferencias de cookies" })).toHaveCount(0);
     await expect(driverPage.getByLabel("Mapa del recorrido del repartidor")).toBeVisible();
     await expect(driverPage.getByLabel("Parada 1")).toBeVisible();

@@ -58,6 +58,7 @@ export function MarketingNavbar({ name, logoUrl }: { name: string; logoUrl: stri
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
+    <>
     <header className="mc-marketing-header">
       <nav className="mc-marketing-nav" aria-label="Navegación comercial MenuClick">
         <Link className="mc-brand-lockup" href="/" onClick={() => setMobileOpen(false)}>
@@ -133,5 +134,7 @@ export function MarketingNavbar({ name, logoUrl }: { name: string; logoUrl: stri
         </div>
       )}
     </header>
+    <div className="h-[4.5rem] shrink-0" aria-hidden="true" />
+    </>
   );
 }

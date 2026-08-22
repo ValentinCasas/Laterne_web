@@ -134,7 +134,8 @@ export function SiteHeader({
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-md">
+    <>
+    <header data-site-navbar="true" className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-md">
       <nav
         ref={headerRef}
         className="shell flex h-16 items-center justify-between gap-4 px-2"
@@ -311,5 +312,7 @@ export function SiteHeader({
           document.body,
         )}
     </header>
+    <div className="h-16 shrink-0" aria-hidden="true" />
+    </>
   );
 }

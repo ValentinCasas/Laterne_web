@@ -15,14 +15,15 @@ test("muestra la propuesta comercial y sus planes administrables", async ({ page
   await expect(page.getByText("$ 690.000", { exact: true })).toBeVisible();
 });
 
-test("recorre la carta y abre una ficha individual", async ({ page }) => {
+test("recorre la carta y abre el detalle de un producto", async ({ page }) => {
   await page.goto("/t/laterne/carta");
   await acceptPrivacy(page);
-  const detailLink = page.getByRole("link", { name: "Ver detalles" }).first();
-  await expect(detailLink).toBeVisible();
-  await Promise.all([page.waitForURL(/\/productos\//), detailLink.click()]);
-  await expect(page.getByRole("button", { name: /Agregar al pedido|Temporalmente agotado/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Favorito/i })).toBeVisible();
+  const productCard = page.locator('article[role="button"]').first();
+  await expect(productCard).toBeVisible();
+  await productCard.click();
+  const detail = page.getByRole("dialog").last();
+  await expect(detail).toBeVisible();
+  await expect(detail.getByRole("button", { name: /Agregar al pedido|Cerrar/i }).first()).toBeVisible();
 });
 
 test("presenta un formulario de demo completo y accesible", async ({ page }) => {

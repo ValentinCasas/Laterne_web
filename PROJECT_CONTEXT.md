@@ -53,6 +53,7 @@ La geocodificación de Delivery está desactivada por defecto. Puede conectarse 
 - Mega menú en `AdminShell` (`components/admin/admin-shell.tsx`).
 - Apertura únicamente por CLICK.
 - Cierre: click afuera, Escape, Tab-out.
+- Las barras principales de sitio público, Admin, Driver, Platform y marketing usan posición fija con compensación de contenido; no deben desaparecer al hacer scroll.
 - Definición centralizada: `lib/admin-navigation.ts`.
 - Delivery es un grupo propio con Centro de delivery, Repartidores, Panel del repartidor y acceso directo a `Integraciones#delivery-map`. Cualquier usuario con membresía tenant activa puede abrir la vista personal; todas sus consultas y acciones resuelven exclusivamente el `DriverProfile` vinculado al usuario autenticado, sin suplantación.
 - Modos de navegación: `TOP` (mega menú barra superior) y `SIDEBAR` (sidebar dual-tier rail + panel contextual). Persistidos en `localStorage` via `hooks/use-navigation-mode.ts`.
@@ -130,6 +131,7 @@ La geocodificación de Delivery está desactivada por defecto. Puede conectarse 
 - Administración: notification-center, notification-settings, integration-manager, brand-manager, landing-editor, data-portability, account-security, document-template-manager, onboarding-wizard, plan-manager, lead-board, support-board, testimonial-board, media-library, print-config-board, error-log-manager, rewards-manager, reception-assistant-config, admin-shell (parcial: dual-tier sidebar + mega menú)
 - Modelo documental: ficha de pedido (cantidades pedida/entregada/pendiente + documentos relacionados), ficha de remito (`/admin/entregas/[id]`), ficha de factura con líneas snapshot (`/admin/facturacion/[id]`), vínculo factura↔remito.
 - Ubicación en checkout: el geofencing de mesa se valida server-side (Haversine) en `/api/orders`. Para pedidos Delivery, el cliente debe confirmar explícitamente el destino usando su ubicación actual (el permiso GPS se solicita solo tras su clic) o eligiendo otro punto en MapLibre; la dirección escrita sigue siendo obligatoria y las coordenadas confirmadas se guardan en `OrderDelivery`. La configuración por sucursal conserva radio + mapa en `sucursales`; `LocationPicker` dibuja el radio como círculo azul proyectado a píxeles cuando existe `geofenceRadius`.
+- Carta pública mobile-first: la navegación horizontal de categorías junto con búsqueda/filtros permanece sticky debajo del navbar fijo en celular y escritorio, conserva targets con margen de scroll y evita overflow global entre 320–430 px.
 - Checkout de mesa: el formulario de pedido carga las mesas activas de la sucursal y las ofrece en un `<select>` (por `code`, etiqueta = nombre); si no hay mesas, cae a input libre. Valida con "Elegí la mesa desde la que vas a pedir.".
 - Iconografía: set SVG `components/admin/ui/icons.tsx` (`Icon` + `IconName`) reemplaza todos los emoticonos/emojis de la UI.
 - Vista de listas: sistema de 4 vistas (tarjeta, tarjeta compacta, lista, lista compacta) persistido por pantalla (`useViewMode`/`ViewModeToggle`), integrado en `DataTable` (con `viewStorageKey`), `CardGrid`, catálogo de productos, inventario y clientes frecuentes.
