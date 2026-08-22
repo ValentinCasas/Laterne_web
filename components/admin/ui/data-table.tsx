@@ -56,8 +56,8 @@ export function DataTable({
             <ViewModeToggle value={effectiveView} onChange={applyView} />
           </div>
         )}
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.01] px-5 py-16 text-center text-[var(--admin-muted)]">
-          {emptyMessage}
+        <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
+          <p className="text-sm text-[var(--admin-muted)]">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -89,7 +89,7 @@ export function DataTable({
             <div
               key={keyExtractor(row, rowIndex)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] ${
+              className={`rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 ${
                 compact ? "p-3" : "p-4"
               } transition-colors duration-150 hover:bg-white/[0.02] ${onRowClick ? "cursor-pointer" : ""}`}
             >
@@ -118,7 +118,7 @@ export function DataTable({
             <div
               key={`mobile-${keyExtractor(row, rowIndex)}`}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 transition-colors duration-150 hover:bg-white/[0.02]"
+              className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 p-3 transition-colors duration-150 hover:bg-white/[0.02] cursor-pointer"
             >
               <div className="flex items-start justify-between gap-3 text-sm">
                 <div className="font-bold">{row[titleColumn.key] as ReactNode}</div>
@@ -129,23 +129,23 @@ export function DataTable({
           ))}
         </div>
       </div>
-      <div className="hidden overflow-x-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] sm:block">
-        <table className={`w-full text-left ${DENSITY_CLASSES[compact ? "compact" : density]}`}>
+      <div className="hidden overflow-x-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 sm:block">
+        <table className={`w-full text-left text-sm`}>
           <thead>
             <tr className={`border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)] ${cellClass}`}>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   style={{ width: column.width, textAlign: column.align ?? "left" }}
-                  className={`font-bold ${column.hideOnMobile ? "hidden md:table-cell" : ""}`}
+                  className={`font-semibold ${column.hideOnMobile ? "hidden md:table-cell" : ""}`}
                 >
                   {column.label}
                 </th>
               ))}
-              {rowActions && <th className={`text-right ${cellClass}`} aria-label="Acciones" />}
+              {rowActions && <th className={`text-right font-semibold ${cellClass}`} aria-label="Acciones" />}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--admin-border)]">
+          <tbody className="divide-y divide-[var(--admin-border)]/70">
             {data.map((row, rowIndex) => (
               <tr
                 key={keyExtractor(row, rowIndex)}

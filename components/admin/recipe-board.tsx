@@ -152,7 +152,7 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
         </div>
       </PageHeader>
 
-      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10">
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
         <div className="min-w-52 flex-1">
           <SearchBox value={search} onChange={setSearch} placeholder="Buscar por nombre…" />
         </div>
@@ -174,7 +174,7 @@ export function RecipeBoard({ initial }: { initial: RecipeBoardPayload }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-10 text-center shadow-xl shadow-black/10">
+        <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
           <EmptyState title="No se encontraron productos con esos filtros" description="Probá modificar la búsqueda o los filtros aplicados." />
         </div>
       ) : (

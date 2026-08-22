@@ -313,7 +313,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
         }
       />
 
-      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-xl shadow-black/10">
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
         <div className="min-w-52 flex-1">
           <SearchBox value={search} onChange={setSearch} placeholder="Buscar ingrediente…" />
         </div>
@@ -323,7 +323,7 @@ export function IngredientsBoard({ initial }: { initial: Payload }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] p-10 text-center shadow-xl shadow-black/10">
+        <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
           <EmptyState title="No hay ingredientes cargados todavía" description="Creá el primero para comenzar a administrar costos y stock." action={
             <button type="button" onClick={openCreate} className="btn">+ Nuevo ingrediente</button>
           } />

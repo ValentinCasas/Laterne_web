@@ -163,7 +163,7 @@ export function ComprasNuevoPedidoClient({
       {/* Content */}
       <div className="mx-auto max-w-[1600px] px-8 py-6 space-y-5">
         {/* General */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+        <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
           <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 30%, var(--admin-surface))" }}>
             <h3 className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>General</h3>
           </div>
@@ -209,7 +209,7 @@ export function ComprasNuevoPedidoClient({
         </div>
 
         {/* Lines */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+        <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
           <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 30%, var(--admin-surface))" }}>
             <h3 className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>Lineas ({lines.length})</h3>
           </div>

@@ -1224,11 +1224,11 @@ function MovementsHistory({ branches, products }: { branches: Branch[]; products
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)]">
+      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[var(--admin-border)] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
                 <th className="px-4 py-3 font-semibold">Fecha</th>
                 <th className="px-4 py-3 font-semibold">Tipo</th>
                 <th className="px-4 py-3 font-semibold">Producto</th>
@@ -1531,11 +1531,11 @@ function CountSections({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)]">
+      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[var(--admin-border)] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
                 <th className="px-4 py-3 font-semibold">Referencia</th>
                 <th className="px-4 py-3 font-semibold">Sucursal</th>
                 <th className="px-4 py-3 font-semibold">Estado</th>
@@ -1701,11 +1701,11 @@ function TransfersSection({
         </label>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)]">
+      <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[var(--admin-border)] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
                 <th className="px-4 py-3 font-semibold">Referencia</th>
                 <th className="px-4 py-3 font-semibold">Producto</th>
                 <th className="px-4 py-3 font-semibold">Origen → Destino</th>

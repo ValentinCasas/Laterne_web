@@ -106,9 +106,9 @@ export function FinanceDashboardClient({ initial }: { initial: DashboardInitial 
           </div>
         </div>
         <div className="lg:col-span-2">
-          <div className="shadow-xl shadow-black/10">
+          <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
         <div className="px-5 py-4">
-          <h2 className="text-lg font-black">Movimientos recientes</h2>
+          <h2 className="text-sm font-black uppercase tracking-wider text-[var(--admin-muted)]">Movimientos recientes</h2>
         </div>
         <DataTable
           viewStorageKey="dashboard-cuentas"

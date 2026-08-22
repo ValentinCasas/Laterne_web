@@ -255,28 +255,26 @@ export function ComprasFacturasClient({ initialInvoices, total }: { initialInvoi
       {/* ── Table ── */}
       <div className="mx-auto max-w-[1600px] px-8 py-5">
         {sorted.length === 0 ? (
-          <div className="rounded-xl p-14 text-center" style={{ border: "1px dashed var(--admin-border)" }}>
-            <Icon name="receipt" className="mx-auto mb-4" style={{ color: "var(--admin-muted)", opacity: 0.3, fontSize: "40px" }} />
-            <h3 className="text-xl font-bold" style={{ color: "var(--admin-text)" }}>No hay facturas</h3>
-            <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>
-              {activeFilters > 0 ? "No hay comprobantes que coincidan con los filtros." : "Crea una factura y vinculala a las recepciones del proveedor."}
+          <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
+            <Icon name="receipt" className="mx-auto text-4xl text-zinc-600" />
+            <h3 className="mt-3 text-xl font-black" style={{ color: "var(--admin-text)" }}>No hay facturas</h3>
+            <p className="mt-2 text-sm text-[var(--admin-muted)]">
+              {activeFilters > 0 ? "No hay comprobantes que coincidan con los filtros." : "Creá una factura y vinculala a las recepciones del proveedor."}
             </p>
             {activeFilters > 0 && (
-              <button type="button" className="mt-4 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
-                style={{ color: "var(--admin-primary)", border: "1px solid color-mix(in srgb, var(--admin-primary) 30%, transparent)" }}
-                onClick={resetFilters}>Limpiar filtros</button>
+              <button type="button" className="mt-4 btn btn-secondary" onClick={resetFilters}>Limpiar filtros</button>
             )}
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
-            <div className="overflow-auto" style={{ maxHeight: hasManyRows ? "calc(100vh - 420px)" : "none", minHeight: "200px", scrollbarColor: "var(--admin-border) transparent" }}>
-              <table className="w-full text-left" style={{ minWidth: "800px" }}>
+          <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm" style={{ minWidth: "800px" }}>
                 <thead className="sticky top-0 z-10">
-                  <tr style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 60%, var(--admin-surface))" }}>
+                  <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
                     {visibleCols.map((col) => (
                       <th key={col.key}
-                        className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider select-none cursor-pointer transition-colors"
-                        style={{ color: sortKey === col.key ? "var(--admin-primary)" : "var(--admin-muted)" }}
+                        className="px-4 py-3 select-none cursor-pointer transition-colors"
+                        style={{ color: sortKey === col.key ? "var(--admin-primary)" : undefined }}
                         onClick={() => toggleSort(col.key as SortKey)}>
                         <span className="flex items-center gap-1.5">
                           {col.label}
@@ -284,45 +282,42 @@ export function ComprasFacturasClient({ initialInvoices, total }: { initialInvoi
                         </span>
                       </th>
                     ))}
-                    <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider w-20" style={{ color: "var(--admin-muted)" }}>&nbsp;</th>
+                    <th className="px-4 py-3 w-20">&nbsp;</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[var(--admin-border)]/70">
                   {paged.map((inv) => {
                     const balance = (Number(inv.total) || 0) - (Number(inv.paidAmount) || 0);
                     const cfg = STATUS_STYLES[inv.status] ?? STATUS_STYLES.draft;
                     return (
-                      <tr key={inv.id} className="transition-colors group cursor-pointer"
-                        style={{ borderBottom: "1px solid var(--admin-border)" }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 4%, var(--admin-surface-elevated))"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                      <tr key={inv.id} className="transition-colors hover:bg-white/[0.02] cursor-pointer"
                         onClick={() => { window.location.href = href(`/admin/compras/facturas/${inv.id}`); }}>
                         {visibleCols.map((col) => {
                           switch (col.key) {
                             case "number":
-                              return <td key={col.key} className="px-5 py-3.5">
-                                <div className="font-semibold text-sm" style={{ color: "var(--admin-primary)" }}>{inv.number}</div>
+                              return <td key={col.key} className="px-4 py-3">
+                                <div className="font-black text-pink-300 text-sm">{inv.number}</div>
                                 {inv.externalNumber && <p className="text-xs mt-0.5" style={{ color: "var(--admin-muted)" }}>Comp. {inv.externalNumber}</p>}
                               </td>;
                             case "supplier":
-                              return <td key={col.key} className="px-5 py-3.5 font-semibold text-sm" style={{ color: "var(--admin-text)" }}>{inv.supplier.name}</td>;
+                              return <td key={col.key} className="px-4 py-3 font-semibold" style={{ color: "var(--admin-text)" }}>{inv.supplier.name}</td>;
                             case "documentDate":
-                              return <td key={col.key} className="px-5 py-3.5 text-sm tabular-nums" style={{ color: "var(--admin-muted)" }}>{dateLabel(inv.documentDate)}</td>;
+                              return <td key={col.key} className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(inv.documentDate)}</td>;
                             case "dueDate":
-                              return <td key={col.key} className="px-5 py-3.5 text-sm tabular-nums" style={{ color: "var(--admin-muted)" }}>{dateLabel(inv.dueDate)}</td>;
+                              return <td key={col.key} className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(inv.dueDate)}</td>;
                             case "total":
-                              return <td key={col.key} className="px-5 py-3.5 text-sm text-right font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>{money(inv.total, "ARS")}</td>;
+                              return <td key={col.key} className="px-4 py-3 text-right font-bold tabular-nums">{money(inv.total, "ARS")}</td>;
                             case "paidAmount":
-                              return <td key={col.key} className="px-5 py-3.5 text-sm text-right tabular-nums" style={{ color: "var(--admin-success)" }}>{money(inv.paidAmount, "ARS")}</td>;
+                              return <td key={col.key} className="px-4 py-3 text-right tabular-nums" style={{ color: "var(--admin-success)" }}>{money(inv.paidAmount, "ARS")}</td>;
                             case "status":
-                              return <td key={col.key} className="px-5 py-3.5">
-                                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                              return <td key={col.key} className="px-4 py-3">
+                                <span className="rounded-full px-2.5 py-1 text-[10px] font-black" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                               </td>;
                             default:
-                              return <td key={col.key} className="px-5 py-3.5">&nbsp;</td>;
+                              return <td key={col.key} className="px-4 py-3">&nbsp;</td>;
                           }
                         })}
-                        <td className="px-5 py-3.5">
+                        <td className="px-4 py-3 text-right">
                           <Link href={href(`/admin/compras/facturas/${inv.id}`) as never}
                             className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all opacity-0 group-hover:opacity-100"
                             style={{ color: "var(--admin-primary)", background: "color-mix(in srgb, var(--admin-primary) 8%, transparent)" }}

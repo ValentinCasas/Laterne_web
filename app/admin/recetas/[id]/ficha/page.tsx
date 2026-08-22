@@ -118,11 +118,11 @@ export default async function RecipeFichaPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Tabla de la receta */}
-      <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+      <div className="mt-5 overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[var(--admin-border)] text-xs uppercase tracking-wide text-[var(--admin-muted)] muted">
+              <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
                 <th className="px-4 py-3 font-semibold">Ingrediente</th>
                 <th className="px-4 py-3 font-semibold text-right">Cantidad</th>
                 <th className="px-4 py-3 font-semibold text-right">Rend.</th>
@@ -133,7 +133,7 @@ export default async function RecipeFichaPage({ params }: { params: Promise<{ id
             </thead>
             <tbody>
               {payload.lines.map((line, index) => (
-                <tr key={`${line.ingredientProductId}-${index}`} className="border-b border-[var(--admin-border)]/60 last:border-0">
+                <tr key={`${line.ingredientProductId}-${index}`} className="transition-colors hover:bg-white/[0.02]">
                   <td className={`px-4 py-3 ${line.isSubrecipe ? "font-bold" : ""}`} style={{ paddingLeft: `${16 + line.depth * 20}px` }}>
                     {line.name}
                     {line.isSubrecipe && (

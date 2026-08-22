@@ -198,24 +198,22 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
       {/* ── Table ── */}
       <div className="mx-auto max-w-[1600px] px-8 py-5">
         {sorted.length === 0 ? (
-          <div className="rounded-xl p-14 text-center" style={{ border: "1px dashed var(--admin-border)" }}>
-            <Icon name="package" className="mx-auto mb-4" style={{ color: "var(--admin-muted)", opacity: 0.3, fontSize: "40px" }} />
-            <h3 className="text-xl font-bold" style={{ color: "var(--admin-text)" }}>No hay pedidos</h3>
-            <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>
-              {activeFilters > 0 ? "No hay pedidos que coincidan con los filtros." : "Crea el primero para pedir mercaderia a un proveedor."}
+          <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
+            <Icon name="package" className="mx-auto text-4xl text-zinc-600" />
+            <h3 className="mt-3 text-xl font-black" style={{ color: "var(--admin-text)" }}>No hay pedidos</h3>
+            <p className="mt-2 text-sm text-[var(--admin-muted)]">
+              {activeFilters > 0 ? "No hay pedidos que coincidan con los filtros." : "Creá el primero para pedir mercadería a un proveedor."}
             </p>
             {activeFilters > 0 && (
-              <button type="button" className="mt-4 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
-                style={{ color: "var(--admin-primary)", border: "1px solid color-mix(in srgb, var(--admin-primary) 30%, transparent)" }}
-                onClick={resetFilters}>Limpiar filtros</button>
+              <button type="button" className="mt-4 btn btn-secondary" onClick={resetFilters}>Limpiar filtros</button>
             )}
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
-            <div ref={tableRef} className="overflow-auto" style={{ maxHeight: hasManyRows ? "calc(100vh - 310px)" : "none", scrollbarColor: "var(--admin-border) transparent" }}>
-              <table className="w-full text-left" style={{ minWidth: "800px" }}>
+          <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+            <div ref={tableRef} className="overflow-x-auto">
+              <table className="w-full text-left text-sm" style={{ minWidth: "800px" }}>
                 <thead className="sticky top-0 z-10">
-                  <tr style={{ borderBottom: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 60%, var(--admin-surface))" }}>
+                  <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
                     {([
                       { key: "number" as SortKey, label: "Pedido", w: "w-[180px]" },
                       { key: "supplier" as SortKey, label: "Proveedor", w: "" },
@@ -224,8 +222,8 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                       { key: "status" as SortKey, label: "Estado", w: "w-[130px]" },
                     ]).map(({ key, label, w }) => (
                       <th key={key}
-                        className={`px-5 py-3.5 text-xs font-semibold uppercase tracking-wider select-none cursor-pointer transition-colors ${w}`}
-                        style={{ color: sortKey === key ? "var(--admin-primary)" : "var(--admin-muted)" }}
+                        className={`px-4 py-3 select-none cursor-pointer transition-colors ${w}`}
+                        style={{ color: sortKey === key ? "var(--admin-primary)" : undefined }}
                         onClick={() => toggleSort(key)}>
                         <span className="flex items-center gap-1.5">
                           {label}
@@ -233,43 +231,40 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                         </span>
                       </th>
                     ))}
-                    <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>Recepcion</th>
-                    <th className="px-5 py-3.5 w-16">&nbsp;</th>
+                    <th className="px-4 py-3">Recepción</th>
+                    <th className="px-4 py-3 w-16">&nbsp;</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {paged.map((order, idx) => {
+                <tbody className="divide-y divide-[var(--admin-border)]/70">
+                  {paged.map((order) => {
                     const totalItems = order.items.length;
                     const pendingReceipt = order.items.filter((item) => (Number(item.quantity) || 0) - (Number(item.receivedQuantity) || 0) > 0).length;
                     const receiptPct = totalItems > 0 ? Math.round(((totalItems - pendingReceipt) / totalItems) * 100) : 0;
                     const st = STATUS_CFG[order.status] ?? STATUS_CFG.draft;
                     return (
                       <tr key={order.id}
-                        className="transition-colors group cursor-pointer"
-                        style={{ borderBottom: "1px solid var(--admin-border)" }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 4%, var(--admin-surface-elevated))"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 1 ? "color-mix(in srgb, var(--admin-surface-elevated) 8%, var(--admin-surface))" : "transparent"}
+                        className="transition-colors hover:bg-white/[0.02] cursor-pointer"
                         onClick={() => { window.location.href = href(`/admin/compras/pedidos/${order.id}`); }}>
-                        <td className="px-5 py-3.5">
-                          <div className="font-semibold text-sm" style={{ color: "var(--admin-primary)" }}>{order.number}</div>
-                          {order.externalReference && <p className="text-xs mt-0.5" style={{ color: "var(--admin-muted)" }}>{order.externalReference}</p>}
+                        <td className="px-4 py-3">
+                          <div className="font-black text-pink-300 text-sm">{order.number}</div>
+                          {order.externalReference && <p className="text-xs mt-0.5 text-[var(--admin-muted)]">{order.externalReference}</p>}
                         </td>
-                        <td className="px-5 py-3.5 font-semibold text-sm" style={{ color: "var(--admin-text)" }}>{order.supplier.name}</td>
-                        <td className="px-5 py-3.5 text-sm" style={{ color: "var(--admin-muted)" }}>{order.branch.name}</td>
-                        <td className="px-5 py-3.5 text-sm tabular-nums" style={{ color: "var(--admin-muted)" }}>{dateLabel(order.orderDate)}</td>
-                        <td className="px-5 py-3.5">
-                          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                        <td className="px-4 py-3 font-semibold">{order.supplier.name}</td>
+                        <td className="px-4 py-3 text-[var(--admin-muted)]">{order.branch.name}</td>
+                        <td className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(order.orderDate)}</td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-full px-2.5 py-1 text-[10px] font-black"
                             style={{ background: st.bg, color: st.color }}>{st.label}</span>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: "color-mix(in srgb, var(--admin-muted) 12%, transparent)" }}>
                               <div className="h-full rounded-full transition-all duration-300" style={{ width: `${receiptPct}%`, background: receiptPct === 100 ? "var(--admin-success)" : receiptPct > 0 ? "var(--admin-warning)" : "var(--admin-muted)" }} />
                             </div>
-                            <span className="text-xs tabular-nums font-medium" style={{ color: "var(--admin-muted)" }}>{receiptPct}%</span>
+                            <span className="text-xs tabular-nums font-medium text-[var(--admin-muted)]">{receiptPct}%</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-4 py-3">
                           <Link href={href(`/admin/compras/pedidos/${order.id}`) as never}
                             className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all opacity-0 group-hover:opacity-100"
                             style={{ color: "var(--admin-primary)", background: "color-mix(in srgb, var(--admin-primary) 8%, transparent)" }}

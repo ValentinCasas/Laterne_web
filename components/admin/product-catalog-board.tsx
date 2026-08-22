@@ -964,11 +964,11 @@ function ListTable({
   const cell = density === "compact" ? "px-3 py-2" : "px-4 py-3.5";
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
+    <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs">
+            <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
               <th className={`${cell} w-10`}>
                 <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Seleccionar todos" />
               </th>

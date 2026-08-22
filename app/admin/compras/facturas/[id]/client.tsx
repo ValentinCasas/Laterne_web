@@ -170,7 +170,7 @@ export function ComprasFacturaDetailClient({ invoice, currency }: { invoice: Inv
           </div>
 
           {/* LINEAS */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+          <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
             <div className="px-5 py-3 border-b" style={{ borderColor: "var(--admin-border)" }}>
               <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>Lineas de la factura ({invoice.items.length})</h3>
             </div>
@@ -220,7 +220,7 @@ export function ComprasFacturaDetailClient({ invoice, currency }: { invoice: Inv
 
           {/* ALBARANES */}
           {invoice.receipts.length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+            <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
               <div className="px-5 py-3 border-b" style={{ borderColor: "var(--admin-border)" }}>
                 <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>Albaranes que documenta ({invoice.receipts.length})</h3>
               </div>
@@ -256,7 +256,7 @@ export function ComprasFacturaDetailClient({ invoice, currency }: { invoice: Inv
           )}
 
           {/* PAGOS */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+          <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
             <div className="px-5 py-3 border-b" style={{ borderColor: "var(--admin-border)" }}>
               <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--admin-muted)" }}>Pagos ({invoice.payments.length})</h3>
             </div>

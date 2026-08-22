@@ -165,7 +165,7 @@ export function ComprasAlbaranDetailClient({ receipt, currency }: { receipt: Alb
           </div>
 
           {receipt.notes && (
-            <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+            <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
               <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
                 <h3 className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>Notas</h3>
               </div>

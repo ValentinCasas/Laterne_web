@@ -232,8 +232,7 @@ export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSett
             <h3 className="text-lg font-bold" style={{ color: "var(--admin-text)" }}>No hay comprobantes</h3>
             <p className="mt-1 text-sm" style={{ color: "var(--admin-muted)" }}>Crea un comprobante desde un pedido pendiente.</p>
           </div>
-        ) : (
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+        ) : (           <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
