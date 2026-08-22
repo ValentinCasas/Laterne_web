@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Swal from "sweetalert2";
 import { Icon } from "@/components/admin/ui/icons";
-import { scopedFetch } from "@/lib/client-routing";
+import { apiPath, scopedFetch } from "@/lib/client-routing";
 import { documentTypeLabels, documentTypes, type DocumentType } from "@/lib/documents/document-fields";
 import { adminHrefFromPathname } from "@/lib/routes";
+import { Drawer, Pagination } from "@/components/admin/ui";
 
 type InvoiceDocumentSummary = { pdfStatus: string; conversionMessage: string | null; templateVersion: number | null } | null;
 
@@ -62,6 +63,8 @@ export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSett
   const [statusFilter, setStatusFilter] = useState("");
   const [showConfig, setShowConfig] = useState(false);
   const [showPending, setShowPending] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
 
   const draftCount = invoices.filter((i) => i.status === "draft").length;
   const issuedCount = invoices.filter((i) => i.status === "issued").length;
@@ -75,6 +78,9 @@ export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSett
       return true;
     });
   }, [invoices, query, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedInvoices = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   async function generateDocument(invoice: InvoiceListItem) {
     setBusyDocument(invoice.id);
@@ -241,7 +247,7 @@ export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSett
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((inv, idx) => {
+                  {pagedInvoices.map((inv, idx) => {
                     const st = STATUS_CFG[inv.status] ?? STATUS_CFG.draft;
                     const ds = docStatus(inv.document);
                     return (
@@ -256,10 +262,12 @@ export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSett
                         <Td><span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: st.bg, color: st.color }}>{st.label}</span></Td>
                         <Td><span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: ds.bg, color: ds.color }}>{ds.label}</span></Td>
                         <Td>
-                          <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-1">
+                            <Link href={href(`/admin/facturacion/${inv.id}`) as never} className="rounded bg-[var(--admin-primary-soft)] px-2 py-1 text-[10px] font-bold text-[var(--admin-primary)] transition hover:text-white">Ver</Link>
                             <button type="button" className="rounded px-2 py-1 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-muted)" }} onClick={() => void editInvoice(inv)} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Editar</button>
                             {!inv.document && <button type="button" className="rounded px-2 py-1 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-primary)" }} disabled={busyDocument === inv.id} onClick={() => void generateDocument(inv)}>{busyDocument === inv.id ? "..." : "Generar"}</button>}
-                            <Link href={href(`/admin/facturacion/${inv.id}`) as never} className="rounded px-2 py-1 text-[10px] font-semibold transition-all" style={{ color: "var(--admin-muted)" }} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-primary) 8%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Abrir</Link>
+                            {inv.document && <button type="button" className="rounded px-2 py-1 text-[10px] font-semibold text-[var(--admin-muted)] hover:bg-white/5 hover:text-white" onClick={() => window.open(apiPath(`/api/admin/invoices/${inv.id}/document?format=docx&download=1`), "_blank", "noopener,noreferrer")}>DOCX</button>}
+                            {inv.document?.pdfStatus === "ready" && <button type="button" className="rounded px-2 py-1 text-[10px] font-semibold text-[var(--admin-muted)] hover:bg-white/5 hover:text-white" onClick={() => window.open(apiPath(`/api/admin/invoices/${inv.id}/document?format=pdf`), "_blank", "noopener,noreferrer")}>PDF / imprimir</button>}
                           </div>
                         </Td>
                       </tr>
@@ -268,6 +276,13 @@ export function InvoiceManagerV2({ initialInvoices, availableOrders, initialSett
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={safePage}
+              pageSize={pageSize}
+              totalItems={filtered.length}
+              onPageChange={setPage}
+              onPageSizeChange={(value) => { setPageSize(value as 25 | 50 | 100); setPage(1); }}
+            />
           </div>
         )}
       </div>
@@ -288,18 +303,9 @@ function Kpi({ label, value, color }: { label: string; value: string; color?: st
 }
 
 function ConfigModal({ settings, saving, onSave, onClose }: { settings: InvoiceSettingsData | null; saving: boolean; onSave: (e: React.FormEvent<HTMLFormElement>) => void; onClose: () => void }) {
-  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k); }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", maxHeight: "85vh" }} onClick={(e) => e.stopPropagation()}>
-        <div className="relative px-6 pt-5 pb-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
-          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), transparent)" }} />
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold" style={{ color: "var(--admin-text)" }}>Configuracion del emisor</h2>
-            <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition-colors" style={{ color: "var(--admin-muted)" }} onMouseEnter={(e) => e.currentTarget.style.background = "color-mix(in srgb, var(--admin-muted) 10%, transparent)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}><Icon name="x" className="text-sm" /></button>
-          </div>
-        </div>
-        <form className="overflow-y-auto p-6 space-y-4" style={{ maxHeight: "calc(85vh - 60px)" }} onSubmit={onSave}>
+    <Drawer open onClose={onClose} title="Configuración del emisor" width="560px">
+        <form className="space-y-4" onSubmit={onSave}>
           <p className="text-xs" style={{ color: "var(--admin-muted)" }}>Estos datos completan los campos business.* de las plantillas Word.</p>
           <Field label="Nombre del negocio" name="issuerName" defaultValue={settings?.issuerName ?? ""} placeholder="Nombre en el comprobante" />
           <Field label="CUIT / documento" name="taxId" defaultValue={settings?.taxId ?? ""} placeholder="Ej. 30-12345678-9" />
@@ -314,8 +320,7 @@ function ConfigModal({ settings, saving, onSave, onClose }: { settings: InvoiceS
             <button type="submit" className="rounded-lg px-4 py-1.5 text-xs font-bold text-white transition-all hover:opacity-90" style={{ background: "var(--admin-primary-strong)" }} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
           </div>
         </form>
-      </div>
-    </div>
+    </Drawer>
   );
 }
 

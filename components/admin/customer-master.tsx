@@ -13,6 +13,7 @@ import {
   Drawer,
   ActionMenu,
   StatusBadge,
+  Timeline,
 } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { Icon } from "@/components/admin/ui/icons";
@@ -133,19 +134,6 @@ function formatDate(iso: string | null | undefined) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function formatDateTime(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function tierLabel(tier: string) {
@@ -344,9 +332,10 @@ function CustomerDetailDrawer({
     const orders = detail.orders ?? [];
     const payments = detail.payments ?? [];
     const transactions = detail.transactions ?? [];
-    const events: Array<{ date: string; type: string; title: string; description: string }> = [];
+    const events: Array<{ id: string; date: string; type: string; title: string; description: string }> = [];
     orders.forEach((order) => {
       events.push({
+        id: `order-${order.id}`,
         date: order.createdAt,
         type: "order",
         title: `Pedido ${order.reference}`,
@@ -355,6 +344,7 @@ function CustomerDetailDrawer({
     });
     payments.forEach((payment) => {
       events.push({
+        id: `payment-${payment.id}`,
         date: payment.paidAt,
         type: "payment",
         title: `Pago ${payment.number}`,
@@ -363,6 +353,7 @@ function CustomerDetailDrawer({
     });
     transactions.forEach((tx) => {
       events.push({
+        id: `transaction-${tx.id}`,
         date: tx.createdAt,
         type: "transaction",
         title: tx.reason,
@@ -377,7 +368,7 @@ function CustomerDetailDrawer({
   const customer = detail?.customer;
 
   return (
-    <Drawer open={open} onClose={onClose} title={editing ? "Editar cliente" : (customer?.name ?? "Ficha del cliente")} width="1000px">
+    <Drawer open={open} onClose={onClose} title={editing ? "Editar cliente" : (customer?.name ?? "Ficha del cliente")} width="min(84vw, 1480px)">
       {loading && (
         <div className="flex items-center justify-center py-12">
           <Icon name="loader" className="h-6 w-6 animate-spin text-zinc-500" />
@@ -465,24 +456,26 @@ function CustomerDetailDrawer({
                 </button>
               </div>
 
-              <Tabs
-                tabs={[
-                  { key: "general", label: "General" },
-                  { key: "contacto", label: "Contacto" },
-                  { key: "comercial", label: "Cond. Comerciales" },
-                  { key: "saldo", label: "Saldo" },
-                  { key: "pedidos", label: "Pedidos" },
-                  { key: "pagos", label: "Pagos" },
-                  { key: "movimientos", label: "Cta. Corriente" },
-                  { key: "historico", label: "Histórico" },
-                  { key: "reservas", label: "Reservas" },
-                  { key: "facturas", label: "Facturas" },
-                ]}
-                defaultTab="general"
-                onChange={setActiveTab}
-              />
+              <div className="mt-5 gap-5 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)]">
+                <Tabs
+                  tabs={[
+                    { key: "general", label: "General" },
+                    { key: "contacto", label: "Contacto" },
+                    { key: "comercial", label: "Cond. Comerciales" },
+                    { key: "saldo", label: "Saldo" },
+                    { key: "pedidos", label: "Pedidos" },
+                    { key: "pagos", label: "Pagos" },
+                    { key: "movimientos", label: "Cta. Corriente" },
+                    { key: "historico", label: "Histórico" },
+                    { key: "reservas", label: "Reservas" },
+                    { key: "facturas", label: "Facturas" },
+                  ]}
+                  value={activeTab}
+                  orientation="vertical"
+                  onChange={setActiveTab}
+                />
 
-              <div className="mt-4">
+              <div className="mt-4 min-w-0 lg:mt-0">
                 {activeTab === "general" && (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -697,28 +690,20 @@ function CustomerDetailDrawer({
                 )}
 
                 {activeTab === "historico" && (
-                  <div>
-                    {timeline.length === 0 ? (
-                      <EmptyState title="Sin historial" description="Este cliente aún no tiene actividad registrada." />
-                    ) : (
-                      <div className="space-y-4">
-                        {timeline.map((event, index) => (
-                          <div key={index} className="flex gap-4 rounded-xl border border-white/10 bg-white/[.03] p-4">
-                            <div className="mt-1">
-                              {event.type === "order" && <Icon name="cart" className="h-5 w-5 text-pink-300" />}
-                              {event.type === "payment" && <Icon name="wallet" className="h-5 w-5 text-emerald-300" />}
-                              {event.type === "transaction" && <Icon name="repeat" className="h-5 w-5 text-sky-300" />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-bold">{event.title}</p>
-                              <p className="text-xs text-zinc-500">{event.description}</p>
-                            </div>
-                            <div className="shrink-0 text-xs text-zinc-500">{formatDateTime(event.date)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <Timeline
+                    items={timeline.map((event) => ({
+                      id: event.id,
+                      date: event.date,
+                      title: event.title,
+                      description: event.description,
+                      tone: event.type === "payment" ? "success" : event.type === "order" ? "info" : "default",
+                      icon:
+                        event.type === "order" ? <Icon name="cart" className="h-4 w-4" /> :
+                        event.type === "payment" ? <Icon name="wallet" className="h-4 w-4" /> :
+                        <Icon name="repeat" className="h-4 w-4" />,
+                    }))}
+                    emptyMessage="Este cliente aún no tiene actividad registrada."
+                  />
                 )}
 
                 {activeTab === "reservas" && (
@@ -729,6 +714,7 @@ function CustomerDetailDrawer({
                   <EmptyState title="Sin facturas" description="Las facturas se generan por pedido. Revisá la pestaña Pedidos para ver los comprobantes asociados." />
                 )}
               </div>
+              </div>
             </>
           )}
         </div>
@@ -738,22 +724,45 @@ function CustomerDetailDrawer({
 }
 
 /** @summary Maestro de clientes con tabla filtrable, creación en drawer y ficha extendida tipo Business Central. */
-export function CustomerMaster({ initialCustomers }: { initialCustomers: LoyaltyCustomerData[] }) {
+export function CustomerMaster({ initialCustomers, initialTotal }: { initialCustomers: LoyaltyCustomerData[]; initialTotal: number }) {
   const [customers, setCustomers] = useState<LoyaltyCustomerData[]>(initialCustomers);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
+  const [totalCustomers, setTotalCustomers] = useState(initialTotal);
+  const [listLoading, setListLoading] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [detailCustomerId, setDetailCustomerId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const visible = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("es");
-    if (!normalized) return customers;
-    return customers.filter((customer) =>
-      [customer.name, customer.email, customer.phone, customer.address]
-        .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase("es").includes(normalized)),
-    );
-  }, [customers, query]);
+  const visible = customers;
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setListLoading(true);
+      try {
+        const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+        if (query.trim()) params.set("q", query.trim());
+        const response = await scopedFetch(`/api/admin/customers?${params.toString()}`);
+        const body = (await response.json().catch(() => ({}))) as {
+          customers?: LoyaltyCustomerData[];
+          total?: number;
+        };
+        if (!cancelled && response.ok && body.customers) {
+          setCustomers(body.customers);
+          setTotalCustomers(body.total ?? body.customers.length);
+        }
+      } finally {
+        if (!cancelled) setListLoading(false);
+      }
+    }, query ? 280 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [page, pageSize, query, refreshNonce]);
 
   function refreshList(updatedCustomer?: LoyaltyCustomerData) {
     if (updatedCustomer) {
@@ -761,7 +770,7 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
         current.map((c) => (c.id === updatedCustomer.id ? { ...c, ...updatedCustomer } : c)),
       );
     } else {
-      setCustomers((current) => [...current].sort((a, b) => a.name.localeCompare(b.name, "es")));
+      setRefreshNonce((current) => current + 1);
     }
   }
 
@@ -795,7 +804,10 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
             type="search"
             placeholder="Buscar por nombre, email, teléfono o dirección…"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-9 text-sm text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-pink-500/50 focus:bg-white/10"
           />
           <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
@@ -804,9 +816,10 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {visible.length === 0 && !listLoading ? (
         <EmptyState title="No hay clientes registrados" description="Creá tu primer cliente para comenzar a operar." />
       ) : (
+        <div className={listLoading ? "opacity-60 transition-opacity" : "transition-opacity"} aria-busy={listLoading}>
         <DataTable
           viewStorageKey="clientes"
           density="comfortable"
@@ -830,6 +843,14 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
             status: <StatusBadge status={tierLabel(customer.tier)} tone={TIER_TONE[customer.tier] ?? "default"} />,
           }))}
           keyExtractor={(row) => row.id as number}
+          paginationPage={page}
+          paginationPageSize={pageSize}
+          paginationTotalItems={totalCustomers}
+          onPaginationPageChange={setPage}
+          onPaginationPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize);
+            setPage(1);
+          }}
           emptyMessage="No hay clientes registrados."
           onRowClick={(row) => {
             const c = visible.find((item) => item.id === row.id as number);
@@ -851,6 +872,7 @@ export function CustomerMaster({ initialCustomers }: { initialCustomers: Loyalty
             );
           }}
         />
+        </div>
       )}
 
       <NewCustomerDrawer open={newCustomerOpen} onClose={() => setNewCustomerOpen(false)} onCreated={refreshList} />

@@ -7,22 +7,34 @@ export function Tabs({
   tabs,
   defaultTab,
   onChange,
+  value,
+  orientation = "horizontal",
+  className = "",
 }: {
   tabs: Array<{ key: string; label: string; disabled?: boolean }>;
   defaultTab?: string;
   onChange?: (key: string) => void;
+  value?: string;
+  orientation?: "horizontal" | "vertical";
+  className?: string;
 }) {
-  const [active, setActive] = useState(defaultTab ?? tabs[0]?.key);
+  const [internalActive, setInternalActive] = useState(defaultTab ?? tabs[0]?.key);
+  const active = value ?? internalActive;
 
   function handleSelect(key: string) {
-    setActive(key);
+    if (value === undefined) setInternalActive(key);
     onChange?.(key);
   }
 
   return (
     <div
-      className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1"
+      className={`${
+        orientation === "vertical"
+          ? "flex max-w-full gap-1 overflow-x-auto lg:flex-col lg:overflow-visible"
+          : "flex max-w-full gap-1 overflow-x-auto"
+      } rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1 ${className}`}
       role="tablist"
+      aria-orientation={orientation}
     >
       {tabs.map((tab) => (
         <button
@@ -32,7 +44,7 @@ export function Tabs({
           onClick={() => handleSelect(tab.key)}
           role="tab"
           aria-selected={active === tab.key}
-          className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
+          className={`shrink-0 rounded-md px-3 py-1.5 text-left text-sm font-semibold transition-colors ${
             active === tab.key
               ? "bg-[var(--admin-surface-elevated)] text-white shadow-[var(--admin-shadow-sm)]"
               : "text-zinc-400 hover:bg-white/[.03] hover:text-zinc-200"

@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { PageHeader, SearchBox, ActionMenu, EmptyState } from "@/components/admin/ui";
+import { PageHeader, SearchBox, ActionMenu, EmptyState, Pagination } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 
 export type MediaAssetData = {
@@ -29,21 +29,51 @@ function fileSize(value: string | number) {
 }
 
 /** @summary Explora archivos por colección, formato y búsqueda, con edición y borrado seguro. */
-export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[] }) {
+export function MediaLibrary({
+  initialAssets,
+  initialTotal,
+  folders,
+}: {
+  initialAssets: MediaAssetData[];
+  initialTotal: number;
+  folders: string[];
+}) {
   const [assets, setAssets] = useState(initialAssets);
   const [query, setQuery] = useState("");
   const [folder, setFolder] = useState("all");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const folders = [...new Set(assets.map((asset) => asset.folder))].sort();
-  const normalizedQuery = query.trim().toLocaleLowerCase("es");
-  const visible = assets.filter(
-    (asset) =>
-      (folder === "all" || asset.folder === folder) &&
-      (!normalizedQuery ||
-        `${asset.filename} ${asset.altText ?? ""} ${asset.mimeType}`
-          .toLocaleLowerCase("es")
-          .includes(normalizedQuery)),
-  );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
+  const [totalAssets, setTotalAssets] = useState(initialTotal);
+  const [loading, setLoading] = useState(false);
+  const visible = assets;
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+        if (query.trim()) params.set("q", query.trim());
+        if (folder !== "all") params.set("folder", folder);
+        const response = await scopedFetch(`/api/admin/media?${params.toString()}`);
+        const body = (await response.json().catch(() => ({}))) as {
+          assets?: MediaAssetData[];
+          total?: number;
+        };
+        if (!cancelled && response.ok && body.assets) {
+          setAssets(body.assets);
+          setTotalAssets(body.total ?? body.assets.length);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, query ? 280 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [folder, page, pageSize, query]);
 
   /** @summary Edita el texto alternativo para mejorar accesibilidad y SEO. */
   async function edit(asset: MediaAssetData) {
@@ -148,6 +178,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
       return;
     }
     setAssets((current) => current.filter((item) => item.id !== asset.id));
+    setTotalAssets((current) => Math.max(0, current - 1));
   }
 
   return (
@@ -161,10 +192,13 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
         <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_220px_auto]">
           <SearchBox
             value={query}
-            onChange={setQuery}
+            onChange={(value) => {
+              setQuery(value);
+              setPage(1);
+            }}
             placeholder="Buscar archivo o descripción"
           />
-          <select className="input" value={folder} onChange={(event) => setFolder(event.target.value)}>
+          <select className="input" value={folder} onChange={(event) => { setFolder(event.target.value); setPage(1); }}>
             <option value="all">Todas las colecciones</option>
             {folders.map((item) => (
               <option key={item}>{item}</option>
@@ -178,7 +212,7 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
           </button>
         </div>
       </PageHeader>
-      <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
+      <div className={`${loading ? "opacity-60" : ""} transition-opacity ${view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "space-y-3"}`} aria-busy={loading}>
         {visible.map((asset) => (
           <article
             className={`card overflow-hidden ${view === "list" ? "flex items-center gap-4 p-3" : ""}`}
@@ -250,6 +284,15 @@ export function MediaLibrary({ initialAssets }: { initialAssets: MediaAssetData[
             description="No hay recursos registrados con esos filtros."
           />
         )}
+      </div>
+      <div className="mt-5 overflow-hidden rounded-xl border border-[var(--admin-border)]">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={totalAssets}
+          onPageChange={setPage}
+          onPageSizeChange={(value) => { setPageSize(value as 25 | 50 | 100); setPage(1); }}
+        />
       </div>
     </section>
   );

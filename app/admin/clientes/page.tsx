@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 /** @summary Carga la base maestra de clientes frecuentes para el panel administrativo. */
 export default async function AdminClientsPage() {
   const context = await requirePermission("customer.manage");
-  const customers = await prisma.loyaltyCustomer.findMany({
+  const [customers, totalCustomers] = await Promise.all([prisma.loyaltyCustomer.findMany({
     where: {
       tenantId: context.tenant.id,
       deletedAt: null,
     },
     orderBy: { name: "asc" },
-    take: 2000,
+    take: 25,
     select: {
       id: true,
       name: true,
@@ -29,7 +29,7 @@ export default async function AdminClientsPage() {
       currency: true,
       _count: { select: { orders: true, transactions: true } },
     },
-  });
+  }), prisma.loyaltyCustomer.count({ where: { tenantId: context.tenant.id, deletedAt: null } })]);
   const normalized: LoyaltyCustomerData[] = customers.map((customer) => ({
     ...customer,
     currentBalance: Number(customer.currentBalance),
@@ -40,5 +40,5 @@ export default async function AdminClientsPage() {
       transactions: customer._count.transactions,
     },
   }));
-  return <CustomerMaster initialCustomers={normalized} />;
+  return <CustomerMaster initialCustomers={normalized} initialTotal={totalCustomers} />;
 }

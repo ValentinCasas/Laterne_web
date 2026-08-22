@@ -11,6 +11,7 @@ import {
   ActionMenu,
   ActiveFilterChip,
   NumberFlow,
+  Timeline,
 } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import type { KdsOrder, KdsPayload, KdsStation } from "@/lib/kds-data";
@@ -298,6 +299,9 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
   const [showFilters, setShowFilters] = useState(false);
   const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null);
   const [dragTarget, setDragTarget] = useState<ColumnId | null>(null);
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<number>>(() => new Set());
+  const [conflictNotice, setConflictNotice] = useState<string | null>(null);
+  const inFlightOrderIds = useRef<Set<number>>(new Set());
 
   const { chime } = useChime(settings.sound);
   const knownIds = useRef<Set<number>>(new Set(initial.orders.map((order) => order.id)));
@@ -357,40 +361,32 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
 
   /** @summary Avanza un pedido por los estados permitidos y sincroniza todas las vistas. */
   async function advanceOrder(order: KdsOrder, target: OrderStatus) {
-    if (order.status === target) return;
+    if (order.status === target || inFlightOrderIds.current.has(order.id)) return;
     const path = buildPath(order.status as OrderStatus, asOrderType(order.orderType), target);
     if (!path.length) return;
+    inFlightOrderIds.current.add(order.id);
+    setUpdatingOrderIds((current) => new Set(current).add(order.id));
     try {
+      let expectedStatus = order.status;
       for (const hop of path) {
         const response = await scopedFetch(`/api/admin/orders/${order.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: hop }),
+          body: JSON.stringify({ status: hop, expectedStatus }),
         });
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        if (!response.ok) throw new Error(body.error ?? "No se pudo actualizar el pedido");
+        const body = (await response.json().catch(() => ({}))) as { code?: string; error?: string };
+        if (!response.ok) {
+          if (response.status === 409 && body.code === "ORDER_STATE_CONFLICT") {
+            setConflictNotice(body.error ?? "El pedido cambió desde otra pantalla.");
+            await load();
+            return;
+          }
+          throw new Error(body.error ?? "No se pudo actualizar el pedido");
+        }
+        expectedStatus = hop;
       }
-      const now = new Date().toISOString();
-      const updated: KdsOrder = {
-        ...order,
-        status: target,
-        history: [
-          ...order.history,
-          {
-            id: new Date().getTime(),
-            fromStatus: order.status,
-            toStatus: target,
-            note: null,
-            createdAt: now,
-            userName,
-          },
-        ],
-      };
-      setData((current) => ({
-        ...current,
-        orders: current.orders.map((item) => (item.id === order.id ? updated : item)),
-      }));
-      setSelected((current) => (current?.id === order.id ? updated : current));
+      setConflictNotice(null);
+      await load();
     } catch (reason) {
       await Swal.fire({
         title: "No se pudo actualizar",
@@ -398,6 +394,13 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
         icon: "error",
         background: "#18181b",
         color: "#fafafa",
+      });
+    } finally {
+      inFlightOrderIds.current.delete(order.id);
+      setUpdatingOrderIds((current) => {
+        const next = new Set(current);
+        next.delete(order.id);
+        return next;
       });
     }
   }
@@ -498,6 +501,15 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
           </div>
         }
       />
+
+      {conflictNotice && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="status">
+          <p><strong>El pedido cambió en otra pantalla.</strong> {conflictNotice}</p>
+          <button type="button" className="text-xs font-bold underline underline-offset-4 hover:text-white" onClick={() => { setConflictNotice(null); void load(); }}>
+            Actualizar monitor
+          </button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <button
@@ -707,6 +719,7 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
                     <div
                       key={order.id}
                       draggable={
+                        !updatingOrderIds.has(order.id) &&
                         buildPath(order.status as OrderStatus, asOrderType(order.orderType), "delivered")
                           .length > 0
                       }
@@ -730,6 +743,7 @@ export function KitchenBoard({ initial, userName }: { initial: KdsPayload; userN
                         onAdvance={() => column.action && void advanceOrder(order, column.action.target)}
                         actionLabel={column.action?.label}
                         onCancel={() => void cancelOrder(order)}
+                        busy={updatingOrderIds.has(order.id)}
                       />
                     </div>
                   ))}
@@ -781,6 +795,7 @@ function KitchenCard({
   onAdvance,
   onCancel,
   actionLabel,
+  busy = false,
 }: {
   order: KdsOrder;
   settings: KdsSettings;
@@ -789,6 +804,7 @@ function KitchenCard({
   onAdvance: () => void;
   onCancel: () => void;
   actionLabel?: string;
+  busy?: boolean;
 }) {
   const minutes = Math.max(0, Math.floor((now - new Date(order.createdAt).getTime()) / 60_000));
   const level = timerLevel(minutes, settings);
@@ -893,8 +909,8 @@ function KitchenCard({
 
       <div className="mt-4 flex gap-2">
         {actionLabel && (
-          <button className="btn min-h-10 flex-1 text-sm font-bold" onClick={onAdvance} type="button">
-            {actionLabel}
+          <button className="btn min-h-10 flex-1 text-sm font-bold" disabled={busy} onClick={onAdvance} type="button">
+            {busy ? "ACTUALIZANDO…" : actionLabel}
           </button>
         )}
         <ActionMenu
@@ -1060,21 +1076,18 @@ function OrderDetailModal({
 
         <section className="mt-6">
           <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Historial de cambios</h3>
-          {order.history.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-500">Sin movimientos registrados.</p>
-          ) : (
-            <ol className="mt-3 space-y-2">
-              {order.history.map((entry) => (
-                <li className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" key={entry.id}>
-                  <span className="grid h-2 w-2 shrink-0 rounded-full bg-pink-500" />
-                  <span className="font-bold">{orderStatusLabel(entry.toStatus)}</span>
-                  <span className="text-zinc-500">{hourLabel(entry.createdAt)}</span>
-                  <span className="text-zinc-600">por {entry.userName ?? "sistema"}</span>
-                  {entry.note && <span className="text-zinc-400">· {entry.note}</span>}
-                </li>
-              ))}
-            </ol>
-          )}
+          <Timeline
+            className="mt-3"
+            items={order.history.map((entry) => ({
+              id: entry.id,
+              date: entry.createdAt,
+              title: orderStatusLabel(entry.toStatus),
+              description: entry.note,
+              actor: entry.userName ?? "sistema",
+              tone: entry.toStatus === "cancelled" ? "danger" : entry.toStatus === "delivered" ? "success" : "info",
+            }))}
+            emptyMessage="Sin movimientos registrados."
+          />
           <p className="mt-2 text-xs text-zinc-600">
             Los próximos cambios de este dispositivo se registran con {userName}.
           </p>

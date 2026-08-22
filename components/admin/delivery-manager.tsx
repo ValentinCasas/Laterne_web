@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { PageHeader, StatusBadge, DataTable, EmptyState, SearchBox, ActionMenu, Drawer } from "@/components/admin/ui";
+import { PageHeader, StatusBadge, DataTable, EmptyState, SearchBox, ActionMenu, Drawer, KpiCard } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import type { OrderDeliveryData } from "@/lib/delivery-types";
@@ -42,6 +42,9 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
   const pathname = usePathname();
   const [deliveries, setDeliveries] = useState<OrderDeliveryData[]>(initialDeliveries);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [referenceTime] = useState(() => Date.now());
   const [creating, setCreating] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState<DeliveryForm>({
@@ -53,13 +56,14 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
 
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
-    if (!normalized) return deliveries;
     return deliveries.filter((delivery) =>
-      [delivery.number, delivery.customerName, delivery.order?.reference, delivery.branch?.name]
+      (statusFilter === "all" || delivery.status === statusFilter) &&
+      (dateFilter === "all" || new Date(delivery.deliveryDate).getTime() >= referenceTime - Number(dateFilter) * 86_400_000) &&
+      (!normalized || [delivery.number, delivery.customerName, delivery.order?.reference, delivery.branch?.name]
         .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase("es").includes(normalized)),
+        .some((value) => value!.toLocaleLowerCase("es").includes(normalized))),
     );
-  }, [deliveries, query]);
+  }, [dateFilter, deliveries, query, referenceTime, statusFilter]);
 
   async function createDelivery() {
     if (!form.orderId) {
@@ -122,8 +126,24 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
         </button>
       } />
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <KpiCard label="Entregas registradas" value={deliveries.length} size="compact" />
+        <KpiCard label="Confirmadas" value={deliveries.filter((delivery) => delivery.status === "delivered").length} size="compact" tone="text-emerald-300" />
+        <KpiCard label="Anuladas" value={deliveries.filter((delivery) => delivery.status === "reversed").length} size="compact" tone="text-red-300" />
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <SearchBox value={query} onChange={setQuery} placeholder="Buscar por número, cliente o pedido…" className="min-w-[220px] flex-1" />
+        <select className="input min-w-40" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filtrar por estado">
+          <option value="all">Todos los estados</option>
+          <option value="delivered">Entregadas</option>
+          <option value="reversed">Anuladas</option>
+        </select>
+        <select className="input min-w-40" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Filtrar por fecha">
+          <option value="all">Cualquier fecha</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+        </select>
       </div>
 
       {visible.length === 0 ? (
@@ -145,6 +165,9 @@ export function DeliveryManager({ initialDeliveries, orderId }: DeliveryManagerP
             }))}
             keyExtractor={(row) => row.id as number}
             emptyMessage="No hay entregas registradas."
+            onRowClick={(row) => {
+              window.location.href = adminHrefFromPathname(pathname, `/admin/entregas/${row.id as number}`);
+            }}
             rowActions={(row) => {
               const delivery = visible.find((d) => d.id === row.id as number);
               if (!delivery) return null;

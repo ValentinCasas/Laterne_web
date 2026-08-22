@@ -17,8 +17,60 @@ import { prisma } from "@/lib/prisma";
  */
 const updateInput = z.object({
   status: z.enum(orderStatuses),
+  expectedStatus: z.enum(orderStatuses).optional(),
   note: z.string().trim().max(500).optional(),
 });
+
+/** @summary Carga un pedido completo para sincronizar una sola tarjeta del tablero. */
+async function loadAdminOrder(id: number, tenantId: number) {
+  const order = await prisma.customerOrder.findFirst({
+    where: { id, tenantId },
+    include: {
+      table: { select: { name: true, code: true } },
+      items: true,
+      branch: { select: { name: true, slug: true } },
+      invoice: { select: { id: true, number: true, status: true } },
+      history: { orderBy: { createdAt: "asc" } },
+      idempotencies: { select: { token: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { deliveries: true, payments: true } },
+    },
+  });
+  if (!order) return null;
+  const delivery = await prisma.orderDelivery.findFirst({
+    where: {
+      tenantId,
+      orderId: id,
+      status: { in: [...ACTIVE_DELIVERY_STATUSES] },
+    },
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      driverProfile: { select: { name: true } },
+    },
+  });
+  const { idempotencies, ...publicOrder } = order;
+  return serialize({
+    ...publicOrder,
+    trackingToken: idempotencies[0]?.token ?? null,
+    delivery,
+  });
+}
+
+/** @summary Devuelve el estado fresco de un pedido dentro del tenant y la sucursal autorizados. */
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize("order.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const id = Number((await context.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
+  const order = await loadAdminOrder(id, auth.tenant.id);
+  if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  const branchId = Number((order as { branchId?: number | null }).branchId ?? 0);
+  if (branchId && !canAccessBranch(auth, branchId)) {
+    return NextResponse.json({ error: "No tenés acceso a la sucursal de este pedido" }, { status: 403 });
+  }
+  return NextResponse.json({ order });
+}
 
 /** @summary Actualiza el avance de un pedido y registra historial, notificación y auditoría. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -38,6 +90,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "No tenés acceso a la sucursal de este pedido" }, { status: 403 });
   }
 
+  if (parsed.data.expectedStatus && current.status !== parsed.data.expectedStatus) {
+    return NextResponse.json(
+      {
+        code: "ORDER_STATE_CONFLICT",
+        error: `El pedido ahora está ${orderStatusLabel(current.status as OrderStatus).toLocaleLowerCase("es")}.`,
+        order: await loadAdminOrder(id, auth.tenant.id),
+      },
+      { status: 409 },
+    );
+  }
+
   const orderType = asOrderType(current.orderType);
   const invalidTransition = transitionError(current.status as OrderStatus, parsed.data.status, orderType);
   if (invalidTransition) {
@@ -48,7 +111,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     updated = await prisma.$transaction(async (transaction) => {
       const guarded = await transaction.customerOrder.updateMany({
-        where: { id, tenantId: auth.tenant.id, status: current.status },
+        where: {
+          id,
+          tenantId: auth.tenant.id,
+          status: parsed.data.expectedStatus ?? current.status,
+        },
         data: { status: parsed.data.status },
       });
       if (guarded.count !== 1) throw new Error("El pedido cambió de estado mientras tanto");
@@ -143,7 +210,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       );
     }
     if (reason instanceof Error && reason.message.includes("cambió de estado mientras tanto")) {
-      return NextResponse.json({ error: reason.message }, { status: 409 });
+      return NextResponse.json(
+        {
+          code: "ORDER_STATE_CONFLICT",
+          error: reason.message,
+          order: await loadAdminOrder(id, auth.tenant.id),
+        },
+        { status: 409 },
+      );
     }
     throw reason;
   }
@@ -156,5 +230,5 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     newValues: toAuditValue(serialize(updated)),
     request,
   });
-  return NextResponse.json({ order: serialize(updated) });
+  return NextResponse.json({ order: await loadAdminOrder(id, auth.tenant.id) });
 }

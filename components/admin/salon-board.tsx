@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import type { Route } from "next";
-import { PageHeader, EmptyState, SearchBox, StatusBadge, NumberFlow } from "@/components/admin/ui";
+import { PageHeader, EmptyState, SearchBox, StatusBadge, NumberFlow, Timeline } from "@/components/admin/ui";
 import { scopedFetch } from "@/lib/client-routing";
 import { adminHrefFromPathname } from "@/lib/routes";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
@@ -1391,26 +1391,16 @@ function TablePanel({
 
               <section className="mt-7">
                 <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Historial</h3>
-                <ol className="mt-3 space-y-0">
-                  {session.events.map((event, index) => (
-                    <li className="relative flex gap-3 pb-4 pl-5 last:pb-0" key={event.id}>
-                      <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--admin-primary)]" />
-                      {index < session.events.length - 1 && (
-                        <span className="absolute left-[4px] top-4 h-full w-px bg-white/10" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold">{event.note || eventLabel(event.eventType)}</p>
-                        <p className="text-xs text-zinc-500">
-                          {new Date(event.createdAt).toLocaleTimeString("es-AR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {event.userName ? ` · ${event.userName}` : ""}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <Timeline
+                  className="mt-3"
+                  items={session.events.map((event) => ({
+                    id: event.id,
+                    date: event.createdAt,
+                    title: event.note || eventLabel(event.eventType),
+                    actor: event.userName,
+                    tone: event.eventType.includes("close") ? "warning" : "info",
+                  }))}
+                />
               </section>
             </>
           )}

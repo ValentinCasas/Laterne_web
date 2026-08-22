@@ -21,6 +21,58 @@ const customerInput = z.object({
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
+const customerSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  birthday: true,
+  points: true,
+  tier: true,
+  createdAt: true,
+  address: true,
+  paymentTerms: true,
+  currentBalance: true,
+  currency: true,
+  _count: { select: { orders: true, transactions: true } },
+} as const;
+
+/** @summary Lista clientes con búsqueda y paginación server-side dentro del tenant actual. */
+export async function GET(request: Request) {
+  const auth = await authorize("customer.manage");
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  const search = new URL(request.url).searchParams;
+  const page = Math.max(1, Number(search.get("page")) || 1);
+  const requestedPageSize = Number(search.get("pageSize")) || 25;
+  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
+  const query = search.get("q")?.trim().slice(0, 160) ?? "";
+  const where = {
+    tenantId: auth.tenant.id,
+    deletedAt: null,
+    ...(query
+      ? {
+          OR: [
+            { name: { contains: query } },
+            { email: { contains: query } },
+            { phone: { contains: query } },
+            { address: { contains: query } },
+          ],
+        }
+      : {}),
+  };
+  const [customers, total] = await Promise.all([
+    prisma.loyaltyCustomer.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: customerSelect,
+    }),
+    prisma.loyaltyCustomer.count({ where }),
+  ]);
+  return NextResponse.json({ customers: serialize(customers), total, page, pageSize });
+}
+
 /** @summary Crea un nuevo cliente en el tenant actual. */
 export async function POST(request: Request) {
   const auth = await authorize("customer.manage");

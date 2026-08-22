@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import {
   PageHeader,
@@ -12,6 +12,8 @@ import {
   DocumentLines,
   RelatedDocuments,
   NumberFlow,
+  Timeline,
+  Drawer,
 } from "@/components/admin/ui";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
@@ -144,6 +146,9 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null);
   const [dragTarget, setDragTarget] = useState<OrderStatus | null>(null);
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<number>>(() => new Set());
+  const [conflictNotice, setConflictNotice] = useState<{ orderId: number; message: string } | null>(null);
+  const inFlightOrderIds = useRef<Set<number>>(new Set());
 
   /** @summary Abre el detalle del pedido indicado por `?id=` al cargar la página. */
   useEffect(() => {
@@ -170,50 +175,65 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
 
   /** @summary Solicita un cambio de estado y sincroniza el resultado con todas las vistas del tablero. */
   async function updateStatus(order: AdminOrder, status: OrderStatus) {
-    if (order.status === status) return;
-    const response = await scopedFetch(`/api/admin/orders/${order.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const result = (await response.json().catch(() => ({}))) as { error?: string };
-    if (!response.ok) {
-      await Swal.fire({
-        title: "No se pudo actualizar",
-        text: result.error ?? "Intentá nuevamente.",
-        icon: "error",
-        background: "#18181b",
-        color: "#fafafa",
+    if (order.status === status || inFlightOrderIds.current.has(order.id)) return false;
+    inFlightOrderIds.current.add(order.id);
+    setUpdatingOrderIds((current) => new Set(current).add(order.id));
+    try {
+      const response = await scopedFetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, expectedStatus: order.status }),
       });
-      return;
+      const result = (await response.json().catch(() => ({}))) as {
+        code?: string;
+        error?: string;
+        order?: AdminOrder;
+      };
+      if (!response.ok) {
+        if (response.status === 409 && result.code === "ORDER_STATE_CONFLICT") {
+          if (result.order) replaceOrder(result.order);
+          setConflictNotice({
+            orderId: order.id,
+            message: result.error ?? "El pedido cambió desde otra pantalla.",
+          });
+          return false;
+        }
+        await Swal.fire({
+          title: "No se pudo actualizar",
+          text: result.error ?? "Intentá nuevamente.",
+          icon: "error",
+          background: "#18181b",
+          color: "#fafafa",
+        });
+        return false;
+      }
+      if (result.order) replaceOrder(result.order);
+      setConflictNotice((current) => (current?.orderId === order.id ? null : current));
+      return true;
+    } finally {
+      inFlightOrderIds.current.delete(order.id);
+      setUpdatingOrderIds((current) => {
+        const next = new Set(current);
+        next.delete(order.id);
+        return next;
+      });
     }
-    const now = new Date().toISOString();
-    setOrders((current) =>
-      current.map((item) =>
-        item.id === order.id
-          ? {
-              ...item,
-              status,
-              history: [
-                ...item.history,
-                { id: Date.now(), fromStatus: item.status, toStatus: status, note: null, createdAt: now },
-              ],
-            }
-          : item,
-      ),
-    );
-    setSelected((current) =>
-      current?.id === order.id
-        ? {
-            ...current,
-            status,
-            history: [
-              ...current.history,
-              { id: Date.now(), fromStatus: current.status, toStatus: status, note: null, createdAt: now },
-            ],
-          }
-        : current,
-    );
+  }
+
+  /** @summary Reemplaza únicamente el pedido sincronizado en el tablero y su detalle. */
+  function replaceOrder(order: AdminOrder) {
+    setOrders((current) => current.map((item) => (item.id === order.id ? order : item)));
+    setSelected((current) => (current?.id === order.id ? order : current));
+  }
+
+  /** @summary Refresca un pedido puntual después de detectar concurrencia real. */
+  async function refreshOrder(orderId: number) {
+    const response = await scopedFetch(`/api/admin/orders/${orderId}`, { method: "GET" });
+    const body = (await response.json().catch(() => ({}))) as { order?: AdminOrder };
+    if (response.ok && body.order) {
+      replaceOrder(body.order);
+      setConflictNotice(null);
+    }
   }
 
   /** @summary Valida y aplica un cambio de columna iniciado por drag and drop. */
@@ -343,6 +363,15 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         }
       />
 
+      {conflictNotice && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="status">
+          <p><strong>El pedido cambió en otra pantalla.</strong> {conflictNotice.message}</p>
+          <button type="button" className="text-xs font-bold text-amber-200 underline underline-offset-4 hover:text-white" onClick={() => void refreshOrder(conflictNotice.orderId)}>
+            Actualizar pedido
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-1.5">
         {(
           [
@@ -440,6 +469,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                       }`}
                       key={order.id}
                       draggable={
+                        !updatingOrderIds.has(order.id) &&
                         allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).length >
                         0
                       }
@@ -493,6 +523,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
                         <div className="mt-2.5">
                           <button
                             className="w-full rounded-lg bg-[var(--admin-primary-strong)]/15 px-3 py-1.5 text-xs font-bold text-[var(--admin-primary-strong)] transition-colors hover:bg-[var(--admin-primary-strong)]/25"
+                            disabled={updatingOrderIds.has(order.id)}
                             onClick={() => void updateStatus(order, nextStatus(order)!)}
                             type="button"
                           >
@@ -545,7 +576,7 @@ function OrderDetail({
 }: {
   order: AdminOrder;
   onClose: () => void;
-  onStatusChange: (order: AdminOrder, status: OrderStatus) => Promise<void>;
+  onStatusChange: (order: AdminOrder, status: OrderStatus) => Promise<boolean>;
   onCreateInvoice: (order: AdminOrder) => Promise<void>;
   onCancelInvoice: (order: AdminOrder) => Promise<void>;
 }) {
@@ -556,10 +587,10 @@ function OrderDetail({
     return () => window.clearTimeout(timer);
   }, []);
   const timeline = [
-    { time: order.createdAt, label: "Recibido", note: null as string | null },
+    { id: "received", date: order.createdAt, title: "Recibido", note: null as string | null },
     ...[...order.history]
       .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
-      .map((entry) => ({ time: entry.createdAt, label: orderStatusLabel(entry.toStatus), note: entry.note })),
+      .map((entry) => ({ id: entry.id, date: entry.createdAt, title: orderStatusLabel(entry.toStatus), note: entry.note })),
   ];
   const next = allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).find(
     (status) => status !== "cancelled",
@@ -572,18 +603,9 @@ function OrderDetail({
   const trackingUrl = trackingHref && origin ? new URL(trackingHref, origin).toString() : trackingHref;
 
   return (
-    <div
-      className="fixed inset-0 z-[120] grid place-items-center bg-black/80 p-4 backdrop-blur"
-      onClick={onClose}
-    >
-      <article
-        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Pedido ${order.reference}`}
-      >
-        <header className="sticky top-0 z-10 flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-zinc-950/90 p-6 backdrop-blur">
+    <Drawer open onClose={onClose} title={`Pedido ${order.reference}`} width="min(84vw, 1280px)">
+      <div>
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--admin-border)] pb-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs font-black uppercase tracking-wider text-pink-300">{order.reference}</p>
@@ -595,13 +617,6 @@ function OrderDetail({
               Recibido {elapsedLabel(order.createdAt)} · {new Date(order.createdAt).toLocaleString("es-AR")}
             </p>
           </div>
-          <button
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/5 text-xl text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
-            ×
-          </button>
         </header>
 
         <div className="p-6">
@@ -719,26 +734,16 @@ function OrderDetail({
 
               <section>
                 <SectionHeader title="Historial" description="Seguimiento de estados." />
-                <ol className="mt-4 space-y-0">
-                  {timeline.map((entry, index) => (
-                    <li className="relative flex gap-3 pb-4 pl-5 last:pb-0" key={`${entry.time}-${index}`}>
-                      <span className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--admin-primary-strong)]" />
-                      {index < timeline.length - 1 && (
-                        <span className="absolute left-[4px] top-4 h-full w-px bg-white/10" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold">{entry.label}</p>
-                        <p className="text-xs text-zinc-500">
-                          {new Date(entry.time).toLocaleTimeString("es-AR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {entry.note ? ` · ${entry.note}` : ""}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <Timeline
+                  className="mt-4"
+                  items={timeline.map((entry, index) => ({
+                    id: entry.id,
+                    date: entry.date,
+                    title: entry.title,
+                    description: entry.note,
+                    tone: index === timeline.length - 1 ? "success" : "info",
+                  }))}
+                />
               </section>
             </div>
 
@@ -884,7 +889,7 @@ function OrderDetail({
             </div>
           </div>
         </div>
-      </article>
-    </div>
+      </div>
+    </Drawer>
   );
 }

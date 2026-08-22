@@ -13,6 +13,7 @@ import {
 import { api, showError } from "@/lib/client-helpers";
 import { dateLabel, money } from "@/lib/helpers";
 import { purchaseInvoiceStatusLabels, purchaseOrderStatusLabels } from "@/lib/purchases";
+import { Timeline } from "@/components/admin/ui";
 
 type OrderDetail = PurchaseOrderDetail;
 type InvoiceDetail = PurchaseInvoiceDetail;
@@ -524,20 +525,17 @@ export function OrderDetailModal({
               Todavía no se recibió mercadería de este pedido.
             </p>
           ) : (
-            <div className="mt-2 space-y-2">
-              {order.receipts.map((receipt) => (
-                <div key={receipt.id} className="rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-black text-pink-300">{receipt.number}</span>
-                    <span className="text-xs text-[var(--admin-muted)]">{dateLabel(receipt.receivedAt)}</span>
-                    {receipt.createdBy && <span className="text-xs text-[var(--admin-muted)]">por {receipt.createdBy.name}</span>}
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--admin-muted)]">
-                    {receipt.items.map((item) => `${item.product?.name ?? item.product?.id ?? item.id} × ${item.quantity} ${item.unit} a ${money(item.unitCost, currency)}`).join(" · ")}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <Timeline
+              className="mt-3"
+              items={order.receipts.map((receipt) => ({
+                id: receipt.id,
+                date: receipt.receivedAt,
+                title: receipt.number,
+                actor: receipt.createdBy?.name,
+                tone: "success",
+                description: receipt.items.map((item) => `${item.product?.name ?? item.product?.id ?? item.id} × ${item.quantity} ${item.unit} a ${money(item.unitCost, currency)}`).join(" · "),
+              }))}
+            />
           )}
         </div>
 

@@ -16,6 +16,8 @@ export { FiltersBar } from "./filters-bar";
 export { SearchBox } from "./search-box";
 export { ActionMenu } from "./action-menu";
 export { DataTable } from "./data-table";
+export { Pagination } from "./pagination";
+export { Timeline, type TimelineItem } from "./timeline";
 export { CardGrid } from "./card-grid";
 export { KanbanBoard } from "./kanban-board";
 export { EmptyState } from "./empty-state";

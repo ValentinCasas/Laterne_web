@@ -699,7 +699,7 @@ export function AdminShell({
                       expanded
                         ? "bg-white/[.07] text-white"
                         : groupActive
-                          ? "text-white"
+                          ? "bg-[var(--admin-primary-soft)] text-white shadow-[inset_0_-2px_0_var(--admin-primary)]"
                           : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
                     }`}
                     aria-haspopup="true"
@@ -727,11 +727,14 @@ export function AdminShell({
                   className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-200 ${
                     overflowOpen
                       ? "bg-white/[.07] text-white"
-                      : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
+                      : overflowGroups.some((group) => group.id === activeGroupId)
+                        ? "bg-[var(--admin-primary-soft)] text-white shadow-[inset_0_-2px_0_var(--admin-primary)]"
+                        : "text-zinc-400 hover:bg-white/[.04] hover:text-zinc-200"
                   }`}
                   onClick={() => setOverflowOpen((current) => !current)}
                   aria-haspopup="true"
                   aria-expanded={overflowOpen}
+                  aria-current={overflowGroups.some((group) => group.id === activeGroupId) ? "page" : undefined}
                 >
                   <span className="hidden md:inline">Más</span>
                   <ChevronDownIcon open={overflowOpen} className="h-3.5 w-3.5 text-zinc-500" />

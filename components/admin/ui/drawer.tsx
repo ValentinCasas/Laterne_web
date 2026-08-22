@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 /** @summary Drawer lateral para formularios, detalles o filtros avanzados. */
 export function Drawer({
@@ -22,7 +22,13 @@ export function Drawer({
   useEffect(() => {
     if (!open) return;
     previousActiveElement.current = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      (previousActiveElement.current as HTMLElement | null)?.focus();
+    };
   }, [open]);
 
   useEffect(() => {
@@ -54,22 +60,13 @@ export function Drawer({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  useEffect(() => {
-    if (!open) {
-      (previousActiveElement.current as HTMLElement | null)?.dispatchEvent(
-        new KeyboardEvent("keydown", { bubbles: true, cancelable: true }),
-      );
-      (previousActiveElement.current as HTMLElement | null)?.focus();
-    }
-  }, [open]);
-
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[120]" role="presentation">
       <div className="modal-backdrop-in absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <aside
-        className="salon-drawer absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] shadow-2xl sm:w-auto"
-        style={{ maxWidth: width }}
+        className="salon-drawer absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] shadow-2xl sm:w-[var(--drawer-width)] sm:max-w-[calc(100vw-1rem)]"
+        style={{ "--drawer-width": width } as CSSProperties}
         role="dialog"
         aria-modal="true"
         aria-label={title}

@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useViewMode, ViewModeToggle, type ViewMode } from "@/components/admin/view-mode-toggle";
 import { DENSITY_CELL_CLASSES } from "./view-options";
+import { Pagination } from "./pagination";
 
 type Column = {
   key: string;
@@ -29,6 +30,13 @@ export function DataTable({
   view,
   onViewChange,
   viewStorageKey,
+  pagination = true,
+  initialPageSize = 25,
+  paginationPage,
+  paginationPageSize,
+  paginationTotalItems,
+  onPaginationPageChange,
+  onPaginationPageSizeChange,
 }: {
   columns: Column[];
   data: readonly Record<string, unknown>[];
@@ -41,7 +49,16 @@ export function DataTable({
   view?: ViewMode;
   onViewChange?: (view: ViewMode) => void;
   viewStorageKey?: string;
+  pagination?: boolean;
+  initialPageSize?: 25 | 50 | 100;
+  paginationPage?: number;
+  paginationPageSize?: 25 | 50 | 100;
+  paginationTotalItems?: number;
+  onPaginationPageChange?: (page: number) => void;
+  onPaginationPageSizeChange?: (pageSize: 25 | 50 | 100) => void;
 }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [persistedView, setPersistedView] = useViewMode(viewStorageKey ?? "data-table");
   const effectiveView: ViewMode = view ?? (viewStorageKey || onViewChange ? persistedView : "list");
   const applyView = onViewChange ?? setPersistedView;
@@ -49,10 +66,36 @@ export function DataTable({
   const isCards = effectiveView === "cards" || effectiveView === "cards-compact";
   const compact = effectiveView === "list-compact" || effectiveView === "cards-compact";
   const cellClass = DENSITY_CELL_CLASSES[density];
+  const serverPaginated = paginationTotalItems !== undefined;
+  const effectivePageSize = paginationPageSize ?? pageSize;
+  const effectivePage = paginationPage ?? page;
+  const totalItems = paginationTotalItems ?? data.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const safePage = Math.min(effectivePage, totalPages);
+  const pageRows = pagination && !serverPaginated
+    ? data.slice((safePage - 1) * effectivePageSize, safePage * effectivePageSize)
+    : data;
 
   const mobileColumns = columns.filter((column) => !column.hideOnMobile);
   const titleColumn = mobileColumns[0];
   const bodyColumns = mobileColumns.slice(1);
+
+  const paginationFooter = pagination ? (
+    <Pagination
+      page={safePage}
+      pageSize={effectivePageSize}
+      totalItems={totalItems}
+      onPageChange={(nextPage) => (onPaginationPageChange ? onPaginationPageChange(nextPage) : setPage(nextPage))}
+      onPageSizeChange={(nextPageSize) => {
+        const safePageSize = nextPageSize as 25 | 50 | 100;
+        if (onPaginationPageSizeChange) onPaginationPageSizeChange(safePageSize);
+        else {
+          setPageSize(safePageSize);
+          setPage(1);
+        }
+      }}
+    />
+  ) : null;
 
   if (data.length === 0) {
     return (
@@ -100,7 +143,7 @@ export function DataTable({
           </div>
         )}
         <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 ${compact ? "gap-2.5" : "gap-4"}`}>
-          {data.map((row, rowIndex) => (
+          {pageRows.map((row, rowIndex) => (
             <div
               key={keyExtractor(row, rowIndex)}
               onClick={(event) => handleRowPointer(event, row)}
@@ -127,6 +170,11 @@ export function DataTable({
             </div>
           ))}
         </div>
+        {paginationFooter && (
+          <div className="mt-3 overflow-hidden rounded-xl border border-[var(--admin-border)]">
+            {paginationFooter}
+          </div>
+        )}
       </div>
     );
   }
@@ -140,7 +188,7 @@ export function DataTable({
       )}
       <div className="sm:hidden">
         <div className="space-y-2">
-          {data.map((row, rowIndex) => (
+          {pageRows.map((row, rowIndex) => (
             <div
               key={`mobile-${keyExtractor(row, rowIndex)}`}
               onClick={(event) => handleRowPointer(event, row)}
@@ -185,7 +233,7 @@ export function DataTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--admin-border)]/70">
-            {data.map((row, rowIndex) => (
+            {pageRows.map((row, rowIndex) => (
               <tr
                 key={keyExtractor(row, rowIndex)}
                 onClick={(event) => handleRowPointer(event, row)}
@@ -213,6 +261,11 @@ export function DataTable({
           </tbody>
         </table>
       </div>
+      {paginationFooter && (
+        <div className="mt-3 overflow-hidden rounded-xl border border-[var(--admin-border)]">
+          {paginationFooter}
+        </div>
+      )}
     </div>
   );
 }

@@ -20,7 +20,7 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="admin-page-header relative mb-6 overflow-hidden border-b border-[var(--admin-border)] pb-5 pt-1 sm:mb-7 sm:pb-6">
+    <header className="admin-page-header relative mb-6 border-b border-[var(--admin-border)] pb-5 pt-1 sm:mb-7 sm:pb-6">
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav
           aria-label="Breadcrumb"
