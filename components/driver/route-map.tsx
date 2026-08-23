@@ -13,6 +13,7 @@ import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 
 type RouteStop = DeliveryRouteCoordinate & {
   id: number;
+  routeOrder?: number | null;
   number: string;
   customerName: string;
   address: string;
@@ -36,46 +37,54 @@ function coordinate(value: unknown, limit: number) {
   return Number.isFinite(parsed) && Math.abs(parsed) <= limit ? parsed : null;
 }
 
-/** @summary Marcador premium de parada con numeración elegante. */
-function stopMarker(index: number, status: string) {
-  const element = document.createElement("div");
-  element.setAttribute("aria-label", `Parada ${index}`);
+/* ── Marker builders ── */
+
+/** @summary Marcador de parada con numeración, color por estado y highlight de selección. */
+function buildStopMarker(index: number, status: string, isSelected: boolean) {
+  const el = document.createElement("div");
+  el.setAttribute("aria-label", `Parada ${index}`);
   const delivered = status === "DELIVERED";
-  Object.assign(element.style, {
-    width: "34px",
-    height: "34px",
+  const incident = status === "INCIDENT" || status === "FAILED";
+  const baseSize = isSelected ? 40 : 34;
+  Object.assign(el.style, {
+    width: `${baseSize}px`,
+    height: `${baseSize}px`,
     display: "grid",
     placeItems: "center",
     borderRadius: "12px",
-    border: "3px solid white",
-    background: delivered ? "#10b981" : "#ec4899",
+    border: isSelected ? "3px solid #ec4899" : "3px solid white",
+    background: delivered ? "#10b981" : incident ? "#f59e0b" : "#ec4899",
     color: "white",
-    fontSize: "13px",
+    fontSize: isSelected ? "14px" : "13px",
     fontWeight: "900",
-    boxShadow: "0 8px 25px rgba(0,0,0,.5)",
+    boxShadow: isSelected
+      ? "0 0 0 4px rgba(236,72,153,.3), 0 8px 25px rgba(0,0,0,.5)"
+      : "0 8px 25px rgba(0,0,0,.5)",
     opacity: delivered ? "0.6" : "1",
-    transition: "opacity 0.3s",
+    transition: "all 0.2s",
+    transform: isSelected ? "scale(1.15)" : "scale(1)",
+    cursor: "pointer",
   });
-  element.textContent = delivered ? "✓" : String(index);
-  return element;
+  el.textContent = delivered ? "✓" : incident ? "!" : String(index);
+  return el;
 }
 
-/** @summary Marcador del origen (sucursal) con estilo distinctivo. */
-function originMarker() {
-  const element = document.createElement("div");
-  element.setAttribute("aria-label", "Inicio del recorrido");
-  Object.assign(element.style, {
-    width: "28px",
-    height: "28px",
-    borderRadius: "8px",
+/** @summary Marcador del origen (sucursal) con estilo distintivo. */
+function buildOriginMarker() {
+  const el = document.createElement("div");
+  el.setAttribute("aria-label", "Sucursal base");
+  Object.assign(el.style, {
+    width: "30px",
+    height: "30px",
+    borderRadius: "10px",
     border: "3px solid white",
     background: "linear-gradient(135deg, #10b981, #059669)",
     boxShadow: "0 8px 25px rgba(0,0,0,.5)",
     display: "grid",
     placeItems: "center",
+    cursor: "pointer",
   });
   const inner = document.createElement("div");
-  inner.className = "icon-inner";
   Object.assign(inner.style, {
     width: "8px",
     height: "8px",
@@ -83,9 +92,11 @@ function originMarker() {
     background: "white",
     transform: "rotate(45deg)",
   });
-  element.appendChild(inner);
-  return element;
+  el.appendChild(inner);
+  return el;
 }
+
+/* ── Popup builders ── */
 
 function popupText(className: string, text: string) {
   const element = document.createElement("p");
@@ -94,14 +105,26 @@ function popupText(className: string, text: string) {
   return element;
 }
 
-/** @summary Ficha premium para una parada del recorrido. */
-function routeStopPopup(stop: RouteStop, index: number) {
+function popupButton(text: string, onClick: () => void) {
+  const btn = document.createElement("button");
+  btn.textContent = text;
+  btn.type = "button";
+  btn.style.cssText = "display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:10px;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fafafa;cursor:pointer;transition:background 0.2s;";
+  btn.onmouseenter = () => { btn.style.background = "rgba(255,255,255,.1)"; };
+  btn.onmouseleave = () => { btn.style.background = "rgba(255,255,255,.05)"; };
+  btn.onclick = (e) => { e.stopPropagation(); onClick(); };
+  return btn;
+}
+
+/** @summary Popup de parada con datos reales y acciones. */
+function buildStopPopup(stop: RouteStop, index: number, onSelect?: (id: number) => void) {
   const content = document.createElement("div");
   content.className = "mc-map-popup";
-  content.style.maxWidth = "260px";
+  content.style.maxWidth = "280px";
   const meta = deliveryStatusMeta(stop.status);
+  const delivered = stop.status === "DELIVERED";
   content.append(
-    popupText("mc-map-popup__eyebrow", `Parada ${index}`),
+    popupText("mc-map-popup__eyebrow", `PARADA ${index}${delivered ? " ✓" : ""}`),
     popupText("mc-map-popup__title", stop.customerName),
     popupText("mc-map-popup__primary", stop.address),
   );
@@ -113,28 +136,24 @@ function routeStopPopup(stop: RouteStop, index: number) {
   if (stop.reference) content.append(popupText("mc-map-popup__row", `Pedido: ${stop.reference}`));
   if (stop.phone) content.append(popupText("mc-map-popup__row", `Tel: ${stop.phone}`));
   if (stop.requestedAt) {
-    content.append(
-      popupText(
-        "mc-map-popup__row",
-        `Horario: ${new Date(stop.requestedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`,
-      ),
-    );
+    content.append(popupText("mc-map-popup__row", `Horario: ${new Date(stop.requestedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`));
   }
   content.append(popupText("mc-map-popup__row", `Productos: ${stop.itemCount}`));
   const total = Number(stop.total);
   if (Number.isFinite(total)) {
-    content.append(
-      popupText(
-        "mc-map-popup__row",
-        `Total: ${new Intl.NumberFormat("es-AR", { style: "currency", currency: stop.currency ?? "ARS", maximumFractionDigits: 0 }).format(total)}`,
-      ),
-    );
+    content.append(popupText("mc-map-popup__row", `Total: ${new Intl.NumberFormat("es-AR", { style: "currency", currency: stop.currency ?? "ARS", maximumFractionDigits: 0 }).format(total)}`));
+  }
+  // Action buttons
+  if (onSelect) {
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;gap:6px;margin-top:10px;";
+    actions.appendChild(popupButton("Ver datos", () => onSelect(stop.id)));
+    content.appendChild(actions);
   }
   return content;
 }
 
-/** @summary Popup del origen (sucursal). */
-function routeOriginPopup(origin: RouteOriginInfo | null, stops: number) {
+function buildOriginPopup(origin: RouteOriginInfo | null, stops: number) {
   const content = document.createElement("div");
   content.className = "mc-map-popup";
   content.append(
@@ -147,13 +166,23 @@ function routeOriginPopup(origin: RouteOriginInfo | null, stops: number) {
   return content;
 }
 
-/** @summary Mapa premium del recorrido con marcadores numerados, ruta visual y controles inteligentes. */
-export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] }) {
+/* ── Main Component ── */
+
+/** @summary Mapa premium del recorrido con selección sincronizada, marcadores por estado y progreso de línea. */
+export function DriverRouteMap({
+  deliveries,
+  selectedId,
+  onSelect,
+}: {
+  deliveries: DriverDelivery[];
+  selectedId?: number | null;
+  onSelect?: (id: number) => void;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const markers = useRef<maplibregl.Marker[]>([]);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   const [failed, setFailed] = useState(false);
-  const [showRoute, setShowRoute] = useState(true);
+  const prevSelectedRef = useRef<number | null | undefined>(null);
 
   const route = useMemo(() => {
     let origin: DeliveryRouteCoordinate | null = null;
@@ -170,25 +199,26 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
       }
     }
     const stops: RouteStop[] = deliveries.flatMap((delivery) => {
-        const latitude = coordinate(delivery.latitude, 90);
-        const longitude = coordinate(delivery.longitude, 180);
-        if (latitude === null || longitude === null) return [];
-        return [{
-          id: delivery.id,
-          number: delivery.number,
-          customerName: delivery.order?.customerName ?? delivery.customerName,
-          address: delivery.order?.deliveryAddress ?? delivery.deliveryAddress ?? "Dirección no informada",
-          status: delivery.status,
-          reference: delivery.order?.reference,
-          phone: delivery.order?.phone ?? delivery.contactPhone,
-          requestedAt: delivery.order?.requestedAt,
-          total: delivery.order?.total,
-          currency: delivery.order?.currency,
-          itemCount: delivery.items?.length ?? 0,
-          latitude,
-          longitude,
-        }];
-      });
+      const latitude = coordinate(delivery.latitude, 90);
+      const longitude = coordinate(delivery.longitude, 180);
+      if (latitude === null || longitude === null) return [];
+      return [{
+        id: delivery.id,
+        routeOrder: delivery.routeOrder,
+        number: delivery.number,
+        customerName: delivery.order?.customerName ?? delivery.customerName,
+        address: delivery.order?.deliveryAddress ?? delivery.deliveryAddress ?? "Dirección no informada",
+        status: delivery.status,
+        reference: delivery.order?.reference,
+        phone: delivery.order?.phone ?? delivery.contactPhone,
+        requestedAt: delivery.order?.requestedAt,
+        total: delivery.order?.total,
+        currency: delivery.order?.currency,
+        itemCount: delivery.items?.length ?? 0,
+        latitude,
+        longitude,
+      }];
+    });
     const routeOrigin = origin ?? stops[0] ?? null;
     const orderedStops = routeOrigin ? orderDeliveryRouteStops(routeOrigin, stops) : [];
     return {
@@ -199,13 +229,13 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
       missingLocations: deliveries.length - stops.length,
     };
   }, [deliveries]);
+
   const routeOrigin = route.origin;
   const hasRouteOrigin = Boolean(routeOrigin);
   const orderedStops = route.stops;
   const originInfo = route.originInfo;
-  const navigationUrl = route.navigationUrl;
-  const missingLocations = route.missingLocations;
 
+  /* ── Map init ── */
   useEffect(() => {
     if (!container.current || map.current || !routeOrigin) return;
     maplibregl.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
@@ -226,83 +256,128 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
       startTransition(() => setFailed(true));
     }
     return () => {
-      for (const marker of markers.current) marker.remove();
-      markers.current = [];
-      try {
-        map.current?.remove();
-      } catch {
-        /* ya removido */
-      }
+      markersRef.current.forEach((mk) => mk.remove());
+      markersRef.current = [];
+      try { map.current?.remove(); } catch { /* ya removido */ }
       map.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasRouteOrigin]);
 
+  /* ── Draw markers, route line, and handle selection ── */
   useEffect(() => {
-    const currentMap = map.current;
+    const m = map.current;
     const currentOrigin = routeOrigin;
-    if (!currentMap || !currentOrigin) return;
+    if (!m || !currentOrigin) return;
 
-    const coordinates: [number, number][] = [
+    // All coordinates for the route
+    const coords: [number, number][] = [
       [currentOrigin.longitude, currentOrigin.latitude],
-      ...orderedStops.map((stop) => [stop.longitude, stop.latitude] as [number, number]),
+      ...orderedStops.map((s) => [s.longitude, s.latitude] as [number, number]),
     ];
-    const data = {
-      type: "Feature" as const,
-      properties: {},
-      geometry: { type: "LineString" as const, coordinates },
-    };
 
-    const drawLine = () => {
-      const source = currentMap.getSource("driver-route") as maplibregl.GeoJSONSource | undefined;
-      if (source) source.setData(data);
+    // Find where completed portion ends (last DELIVERED stop index)
+    const completedCoords: [number, number][] = [[currentOrigin.longitude, currentOrigin.latitude]];
+    for (let i = 0; i < orderedStops.length; i++) {
+      if (orderedStops[i]!.status === "DELIVERED") {
+        completedCoords.push([orderedStops[i]!.longitude, orderedStops[i]!.latitude]);
+      }
+    }
+
+    // Draw route lines (completed = green, pending = pink)
+    const drawLines = () => {
+      // Completed segment (green)
+      if (completedCoords.length > 1) {
+        const completedData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: completedCoords } };
+        const src = m.getSource("route-completed") as maplibregl.GeoJSONSource | undefined;
+        if (src) src.setData(completedData);
+        else {
+          m.addSource("route-completed", { type: "geojson", data: completedData });
+          m.addLayer({
+            id: "route-completed-line",
+            type: "line",
+            source: "route-completed",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#10b981", "line-width": 4, "line-opacity": 0.7 },
+          });
+        }
+      }
+      // Pending segment (pink, dashed)
+      const pendingData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: coords } };
+      const src2 = m.getSource("route-pending") as maplibregl.GeoJSONSource | undefined;
+      if (src2) src2.setData(pendingData);
       else {
-        currentMap.addSource("driver-route", { type: "geojson", data });
-        currentMap.addLayer({
-          id: "driver-route-line",
+        m.addSource("route-pending", { type: "geojson", data: pendingData });
+        m.addLayer({
+          id: "route-pending-line",
           type: "line",
-          source: "driver-route",
+          source: "route-pending",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": "#ec4899",
-            "line-width": 4,
-            "line-opacity": 0.8,
-            "line-dasharray": [1.2, 1.4],
-          },
+          paint: { "line-color": "#ec4899", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [1.2, 1.4] },
         });
       }
     };
 
-    const drawMarkers = () => {
-      for (const marker of markers.current) marker.remove();
-      markers.current = [];
-      markers.current.push(
-        new maplibregl.Marker({ element: originMarker() })
-          .setLngLat([currentOrigin.longitude, currentOrigin.latitude])
-          .setPopup(new maplibregl.Popup({ offset: 18 }).setDOMContent(routeOriginPopup(originInfo, orderedStops.length)))
-          .addTo(currentMap),
+    // Remove old markers
+    markersRef.current.forEach((mk) => mk.remove());
+    markersRef.current = [];
+
+    // Origin marker
+    const originMk = new maplibregl.Marker({ element: buildOriginMarker() })
+      .setLngLat([currentOrigin.longitude, currentOrigin.latitude])
+      .setPopup(new maplibregl.Popup({ offset: 18, closeButton: false }).setDOMContent(buildOriginPopup(originInfo, orderedStops.length)))
+      .addTo(m);
+    markersRef.current.push(originMk);
+
+    // Stop markers
+    orderedStops.forEach((stop, i) => {
+      const isSelected = selectedId === stop.id;
+      const mkElement = buildStopMarker(i + 1, stop.status, isSelected);
+      const popup = new maplibregl.Popup({ offset: 18, closeButton: false }).setDOMContent(
+        buildStopPopup(stop, i + 1, onSelect)
       );
-      orderedStops.forEach((stop, index) => {
-        markers.current.push(
-          new maplibregl.Marker({ element: stopMarker(index + 1, stop.status), anchor: "bottom" })
-            .setLngLat([stop.longitude, stop.latitude])
-            .setPopup(new maplibregl.Popup({ offset: 18 }).setDOMContent(routeStopPopup(stop, index + 1)))
-            .addTo(currentMap),
-        );
+      const mk = new maplibregl.Marker({ element: mkElement, anchor: "bottom" })
+        .setLngLat([stop.longitude, stop.latitude])
+        .setPopup(popup)
+        .addTo(m);
+
+      // Click marker → select delivery
+      mkElement.addEventListener("click", () => {
+        onSelect?.(stop.id);
       });
 
-      const bounds = new maplibregl.LngLatBounds();
-      coordinates.forEach((point) => bounds.extend(point));
-      if (!bounds.isEmpty()) currentMap.fitBounds(bounds, { padding: 54, maxZoom: 15, duration: 500 });
-    };
+      markersRef.current.push(mk);
+    });
 
-    drawMarkers();
-    if (currentMap.isStyleLoaded()) drawLine();
-    else currentMap.once("load", drawLine);
-    return () => {
-      currentMap.off("load", drawLine);
-    };
-  }, [orderedStops, originInfo, routeOrigin]);
+    // Draw lines
+    if (m.isStyleLoaded()) drawLines();
+    else m.once("load", drawLines);
+
+    // Fit bounds
+    const bounds = new maplibregl.LngLatBounds();
+    coords.forEach((p) => bounds.extend(p));
+    if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 54, maxZoom: 15, duration: 500 });
+  }, [orderedStops, originInfo, routeOrigin, selectedId, onSelect]);
+
+  /* ── Fly to selected marker ── */
+  useEffect(() => {
+    if (selectedId == null || !map.current) return;
+    if (prevSelectedRef.current === selectedId) return;
+    prevSelectedRef.current = selectedId;
+    const stop = orderedStops.find((s) => s.id === selectedId);
+    if (!stop) return;
+    map.current.flyTo({ center: [stop.longitude, stop.latitude], zoom: 15, duration: 600 });
+    // Open popup
+    const idx = orderedStops.indexOf(stop);
+    if (idx >= 0 && markersRef.current[idx + 1]) {
+      markersRef.current[idx + 1]!.togglePopup();
+    }
+  }, [selectedId, orderedStops]);
+
+  // Reset prevSelected when selectedId becomes null/undefined
+  useEffect(() => {
+    if (selectedId == null) prevSelectedRef.current = null;
+  }, [selectedId]);
 
   // Empty state
   if (!routeOrigin) {
@@ -345,9 +420,9 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {navigationUrl && (
+          {route.navigationUrl && (
             <a
-              href={navigationUrl}
+              href={route.navigationUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-pink-600 px-4 text-sm font-black text-white shadow-lg shadow-pink-950/30 transition hover:bg-pink-500 active:scale-[.98]"
@@ -378,20 +453,24 @@ export function DriverRouteMap({ deliveries }: { deliveries: DriverDelivery[] })
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded bg-pink-500" />
-            Parada pendiente
+            Pendiente
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded bg-emerald-400 opacity-60" />
             Entregada
           </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded bg-amber-500" />
+            Incidencia
+          </span>
         </div>
       )}
 
       {/* Missing locations warning */}
-      {missingLocations > 0 && (
+      {route.missingLocations > 0 && (
         <div className="flex items-center gap-2 border-t border-amber-400/15 bg-amber-500/[.06] px-4 py-3 text-xs text-amber-200">
           <Icon name="warning" className="h-4 w-4 shrink-0" />
-          {missingLocations} {missingLocations === 1 ? "entrega no tiene" : "entregas no tienen"} un punto confirmado y no se agregó al recorrido.
+          {route.missingLocations} {route.missingLocations === 1 ? "entrega no tiene" : "entregas no tienen"} un punto confirmado y no se agregó al recorrido.
         </div>
       )}
     </section>

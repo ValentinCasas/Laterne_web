@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DriverActiveDeliveries, type DriverDelivery } from "@/components/driver/active-deliveries";
 import { DriverLocationSharing } from "@/components/driver/location-sharing";
 import { DriverProfileCard } from "@/components/driver/profile-card";
@@ -84,6 +84,13 @@ export function DriverDashboard({
   const [route, setRoute] = useState(initialRoute ?? null);
   const [working, setWorking] = useState(false);
 
+  /* ── Map ↔ List sync ── */
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectTarget, setSelectTarget] = useState<"map" | "list" | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [filter, setFilter] = useState<"Todos" | "Pendientes" | "Entregados" | "Incidencias">("Todos");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   /* ── Route computed ── */
   const hasActiveRoute = route?.status === "IN_PROGRESS" || route?.status === "PREPARING";
   const completedCount = deliveries.filter((d) => d.status === "DELIVERED").length;
@@ -98,6 +105,18 @@ export function DriverDashboard({
     }
     return deliveries;
   }, [deliveries, hasActiveRoute]);
+
+  /** @summary Filtro de entregas para la lista. */
+  const filteredDeliveries = useMemo(() => {
+    if (filter === "Pendientes") return sortedDeliveries.filter((d) => d.status !== "DELIVERED");
+    if (filter === "Entregados") return sortedDeliveries.filter((d) => d.status === "DELIVERED");
+    if (filter === "Incidencias") return sortedDeliveries.filter((d) => d.incidents?.some((i) => !i.resolved));
+    return sortedDeliveries;
+  }, [sortedDeliveries, filter]);
+
+  const pendingCount = pendingDeliveries.length;
+  const deliveredInRouteCount = sortedDeliveries.filter((d) => d.status === "DELIVERED").length;
+  const incidentsInRouteCount = sortedDeliveries.filter((d) => d.incidents?.some((i) => !i.resolved)).length;
 
   /** @summary URL de navegación por Google Maps con todas las paradas del recorrido. */
   const navUrl = useMemo(() => {
@@ -117,6 +136,42 @@ export function DriverDashboard({
     return googleMapsRouteUrl(origin, ordered);
   }, [hasActiveRoute, deliveries]);
 
+  /* ── Selection handlers ── */
+  /** @summary Selecciona una entrega y abre el drawer de detalle. */
+  const handleVerDatos = useCallback((id: number) => {
+    setSelectedId(id);
+    setDrawerOpen(true);
+  }, []);
+
+  /** @summary Selecciona una entrega y centra el mapa en su marker. */
+  const handleVerEnMapa = useCallback((id: number) => {
+    setSelectedId(id);
+    setSelectTarget("map");
+  }, []);
+
+  /** @summary Maneja click en marker del mapa: selecciona y abre popup. */
+  const handleMarkerSelect = useCallback((id: number) => {
+    setSelectedId(id);
+    setDrawerOpen(false);
+  }, []);
+
+  /** @summary Cierra el drawer de detalle. */
+  const handleCloseDrawer = useCallback(() => {
+    setDrawerOpen(false);
+  }, []);
+
+  /* ── Effects: scroll/center based on selectTarget ── */
+  useEffect(() => {
+    if (selectedId === null || !selectTarget) return;
+    if (selectTarget === "list") {
+      const el = document.getElementById(`delivery-card-${selectedId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    // Use rAF to avoid synchronous setState in effect
+    const id = requestAnimationFrame(() => setSelectTarget(null));
+    return () => cancelAnimationFrame(id);
+  }, [selectedId, selectTarget]);
+
   /* ── Polling: entregas + completadas ── */
   useEffect(() => {
     let disposed = false;
@@ -135,15 +190,17 @@ export function DriverDashboard({
   /* ── Polling: recorrido activo ── */
   useEffect(() => {
     if (!route) return;
+    const routeId = route.id;
     let disposed = false;
     async function refresh() {
-      const res = await scopedFetch(`/api/driver/routes/${route!.id}`, { cache: "no-store" }).catch(() => null);
+      const res = await scopedFetch(`/api/driver/routes/${routeId}`, { cache: "no-store" }).catch(() => null);
       if (!res?.ok || disposed) return;
       const body = (await res.json()) as { route?: ActiveRoute };
       if (body.route) setRoute(body.route);
     }
     const timer = window.setInterval(() => void refresh(), 15_000);
     return () => { disposed = true; window.clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route?.id]);
 
   /* ── Acciones de recorrido ── */
@@ -172,7 +229,6 @@ export function DriverDashboard({
         return;
       }
       setRoute(body.route);
-      // Refrescar entregas para obtener routeId/routeOrder actualizados
       const delRes = await scopedFetch("/api/driver/deliveries", { cache: "no-store" });
       const delBody = (await delRes.json().catch(() => ({}))) as { activeDeliveries?: DriverDelivery[] };
       if (delBody.activeDeliveries) setDeliveries(delBody.activeDeliveries);
@@ -222,7 +278,7 @@ export function DriverDashboard({
         return;
       }
       setRoute(null);
-      // Refrescar todo
+      setSelectedId(null);
       const delRes = await scopedFetch("/api/driver/deliveries", { cache: "no-store" });
       const delBody = (await delRes.json().catch(() => ({}))) as { activeDeliveries?: DriverDelivery[]; completedToday?: CompletedDelivery[]; deliveredTodayCount?: number };
       if (delBody.activeDeliveries) setDeliveries(delBody.activeDeliveries);
@@ -236,19 +292,28 @@ export function DriverDashboard({
 
   /* ── Render ── */
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* ── Hero KPIs ── */}
       <DriverSummaryCards active={deliveries.length} deliveredToday={deliveredTodayCount} averageMinutes={averageMinutes} incidents={incidentCount} />
 
-      {/* ── Mapa + Panel lateral ── */}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(340px,.8fr)]">
-        <div className="space-y-4 lg:col-start-1">
+      {/* ── Main layout: Map + Sidebar ── */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,.8fr)]">
+        {/* ── Left: Map + Deliveries (scrollable) ── */}
+        <div
+          ref={scrollContainerRef}
+          className="space-y-4 lg:col-start-1 lg:max-h-[calc(100vh-180px)] lg:overflow-y-auto lg:pr-1"
+          style={{ scrollbarGutter: "stable" }}
+        >
           {/* Mapa */}
-          <DriverRouteMap deliveries={sortedDeliveries} />
+          <DriverRouteMap
+            deliveries={sortedDeliveries}
+            selectedId={selectedId}
+            onSelect={handleMarkerSelect}
+          />
 
-          {/* Entregas activas */}
+          {/* ── Entregas ── */}
           <section>
-            <div className="mb-3 flex items-end justify-between gap-3 px-1">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[.18em] text-pink-300">Operación</p>
                 <h2 className="mt-1 text-xl font-black text-white">
@@ -262,8 +327,39 @@ export function DriverDashboard({
                 </span>
               )}
             </div>
+
+            {/* Filtros */}
+            {hasActiveRoute && sortedDeliveries.length > 0 && (
+              <div className="mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                {(["Todos", "Pendientes", "Entregados", "Incidencias"] as const).map((f) => {
+                  const count = f === "Todos" ? sortedDeliveries.length
+                    : f === "Pendientes" ? pendingCount
+                    : f === "Entregados" ? deliveredInRouteCount
+                    : incidentsInRouteCount;
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition ${
+                        filter === f
+                          ? "bg-white/10 text-white"
+                          : "bg-white/5 text-zinc-500 hover:bg-white/[.08] hover:text-zinc-300"
+                      }`}
+                      onClick={() => setFilter(f)}
+                    >
+                      {f}
+                      {count > 0 && f !== "Todos" && (
+                        <span className="ml-1.5 rounded-full bg-pink-500/20 px-1.5 py-0.5 text-[9px]">{count}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <DriverActiveDeliveries
-              deliveries={sortedDeliveries}
+              deliveries={filteredDeliveries}
+              allDeliveries={sortedDeliveries}
               onChange={setDeliveries}
               onDelivered={() => {
                 setDeliveredTodayCount((value) => value + 1);
@@ -274,15 +370,19 @@ export function DriverDashboard({
               }}
               onIncident={() => setIncidentCount((value) => value + 1)}
               routeActive={hasActiveRoute}
+              selectedId={selectedId}
+              onSelect={handleVerDatos}
+              onMapSelect={handleVerEnMapa}
+              drawerOpen={drawerOpen}
+              onCloseDrawer={handleCloseDrawer}
             />
           </section>
         </div>
 
-        {/* ── Panel lateral ── */}
+        {/* ── Right: Sidebar (sticky) ── */}
         <aside className="space-y-4 lg:col-start-2 lg:row-start-1">
           {/* ── Recorrido ── */}
           {hasActiveRoute && route ? (
-            /* Recorrido activo: progreso + próxima parada + acciones */
             <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-sky-500/[.06] via-zinc-900 to-zinc-950 p-5 shadow-xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -325,11 +425,14 @@ export function DriverDashboard({
                 <div className="mt-3 rounded-xl border border-pink-400/15 bg-pink-500/[.06] p-3">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-pink-300/70">Próxima parada</p>
                   <p className="mt-1 text-sm font-bold text-white truncate">
-                    {nextStop.order?.customerName ?? nextStop.customerName}
+                    #{nextStop.routeOrder ?? "?"} · {nextStop.order?.customerName ?? nextStop.customerName}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-400 truncate">
                     {nextStop.order?.deliveryAddress ?? nextStop.deliveryAddress ?? "Dirección no informada"}
                   </p>
+                  {nextStop.order?.reference && (
+                    <p className="mt-1 text-[11px] text-zinc-500">Pedido: {nextStop.order.reference}</p>
+                  )}
                   {(nextStop.order?.phone ?? nextStop.contactPhone) && (
                     <a
                       href={`tel:${encodeURIComponent(nextStop.order?.phone ?? nextStop.contactPhone ?? "")}`}
@@ -398,7 +501,7 @@ export function DriverDashboard({
             </section>
           )}
 
-          {/* GPS */}
+          {/* GPS — SIEMPRE visible */}
           <DriverLocationSharing
             deliveries={sortedDeliveries.map((delivery) => ({ id: delivery.id, branchId: delivery.branch?.id, status: delivery.status }))}
             fallbackBranchId={driver.branches?.[0]?.branch?.id}

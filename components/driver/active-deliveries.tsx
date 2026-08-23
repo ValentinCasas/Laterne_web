@@ -62,16 +62,6 @@ function formatTime(value: string | Date) {
   return new Date(value).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatRelativeTime(value: string | Date) {
-  const diff = Date.now() - new Date(value).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Hace ${hours}h`;
-  return `Hace ${Math.floor(hours / 24)}d`;
-}
-
 function actionLabel(status: string) {
   if (status === "PICKED_UP") return "Retirar";
   if (status === "ON_THE_WAY") return "En camino";
@@ -86,29 +76,40 @@ function actionIcon(status: string) {
   return "arrow-right" as const;
 }
 
-/** @summary Entregas activas como tarjetas operativas premium con detalle en drawer y mutaciones en tiempo real. */
+/** @summary Entregas activas como tarjetas operativas con detalle en drawer, filtros y sincronización mapa↔lista. */
 export function DriverActiveDeliveries({
   deliveries,
+  allDeliveries,
   onChange,
   onDelivered,
   onIncident,
   routeActive = false,
+  selectedId,
+  onSelect,
+  onMapSelect,
+  drawerOpen,
+  onCloseDrawer,
 }: {
   deliveries: DriverDelivery[];
+  allDeliveries: DriverDelivery[];
   onChange: (deliveries: DriverDelivery[]) => void;
   onDelivered?: () => void;
   onIncident?: () => void;
   routeActive?: boolean;
+  selectedId?: number | null;
+  onSelect?: (id: number) => void;
+  onMapSelect?: (id: number) => void;
+  drawerOpen?: boolean;
+  onCloseDrawer?: () => void;
 }) {
   const items = deliveries;
-  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [incidentForId, setIncidentForId] = useState<number | null>(null);
   const [incidentType, setIncidentType] = useState(INCIDENT_TYPES[0]!);
   const [incidentDescription, setIncidentDescription] = useState("");
   const [workingId, setWorkingId] = useState<number | null>(null);
 
-  const selected = items.find((delivery) => delivery.id === selectedId) ?? null;
-  const incidentFor = items.find((delivery) => delivery.id === incidentForId) ?? null;
+  const selected = allDeliveries.find((d) => d.id === selectedId) ?? null;
+  const incidentFor = allDeliveries.find((d) => d.id === incidentForId) ?? null;
 
   function commit(nextItems: DriverDelivery[]) {
     onChange(nextItems);
@@ -149,7 +150,6 @@ export function DriverActiveDeliveries({
       commit(nextItems);
       if (next === "DELIVERED") {
         onDelivered?.();
-        setSelectedId(null);
       }
     } finally {
       setWorkingId(null);
@@ -173,7 +173,6 @@ export function DriverActiveDeliveries({
       commit(items.filter((item) => item.id !== incidentFor.id));
       onIncident?.();
       setIncidentForId(null);
-      setSelectedId(null);
       setIncidentDescription("");
       await Swal.fire({ title: "Incidencia reportada", icon: "success", timer: 1100, showConfirmButton: false, ...SWAL_THEME });
     } finally {
@@ -188,9 +187,15 @@ export function DriverActiveDeliveries({
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-white/5 to-transparent text-zinc-600">
           <Icon name="package" className="h-7 w-7" />
         </span>
-        <h3 className="mt-5 text-lg font-black text-white">Todo entregado</h3>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-zinc-500">No tenés entregas activas en este momento. Cuando te asignen una, aparecerá acá automáticamente.</p>
-        {items.length === 0 && (
+        <h3 className="mt-5 text-lg font-black text-white">
+          {routeActive ? "Sin entregas en este filtro" : "Todo entregado"}
+        </h3>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-zinc-500">
+          {routeActive
+            ? "No hay entregas que coincidan con el filtro seleccionado."
+            : "No tenés entregas activas en este momento. Cuando te asignen una, aparecerá acá automáticamente."}
+        </p>
+        {!routeActive && (
           <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300">
             <Icon name="check-circle" className="h-3.5 w-3.5" />
             Jornada al día
@@ -208,78 +213,109 @@ export function DriverActiveDeliveries({
           const next = nextDriverStatus(delivery.status);
           const address = delivery.order?.deliveryAddress ?? delivery.deliveryAddress;
           const hasIncidents = delivery.incidents?.some((incident) => !incident.resolved);
-  const isActive = delivery.status === "ON_THE_WAY";
-  const isDelivered = delivery.status === "DELIVERED";
-  return (
+          const isActive = delivery.status === "ON_THE_WAY";
+          const isDelivered = delivery.status === "DELIVERED";
+          const isSelected = selectedId === delivery.id;
+          const stopNum = delivery.routeOrder;
+          return (
             <article
-              key={delivery.id}              className={`group overflow-hidden rounded-3xl border shadow-xl transition-all duration-300 ${
-                isDelivered && routeActive
-                  ? "border-emerald-400/15 bg-zinc-900/50 opacity-70"
-                  : isActive
-                    ? "border-sky-400/20 bg-gradient-to-br from-sky-500/[.08] via-zinc-900 to-zinc-950 hover:border-sky-400/30"
-                    : "border-white/[.08] bg-zinc-900/80 hover:border-white/[.14] hover:shadow-2xl"
+              key={delivery.id}
+              id={`delivery-card-${delivery.id}`}
+              className={`group overflow-hidden rounded-3xl border shadow-xl transition-all duration-300 scroll-mt-20 ${
+                isSelected
+                  ? "border-pink-400/30 bg-gradient-to-br from-pink-500/[.08] via-zinc-900 to-zinc-950 ring-1 ring-pink-400/20"
+                  : isDelivered && routeActive
+                    ? "border-emerald-400/15 bg-zinc-900/60"
+                    : isActive
+                      ? "border-sky-400/20 bg-gradient-to-br from-sky-500/[.08] via-zinc-900 to-zinc-950 hover:border-sky-400/30"
+                      : "border-white/[.08] bg-zinc-900/80 hover:border-white/[.14] hover:shadow-2xl"
               }`}
             >
-              {/* Card header */}
-              <button type="button" className="w-full p-4 text-left" onClick={() => setSelectedId(delivery.id)} aria-label={`Ver entrega ${delivery.number}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${
-                      isDelivered && routeActive ? "bg-emerald-500/20 text-emerald-300" : isActive ? "bg-sky-500/20 text-sky-300" : "bg-pink-500/15 text-pink-300"
-                    }`}>
-                      {isDelivered && routeActive ? "✓" : delivery.routeOrder ? `#${delivery.routeOrder}` : `#${index + 1}`}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-base font-black text-white">{delivery.order?.customerName ?? delivery.customerName}</h3>
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${meta.badge}`}>{meta.label}</span>
-                        {hasIncidents && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-black text-orange-300">Incidencia</span>}
-                      </div>
-                      <p className="mt-1 flex items-center gap-1.5 text-sm text-zinc-400">
-                        <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0 text-pink-400/70" />
-                        <span className="truncate">{address ?? "Dirección no informada"}</span>
-                      </p>
+              {/* Card body — click selecciona */}
+              <button
+                type="button"
+                className="w-full p-4 text-left"
+                onClick={() => onSelect?.(delivery.id)}
+                aria-label={`Ver entrega ${delivery.number}`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Stop number badge */}
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${
+                    isDelivered && routeActive
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : isActive
+                        ? "bg-sky-500/20 text-sky-300"
+                        : "bg-pink-500/15 text-pink-300"
+                  }`}>
+                    {isDelivered && routeActive ? "✓" : stopNum ? `#${stopNum}` : `#${index + 1}`}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-base font-black text-white">
+                        {delivery.order?.customerName ?? delivery.customerName}
+                      </h3>
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${meta.badge}`}>{meta.label}</span>
+                      {hasIncidents && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-black text-orange-300">Incidencia</span>}
+                    </div>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-zinc-400">
+                      <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0 text-pink-400/70" />
+                      <span className="truncate">{address ?? "Dirección no informada"}</span>
+                    </p>
+                    {/* Info row */}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+                      {delivery.order?.reference && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Icon name="receipt" className="h-3 w-3" />
+                          {delivery.order.reference}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5">
+                        <Icon name="clock" className="h-3 w-3" />
+                        {formatTime(delivery.order?.requestedAt ?? delivery.createdAt)}
+                      </span>
+                      {delivery.items && delivery.items.length > 0 && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Icon name="package" className="h-3 w-3" />
+                          {delivery.items.length} {delivery.items.length === 1 ? "producto" : "productos"}
+                        </span>
+                      )}
+                      {delivery.order?.total !== undefined && (
+                        <span className="font-bold text-zinc-300">{formatMoney(delivery.order.total, delivery.order.currency)}</span>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Info row */}
-                <div className="mt-3 ml-[52px] flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-zinc-500">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Icon name="receipt" className="h-3 w-3" />
-                    {delivery.order?.reference ?? delivery.number}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Icon name="clock" className="h-3 w-3" />
-                    {formatTime(delivery.order?.requestedAt ?? delivery.createdAt)}
-                  </span>
-                  {delivery.items && delivery.items.length > 0 && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icon name="package" className="h-3 w-3" />
-                      {delivery.items.length} {delivery.items.length === 1 ? "producto" : "productos"}
-                    </span>
-                  )}
-                  {delivery.order?.total !== undefined && (
-                    <span className="font-bold text-zinc-300">{formatMoney(delivery.order.total, delivery.order.currency)}</span>
-                  )}
-                </div>
               </button>
 
-              {/* Actions */}
-              {!(isDelivered && routeActive) && (
+              {/* ── Actions: Ver datos + Ver en mapa + advance ── */}
               <div className="flex gap-2 border-t border-white/5 p-3">
+                {/* Ver datos — abre drawer */}
                 <button
                   type="button"
-                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-sm font-bold text-white transition hover:bg-white/10"
-                  onClick={() => setSelectedId(delivery.id)}
+                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white transition hover:bg-white/10"
+                  onClick={() => onSelect?.(delivery.id)}
                 >
                   <Icon name="eye" className="h-4 w-4" />
-                  Detalle
+                  Ver datos
                 </button>
+                {/* Ver en mapa — centra/resalta marker */}
+                <button
+                  type="button"
+                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 text-xs font-bold text-pink-300 transition hover:bg-pink-500/20"
+                  onClick={() => onMapSelect?.(delivery.id)}
+                >
+                  <Icon name="map-pin" className="h-4 w-4" />
+                  Ver en mapa
+                </button>
+                {/* Advance status */}
                 {next && (
                   <button
                     type="button"
-                    className={`flex min-h-12 flex-[1.5] items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${next === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-950/30" : "bg-sky-600 hover:bg-sky-500 shadow-lg shadow-sky-950/30"}`}
+                    className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black text-white transition active:scale-[.99] ${
+                      next === "DELIVERED"
+                        ? "bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-950/30"
+                        : "bg-sky-600 hover:bg-sky-500 shadow-lg shadow-sky-950/30"
+                    }`}
                     disabled={workingId === delivery.id}
                     onClick={() => void advance(delivery)}
                   >
@@ -288,10 +324,10 @@ export function DriverActiveDeliveries({
                     ) : (
                       <Icon name={actionIcon(next)} className="h-4 w-4" />
                     )}
-                    {workingId === delivery.id ? "Guardando…" : actionLabel(next)}
+                    {workingId === delivery.id ? "…" : actionLabel(next)}
                   </button>
                 )}
-                {/* Quick contact */}
+                {/* Phone */}
                 {(delivery.order?.phone ?? delivery.contactPhone) && (
                   <a
                     href={`tel:${delivery.order?.phone ?? delivery.contactPhone}`}
@@ -302,37 +338,63 @@ export function DriverActiveDeliveries({
                   </a>
                 )}
               </div>
-              )}
             </article>
           );
         })}
       </div>
 
       {/* ── Detail Drawer ── */}
-      <Drawer open={Boolean(selected)} onClose={() => setSelectedId(null)} title={selected ? `Entrega ${selected.number}` : "Entrega"} width="560px">
+      <Drawer open={Boolean(drawerOpen && selected)} onClose={() => onCloseDrawer?.()} title={selected ? `Parada ${selected.routeOrder ?? selected.number} · Entrega ${selected.number}` : "Detalle"} width="560px">
         {selected && (
           <div className="space-y-5 pb-24">
+            {/* Status + Route order */}
+            <div className="flex items-center gap-3">
+              {selected.routeOrder && (
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pink-500/15 text-lg font-black text-pink-300">
+                  #{selected.routeOrder}
+                </span>
+              )}
+              <span className={`rounded-full px-3 py-1.5 text-[10px] font-black ${deliveryStatusMeta(selected.status).badge}`}>
+                {deliveryStatusMeta(selected.status).label}
+              </span>
+              {selected.deliveredAt && (
+                <span className="text-xs text-zinc-500">
+                  Entregado {new Date(selected.deliveredAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+
             {/* Client info */}
             <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[.03] to-transparent p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Cliente</p>
-                  <h3 className="mt-1 text-xl font-black text-white">{selected.order?.customerName ?? selected.customerName}</h3>
-                </div>
-                <span className={`rounded-full px-3 py-1.5 text-[10px] font-black ${deliveryStatusMeta(selected.status).badge}`}>
-                  {deliveryStatusMeta(selected.status).label}
-                </span>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Cliente</p>
+                <h3 className="mt-1 text-xl font-black text-white">{selected.order?.customerName ?? selected.customerName}</h3>
               </div>
               <p className="mt-3 flex items-start gap-2 text-sm text-zinc-300">
                 <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-pink-400" />
                 {selected.order?.deliveryAddress ?? selected.deliveryAddress ?? "Dirección no informada"}
               </p>
-              {(selected.order?.phone ?? selected.contactPhone) && (
-                <a className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm font-bold text-sky-300 transition hover:bg-white/10" href={`tel:${selected.order?.phone ?? selected.contactPhone}`}>
-                  <Icon name="phone" className="h-4 w-4" />
-                  {selected.order?.phone ?? selected.contactPhone}
-                </a>
-              )}
+              {/* Contact */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(selected.order?.phone ?? selected.contactPhone) && (
+                  <a className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm font-bold text-sky-300 transition hover:bg-white/10" href={`tel:${selected.order?.phone ?? selected.contactPhone}`}>
+                    <Icon name="phone" className="h-4 w-4" />
+                    {selected.order?.phone ?? selected.contactPhone}
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm font-bold text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                  onClick={() => {
+                    const addr = selected.order?.deliveryAddress ?? selected.deliveryAddress;
+                    if (addr) navigator.clipboard.writeText(addr);
+                  }}
+                >
+                  <Icon name="search" className="h-4 w-4" />
+                  Copiar dirección
+                </button>
+              </div>
+              {/* Instructions */}
               {(selected.instructions ?? selected.order?.notes) && (
                 <div className="mt-3 rounded-xl bg-amber-500/10 border border-amber-400/15 px-4 py-3">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300/70">Observaciones</p>
@@ -341,7 +403,7 @@ export function DriverActiveDeliveries({
               )}
             </section>
 
-            {/* Order items */}
+            {/* Order */}
             <section>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-black text-white">Pedido</h3>
@@ -367,10 +429,10 @@ export function DriverActiveDeliveries({
 
             {/* Timeline */}
             <section>
-              <h3 className="mb-3 text-sm font-black text-white">Historial de estados</h3>
+              <h3 className="mb-3 text-sm font-black text-white">Historial</h3>
               <Timeline
-                items={(selected.statusLogs ?? []).map((log, index) => ({
-                  id: log.id ?? index,
+                items={(selected.statusLogs ?? []).map((log, i) => ({
+                  id: log.id ?? i,
                   date: log.changedAt,
                   title: deliveryStatusMeta(log.status).label,
                   description: log.reason,
@@ -394,7 +456,9 @@ export function DriverActiveDeliveries({
               {nextDriverStatus(selected.status) && (
                 <button
                   type="button"
-                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${nextDriverStatus(selected.status) === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-950/30" : "bg-sky-600 hover:bg-sky-500 shadow-lg shadow-sky-950/30"}`}
+                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${
+                    nextDriverStatus(selected.status) === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-sky-600 hover:bg-sky-500"
+                  }`}
                   disabled={workingId === selected.id}
                   onClick={() => void advance(selected)}
                 >
