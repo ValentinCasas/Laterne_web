@@ -40,7 +40,7 @@ export default async function DriverPage() {
     }),
     prisma.orderDelivery.findMany({
       where: { tenantId: context.tenant.id, driverProfileId: driverProfile.id, status: "DELIVERED", deliveredAt: { gte: todayStart } },
-      select: { id: true, number: true, customerName: true, assignedAt: true, deliveredAt: true, order: { select: { reference: true } } },
+      select: { id: true, number: true, customerName: true, assignedAt: true, pickedUpAt: true, deliveredAt: true, order: { select: { reference: true } } },
       orderBy: { deliveredAt: "desc" },
     }),
     prisma.driverIncident.count({ where: { tenantId: context.tenant.id, driverId: driverProfile.id, resolved: false } }),
@@ -86,10 +86,16 @@ export default async function DriverPage() {
     }),
   ]);
 
+  // Use pickedUpAt → deliveredAt when available (actual delivery time);
+  // fall back to assignedAt → deliveredAt but cap at 4 hours to filter stale data.
+  const MAX_DELIVERY_MINUTES = 240;
   const durations = completedToday.flatMap((delivery) => {
-    if (!delivery.assignedAt || !delivery.deliveredAt) return [];
-    return [(delivery.deliveredAt.getTime() - delivery.assignedAt.getTime()) / 60_000];
-  }).filter((value) => value >= 0);
+    if (!delivery.deliveredAt) return [];
+    const start = delivery.pickedUpAt ?? delivery.assignedAt;
+    if (!start) return [];
+    const minutes = (delivery.deliveredAt.getTime() - start.getTime()) / 60_000;
+    return minutes >= 0 && minutes <= MAX_DELIVERY_MINUTES ? [minutes] : [];
+  });
   const averageMinutes = durations.length > 0 ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : null;
 
   const serializedLastPosition = lastPosition

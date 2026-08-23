@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
@@ -157,5 +158,127 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "No podés hacer esa transición desde el estado actual" }, { status: 400 });
     }
     return NextResponse.json({ error: "No se pudo actualizar el recorrido" }, { status: 500 });
+  }
+}
+
+const reorderStopsInput = z.object({
+  stops: z.array(z.object({
+    deliveryId: z.number().int(),
+    routeOrder: z.number().int().min(1),
+  })).min(1),
+});
+
+/**
+ * @summary PUT: Reordena las paradas del recorrido.
+ * Solo permite reordenar paradas NO completadas.
+ * El orden se persiste transaccionalmente.
+ */
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize();
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  const driverProfile = await prisma.driverProfile.findFirst({
+    where: { tenantId: auth.tenant.id, userId: auth.session.userId, active: true },
+  });
+  if (!driverProfile) return NextResponse.json({ error: "No tenés un perfil de repartidor activo vinculado" }, { status: 403 });
+
+  const routeId = Number((await context.params).id);
+  if (!Number.isInteger(routeId)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
+  const parsed = reorderStopsInput.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
+
+  const { stops } = parsed.data;
+
+  // Validar secuencia continua desde 1
+  const orders = stops.map((s) => s.routeOrder).sort((a, b) => a - b);
+  const isContinuous = orders.every((o, i) => o === i + 1);
+  if (!isContinuous) return NextResponse.json({ error: "El orden debe ser secuencial desde 1" }, { status: 400 });
+
+  // Validar IDs únicos
+  const ids = stops.map((s) => s.deliveryId);
+  if (new Set(ids).size !== ids.length) return NextResponse.json({ error: "Hay entregas duplicadas" }, { status: 400 });
+
+  try {
+    const route = await prisma.$transaction(async (tx) => {
+      const current = await tx.deliveryRoute.findFirst({
+        where: { id: routeId, tenantId: auth.tenant.id, driverProfileId: driverProfile.id },
+        select: { status: true },
+      });
+      if (!current) throw new Error("NOT_FOUND");
+      if (current.status === "COMPLETED" || current.status === "CANCELLED") {
+        throw new Error("ROUTE_FINALIZED");
+      }
+
+      // Verificar que todas las entregas pertenecen al recorrido y al tenant
+      const routeDeliveries = await tx.orderDelivery.findMany({
+        where: { routeId, tenantId: auth.tenant.id },
+        select: { id: true, status: true, routeOrder: true },
+      });
+
+      const routeDeliveryIds = new Set(routeDeliveries.map((d) => d.id));
+      for (const stop of stops) {
+        if (!routeDeliveryIds.has(stop.deliveryId)) {
+          throw new Error("DELIVERY_NOT_IN_ROUTE");
+        }
+      }
+
+      // Verificar que no se reordenan entregadas
+      const deliveredIds = new Set(routeDeliveries.filter((d) => d.status === "DELIVERED").map((d) => d.id));
+      for (const stop of stops) {
+        if (deliveredIds.has(stop.deliveryId)) {
+          throw new Error("CANNOT_REORDER_DELIVERED");
+        }
+      }
+
+      // Guardar orden anterior para auditoría
+      const oldOrder = routeDeliveries
+        .sort((a, b) => (a.routeOrder ?? 0) - (b.routeOrder ?? 0))
+        .map((d) => `${d.routeOrder ?? "?"}:${d.id}`)
+        .join(", ");
+
+      // Aplicar nuevo orden
+      await Promise.all(
+        stops.map((stop) =>
+          tx.orderDelivery.update({
+            where: { id: stop.deliveryId },
+            data: { routeOrder: stop.routeOrder },
+          })
+        )
+      );
+
+      const newOrder = stops
+        .sort((a, b) => a.routeOrder - b.routeOrder)
+        .map((s) => `${s.routeOrder}:${s.deliveryId}`)
+        .join(", ");
+
+      return { oldOrder, newOrder };
+    });
+
+    await recordAudit({
+      context: auth,
+      action: "route-stops-reorder",
+      entityType: "delivery-route",
+      entityId: routeId,
+      oldValues: { order: route.oldOrder },
+      newValues: { order: route.newOrder },
+      request,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "NOT_FOUND") {
+      return NextResponse.json({ error: "Recorrido no encontrado" }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "ROUTE_FINALIZED") {
+      return NextResponse.json({ error: "No podés reordenar un recorrido finalizado" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "DELIVERY_NOT_IN_ROUTE") {
+      return NextResponse.json({ error: "Una o más entregas no pertenecen a este recorrido" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "CANNOT_REORDER_DELIVERED") {
+      return NextResponse.json({ error: "No podés reordenar entregas ya completadas" }, { status: 400 });
+    }
+    return NextResponse.json({ error: "No se pudo reordenar las paradas" }, { status: 500 });
   }
 }

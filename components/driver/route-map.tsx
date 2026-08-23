@@ -359,9 +359,10 @@ export function DriverRouteMap({
     // Stop markers
     orderedStops.forEach((stop, i) => {
       const isSelected = selectedId === stop.id;
-      const mkElement = buildStopMarker(i + 1, stop.status, isSelected);
+      const stopNumber = stop.routeOrder ?? (i + 1);
+      const mkElement = buildStopMarker(stopNumber, stop.status, isSelected);
       const popup = new maplibregl.Popup({ offset: 18, closeButton: false }).setDOMContent(
-        buildStopPopup(stop, i + 1, onSelect, onEditAddress)
+        buildStopPopup(stop, stopNumber, onSelect, onEditAddress)
       );
       const mk = new maplibregl.Marker({ element: mkElement, anchor: "bottom" })
         .setLngLat([stop.longitude, stop.latitude])

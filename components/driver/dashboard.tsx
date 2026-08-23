@@ -17,6 +17,7 @@ import { Icon } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
 import { formatTime, formatRelativeTime } from "@/lib/date-format";
 import { EditAddressModal } from "@/components/driver/edit-address-modal";
+import { ReorderStopsDrawer } from "@/components/driver/reorder-stops";
 import Swal from "sweetalert2";
 
 const SWAL_THEME = { background: "#18181b", color: "#fafafa" };
@@ -99,6 +100,8 @@ export function DriverDashboard({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filter, setFilter] = useState<"Todos" | "Pendientes" | "Entregados" | "Incidencias">("Todos");
   const [editAddressId, setEditAddressId] = useState<number | null>(null);
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [reorderKey, setReorderKey] = useState(0);
   /* ── Route computed ── */
   const completedCount = deliveries.filter((d) => d.status === "DELIVERED").length;
   const pendingDeliveries = deliveries.filter((d) => d.status !== "DELIVERED");
@@ -465,6 +468,14 @@ export function DriverDashboard({
                   {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="check-circle" className="h-4 w-4" />}
                   Finalizar
                 </button>
+                <button
+                  type="button"
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20 active:scale-[.99]"
+                  onClick={() => setReorderOpen(true)}
+                >
+                  <Icon name="menu" className="h-4 w-4" />
+                  Ordenar
+                </button>
                 {navUrl && (
                   <a
                     href={navUrl}
@@ -552,6 +563,33 @@ export function DriverDashboard({
           )}
         </aside>
       </div>
+
+      {/* ── Reorder Stops Drawer ── */}
+      {hasActiveRoute && route && (
+        <ReorderStopsDrawer
+          key={`reorder-${reorderKey}`}
+          open={reorderOpen}
+          onClose={() => setReorderOpen(false)}
+          routeId={route.id}
+          stops={sortedDeliveries.map((d) => ({
+            id: d.id,
+            routeOrder: d.routeOrder ?? 0,
+            customerName: d.order?.customerName ?? d.customerName,
+            address: d.order?.deliveryAddress ?? d.deliveryAddress ?? "",
+            status: d.status,
+            reference: d.order?.reference,
+          }))}
+          onSaved={async () => {
+            // Re-fetch route to get updated order
+            const res = await scopedFetch(`/api/driver/routes/${route.id}`, { cache: "no-store" }).catch(() => null);
+            if (res?.ok) {
+              const body = (await res.json().catch(() => ({}))) as { route?: ActiveRoute };
+              if (body.route) setRoute(body.route);
+            }
+            setReorderKey((k) => k + 1);
+          }}
+        />
+      )}
 
       {/* ── Edit Address Modal ── */}
       {editAddressId !== null && (() => {
