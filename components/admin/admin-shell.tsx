@@ -680,13 +680,13 @@ export function AdminShell({
           <header
         ref={headerRef}
         data-admin-navbar="true"
-        className="fixed inset-x-0 top-0 z-50 border-b border-white/[.06] bg-zinc-950/85 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.03)_inset] print:hidden"
+        className="fixed inset-x-0 top-0 z-50 border-b border-white/[.06] bg-zinc-950/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.03)_inset] print:hidden"
       >
         <div className="admin-shell-inner flex h-14 items-center gap-1.5 px-3 sm:gap-2 sm:px-4 lg:px-6">
           <button
             ref={mobileTriggerRef}
             type="button"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-400 transition-all duration-200 hover:bg-white/[.06] hover:text-white lg:hidden"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-zinc-400 transition-all duration-200 hover:bg-white/[.06] hover:text-white lg:hidden"
             aria-controls="admin-navigation-panel"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
@@ -1020,7 +1020,7 @@ export function AdminShell({
         </div>
       )}
 
-      <main className="admin-main admin-shell-inner px-3 pb-5 pt-[4.75rem] sm:px-4 sm:pb-6 sm:pt-20 lg:px-0 lg:pb-8 lg:pt-[5.5rem]">{children}</main>
+      <main className="admin-main admin-shell-inner px-3 pb-5 pt-[calc(4.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-6 sm:pt-[calc(5rem+env(safe-area-inset-top))] lg:px-0 lg:pb-8 lg:pt-[calc(5.5rem+env(safe-area-inset-top))]">{children}</main>
 
       {mobileMenuOpen && (
         <>
@@ -1036,7 +1036,7 @@ export function AdminShell({
             aria-modal="true"
             aria-label="Menú de administración"
           >
-            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.08] px-5 py-4 pt-[env(safe-area-inset-top)]">
+            <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.08] px-5 py-3 pt-[max(.75rem,env(safe-area-inset-top))]">
               <div className="flex min-w-0 items-center gap-3.5">
                 <UserAvatar
                   name={userName?.trim() || tenantName}
@@ -1055,7 +1055,7 @@ export function AdminShell({
               <button
                 ref={mobileCloseButtonRef}
                 type="button"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-lg text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white"
                 onClick={() => setMobileMenuPath(null)}
                 aria-label="Cerrar navegación"
                 title="Cerrar navegación"

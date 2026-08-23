@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/admin/ui/icons";
 import { isPlatformLinkActive } from "@/lib/navigation-active";
 
@@ -83,6 +83,20 @@ export function PlatformShell({
   logoUrl: string | null;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    /** @summary Cierra el drawer de Platform con Escape y evita scroll detrás del panel móvil. */
+    function closeWithEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", closeWithEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeWithEscape);
+    };
+  }, [mobileOpen]);
   return (
     <div className="mc-platform-shell min-h-screen">
       <header className="mc-platform-topbar">
@@ -115,7 +129,7 @@ export function PlatformShell({
           </div>
         </div>
       </header>
-      <div className="h-20 shrink-0" aria-hidden="true" />
+      <div className="h-[calc(5rem+env(safe-area-inset-top))] shrink-0" aria-hidden="true" />
       <div className="mx-auto grid max-w-[1440px] gap-6 px-5 py-6 lg:grid-cols-[250px_minmax(0,1fr)] lg:py-8">
         <aside className="mc-platform-sidebar">
           <div className="mc-sidebar-heading">

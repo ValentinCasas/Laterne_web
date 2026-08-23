@@ -105,7 +105,7 @@ export function BranchSwitcher({
         title={currentLabel}
         className={
           compact
-            ? "flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100"
+            ? "flex h-11 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors duration-150 hover:bg-white/[.05] hover:text-zinc-100 lg:h-9"
             : "flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left text-sm font-bold text-zinc-200 hover:border-white/25"
         }
       >

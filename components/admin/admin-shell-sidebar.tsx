@@ -92,11 +92,11 @@ export function AdminShellSidebar({
   return (
     <div className="flex h-dvh">
       {/* Mobile header */}
-      <div data-admin-navbar="true" className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-white/[.06] bg-zinc-950/95 px-4 lg:hidden">
+      <div data-admin-navbar="true" className="fixed top-0 left-0 right-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-white/[.06] bg-zinc-950/95 px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <button
           type="button"
           onClick={() => setSidebarMobileOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-300 transition-all duration-200 hover:bg-white/[.06] hover:text-white"
           aria-label="Abrir menú"
           title="Abrir menú"
         >
@@ -149,7 +149,7 @@ export function AdminShellSidebar({
       )}
 
       {/* Main content */}
-      <main className="admin-main admin-shell-inner min-w-0 flex-1 overflow-auto px-3 pb-5 pt-[4.75rem] sm:px-4 sm:pb-6 sm:pt-20 lg:px-6 lg:py-8">
+      <main className="admin-main admin-shell-inner min-w-0 flex-1 overflow-auto px-3 pb-5 pt-[calc(4.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-6 sm:pt-[calc(5rem+env(safe-area-inset-top))] lg:px-6 lg:py-8">
         {children}
       </main>
     </div>

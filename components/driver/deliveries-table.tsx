@@ -101,7 +101,7 @@ export function DriverDeliveriesHistory({ deliveries }: { deliveries: Delivery[]
 
               {assignmentCount > 1 && <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-200"><Icon name="repeat" className="h-3.5 w-3.5" />Reasignado {assignmentCount - 1} {assignmentCount - 1 === 1 ? "vez" : "veces"}</div>}
               <Timeline items={major} initialLimit={4} className="mt-4" emptyMessage="No hay estados registrados para esta entrega." />
-              {hasMore && <button type="button" className="mt-1 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-xs font-black text-pink-300 transition hover:bg-pink-500/10" onClick={() => setSelectedId(delivery.id)}>Ver historial completo <Icon name="arrow-right" className="h-3.5 w-3.5" /></button>}
+              {hasMore && <button type="button" className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl px-2 py-2 text-xs font-black text-pink-300 transition hover:bg-pink-500/10" onClick={() => setSelectedId(delivery.id)}>Ver historial completo <Icon name="arrow-right" className="h-3.5 w-3.5" /></button>}
             </article>
           );
         })}

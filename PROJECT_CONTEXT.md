@@ -54,6 +54,7 @@ La geocodificación de Delivery está desactivada por defecto. Puede conectarse 
 - Apertura únicamente por CLICK.
 - Cierre: click afuera, Escape, Tab-out.
 - Las barras principales de sitio público, Admin, Driver, Platform y marketing usan posición fija con compensación de contenido; no deben desaparecer al hacer scroll.
+- La experiencia móvil común se valida entre 320–430 px: barras y drawers respetan `safe-area`, los overlays bloquean el scroll de fondo, los controles operativos críticos ofrecen blancos táctiles de al menos 44 px y los avisos globales no cubren la navegación inferior de Driver ni el carrito de Carta.
 - Definición centralizada: `lib/admin-navigation.ts`.
 - Delivery es un grupo propio con Centro de delivery, Repartidores, Panel del repartidor y acceso directo a `Integraciones#delivery-map`. Cualquier usuario con membresía tenant activa puede abrir la vista personal; todas sus consultas y acciones resuelven exclusivamente el `DriverProfile` vinculado al usuario autenticado, sin suplantación.
 - Modos de navegación: `TOP` (mega menú barra superior) y `SIDEBAR` (sidebar dual-tier rail + panel contextual). Persistidos en `localStorage` via `hooks/use-navigation-mode.ts`.

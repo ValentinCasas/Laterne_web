@@ -96,7 +96,7 @@ export function AdminPageHelp({ section }: { section: string }) {
         <div className="flex items-start justify-between gap-4">
           <p className="text-xs font-black uppercase tracking-[.2em] text-[var(--admin-primary)]">¿Para qué sirve?</p>
           <button
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/5 text-sm text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/5 text-sm text-zinc-400 transition hover:bg-white/10 hover:text-white sm:h-8 sm:w-8"
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Cerrar ayuda"
@@ -141,7 +141,7 @@ export function AdminPageHelp({ section }: { section: string }) {
     <span className="inline-block align-middle">
       <button
         ref={buttonRef}
-        className="grid h-8 w-8 place-items-center rounded-full border border-[var(--admin-border)] bg-[var(--admin-surface)] text-sm font-black text-[var(--admin-muted)] transition hover:border-[var(--admin-border-strong)] hover:text-white"
+        className="grid h-11 w-11 place-items-center rounded-full border border-[var(--admin-border)] bg-[var(--admin-surface)] text-sm font-black text-[var(--admin-muted)] transition hover:border-[var(--admin-border-strong)] hover:text-white sm:h-8 sm:w-8"
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-label={`Ayuda sobre esta sección: ${entry.title}`}

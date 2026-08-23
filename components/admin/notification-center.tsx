@@ -251,7 +251,7 @@ export function NotificationCenter({
   const bellButton = (
     <button
       ref={buttonRef}
-      className="relative grid h-9 w-9 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100"
+      className="relative grid h-11 w-11 place-items-center rounded-lg text-zinc-400 transition-colors duration-150 hover:bg-white/[.06] hover:text-zinc-100 lg:h-9 lg:w-9"
       onClick={() => setOpen((v) => !v)}
       type="button"
       aria-haspopup="dialog"

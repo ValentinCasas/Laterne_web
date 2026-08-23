@@ -127,13 +127,13 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-3 text-sm font-semibold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white"
+        className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-3 text-sm font-semibold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white sm:h-9"
       >
         <span>Columnas / Vista</span>
         <span className="text-xs text-zinc-500">▼</span>
       </button>
       {open && (
-        <div className="dropdown-enter absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-4 shadow-2xl">
+        <div className="dropdown-enter fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] left-3 right-3 z-[150] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-4 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-50 sm:mt-2 sm:w-72 sm:overflow-hidden" role="dialog" aria-label="Columnas y opciones de vista">
           <div className="space-y-4">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Densidad</label>

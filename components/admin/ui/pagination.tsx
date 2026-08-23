@@ -33,7 +33,7 @@ export function Pagination({
         <label className="flex items-center gap-2">
           <span className="sr-only sm:not-sr-only">Filas</span>
           <select
-            className="h-8 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] px-2 text-xs font-semibold text-[var(--admin-text)] outline-none focus:border-[var(--admin-primary)]"
+            className="h-11 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] px-2 text-xs font-semibold text-[var(--admin-text)] outline-none focus:border-[var(--admin-primary)] sm:h-8"
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
             aria-label="Filas por página"
@@ -51,7 +51,7 @@ export function Pagination({
         <div className="flex gap-1">
           <button
             type="button"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] font-bold transition hover:border-[var(--admin-border-strong)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+            className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] font-bold transition hover:border-[var(--admin-border-strong)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35 sm:h-8 sm:w-8"
             disabled={safePage <= 1}
             onClick={() => onPageChange(safePage - 1)}
             aria-label="Página anterior"
@@ -60,7 +60,7 @@ export function Pagination({
           </button>
           <button
             type="button"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] font-bold transition hover:border-[var(--admin-border-strong)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+            className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] font-bold transition hover:border-[var(--admin-border-strong)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35 sm:h-8 sm:w-8"
             disabled={safePage >= totalPages}
             onClick={() => onPageChange(safePage + 1)}
             aria-label="Página siguiente"

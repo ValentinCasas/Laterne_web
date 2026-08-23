@@ -29,7 +29,7 @@ export function Toolbar({
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder={searchPlaceholder}
-              className="admin-control h-9 w-full rounded-lg border border-transparent bg-[var(--admin-surface-elevated)] px-3 pl-9 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-[var(--admin-primary)]/55"
+              className="admin-control h-11 w-full rounded-lg border border-transparent bg-[var(--admin-surface-elevated)] px-3 pl-9 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-[var(--admin-primary)]/55 sm:h-9"
             />
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
               <Icon name="search" className="h-4 w-4" />

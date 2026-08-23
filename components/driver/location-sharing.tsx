@@ -314,7 +314,7 @@ export function DriverLocationSharing({
         {tracking ? "Pausar ubicación" : state === "requesting" ? "Conectando GPS…" : preferenceEnabled ? "Reanudar GPS" : "Compartir ubicación"}
       </button>
       {preferenceEnabled && !tracking && state !== "requesting" && (
-        <button type="button" className="mt-2 w-full py-2 text-xs font-bold text-zinc-400 transition hover:text-white" onClick={() => void pause()}>
+        <button type="button" className="mt-2 min-h-11 w-full py-2 text-xs font-bold text-zinc-400 transition hover:text-white" onClick={() => void pause()}>
           Desactivar ubicación
         </button>
       )}

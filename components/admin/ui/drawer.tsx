@@ -71,19 +71,19 @@ export function Drawer({
         aria-modal="true"
         aria-label={title}
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] px-5 py-4 backdrop-blur">
-          <h2 className="text-lg font-bold">{title}</h2>
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] px-4 py-3 pt-[max(.75rem,env(safe-area-inset-top))] backdrop-blur sm:px-5 sm:py-4">
+          <h2 className="min-w-0 break-words text-lg font-bold">{title}</h2>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm text-zinc-400 transition-colors hover:text-white"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm text-zinc-400 transition-colors hover:text-white sm:h-8 sm:w-8"
             aria-label="Cerrar"
           >
             ×
           </button>
         </header>
-        <div className="p-5">{children}</div>
+        <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5">{children}</div>
       </aside>
     </div>
   );

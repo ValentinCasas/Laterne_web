@@ -336,7 +336,7 @@ export function ProfileMenu({
       <button
         ref={buttonRef}
         type="button"
-        className={`flex h-9 items-center gap-2 rounded-full py-1 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white ${compact ? "justify-center px-1" : sidebarMode ? "justify-center px-1" : "pl-1 pr-2.5"}`}
+        className={`flex h-11 items-center gap-2 rounded-full py-1 text-sm font-medium text-zinc-300 transition-colors duration-150 hover:bg-white/[.06] hover:text-white lg:h-9 ${compact ? "justify-center px-1" : sidebarMode ? "justify-center px-1" : "pl-1 pr-2.5"}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Menú de perfil"

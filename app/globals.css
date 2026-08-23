@@ -601,6 +601,18 @@ button {
 .admin-theme .admin-control {
   min-height: 2.25rem;
 }
+
+@media (max-width: 767px), (pointer: coarse) {
+  .btn,
+  .input,
+  .admin-theme .admin-control {
+    min-height: 2.75rem;
+  }
+
+  :is(a, button, input, select, textarea) {
+    touch-action: manipulation;
+  }
+}
 .admin-toolbar {
   position: relative;
   z-index: 20;
@@ -1006,6 +1018,7 @@ button {
   border-bottom: 1px solid var(--mc-border);
   background: color-mix(in srgb, var(--mc-background) 92%, transparent);
   backdrop-filter: blur(16px);
+  padding-top: env(safe-area-inset-top);
 }
 .mc-logo-mark {
   display: grid;
@@ -1104,8 +1117,8 @@ button {
 }
 .mc-menu-trigger {
   display: inline-grid;
-  height: 2.45rem;
-  width: 2.45rem;
+  height: 2.75rem;
+  width: 2.75rem;
   place-items: center;
   border: 1px solid var(--mc-border);
   border-radius: 0.6rem;
@@ -1117,7 +1130,7 @@ button {
   inset: 0;
   z-index: 80;
   background: rgb(0 0 0 / 0.7);
-  padding: 0.75rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
 }
 .mc-platform-drawer {
   height: 100%;
@@ -1126,6 +1139,7 @@ button {
   border-radius: 1rem;
   background: var(--mc-surface);
   padding: 1rem;
+  overflow-y: auto;
 }
 .mc-marketing-header {
   position: fixed;
@@ -1136,6 +1150,7 @@ button {
   border-bottom: 1px solid var(--mc-border);
   background: color-mix(in srgb, var(--mc-background) 92%, transparent);
   backdrop-filter: blur(16px);
+  padding-top: env(safe-area-inset-top);
 }
 .mc-marketing-nav {
   display: flex;
@@ -1320,9 +1335,11 @@ button {
   .mc-mobile-drawer {
     display: grid;
     gap: 0.4rem;
+    max-height: calc(100dvh - 4.5rem - env(safe-area-inset-top));
+    overflow-y: auto;
     border-top: 1px solid var(--mc-border);
     background: var(--mc-surface);
-    padding: 1rem 1.25rem 1.25rem;
+    padding: 1rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
   }
   .mc-mobile-drawer > a,
   .mc-mobile-group > a {

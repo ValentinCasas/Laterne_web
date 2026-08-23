@@ -47,7 +47,7 @@ export function KanbanBoard({
                 <button
                   type="button"
                   onClick={() => toggleCollapse(column.id)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black text-zinc-400 transition-colors hover:bg-white/[.05] hover:text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-lg text-xs font-black text-zinc-400 transition-colors hover:bg-white/[.05] hover:text-white sm:h-8 sm:w-8"
                   title={`Expandir ${column.title}`}
                   aria-label={`Expandir ${column.title}`}
                 >
@@ -69,7 +69,7 @@ export function KanbanBoard({
                     <button
                       type="button"
                       onClick={() => toggleCollapse(column.id)}
-                      className="rounded p-1 text-zinc-600 transition-colors hover:bg-white/[.05] hover:text-zinc-400"
+                      className="grid h-11 w-11 place-items-center rounded text-zinc-600 transition-colors hover:bg-white/[.05] hover:text-zinc-400 sm:h-8 sm:w-8"
                       title="Colapsar columna vacía"
                       aria-label="Colapsar columna vacía"
                     >

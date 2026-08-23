@@ -760,14 +760,14 @@ export function MenuClient({
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center rounded-full bg-white/10 p-1">
                           <button
-                            className="h-8 w-8 rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                            className="h-11 w-11 rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:h-8 sm:w-8"
                             onClick={() => change(cartItemKey(item), -1)}
                           >
                             −
                           </button>
                           <span className="w-8 text-center text-sm font-black text-white">{item.quantity}</span>
                           <button
-                            className="h-8 w-8 rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                            className="h-11 w-11 rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:h-8 sm:w-8"
                             onClick={() => change(cartItemKey(item), 1)}
                           >
                             +

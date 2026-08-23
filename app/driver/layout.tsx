@@ -52,7 +52,7 @@ export default async function DriverLayout({ children }: { children: ReactNode }
 
   return (
     <div className="flex min-h-dvh flex-col bg-zinc-950 text-white">
-      <header data-driver-navbar="true" className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-zinc-950/88 px-4 py-3 backdrop-blur-xl">
+      <header data-driver-navbar="true" className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-zinc-950/88 px-4 pb-3 pt-[calc(.75rem+env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <Link href={driverHome} className="flex min-w-0 items-center gap-3">
             <UserAvatar name={displayName} src={driverAvatarUrl(context.user.imageUrl)} size="md" status={available ? "online" : "away"} className="ring-1 ring-white/10" />
@@ -64,7 +64,7 @@ export default async function DriverLayout({ children }: { children: ReactNode }
           {profile && <DriverAvailabilityPill initialAvailable={available} />}
         </div>
       </header>
-      <div className="h-16 shrink-0" aria-hidden="true" />
+      <div className="h-[calc(4rem+env(safe-area-inset-top))] shrink-0" aria-hidden="true" />
       <main className="mx-auto w-full max-w-7xl flex-1 px-3 pb-28 pt-4 sm:px-5 lg:pb-24 lg:pt-6">{children}</main>
       <DriverNavigation items={nav} />
     </div>

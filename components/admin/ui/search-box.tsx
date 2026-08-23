@@ -21,7 +21,7 @@ export function SearchBox({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         onKeyDown={onKeyDown}
-        className="admin-control h-9 w-full rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] py-2 pl-9 pr-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-[var(--admin-primary)]/55"
+        className="admin-control h-11 w-full rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] py-2 pl-9 pr-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-[var(--admin-primary)]/55 sm:h-9"
       />
       <svg
         className="pointer-events-none absolute inset-y-0 left-0 h-full w-4 pl-3 text-zinc-500"

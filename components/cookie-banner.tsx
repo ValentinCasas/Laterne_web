@@ -29,7 +29,7 @@ export function CookieBanner() {
   if (!visible) return null;
   return (
     <aside
-      className="fixed bottom-4 left-4 right-4 z-[130] mx-auto max-w-3xl rounded-3xl border border-white/15 bg-zinc-950 p-5 shadow-2xl"
+      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-[130] mx-auto max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto rounded-3xl border border-white/15 bg-zinc-950 p-4 shadow-2xl sm:p-5"
       aria-label="Preferencias de cookies"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -42,7 +42,7 @@ export function CookieBanner() {
             Ver políticas
           </Link>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <button className="btn btn-secondary" onClick={() => choose("denied")}>
             Solo esencial
           </button>

@@ -105,7 +105,7 @@ export function ActionMenu({
         e.stopPropagation();
         setOpen((current) => !current);
       }}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm font-bold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-sm font-bold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white sm:h-8 sm:w-8"
       aria-haspopup="menu"
       aria-expanded={open}
       aria-controls={panelId}
@@ -137,7 +137,7 @@ export function ActionMenu({
                   setOpen(false);
                   item.onClick();
                 }}
-                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-0 ${
+                className={`flex min-h-11 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-0 sm:min-h-0 ${
                   item.tone === "danger"
                     ? "text-red-300 hover:bg-red-500/10"
                     : item.tone === "primary"

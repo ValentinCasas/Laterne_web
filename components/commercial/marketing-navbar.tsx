@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/admin/ui/icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const productLinks = [
   ["/funcionalidades", "Funcionalidades", "Carta, pedidos, reservas e inventario."],
@@ -57,6 +57,20 @@ function DesktopMenuGroup({
 export function MarketingNavbar({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    /** @summary Cierra el menú comercial móvil con Escape y restaura el scroll de la página. */
+    function closeWithEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", closeWithEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeWithEscape);
+    };
+  }, [mobileOpen]);
   return (
     <>
     <header className="mc-marketing-header">
@@ -134,7 +148,7 @@ export function MarketingNavbar({ name, logoUrl }: { name: string; logoUrl: stri
         </div>
       )}
     </header>
-    <div className="h-[4.5rem] shrink-0" aria-hidden="true" />
+    <div className="h-[calc(4.5rem+env(safe-area-inset-top))] shrink-0" aria-hidden="true" />
     </>
   );
 }

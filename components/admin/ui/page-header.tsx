@@ -49,7 +49,7 @@ export function PageHeader({
             </p>
           )}
           <div className={`${eyebrow ? "mt-2" : ""} flex items-center gap-3`}>
-            <h1 className="text-2xl font-bold tracking-[-0.025em] text-[var(--admin-text)] sm:text-[1.75rem]">
+            <h1 className="min-w-0 break-words text-2xl font-bold leading-tight tracking-[-0.025em] text-[var(--admin-text)] sm:text-[1.75rem]">
               {title}
             </h1>
             <AdminPageHelp section={section} />
