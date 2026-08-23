@@ -172,7 +172,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const name = tenant?.name ?? "MenuClick";
 
   return (
-    <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">
+    <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body
         className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined}
         style={style}

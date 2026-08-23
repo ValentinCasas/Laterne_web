@@ -382,7 +382,7 @@ export function MenuClient({
         ref={toolbarRef}
         data-menu-toolbar="true"
         aria-label="Navegación y búsqueda de la carta"
-        className="sticky top-[var(--site-navbar-height)] z-30 border-b border-white/10 bg-black/95 py-3 shadow-lg shadow-black/20 backdrop-blur-xl md:py-4"
+        className="sticky top-[var(--site-navbar-height)] z-30 border-b border-white/10 bg-black/95 py-3 shadow-lg shadow-black/20 md:backdrop-blur-xl md:py-4"
       >
         <div className="shell">
           <div
@@ -420,6 +420,7 @@ export function MenuClient({
             <label className="min-w-0 flex-1">
               <span className="sr-only">Buscar productos</span>
               <input
+                suppressHydrationWarning
                 className="input min-h-12 py-2.5 text-base"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -483,6 +484,7 @@ export function MenuClient({
           )}
           <div className="mt-2 hidden grid-cols-3 gap-2 lg:grid">
             <select
+              suppressHydrationWarning
               className="input py-2 text-xs sm:text-sm"
               value={diet}
               onChange={(event) => setDiet(event.target.value)}
@@ -495,6 +497,7 @@ export function MenuClient({
               <option value="alcoholFree">Sin alcohol</option>
             </select>
             <input
+              suppressHydrationWarning
               className="input py-2 text-xs sm:text-sm"
               value={maximumPrice}
               onChange={(event) => setMaximumPrice(event.target.value)}
@@ -504,6 +507,7 @@ export function MenuClient({
               aria-label="Precio máximo"
             />
             <select
+              suppressHydrationWarning
               className="input col-span-2 py-2 text-xs sm:col-span-1 sm:text-sm"
               value={sort}
               onChange={(event) => setSort(event.target.value)}
@@ -647,6 +651,7 @@ export function MenuClient({
               <label>
                 <span className="label">Preferencias</span>
                 <select
+                  suppressHydrationWarning
                   className="input min-h-12"
                   value={draftDiet}
                   onChange={(event) => setDraftDiet(event.target.value)}
@@ -661,6 +666,7 @@ export function MenuClient({
               <label>
                 <span className="label">Precio máximo</span>
                 <input
+                  suppressHydrationWarning
                   className="input min-h-12"
                   value={draftMaximumPrice}
                   onChange={(event) => setDraftMaximumPrice(event.target.value)}
@@ -673,6 +679,7 @@ export function MenuClient({
               <label>
                 <span className="label">Ordenar por</span>
                 <select
+                  suppressHydrationWarning
                   className="input min-h-12"
                   value={draftSort}
                   onChange={(event) => setDraftSort(event.target.value)}
