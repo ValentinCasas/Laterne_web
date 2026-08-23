@@ -33,7 +33,7 @@ function trackingTarget(
   return branchId ? ({ branchId } satisfies TrackingTarget) : null;
 }
 
-/** @summary Mantiene separadas la preferencia persistida, el watcher del navegador y la última posición guardada. */
+/** @summary Panel GPS premium con estados visuales claros, calidad de señal y controls elegantes. */
 export function DriverLocationSharing({
   deliveries,
   fallbackBranchId,
@@ -182,7 +182,6 @@ export function DriverLocationSharing({
     );
   }, [clearWatcher, publish]);
 
-  /** @summary Restaura el watcher sin volver a pedir interacción cuando el permiso ya está concedido. */
   useEffect(() => {
     if (!preferenceEnabled) return clearWatcher;
 
@@ -257,69 +256,103 @@ export function DriverLocationSharing({
   const freshness = lastSentAt ? gpsFreshness(lastSentAt) : null;
   const live = tracking && state === "active" && freshness?.state !== "stale";
   const lastUpdateLabel = !freshness
-    ? "Sin posiciones"
+    ? "Sin datos"
     : !live && freshness.state === "live"
-      ? "Hace menos de 10 s"
+      ? "Actualizando"
       : freshness.label;
-  const statusLabel = live
-    ? "Compartiendo en vivo"
+
+  const stateConfig = live
+    ? { bg: "from-emerald-500/12 via-zinc-900 to-zinc-950", border: "border-emerald-400/25", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-300", dot: "bg-emerald-400", label: "Compartiendo en vivo" }
     : state === "denied"
-      ? "Permiso de ubicación bloqueado"
-      : preferenceEnabled
-        ? tracking
-          ? "Buscando señal GPS"
-          : "Ubicación habilitada"
-        : "Ubicación pausada";
+      ? { bg: "from-red-500/10 via-zinc-900 to-zinc-950", border: "border-red-400/25", iconBg: "bg-red-500/20", iconColor: "text-red-300", dot: "bg-red-400", label: "Permiso denegado" }
+      : state === "error"
+        ? { bg: "from-orange-500/10 via-zinc-900 to-zinc-950", border: "border-orange-400/20", iconBg: "bg-orange-500/20", iconColor: "text-orange-300", dot: "bg-orange-400", label: "Error de conexión" }
+        : tracking
+          ? { bg: "from-sky-500/10 via-zinc-900 to-zinc-950", border: "border-sky-400/20", iconBg: "bg-sky-500/20", iconColor: "text-sky-300", dot: "bg-sky-400", label: "Buscando señal" }
+          : { bg: "from-zinc-800/50 via-zinc-900 to-zinc-950", border: "border-white/10", iconBg: "bg-white/10", iconColor: "text-zinc-400", dot: "bg-zinc-500", label: "GPS inactivo" };
+
+  // Quality indicator based on accuracy
+  const qualityLabel = accuracy === null ? null : accuracy < 20 ? "Excelente" : accuracy < 50 ? "Buena" : accuracy < 100 ? "Regular" : "Baja";
+  const qualityColor = accuracy === null ? "text-zinc-500" : accuracy < 20 ? "text-emerald-300" : accuracy < 50 ? "text-sky-300" : accuracy < 100 ? "text-amber-300" : "text-red-300";
 
   return (
-    <section className={`overflow-hidden rounded-3xl border p-5 shadow-2xl transition-colors duration-300 ${live ? "border-emerald-400/25 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950" : "border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-950"}`}>
-      <div className="flex items-start gap-3">
-        <span className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${live ? "bg-emerald-500/15 text-emerald-300" : state === "denied" ? "bg-red-500/15 text-red-300" : "bg-white/5 text-zinc-400"}`}>
+    <section className={`overflow-hidden rounded-3xl border bg-gradient-to-br shadow-2xl transition-all duration-500 ${stateConfig.border} ${stateConfig.bg}`}>
+      {/* Header */}
+      <div className="flex items-start gap-3 p-5 pb-4">
+        <span className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${stateConfig.iconBg} transition-colors`}>
           {live && <span className="absolute inset-0 animate-ping rounded-2xl bg-emerald-400/10" />}
-          <Icon name="location" className="relative h-5 w-5" />
+          <Icon name="location" className={`relative h-5 w-5 ${stateConfig.iconColor}`} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">Ubicación</p>
+          <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">Ubicación GPS</p>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-black text-white" aria-live="polite">{statusLabel}</h2>
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black ${live ? "bg-emerald-500/15 text-emerald-300" : state === "denied" ? "bg-red-500/15 text-red-300" : "bg-white/5 text-zinc-300"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${live ? "animate-pulse bg-emerald-400" : state === "denied" ? "bg-red-400" : "bg-zinc-500"}`} />
+            <h2 className="text-base font-black text-white">{stateConfig.label}</h2>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black ${live ? "bg-emerald-500/15 text-emerald-300" : state === "denied" ? "bg-red-500/15 text-red-300" : "bg-white/5 text-zinc-400"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${live ? "animate-pulse" : ""} ${stateConfig.dot}`} />
               {isSending ? "Enviando" : live ? freshness?.label : preferenceEnabled ? "Habilitada" : "Pausada"}
             </span>
           </div>
-          {state === "resume" && (
-            <p className="mt-2 text-xs leading-5 text-sky-200">Compartir ubicación está habilitado. Tocá para reanudar el GPS.</p>
-          )}
-          {message && <p className={`mt-2 text-xs leading-5 ${state === "denied" ? "text-red-200" : "text-amber-200"}`}>{message}</p>}
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-white/5 bg-black/15 px-3 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Última actualización</p>
+      {/* Info grid */}
+      <div className="grid grid-cols-2 gap-2 px-5 pb-4">
+        <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-3">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-600">Última actualización</p>
           <p className="mt-1 text-sm font-bold text-zinc-100">{lastUpdateLabel}</p>
         </div>
-        <div className="rounded-2xl border border-white/5 bg-black/15 px-3 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Precisión</p>
-          <p className="mt-1 text-sm font-bold text-zinc-100">{accuracy === null ? "—" : `± ${Math.round(accuracy)} m`}</p>
+        <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-3">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-600">Precisión</p>
+          <p className="mt-1 text-sm font-bold text-zinc-100">
+            {accuracy === null ? "—" : `± ${Math.round(accuracy)} m`}
+            {qualityLabel && <span className={`ml-1.5 text-[10px] font-bold ${qualityColor}`}>{qualityLabel}</span>}
+          </p>
         </div>
       </div>
 
-      <button
-        type="button"
-        className={`mt-4 min-h-14 w-full rounded-2xl px-5 py-4 text-base font-black transition-all active:scale-[.99] ${tracking ? "border border-white/15 bg-white/5 text-white hover:bg-white/10" : "bg-emerald-600 text-white shadow-lg shadow-emerald-950/30 hover:bg-emerald-500"}`}
-        onClick={tracking ? () => void pause() : () => void enable()}
-        disabled={(state === "requesting" && !tracking) || state === "unavailable"}
-      >
-        {tracking ? "Pausar ubicación" : state === "requesting" ? "Conectando GPS…" : preferenceEnabled ? "Reanudar GPS" : "Compartir ubicación"}
-      </button>
-      {preferenceEnabled && !tracking && state !== "requesting" && (
-        <button type="button" className="mt-2 min-h-11 w-full py-2 text-xs font-bold text-zinc-400 transition hover:text-white" onClick={() => void pause()}>
-          Desactivar ubicación
-        </button>
+      {/* Message */}
+      {message && (
+        <div className={`mx-5 mb-3 rounded-xl px-4 py-3 text-xs leading-5 ${state === "denied" ? "bg-red-500/10 text-red-200" : state === "error" ? "bg-orange-500/10 text-orange-200" : "bg-sky-500/10 text-sky-200"}`}>
+          {message}
+        </div>
       )}
-      <p className="mt-3 text-[11px] leading-4 text-zinc-500">
-        Mientras esté habilitada, MenuClick intentará compartir tu posición. Algunos teléfonos pueden suspender el GPS si cerrás el navegador.
+
+      {/* Action */}
+      <div className="border-t border-white/5 px-5 py-4">
+        <button
+          type="button"
+          className={`min-h-14 w-full rounded-2xl px-5 py-4 text-base font-black transition-all duration-200 active:scale-[.99] ${tracking ? "border border-white/10 bg-white/5 text-white hover:bg-white/10" : "bg-emerald-600 text-white shadow-lg shadow-emerald-950/30 hover:bg-emerald-500"}`}
+          onClick={tracking ? () => void pause() : () => void enable()}
+          disabled={(state === "requesting" && !tracking) || state === "unavailable"}
+        >
+          <span className="flex items-center justify-center gap-2">
+            {tracking ? (
+              <>
+                <Icon name="x" className="h-5 w-5" />
+                Pausar ubicación
+              </>
+            ) : state === "requesting" ? (
+              <>
+                <Icon name="loader" className="h-5 w-5 animate-spin" />
+                Conectando GPS…
+              </>
+            ) : (
+              <>
+                <Icon name="location" className="h-5 w-5" />
+                Compartir ubicación
+              </>
+            )}
+          </span>
+        </button>
+        {preferenceEnabled && !tracking && state !== "requesting" && (
+          <button type="button" className="mt-2 min-h-11 w-full py-2 text-xs font-bold text-zinc-500 transition hover:text-white" onClick={() => void pause()}>
+            Desactivar completamente
+          </button>
+        )}
+      </div>
+
+      <p className="px-5 pb-4 text-[11px] leading-4 text-zinc-600">
+        Mientras esté habilitada, MenuClick compartirá tu posición cada pocos segundos. Algunos teléfonos pueden suspender el GPS si cerrás el navegador.
       </p>
       <span className="sr-only">Permiso del navegador: {permission}</span>
     </section>

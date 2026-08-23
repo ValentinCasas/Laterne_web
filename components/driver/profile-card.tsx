@@ -17,7 +17,7 @@ type DriverProfile = {
   branches?: Array<{ branch?: { id: number; name: string; slug: string } }>;
 };
 
-/** @summary Tarjeta operativa de disponibilidad con transición visual y contexto de trabajo. */
+/** @summary Panel de disponibilidad del repartidor con segmented control elegante y contexto de trabajo. */
 export function DriverProfileCard({
   driver,
   activeDeliveries,
@@ -49,45 +49,81 @@ export function DriverProfileCard({
   }
 
   const available = driver.active && status === "AVAILABLE";
+  const busy = status === "IN_DELIVERY";
   const branchName = driver.branches?.[0]?.branch?.name ?? "Sin sucursal";
-  const vehicle = driver.vehicleType ? `${driver.vehicleType}${driver.plate ? ` · ${driver.plate}` : ""}` : "Sin vehículo asignado";
+  const vehicle = driver.vehicleType ? `${driver.vehicleType}${driver.plate ? ` · ${driver.plate}` : ""}` : "Sin vehículo";
 
   return (
-    <section className={`rounded-3xl border p-5 shadow-xl transition-all duration-300 ${available ? "border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950" : "border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-zinc-900 to-zinc-950"}`}>
-      <div className="flex items-start justify-between gap-3">
+    <section className={`overflow-hidden rounded-3xl border shadow-xl transition-all duration-500 ${available ? "border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950" : busy ? "border-sky-400/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-zinc-950" : "border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-zinc-900 to-zinc-950"}`}>
+      {/* Header con estado */}
+      <div className="flex items-start justify-between gap-3 p-5 pb-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">Disponibilidad</p>
-          <h2 className="mt-1 text-xl font-black text-white">{available ? "Listo para recibir entregas" : "Recepción pausada"}</h2>
+          <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">Estado laboral</p>
+          <div className="mt-1.5 flex items-center gap-2.5">
+            <span className={`relative flex h-3 w-3`}>
+              {available && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />}
+              <span className={`relative inline-flex h-3 w-3 rounded-full ${available ? "bg-emerald-400" : busy ? "bg-sky-400" : "bg-amber-400"}`} />
+            </span>
+            <h2 className="text-lg font-black text-white">{available ? "Recibiendo entregas" : busy ? "En entrega" : "Pausado"}</h2>
+          </div>
         </div>
-        <span className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black ${available ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
-          <span className={`h-2 w-2 rounded-full ${available ? "animate-pulse bg-emerald-400" : "bg-amber-400"}`} />
-          {available ? "Disponible" : "Pausado"}
+        <span className={`rounded-full px-3 py-1.5 text-[10px] font-black ${available ? "bg-emerald-500/15 text-emerald-300" : busy ? "bg-sky-500/15 text-sky-300" : "bg-amber-500/15 text-amber-300"}`}>
+          {available ? "Activo" : busy ? "Ocupado" : "Inactivo"}
         </span>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-white/5 bg-black/15 p-3">
-          <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Vehículo</dt>
-          <dd className="mt-1 flex items-center gap-1.5 truncate text-sm font-bold text-zinc-100"><Icon name="truck" className="h-3.5 w-3.5 text-zinc-500" />{vehicle}</dd>
+      {/* Info grid */}
+      <div className="grid grid-cols-2 gap-2 px-5 pb-4">
+        <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-2.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-600">Vehículo</p>
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-bold text-zinc-200">
+            <Icon name="truck" className="h-3 w-3 text-zinc-500" />
+            {vehicle}
+          </p>
         </div>
-        <div className="rounded-2xl border border-white/5 bg-black/15 p-3">
-          <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sucursal</dt>
-          <dd className="mt-1 flex items-center gap-1.5 truncate text-sm font-bold text-zinc-100"><Icon name="map-pin" className="h-3.5 w-3.5 text-zinc-500" />{branchName}</dd>
+        <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-2.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-600">Sucursal</p>
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-bold text-zinc-200">
+            <Icon name="map-pin" className="h-3 w-3 text-zinc-500" />
+            {branchName}
+          </p>
         </div>
-        <div className="col-span-2 flex items-center justify-between rounded-2xl border border-white/5 bg-black/15 px-3 py-3">
-          <dt className="text-xs font-bold text-zinc-400">Entregas activas</dt>
-          <dd className="text-lg font-black text-white"><NumberFlow value={activeDeliveries} /></dd>
-        </div>
-      </dl>
+      </div>
 
-      <button
-        type="button"
-        className={`mt-4 min-h-13 w-full rounded-2xl px-5 py-3.5 text-sm font-black transition-all active:scale-[.99] ${available ? "border border-white/10 bg-white/5 text-white hover:bg-white/10" : "bg-emerald-600 text-white hover:bg-emerald-500"}`}
-        disabled={saving || !driver.active}
-        onClick={() => void toggleAvailability(available ? "UNAVAILABLE" : "AVAILABLE")}
-      >
-        {saving ? "Guardando…" : available ? "Pausar entregas" : "Volver a estar disponible"}
-      </button>
+      {/* Entregas activas */}
+      <div className="mx-5 mb-4 flex items-center justify-between rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+        <span className="text-xs font-bold text-zinc-400">Entregas activas</span>
+        <span className="text-xl font-black text-white"><NumberFlow value={activeDeliveries} /></span>
+      </div>
+
+      {/* Toggle de disponibilidad */}
+      <div className="border-t border-white/5 px-5 py-4">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={`min-h-12 rounded-xl text-sm font-black transition-all duration-200 active:scale-[.98] ${available ? "bg-emerald-500 text-white shadow-lg shadow-emerald-950/30" : "border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"}`}
+            disabled={saving || !driver.active}
+            onClick={() => void toggleAvailability("AVAILABLE")}
+          >
+            <span className="flex items-center justify-center gap-1.5">
+              {saving && !available ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="check-circle" className="h-4 w-4" />}
+              Disponible
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`min-h-12 rounded-xl text-sm font-black transition-all duration-200 active:scale-[.98] ${!available ? "bg-amber-500 text-white shadow-lg shadow-amber-950/30" : "border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"}`}
+            disabled={saving || !driver.active}
+            onClick={() => void toggleAvailability("UNAVAILABLE")}
+          >
+            <span className="flex items-center justify-center gap-1.5">
+              {saving && available ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="x" className="h-4 w-4" />}
+              Pausar
+            </span>
+          </button>
+        </div>
+        {!driver.active && <p className="mt-2 text-center text-[11px] font-medium text-red-300">Tu perfil está desactivado. Contactá a un administrador.</p>}
+      </div>
     </section>
   );
 }

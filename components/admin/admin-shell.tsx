@@ -165,6 +165,9 @@ function ChevronDownIcon({ open = false, className = "" }: { open?: boolean; cla
 function normalizedAdminPath(pathname: string) {
   const parsed = parseCanonicalPath(pathname);
   if (parsed.surface === "tenant-admin") return parsed.logicalPath;
+  // Mapea la superficie del repartidor (/driver) a la ruta admin equivalente
+  // para que el active-link matching funcione con la definición de navegación.
+  if (parsed.surface === "tenant-driver") return "/admin/driver";
   return pathname.replace(/^\/admin\/s\/[^/]+/, "/admin");
 }
 
@@ -240,9 +243,15 @@ export function AdminShell({
 
   const activeBranch = branches.find((branch) => branch.id === activeBranchId);
   const branchSlug = activeBranch?.slug;
+  const isDriverSurface = useMemo(() => parseCanonicalPath(pathname).surface === "tenant-driver", [pathname]);
   const adminHref = useCallback(
-    (href: string) => adminHrefForContext(tenantSlug, href, branchSlug, tenantGuid),
-    [branchSlug, tenantGuid, tenantSlug],
+    (href: string) => {
+      // En la superficie del repartidor, el panel propio apunta a la URL actual
+      // para evitar un redirect innecesario (/admin/driver → /driver).
+      if (isDriverSurface && href === "/admin/driver") return pathname as Route;
+      return adminHrefForContext(tenantSlug, href, branchSlug, tenantGuid);
+    },
+    [isDriverSurface, pathname, branchSlug, tenantGuid, tenantSlug],
   );
   const publicSite = activeBranch?.slug ? `${publicSiteUrl}/s/${activeBranch.slug}` : publicSiteUrl;
 
