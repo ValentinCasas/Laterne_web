@@ -172,17 +172,11 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const name = tenant?.name ?? "MenuClick";
 
   return (
-    <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang={tenant?.locale.split("-")[0] ?? "es"} data-scroll-behavior="smooth">
       <body
         className={kind === "platform" ? "menuclick-theme" : tenant ? "tenant-theme" : undefined}
         style={style}
-        suppressHydrationWarning
       >
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var e=document.documentElement.querySelectorAll('[__gcrremoteframetoken],[__gcruniqueid]');for(var i=0;i<e.length;i++){e[i].removeAttribute('__gcrremoteframetoken');e[i].removeAttribute('__gcruniqueid');}}catch(t){}})();`,
-          }}
-        />
         {tenant && !privateSurface && (
           <SiteHeader
             brandName={name}

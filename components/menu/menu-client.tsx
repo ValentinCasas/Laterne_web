@@ -421,7 +421,6 @@ export function MenuClient({
             <label className="min-w-0 flex-1">
               <span className="sr-only">Buscar productos</span>
               <input
-                suppressHydrationWarning
                 className="input min-h-12 py-2.5 text-base"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -485,7 +484,6 @@ export function MenuClient({
           )}
           <div className="mt-2 hidden grid-cols-3 gap-2 lg:grid">
             <select
-              suppressHydrationWarning
               className="input py-2 text-xs sm:text-sm"
               value={diet}
               onChange={(event) => setDiet(event.target.value)}
@@ -498,7 +496,6 @@ export function MenuClient({
               <option value="alcoholFree">Sin alcohol</option>
             </select>
             <input
-              suppressHydrationWarning
               className="input py-2 text-xs sm:text-sm"
               value={maximumPrice}
               onChange={(event) => setMaximumPrice(event.target.value)}
@@ -508,7 +505,6 @@ export function MenuClient({
               aria-label="Precio máximo"
             />
             <select
-              suppressHydrationWarning
               className="input col-span-2 py-2 text-xs sm:col-span-1 sm:text-sm"
               value={sort}
               onChange={(event) => setSort(event.target.value)}
@@ -650,46 +646,43 @@ export function MenuClient({
             <div className="mt-5 grid gap-5">
               <label>
                 <span className="label">Preferencias</span>
-                <select
-                  suppressHydrationWarning
-                  className="input min-h-12"
-                  value={draftDiet}
-                  onChange={(event) => setDraftDiet(event.target.value)}
-                >
-                  <option value="all">Todas</option>
-                  <option value="vegetarian">Vegetarianos</option>
-                  <option value="vegan">Veganos</option>
-                  <option value="glutenFree">Sin gluten</option>
-                  <option value="alcoholFree">Sin alcohol</option>
-                </select>
-              </label>
-              <label>
-                <span className="label">Precio máximo</span>
-                <input
-                  suppressHydrationWarning
-                  className="input min-h-12"
-                  value={draftMaximumPrice}
-                  onChange={(event) => setDraftMaximumPrice(event.target.value)}
-                  inputMode="numeric"
-                  min={0}
-                  placeholder="Sin límite"
-                  type="number"
-                />
-              </label>
-              <label>
-                <span className="label">Ordenar por</span>
-                <select
-                  suppressHydrationWarning
-                  className="input min-h-12"
-                  value={draftSort}
-                  onChange={(event) => setDraftSort(event.target.value)}
-                >
-                  <option value="recommended">Recomendados</option>
-                  <option value="name">Nombre</option>
-                  <option value="price_asc">Menor precio</option>
-                  <option value="price_desc">Mayor precio</option>
-                </select>
-              </label>
+                  <select
+                    className="input min-h-12"
+                    value={draftDiet}
+                    onChange={(event) => setDraftDiet(event.target.value)}
+                  >
+                    <option value="all">Todas</option>
+                    <option value="vegetarian">Vegetarianos</option>
+                    <option value="vegan">Veganos</option>
+                    <option value="glutenFree">Sin gluten</option>
+                    <option value="alcoholFree">Sin alcohol</option>
+                  </select>
+                </label>
+                <label>
+                  <span className="label">Precio máximo</span>
+                  <input
+                    className="input min-h-12"
+                    value={draftMaximumPrice}
+                    onChange={(event) => setDraftMaximumPrice(event.target.value)}
+                    inputMode="numeric"
+                    min={0}
+                    placeholder="Sin límite"
+                    type="number"
+                  />
+                </label>
+                <label>
+                  <span className="label">Ordenar por</span>
+                  <select
+                    className="input min-h-12"
+                    value={draftSort}
+                    onChange={(event) => setDraftSort(event.target.value)}
+                  >
+                    <option value="recommended">Recomendados</option>
+                    <option value="name">Nombre</option>
+                    <option value="price_asc">Menor precio</option>
+                    <option value="price_desc">Mayor precio</option>
+                  </select>
+                </label>
             </div>
             <div className="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-3">
               <button
