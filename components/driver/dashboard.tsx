@@ -290,14 +290,14 @@ export function DriverDashboard({
 
   /* ── Render ── */
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       {/* ── Hero KPIs ── */}
       <DriverSummaryCards active={deliveries.length} deliveredToday={deliveredTodayCount} averageMinutes={averageMinutes} incidents={incidentCount} />
 
       {/* ── Main layout: Map + Sidebar ── */}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,.8fr)]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,.8fr)] min-w-0">
         {/* ── Left: Map + Deliveries ── */}
-        <div className="space-y-4 lg:col-start-1">
+        <div className="space-y-4 lg:col-start-1 min-w-0">
           {/* Mapa */}
           <DriverRouteMap
             deliveries={sortedDeliveries}
@@ -374,12 +374,12 @@ export function DriverDashboard({
         </div>
 
         {/* ── Right: Sidebar (sticky) ── */}
-        <aside className="space-y-4 lg:col-start-2 lg:row-start-1">
+        <aside className="space-y-4 lg:col-start-2 lg:row-start-1 min-w-0">
           {/* ── Recorrido ── */}
           {hasActiveRoute && route ? (
-            <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-sky-500/[.06] via-zinc-900 to-zinc-950 p-5 shadow-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-sky-500/[.06] via-zinc-900 to-zinc-950 p-4 sm:p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="grid h-9 w-9 place-items-center rounded-2xl bg-sky-500/15">
                     <Icon name="truck" className="h-4 w-4 text-sky-300" />
                   </span>
@@ -440,7 +440,7 @@ export function DriverDashboard({
               )}
 
               {/* Acciones */}
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-xs font-bold text-white transition hover:bg-white/10 active:scale-[.99]"
@@ -465,7 +465,7 @@ export function DriverDashboard({
             </section>
           ) : (
             /* Sin recorrido: card compacta para iniciar */
-            <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-zinc-800/30 to-zinc-900 p-5 shadow-xl">
+            <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-zinc-800/30 to-zinc-900 p-4 sm:p-5 shadow-xl">
               <div className="flex items-center gap-2">
                 <span className="grid h-9 w-9 place-items-center rounded-2xl bg-pink-500/15">
                   <Icon name="truck" className="h-4 w-4 text-pink-300" />
@@ -475,8 +475,7 @@ export function DriverDashboard({
                   <p className="text-xs text-zinc-500">Sin recorrido activo</p>
                 </div>
               </div>
-              {pendingDeliveries.length > 0 ? (
-                <p className="mt-3 text-sm text-zinc-400">
+              {pendingDeliveries.length > 0 ? (                  <p className="mt-3 text-xs sm:text-sm text-zinc-400">
                   Tenés <span className="font-bold text-white">{pendingDeliveries.length}</span>{" "}
                   entrega{pendingDeliveries.length === 1 ? "" : "s"} disponible{pendingDeliveries.length === 1 ? "" : "s"} para incluir en el recorrido.
                 </p>
@@ -485,7 +484,7 @@ export function DriverDashboard({
               )}
               <button
                 type="button"
-                className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-black text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 active:scale-[.99] disabled:opacity-50"
+                className="mt-4 flex min-h-11 sm:min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 active:scale-[.99] disabled:opacity-50"
                 onClick={() => void startRoute()}
                 disabled={working || pendingDeliveries.length === 0}
               >
@@ -506,19 +505,19 @@ export function DriverDashboard({
           {/* Últimas completadas */}
           {completedToday.length > 0 && (
             <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-emerald-500/[.06] via-zinc-900 to-zinc-950 shadow-xl">
-              <div className="flex items-center justify-between border-b border-white/5 px-5 py-3.5">
+              <div className="flex items-center justify-between border-b border-white/5 px-4 sm:px-5 py-3 sm:py-3.5">
                 <div>
                   <h2 className="text-sm font-black text-white">Completadas hoy</h2>
                   <p className="text-[10px] font-medium text-zinc-500">{deliveredTodayCount} entregas finalizadas</p>
                 </div>
-                <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-black text-emerald-300">
+                <span className="hidden sm:inline-flex rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-black text-emerald-300">
                   <Icon name="check-circle" className="mr-1 inline h-3 w-3" />
                   Hoy
                 </span>
               </div>
               <ul className="divide-y divide-white/5">
                 {completedToday.slice(0, 5).map((delivery) => (
-                  <li key={delivery.id} className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-white/[.02]">
+                  <li key={delivery.id} className="flex items-center justify-between gap-2 sm:gap-3 px-4 sm:px-5 py-2.5 sm:py-3 transition-colors hover:bg-white/[.02]">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-zinc-200">{delivery.customerName}</p>
                       <p className="mt-0.5 text-[11px] text-zinc-500">{delivery.order?.reference ?? delivery.number}</p>

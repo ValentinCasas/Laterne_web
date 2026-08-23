@@ -68,11 +68,11 @@ export function DriverSummaryCards({
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Resumen de la jornada">
+    <section className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-4" aria-label="Resumen de la jornada">
       {items.map((item) => (
         <article
           key={item.label}
-          className={`group relative overflow-hidden rounded-2xl border border-white/[.08] bg-gradient-to-br ${item.gradient} p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[.12] hover:shadow-xl ${item.glow ?? ""}`}
+          className={`group relative overflow-hidden rounded-2xl border border-white/[.08] bg-gradient-to-br ${item.gradient} p-3 sm:p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[.12] hover:shadow-xl min-w-0 ${item.glow ?? ""}`}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -83,7 +83,7 @@ export function DriverSummaryCards({
               <Icon name={item.icon} className={`h-4 w-4 ${item.iconColor}`} />
             </span>
           </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-white sm:text-2xl">
+          <p className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-black tracking-tight text-white">
             {averageMinutes === null && item.label === "Tiempo medio" ? (
               <span className="text-zinc-500">—</span>
             ) : (

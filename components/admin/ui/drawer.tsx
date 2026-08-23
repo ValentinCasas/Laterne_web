@@ -70,11 +70,11 @@ export function Drawer({
 
       {/* Panel — Desktop: right side, below navbar. Mobile: bottom sheet. */}
       <aside
-        className="salon-drawer fixed right-0 flex flex-col overflow-hidden border-l border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] shadow-2xl
+        className="salon-drawer fixed flex flex-col overflow-hidden border-l border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] shadow-2xl
           /* Mobile: bottom sheet — full width, from bottom, safe-area aware */
-          w-full bottom-0 top-auto h-[85vh] max-h-[90vh] rounded-t-[2rem] border-t border-[var(--admin-border-strong)]
+          inset-x-0 bottom-0 top-auto h-[85vh] max-h-[90vh] rounded-t-[2rem] border-t border-[var(--admin-border-strong)]
           /* Desktop: below navbar, fixed width, full height */
-          sm:top-[var(--site-navbar-height, 56px)] sm:bottom-auto sm:h-[calc(100dvh-var(--site-navbar-height,56px))] sm:w-[var(--drawer-width)] sm:max-w-[calc(100vw-1rem)] sm:rounded-none sm:border-t-0"
+          sm:inset-x-auto sm:right-0 sm:top-[var(--site-navbar-height, 56px)] sm:bottom-auto sm:h-[calc(100dvh-var(--site-navbar-height,56px))] sm:w-[var(--drawer-width)] sm:max-w-[calc(100vw-1rem)] sm:rounded-none sm:border-t-0"
         style={{
           "--drawer-width": width,
         } as CSSProperties}
@@ -103,7 +103,7 @@ export function Drawer({
 
         {/* Footer — sticky abajo (opcional) */}
         {footer && (
-          <footer className="shrink-0 border-t border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] px-4 py-3 backdrop-blur sm:px-5 sm:py-4">
+          <footer className="shrink-0 border-t border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] px-4 py-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-5 sm:py-4">
             {footer}
           </footer>
         )}

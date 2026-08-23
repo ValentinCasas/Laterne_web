@@ -230,7 +230,7 @@ export function DriverActiveDeliveries({
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-0">
         {items.map((delivery, index) => {
           const meta = deliveryStatusMeta(delivery.status);
           const next = nextDriverStatus(delivery.status);
@@ -257,13 +257,13 @@ export function DriverActiveDeliveries({
               {/* Card body — click selecciona */}
               <button
                 type="button"
-                className="w-full p-4 text-left"
+                className="w-full p-3 sm:p-4 text-left min-w-0"
                 onClick={() => onSelect?.(delivery.id)}
                 aria-label={`Ver entrega ${delivery.number}`}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2 sm:gap-3 min-w-0">
                   {/* Stop number badge */}
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${
+                  <span className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black ${
                     isDelivered && routeActive
                       ? "bg-emerald-500/20 text-emerald-300"
                       : isActive
@@ -273,19 +273,19 @@ export function DriverActiveDeliveries({
                     {isDelivered && routeActive ? "✓" : stopNum ? `#${stopNum}` : `#${index + 1}`}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="truncate text-base font-black text-white">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h3 className="truncate text-sm sm:text-base font-black text-white">
                         {delivery.order?.customerName ?? delivery.customerName}
                       </h3>
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${meta.badge}`}>{meta.label}</span>
                       {hasIncidents && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-black text-orange-300">Incidencia</span>}
                     </div>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-zinc-400">
+                    <p className="mt-1 flex items-center gap-1.5 text-xs sm:text-sm text-zinc-400 min-w-0">
                       <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0 text-pink-400/70" />
                       <span className="truncate">{address ?? "Dirección no informada"}</span>
                     </p>
                     {/* Info row */}
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-1 text-[11px] sm:text-xs text-zinc-500 min-w-0">
                       {delivery.order?.reference && (
                         <span className="inline-flex items-center gap-1.5">
                           <Icon name="receipt" className="h-3 w-3" />
@@ -311,11 +311,11 @@ export function DriverActiveDeliveries({
               </button>
 
               {/* ── Actions: Ver datos + Ver en mapa + advance ── */}
-              <div className="flex gap-2 border-t border-white/5 p-3">
+              <div className="flex flex-wrap gap-2 border-t border-white/5 p-3 min-w-0">
                 {/* Ver datos — abre drawer */}
                 <button
                   type="button"
-                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white transition hover:bg-white/10"
+                  className="flex min-h-10 sm:min-h-12 flex-1 min-w-0 items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-white/5 text-[11px] sm:text-xs font-bold text-white transition hover:bg-white/10"
                   onClick={() => onSelect?.(delivery.id)}
                 >
                   <Icon name="eye" className="h-4 w-4" />
@@ -324,7 +324,7 @@ export function DriverActiveDeliveries({
                 {/* Ver en mapa — centra/resalta marker */}
                 <button
                   type="button"
-                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 text-xs font-bold text-pink-300 transition hover:bg-pink-500/20"
+                  className="flex min-h-10 sm:min-h-12 flex-1 min-w-0 items-center justify-center gap-1.5 rounded-2xl border border-pink-400/20 bg-pink-500/10 text-[11px] sm:text-xs font-bold text-pink-300 transition hover:bg-pink-500/20"
                   onClick={() => onMapSelect?.(delivery.id)}
                 >
                   <Icon name="map-pin" className="h-4 w-4" />
@@ -334,7 +334,7 @@ export function DriverActiveDeliveries({
                 {next && (
                   <button
                     type="button"
-                    className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black text-white transition active:scale-[.99] ${
+                    className={`flex min-h-10 sm:min-h-12 items-center justify-center gap-1.5 rounded-2xl px-3 sm:px-4 text-[11px] sm:text-xs font-black text-white transition active:scale-[.99] ${
                       next === "DELIVERED"
                         ? "bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-950/30"
                         : "bg-sky-600 hover:bg-sky-500 shadow-lg shadow-sky-950/30"
@@ -354,7 +354,7 @@ export function DriverActiveDeliveries({
                 {(delivery.order?.phone ?? delivery.contactPhone) && (
                   <a
                     href={`tel:${delivery.order?.phone ?? delivery.contactPhone}`}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                    className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
                     aria-label="Llamar al cliente"
                   >
                     <Icon name="phone" className="h-4 w-4" />
@@ -373,10 +373,10 @@ export function DriverActiveDeliveries({
         title={selected ? `Parada ${selected.routeOrder ?? selected.number} · Entrega ${selected.number}` : "Detalle"}
         width="560px"
         footer={selected && (
-          <div className="grid grid-cols-[auto_1fr] gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-2">
             <button
               type="button"
-              className="flex min-h-12 items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
               onClick={() => setIncidentForId(selected.id)}
             >
               <Icon name="warning" className="h-4 w-4" />

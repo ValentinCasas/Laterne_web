@@ -276,17 +276,17 @@ export function DriverLocationSharing({
   const qualityColor = accuracy === null ? "text-zinc-500" : accuracy < 20 ? "text-emerald-300" : accuracy < 50 ? "text-sky-300" : accuracy < 100 ? "text-amber-300" : "text-red-300";
 
   return (
-    <section className={`overflow-hidden rounded-3xl border bg-gradient-to-br shadow-2xl transition-all duration-500 ${stateConfig.border} ${stateConfig.bg}`}>
+    <section className={`overflow-hidden rounded-3xl border bg-gradient-to-br shadow-2xl transition-all duration-500 min-w-0 ${stateConfig.border} ${stateConfig.bg}`}>
       {/* Header */}
-      <div className="flex items-start gap-3 p-5 pb-4">
-        <span className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${stateConfig.iconBg} transition-colors`}>
+      <div className="flex items-start gap-3 p-4 sm:p-5 pb-4">
+        <span className={`relative grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl sm:rounded-2xl ${stateConfig.iconBg} transition-colors`}>
           {live && <span className="absolute inset-0 animate-ping rounded-2xl bg-emerald-400/10" />}
           <Icon name="location" className={`relative h-5 w-5 ${stateConfig.iconColor}`} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-500">Ubicación GPS</p>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-black text-white">{stateConfig.label}</h2>
+            <h2 className="text-sm sm:text-base font-black text-white">{stateConfig.label}</h2>
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black ${live ? "bg-emerald-500/15 text-emerald-300" : state === "denied" ? "bg-red-500/15 text-red-300" : "bg-white/5 text-zinc-400"}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${live ? "animate-pulse" : ""} ${stateConfig.dot}`} />
               {isSending ? "Enviando" : live ? freshness?.label : preferenceEnabled ? "Habilitada" : "Pausada"}
@@ -296,7 +296,7 @@ export function DriverLocationSharing({
       </div>
 
       {/* Info grid */}
-      <div className="grid grid-cols-2 gap-2 px-5 pb-4">
+      <div className="grid grid-cols-2 gap-2 px-4 sm:px-5 pb-4 min-w-0">
         <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-3">
           <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-600">Última actualización</p>
           <p className="mt-1 text-sm font-bold text-zinc-100">{lastUpdateLabel}</p>

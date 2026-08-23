@@ -252,6 +252,14 @@ button {
 }
 @keyframes salon-drawer-in {
   from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes salon-drawer-in-right {
+  from {
     transform: translateX(100%);
   }
   to {
@@ -268,6 +276,11 @@ button {
 }
 .salon-drawer {
   animation: salon-drawer-in 0.24s ease-out;
+}
+@media (min-width: 640px) {
+  .salon-drawer {
+    animation-name: salon-drawer-in-right;
+  }
 }
 .salon-fade {
   animation: salon-fade-in 0.18s ease-out;

@@ -54,7 +54,7 @@ export function DriverProfileCard({
   const vehicle = driver.vehicleType ? `${driver.vehicleType}${driver.plate ? ` · ${driver.plate}` : ""}` : "Sin vehículo";
 
   return (
-    <section className={`overflow-hidden rounded-3xl border shadow-xl transition-all duration-500 ${available ? "border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950" : busy ? "border-sky-400/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-zinc-950" : "border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-zinc-900 to-zinc-950"}`}>
+    <section className={`overflow-hidden rounded-3xl border shadow-xl transition-all duration-500 min-w-0 ${available ? "border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950" : busy ? "border-sky-400/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-zinc-950" : "border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-zinc-900 to-zinc-950"}`}>
       {/* Header con estado */}
       <div className="flex items-start justify-between gap-3 p-5 pb-4">
         <div>

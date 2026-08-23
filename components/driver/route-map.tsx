@@ -420,10 +420,10 @@ export function DriverRouteMap({
   return (
     <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-zinc-900/70 shadow-xl" aria-label="Recorrido de entregas">
       {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 p-4 sm:p-5">
+      <header className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-b border-white/5 p-3 sm:p-5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[.18em] text-pink-300">Ruta automática</p>
-          <h2 className="mt-1 text-lg font-black text-white">Recorrido · {orderedStops.length} paradas</h2>
+          <h2 className="mt-1 text-base sm:text-lg font-black text-white">Recorrido · {orderedStops.length} paradas</h2>
           <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -462,7 +462,7 @@ export function DriverRouteMap({
 
       {/* Legend */}
       {orderedStops.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 border-t border-white/5 px-4 py-3 text-[11px] text-zinc-500">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] text-zinc-500">
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded bg-emerald-500" />
             Sucursal

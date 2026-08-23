@@ -1035,10 +1035,10 @@ export function DriverRoutePanel({
         title={selected ? `Parada ${selected.routeOrder ?? selected.number}` : "Detalle"}
         width="560px"
         footer={selected && (
-          <div className="grid grid-cols-[auto_1fr] gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-2">
             <button
               type="button"
-              className="flex min-h-12 items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
               onClick={() => setIncidentForId(selected.id)}
             >
               <Icon name="warning" className="h-4 w-4" />
