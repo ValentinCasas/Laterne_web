@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * @summary Drawer lateral con header sticky, contenido scrollable y footer sticky opcional.
+ *
+ * Renderiza via `createPortal` a `document.body` para escapar stacking contexts
+ * de padres (ej: animaciones CSS en admin-main > *).
  *
  * Desktop (≥640px): panel derecho, `position: fixed`, top = navbarHeight, bottom = 0,
  *   ancho configurable, pegado al borde derecho del viewport.
@@ -27,6 +31,13 @@ export function Drawer({
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<Element | null>(null);
+
+  /* ── Portal mount: null until first client render ── */
+  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount after SSR
+    setPortalTarget(document.body);
+  }, []);
 
   /* ── Body scroll lock ── */
   useEffect(() => {
@@ -71,21 +82,13 @@ export function Drawer({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !portalTarget) return null;
 
-  /*
-   * Mobile:  inset-0 → fullscreen, header padding = safe-area only
-   * Desktop: right-0 top-0 bottom-0, width=var(--drawer-width),
-   *           header padding-top = navbar height (offset below navbar)
-   */
   const panelStyle = {
     "--drawer-width": width,
   } as CSSProperties;
 
-  /* On mobile the header needs safe-area padding. On desktop it needs navbar offset. */
-  const safeAreaTop = "env(safe-area-inset-top, 0px)";
-
-  return (
+  const content = (
     <div className="fixed inset-0 z-[120]" role="presentation">
       {/* ── Backdrop ── */}
       <div
@@ -104,19 +107,12 @@ export function Drawer({
         aria-modal="true"
         aria-label={title}
       >
-        {/* ── Header (sticky top, always visible) ── */}
-        {/*
-          Mobile: paddingTop = safe-area.
-          Desktop: paddingTop = navbar-height.
-          We use a CSS calc with a media query approach:
-          The header has padding via style for mobile, and sm: class overrides for desktop.
-          To avoid specificity issues, we use a spacer div instead.
-        */}
+        {/* ── Header ── */}
         <header className="shrink-0 border-b border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] backdrop-blur">
           {/* Spacer: safe-area on mobile, navbar-height on desktop */}
           <div
             className="sm:h-[var(--site-navbar-height,56px)]"
-            style={{ height: `calc(.75rem + ${safeAreaTop})` } as CSSProperties}
+            style={{ height: "max(.75rem, env(safe-area-inset-top, 0px))" } as CSSProperties}
             aria-hidden
           />
           {/* Actual header content */}
@@ -160,4 +156,6 @@ export function Drawer({
       </aside>
     </div>
   );
+
+  return createPortal(content, portalTarget);
 }
