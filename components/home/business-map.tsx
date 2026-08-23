@@ -41,7 +41,7 @@ export function BusinessMap({
       return;
     }
 
-    map.on("error", (event) => {
+    map.on("error", (_event) => {
       if (!map.isStyleLoaded()) {
         try {
           map.remove();

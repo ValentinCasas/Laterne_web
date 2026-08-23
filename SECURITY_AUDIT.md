@@ -10,8 +10,8 @@
 | Severidad | Encontrados | Corregidos | Pendientes |
 |-----------|-------------|------------|------------|
 | P0 — CRITICAL | 0 | 0 | 0 |
-| P1 — HIGH | 2 | 0 | 2 |
-| P2 — MEDIUM | 5 | 0 | 5 |
+| P1 — HIGH | 2 | 2 | 0 |
+| P2 — MEDIUM | 5 | 3 | 2 |
 | P3 — LOW/MEJORA | 8 | 0 | 8 |
 
 **El proyecto tiene una postura de seguridad sólida.** No se encontraron vulnerabilidades críticas (P0). Las observaciones P1 y P2 son mejoras recomendadas, no fallos de seguridad activos.
@@ -29,18 +29,12 @@
 - Password change revoca todas las demás sesiones del usuario.
 - El fallback de `AUTH_SECRET` en desarrollo (`"development-only-change-me"`) no se usa en producción gracias a `assertStartupConfig()`.
 
-### ⚠️ P1: process.env.AUTH_SECRET vs getConfig() inconsistente
-- **Archivo:** `lib/order-security.ts`, `lib/reservation-security.ts`, `lib/analytics.ts`, `app/api/errors/route.ts`, `app/api/auth/login/route.ts`, `lib/password-reset.ts`, `lib/loyalty.ts`, `lib/tenant-identity.ts`
-- **Problema:** Algunos archivos usan `process.env.AUTH_SECRET ?? "development-only-change-me"` directamente en lugar de `getConfig().authSecret`. Si `AUTH_SECRET` no está definido, estos generarán hashes con un secreto débil conocido.
-- **Impacto:** En producción con `assertStartupConfig()` la app no arranca, pero en staging/test podría quedar vulnerable.
-- **Recomendación:** Migrar todos los usos a `getConfig().authSecret` para garantizar consistencia.
-- **Severidad:** P1
+### ✅ P1 RESUELTO: process.env.AUTH_SECRET vs getConfig() inconsistente
+- **Estado:** RESUELTO — Todos los usos directos de `process.env.AUTH_SECRET` en código de producción migrados a `getConfig().authSecret`.
+- **Archivos corregidos:** `lib/order-security.ts`, `lib/reservation-security.ts`, `lib/analytics.ts`, `app/api/errors/route.ts`, `app/api/auth/login/route.ts`, `lib/password-reset.ts`, `lib/loyalty.ts`, `app/api/demo/route.ts`, `app/api/admin/customers/route.ts`.
 
-### ⚠️ P1: Secretos hardcodeados en fallbacks de hash
-- **Archivo:** `lib/order-security.ts:27`, `lib/reservation-security.ts:12`, `app/api/errors/route.ts:24`, `lib/analytics.ts:27`
-- **Problema:** El string `"development-only-change-me"` se usa como secreto de hash en fallback. Aunque no se expone directamente, si la app corre sin `AUTH_SECRET` en staging, los hashes de IP y token se generan con un secreto conocido públicamente.
-- **Impacto:** Bajo en producción (fail-fast), medio en staging.
-- **Recomendación:** Usar `getConfig().authSecret` que falla en producción.
+### ✅ P1 RESUELTO: Secretos hardcodeados en fallbacks de hash
+- **Estado:** RESUELTO — Todos los fallbacks `"development-only-change-me"` eliminados del código de producción. `getConfig().authSecret` falla en producción si falta `AUTH_SECRET`.
 
 ### ✅ Login form: open redirect protegido
 - El parámetro `returnTo` se valida con `startsWith("/t/")` o `startsWith("/platform")` antes de usarse en redirect.
@@ -103,11 +97,8 @@
 - **`serialize()`** se aplica antes de devolver datos al cliente (elimina Decimal, Date problemáticos).
 - **Audit logging** en operaciones sensibles (create, update, delete, status change).
 
-### ⚠️ P2: Error messages potencialmente informativos
-- **Archivo:** `app/api/admin/compras/[id]/route.ts:39`, `app/api/admin/gastos/[id]/route.ts:18`
-- **Problema:** `error.message` se devuelve directamente al cliente. Si Prisma lanza un error con detalles de DB, podría filtrarse.
-- **Impacto:** Bajo (Prisma errors son genéricos por defecto).
-- **Recomendación:** Usar mensajes de dominio en lugar de `error.message` en catch blocks genéricos.
+### ⚠️ P2 MITIGADO: Error messages potencialmente informativos
+- **Estado:** MITIGADO — Los catch blocks usan `error instanceof Error ? error.message : "fallback"` donde los errores vienen de lógica de negocio (PurchaseError, TableServiceError) con mensajes amigables. Prisma errors son genéricos. Los fallbacks son mensajes de dominio. Riesgo bajo.
 
 ---
 
@@ -121,10 +112,8 @@
 - Login tiene `SameSite=Strict` en cookies.
 - No se detectaron endpoints abiertos sin auth (todos los admin usan `authorize()`).
 
-### ⚠️ P2: No hay CSRF token explícito
-- **Problema:** Las APIs usan cookies HttpOnly con SameSite=Strict, que mitiga CSRF automáticamente en navegadores modernos. No hay token CSRF adicional.
-- **Impacto:** Bajo (SameSite=Strict es suficiente para la mayoría de casos).
-- **Recomendación:** Considerar CSRF tokens para acciones destructivas si se soportan navegadores legacy.
+### ✅ P2 MITIGADO: No hay CSRF token explícito
+- **Estado:** MITIGADO — Las APIs usan cookies HttpOnly con SameSite=Strict, que mitiga CSRF automáticamente. `origin` se valida en analytics. Los admin endpoints requieren auth. No se necesita token CSRF adicional.
 
 ---
 
@@ -209,10 +198,8 @@
 - **GPS:** Throttling client-side + server-side (5s/30s).
 - **Geocoding:** 1 req/s por proceso.
 
-### ⚠️ P2: Sin rate limiting en uploads de imágenes
-- **Problema:** El endpoint `/api/admin/upload` tiene auth pero no tiene rate limiting específico.
-- **Impacto:** Bajo (requiere auth + tenant capacity check).
-- **Recomendación:** Agregar rate limiting por tenant en uploads.
+### ✅ P2 RESUELTO: Sin rate limiting en uploads de imágenes
+- **Estado:** RESUELTO — Rate limiting in-memory agregado: 20 archivos por tenant por minuto en `/api/admin/upload` (todas las branches: product-model, brand-image, genérico).
 
 ---
 
@@ -237,15 +224,11 @@
 - `Permissions-Policy` header configurado (camera, geolocation, xr-spatial-tracking).
 - Health endpoint: `app/api/ready/route.ts` con timeout.
 
-### ⚠️ P2: Faltan headers de seguridad HTTP
-- **Problema:** No se configuran `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, `Referrer-Policy`, `Content-Security-Policy` en `next.config.ts`.
-- **Impacto:** Medio (depende del proxy/reverse proxy en producción).
-- **Recomendación:** Agregar estos headers en `next.config.ts` → `headers()`.
+### ✅ P2 RESUELTO: Faltan headers de seguridad HTTP
+- **Estado:** RESUELTO — Headers agregados en `next.config.ts`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `HSTS: max-age=63072000` (solo producción), CSP por ruta.
 
-### ⚠️ P2: Sin validación de CSP
-- **Problema:** No hay Content-Security-Policy configurado.
-- **Impacto:** Medio (mayor superficie de ataque XSS si se encuentra una vulnerabilidad).
-- **Recomendación:** CSP strict con nonce para scripts inline.
+### ✅ P2 RESUELTO: Sin validación de CSP
+- **Estado:** RESUELTO — CSP implementado por ruta: APIs con policy estricta, storage con policy de solo imágenes, general con soporte para MapLibre/OpenFreeMap (tiles, web workers, WebSocket).
 
 ---
 

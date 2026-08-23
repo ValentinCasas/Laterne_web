@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { getConfig } from "@/lib/config";
 
 /**
  * @summary Valida la entrada relacionada con los errores registrados.
@@ -21,7 +22,7 @@ function requestAddressHash(request: Request) {
     request.headers.get("x-real-ip") ||
     "unknown";
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:error:${address}`)
+    .update(`${getConfig().authSecret}:error:${address}`)
     .digest("hex");
 }
 

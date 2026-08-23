@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { getConfig } from "@/lib/config";
 
 export const publicAnalyticsEvents = [
   "page.view",
@@ -24,7 +25,7 @@ export const publicAnalyticsEvents = [
 /** @summary Crea una huella no reversible para agrupar actividad sin almacenar identificadores en claro. */
 export function analyticsHash(kind: "session" | "address", value: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:analytics:${kind}:${value}`)
+    .update(`${getConfig().authSecret}:analytics:${kind}:${value}`)
     .digest("hex");
 }
 

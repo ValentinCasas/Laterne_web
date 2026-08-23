@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { adminHrefFromPathname } from "@/lib/routes";
-import { Icon } from "@/components/admin/ui/icons";
 
 /** @summary Hook that builds tenant-aware admin hrefs from the current pathname. */
 export function useAdminHref() {

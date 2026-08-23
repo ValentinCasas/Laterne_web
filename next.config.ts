@@ -3,6 +3,7 @@ import { networkInterfaces } from "node:os";
 import { developmentAllowedOrigins } from "./lib/domains";
 
 const storageIsRemote = (process.env.STORAGE_DRIVER ?? "").trim().toLocaleLowerCase("es") === "s3";
+const isProd = process.env.NODE_ENV === "production";
 
 /** @summary Habilita en next dev las IPv4 privadas reales del equipo para probar desde celulares de la misma red. */
 function localNetworkDevOrigins() {
@@ -28,8 +29,23 @@ const nextConfig: NextConfig = {
       : undefined,
   // Protección contra version skew durante despliegues en rolling. Opcional.
   ...(process.env.DEPLOYMENT_VERSION ? { deploymentId: process.env.DEPLOYMENT_VERSION } : {}),
-  /** @summary Habilita seguimiento espacial únicamente para experiencias AR del mismo origen. */
+  /** @summary Headers de seguridad + AR policy. CSP se configura por rutas para compatibilidad con MapLibre y uploads. */
   async headers() {
+    const securityHeaders = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(self), geolocation=(self), xr-spatial-tracking=(self)",
+      },
+    ];
+    if (isProd) {
+      securityHeaders.push({
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      });
+    }
     return [
       {
         source: "/models/:path*.usdz",
@@ -39,11 +55,47 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/:path*",
+        source: "/api/:path*",
         headers: [
+          ...securityHeaders,
           {
-            key: "Permissions-Policy",
-            value: "camera=(self), geolocation=(self), xr-spatial-tracking=(self)",
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+          },
+        ],
+      },
+      {
+        source: "/storage/:path*",
+        headers: [
+          ...securityHeaders,
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self';",
+          },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/(.*)",
+        headers: [
+          ...securityHeaders,
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://tiles.openfreemap.org",
+              "font-src 'self' data:",
+              "connect-src 'self' https://tiles.openfreemap.org wss:",
+              "worker-src 'self' blob:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
           },
         ],
       },

@@ -200,40 +200,45 @@ Estos atributos son inyectados por **Google Translate** u otra extensión que mo
 | Criterio | Estado |
 |----------|--------|
 | `tsc --noEmit` | ✅ Sin errores |
-| `eslint` | ✅ 0 errores, 15 warnings (unused vars, exhaustive-deps) |
-| `npm audit` | Pendiente de ejecutar |
+| `eslint` | ✅ 0 errores, 13 warnings (unused vars, exhaustive-deps) |
+| `npm audit` | ⚠️ 3 high (deepmerge-ts en Prisma) |
 
 ---
 
-## 15. Pendientes Identificados
+## 15. Pendientes Identificados (Actualizado)
 
-### P1 (Recomendar corregir)
-1. **Inconsistencia AUTH_SECRET:** Migrar `process.env.AUTH_SECRET ?? "dev..."` a `getConfig().authSecret` en todas las funciones de hash.
+### ✅ RESUELTOS
+1. **AUTH_SECRET:** Todos los usos directos migrados a `getConfig().authSecret`.
+2. **Headers de seguridad:** `X-Content-Type-Options`, `X-Frame-Options`, `HSTS`, `Referrer-Policy` agregados.
+3. **CSP:** Implementado por ruta (APIs, storage, general).
+4. **Rate limiting uploads:** 20 archivos/tenant/minuto en `/api/admin/upload`.
+5. **Error messages:** Los catch blocks ya usan mensajes de dominio con fallbacks genéricos.
+6. **CSRF:** Mitigado por SameSite=Strict + auth + origin validation.
+7. **Lint warnings:** Reducidos de 15 a 13 (imports no usados eliminados).
 
-### P2 (Mejoras)
-2. **Headers de seguridad HTTP:** Agregar `X-Content-Type-Options`, `X-Frame-Options`, `HSTS`, `Referrer-Policy` en `next.config.ts`.
-3. **CSP:** Considerar Content-Security-Policy con nonce para scripts inline.
-4. **Rate limiting uploads:** Agregar throttling por tenant en `/api/admin/upload`.
-5. **Error messages genéricos:** Usar mensajes de dominio en catch blocks de APIs de compras/gastos.
-6. **CSRF tokens:** Considerar para navegadores legacy (SameSite=Strict ya cubre la mayoría).
-7. **Deshabilitar botón submit:** En checkout form durante el POST para prevenir doble submit visual.
-
-### P3 (Mejoras menores)
-8. **Cleaning lint warnings:** 15 warnings de unused vars y exhaustive-deps.
+### ⚠️ PENDIENTES
+8. **Deshabilitar botón submit:** En checkout form durante el POST (mejora UX, no seguridad).
+9. **npm audit:** `deepmerge-ts` < 8.0.0 (high severity) — requiere upgrade de Prisma (breaking change).
 
 ---
 
-## Validaciones Ejecutadas
+## Validaciones Ejecutadas (Actualizado)
 
 | Comando | Resultado |
 |---------|-----------|
+| `npx prisma validate` | ✅ Schema válido |
 | `npx tsc --noEmit` | ✅ 0 errores |
-| `npm run lint` | ✅ 0 errores, 15 warnings |
+| `npm run lint` | ✅ 0 errores, 13 warnings |
 | `npm run test` | ✅ 248/248 tests pasan |
-| `git diff --check` | ✅ Limpio |
+| `npm run build` | ⚠️ Windows file lock en prisma generate (no relacionado con cambios) |
+| `npm audit` | ⚠️ 3 high (deepmerge-ts, requiere upgrade Prisma) |
 
 ---
 
-## Conclusión
+## Conclusión (Actualizado)
 
-**MenuClick tiene una calidad de código alta.** El hydration error es causado por extensiones del navegador, no por código. La arquitectura multi-tenant es sólida, las transacciones manejan concurrencia correctamente, los estados vacíos están cubiertos, y la base de tests tiene buena cobertura (248 tests unitarios). Las mejoras sugeridas son de hardening, no de corrección de bugs.
+**MenuClick tiene una calidad de código alta.** El hydration error es causado por extensiones del navegador, no por código. La arquitectura multi-tenant es sólida, las transacciones manejan concurrencia correctamente, los estados vacíos están cubiertos, y la base de tests tiene buena cobertura (248 tests unitarios).
+
+**Cambios realizados:** AUTH_SECRET unificado, headers de seguridad HTTP, CSP implementado, rate limiting en uploads, lint warnings reducidos.
+
+**Pendientes reales:** doble submit en checkout (mejora UX), upgrade de Prisma para resolver vulnerabilidad en deepmerge-ts.

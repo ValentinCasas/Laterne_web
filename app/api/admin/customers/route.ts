@@ -5,10 +5,11 @@ import { recordAudit, toAuditValue } from "@/lib/audit";
 import { authorize } from "@/lib/auth";
 import { serialize } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getConfig } from "@/lib/config";
 
 function privateHash(value: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:${value}`)
+    .update(`${getConfig().authSecret}:${value}`)
     .digest("hex");
 }
 

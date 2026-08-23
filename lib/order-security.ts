@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { getConfig } from "@/lib/config";
 
 /** @summary Genera la referencia breve y legible que identifica un pedido almacenado. */
 export function orderReference(date = new Date(), prefix = "PED") {
@@ -24,6 +25,6 @@ export function orderTokenHash(token: string) {
 /** @summary Anonimiza una dirección de red para limitar abuso sin conservar datos en claro. */
 export function orderAddressHash(address: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:order:${address}`)
+    .update(`${getConfig().authSecret}:order:${address}`)
     .digest("hex");
 }

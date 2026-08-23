@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { createHash, randomBytes } from "node:crypto";
+import { getConfig } from "@/lib/config";
 
 /** @summary Genera un token privado para que un cliente frecuente administre su perfil. */
 export function loyaltyToken() {
@@ -9,7 +10,7 @@ export function loyaltyToken() {
 /** @summary Protege el token personal antes de compararlo o almacenarlo en la base. */
 export function loyaltyTokenHash(token: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:loyalty:${token}`)
+    .update(`${getConfig().authSecret}:loyalty:${token}`)
     .digest("hex");
 }
 

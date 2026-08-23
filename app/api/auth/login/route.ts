@@ -13,6 +13,7 @@ import {
   tenantBranchAdminPath,
 } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
+import { getConfig } from "@/lib/config";
 
 const credentials = z.object({
   email: z
@@ -43,7 +44,7 @@ function requestAddress(request: Request) {
 /** @summary Anonimiza un dato sensible antes de utilizarlo para controlar intentos. */
 function privateHash(value: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:${value}`)
+    .update(`${getConfig().authSecret}:${value}`)
     .digest("hex");
 }
 

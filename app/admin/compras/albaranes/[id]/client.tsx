@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon } from "@/components/admin/ui/icons";
 import { dateLabel, money } from "@/lib/helpers";
 import { adminHrefFromPathname } from "@/lib/routes";
 

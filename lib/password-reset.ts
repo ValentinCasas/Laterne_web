@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { getConfig } from "@/lib/config";
 
 /** @summary Genera una credencial aleatoria de un solo uso para restablecer el acceso. */
 export function passwordResetToken() {
@@ -8,6 +9,6 @@ export function passwordResetToken() {
 /** @summary Protege tokens, correos y direcciones de red antes de persistirlos. */
 export function passwordResetHash(kind: string, value: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:password-reset:${kind}:${value}`)
+    .update(`${getConfig().authSecret}:password-reset:${kind}:${value}`)
     .digest("hex");
 }

@@ -9,6 +9,27 @@ import { prisma } from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
 import { ensureTenantCapacity } from "@/lib/tenant-limits";
 
+/** @summary Rate limiting en memoria para uploads: 20 archivos por tenant por minuto. */
+const uploadCounts = new Map<string, { count: number; resetAt: number }>();
+function checkUploadRateLimit(tenantId: number): boolean {
+  const now = Date.now();
+  const key = String(tenantId);
+  const entry = uploadCounts.get(key);
+  if (!entry || entry.resetAt <= now) {
+    uploadCounts.set(key, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= 20;
+}
+// Limpieza periódica para evitar memory leak.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of uploadCounts) {
+    if (entry.resetAt <= now) uploadCounts.delete(key);
+  }
+}, 120_000);
+
 const folders = {
   productos: "images_product",
   categorias: "images_categories",
@@ -134,6 +155,8 @@ function validateModelFile(file: File, bytes: Uint8Array) {
 async function uploadProductModel(request: Request, formData: FormData) {
   const auth = await authorize("product.manage");
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!checkUploadRateLimit(auth.tenant.id))
+    return NextResponse.json({ error: "Demasiados uploads. Esperá un momento." }, { status: 429 });
   const file = formData.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No se recibió ningún modelo" }, { status: 400 });
@@ -202,6 +225,8 @@ export async function POST(request: Request) {
     const auth = await authorize("brand.manage");
     const file = formData.get("file");
     if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    if (!checkUploadRateLimit(auth.tenant.id))
+      return NextResponse.json({ error: "Demasiados uploads. Esperá un momento." }, { status: 429 });
     if (!(file instanceof File))
       return NextResponse.json({ error: "No se recibió una imagen" }, { status: 400 });
     const extension = extensions[file.type as keyof typeof extensions];
@@ -254,6 +279,8 @@ export async function POST(request: Request) {
   const resourceConfig = getAdminResource(resource);
   const auth = resourceConfig ? await authorize(resourceConfig.permission) : null;
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!checkUploadRateLimit(auth.tenant.id))
+    return NextResponse.json({ error: "Demasiados uploads. Esperá un momento." }, { status: 429 });
   const file = formData.get("file");
   const folder = folders[resource];
 

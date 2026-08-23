@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getDefaultTenant } from "@/lib/tenant";
+import { getConfig } from "@/lib/config";
 
 /**
  * @summary Valida la entrada relacionada con las solicitudes de demostración.
@@ -38,7 +39,7 @@ function requestAddress(request: Request) {
 /** @summary Genera una referencia irreversible para limitar abuso sin conservar la IP original. */
 function hashAddress(address: string) {
   return createHash("sha256")
-    .update(`${process.env.AUTH_SECRET ?? "development-only-change-me"}:${address}`)
+    .update(`${getConfig().authSecret}:${address}`)
     .digest("hex");
 }
 
