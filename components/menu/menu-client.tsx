@@ -137,7 +137,7 @@ export function MenuClient({
   useEffect(() => {
     /** @summary Fija el tope de los títulos justo debajo del navbar y del bloque de búsqueda reales. */
     const toolbar = toolbarRef.current;
-    const header = document.querySelector<HTMLElement>("header");
+    const header = document.querySelector<HTMLElement>('[data-site-navbar="true"]');
     const update = () => {
       const headerHeight = header?.getBoundingClientRect().height ?? 64;
       const toolbarHeight = toolbar?.getBoundingClientRect().height ?? 0;
@@ -145,7 +145,8 @@ export function MenuClient({
     };
     update();
     const observer = new ResizeObserver(update);
-    if (toolbar) observer.observe(toolbar);
+    if (toolbar) observer.observe(toolbar, { box: "border-box" });
+    if (header) observer.observe(header, { box: "border-box" });
     window.addEventListener("resize", update);
     return () => {
       observer.disconnect();
@@ -379,8 +380,9 @@ export function MenuClient({
 
       <section
         ref={toolbarRef}
+        data-menu-toolbar="true"
         aria-label="Navegación y búsqueda de la carta"
-        className="sticky top-16 z-30 border-b border-white/10 bg-black/95 py-3 shadow-lg shadow-black/20 backdrop-blur-xl md:py-4"
+        className="sticky top-[var(--site-navbar-height)] z-30 border-b border-white/10 bg-black/95 py-3 shadow-lg shadow-black/20 backdrop-blur-xl md:py-4"
       >
         <div className="shell">
           <div

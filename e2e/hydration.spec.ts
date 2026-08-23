@@ -153,8 +153,10 @@ test("navegación desde el tablero al editor y volver sin hydration errors", asy
   await expect(page.getByRole("heading", { name: "Recetas" })).toBeVisible();
   await expectCleanHydration(page, problems);
 
-  const row = page.locator("tr").filter({ hasText: productName });
-  await row.getByRole("link", { name: "Editar" }).first().click();
+  await page.getByPlaceholder(/Buscar por nombre/).fill(productName);
+  await expect(page.getByText(productName, { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Abrir acciones" }).filter({ visible: true }).first().click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
   await expect(page.getByRole("link", { name: /Volver/ })).toBeVisible();
   await expectCleanHydration(page, problems);
 

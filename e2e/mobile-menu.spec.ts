@@ -45,7 +45,9 @@ test.describe("carta pública responsive", () => {
       const menuToolbar = page.getByLabel("Navegación y búsqueda de la carta");
       await expect(siteNavbar).toHaveCSS("position", "fixed");
       await expect(menuToolbar).toHaveCSS("position", "sticky");
-      await expect(menuToolbar).toHaveCSS("top", "64px");
+      const navbarHeight = (await siteNavbar.boundingBox())?.height ?? 0;
+      expect(navbarHeight).toBeGreaterThanOrEqual(64);
+      await expect(menuToolbar).toHaveCSS("top", `${Math.round(navbarHeight)}px`);
 
       const categories = page.locator('a[href^="#category-"]');
       await expect(categories.first()).toBeVisible();
@@ -58,10 +60,33 @@ test.describe("carta pública responsive", () => {
       await rail.evaluate((element) => element.scrollTo({ left: element.scrollWidth, behavior: "instant" }));
       await expect(categories.last()).toBeInViewport();
       await page.evaluate(() => window.scrollTo({ top: Math.max(500, document.body.scrollHeight / 3), behavior: "instant" }));
-      expect(Math.round((await menuToolbar.boundingBox())?.y ?? -1)).toBe(64);
+      expect(Math.round((await menuToolbar.boundingBox())?.y ?? -1)).toBe(Math.round(navbarHeight));
       await expectNoGlobalOverflow(page);
     });
   }
+
+  test("respeta el area segura del telefono sin tapar la carta", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/t/laterne/carta");
+    await acceptPrivacy(page);
+    await page.evaluate(() => document.documentElement.style.setProperty("--site-safe-area-top", "24px"));
+
+    const siteNavbar = page.locator('[data-site-navbar="true"]');
+    const menuToolbar = page.locator('[data-menu-toolbar="true"]');
+    await expect(siteNavbar).toHaveCSS("height", "89px");
+    await expect(menuToolbar).toHaveCSS("top", "89px");
+
+    await page.evaluate(() => window.scrollTo({ top: 700, behavior: "instant" }));
+    await expect.poll(async () => Math.round((await menuToolbar.boundingBox())?.y ?? -1)).toBe(89);
+
+    const firstSection = page.locator('[id^="category-"]').first();
+    const toolbarHeight = (await menuToolbar.boundingBox())?.height ?? 0;
+    const scrollMarginTop = await firstSection.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).scrollMarginTop),
+    );
+    expect(scrollMarginTop).toBeGreaterThanOrEqual(89 + toolbarHeight);
+    await expectNoGlobalOverflow(page);
+  });
 
   test("completa filtros, producto, pedido y checkout a 390px", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });

@@ -165,7 +165,9 @@ test.describe.serial("regresión móvil transversal", () => {
 
     await page.setViewportSize({ width: 320, height: 844 });
     await page.goto(`/t/${tenantSlug}`);
-    const publicMenuTrigger = page.getByRole("button", { name: "Abrir navegación" });
+    await page.waitForTimeout(500);
+    const publicMenuTrigger = page.locator('button[aria-controls="mobile-navigation"]');
+    await expect(publicMenuTrigger).toHaveAttribute("aria-label", "Abrir navegación");
     expect((await publicMenuTrigger.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     await publicMenuTrigger.click();
     const publicDrawer = page.getByRole("dialog", { name: "Menú de navegación" });

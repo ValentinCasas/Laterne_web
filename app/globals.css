@@ -53,6 +53,8 @@
 
 :root {
   color-scheme: dark;
+  --site-safe-area-top: env(safe-area-inset-top, 0px);
+  --site-navbar-height: calc(4rem + var(--site-safe-area-top) + 1px);
   --brand-primary: #ec4899;
   --brand-secondary: #f5c542;
   --brand-background: #09090b;

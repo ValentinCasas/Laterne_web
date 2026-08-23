@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import { SiteHeader } from "@/components/site-header";
@@ -25,6 +25,13 @@ import {
   type MenuClickTheme,
 } from "@/lib/menuclick-theme";
 import { MenuClickThemeProvider } from "@/components/platform/menuclick-theme-provider";
+
+/** @summary Extiende el viewport hasta las areas seguras para posicionar correctamente la UI fija en moviles. */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 /** @summary Resuelve la experiencia y el negocio del host para el render de la solicitud. */
 async function resolveRequestContext() {
