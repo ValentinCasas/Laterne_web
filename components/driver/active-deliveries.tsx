@@ -12,6 +12,8 @@ export type DriverDelivery = {
   id: number;
   number: string;
   status: string;
+  routeId?: number | null;
+  routeOrder?: number | null;
   customerName: string;
   deliveryAddress?: string | null;
   contactPhone?: string | null;
@@ -90,11 +92,13 @@ export function DriverActiveDeliveries({
   onChange,
   onDelivered,
   onIncident,
+  routeActive = false,
 }: {
   deliveries: DriverDelivery[];
   onChange: (deliveries: DriverDelivery[]) => void;
   onDelivered?: () => void;
   onIncident?: () => void;
+  routeActive?: boolean;
 }) {
   const items = deliveries;
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -137,7 +141,7 @@ export function DriverActiveDeliveries({
         return;
       }
       const changedAt = new Date();
-      const nextItems = next === "DELIVERED"
+      const nextItems = next === "DELIVERED" && !routeActive
         ? items.filter((item) => item.id !== delivery.id)
         : items.map((item) => item.id === delivery.id
           ? { ...item, status: body.delivery!.status, statusLogs: [...(item.statusLogs ?? []), { status: next, previousStatus: item.status, changedAt }] }
@@ -204,18 +208,26 @@ export function DriverActiveDeliveries({
           const next = nextDriverStatus(delivery.status);
           const address = delivery.order?.deliveryAddress ?? delivery.deliveryAddress;
           const hasIncidents = delivery.incidents?.some((incident) => !incident.resolved);
-          const isActive = delivery.status === "ON_THE_WAY";
-          return (
+  const isActive = delivery.status === "ON_THE_WAY";
+  const isDelivered = delivery.status === "DELIVERED";
+  return (
             <article
-              key={delivery.id}
-              className={`group overflow-hidden rounded-3xl border shadow-xl transition-all duration-300 ${isActive ? "border-sky-400/20 bg-gradient-to-br from-sky-500/[.08] via-zinc-900 to-zinc-950 hover:border-sky-400/30" : "border-white/[.08] bg-zinc-900/80 hover:border-white/[.14] hover:shadow-2xl"}`}
+              key={delivery.id}              className={`group overflow-hidden rounded-3xl border shadow-xl transition-all duration-300 ${
+                isDelivered && routeActive
+                  ? "border-emerald-400/15 bg-zinc-900/50 opacity-70"
+                  : isActive
+                    ? "border-sky-400/20 bg-gradient-to-br from-sky-500/[.08] via-zinc-900 to-zinc-950 hover:border-sky-400/30"
+                    : "border-white/[.08] bg-zinc-900/80 hover:border-white/[.14] hover:shadow-2xl"
+              }`}
             >
               {/* Card header */}
               <button type="button" className="w-full p-4 text-left" onClick={() => setSelectedId(delivery.id)} aria-label={`Ver entrega ${delivery.number}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${isActive ? "bg-sky-500/20 text-sky-300" : "bg-pink-500/15 text-pink-300"}`}>
-                      #{index + 1}
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${
+                      isDelivered && routeActive ? "bg-emerald-500/20 text-emerald-300" : isActive ? "bg-sky-500/20 text-sky-300" : "bg-pink-500/15 text-pink-300"
+                    }`}>
+                      {isDelivered && routeActive ? "✓" : delivery.routeOrder ? `#${delivery.routeOrder}` : `#${index + 1}`}
                     </span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -254,6 +266,7 @@ export function DriverActiveDeliveries({
               </button>
 
               {/* Actions */}
+              {!(isDelivered && routeActive) && (
               <div className="flex gap-2 border-t border-white/5 p-3">
                 <button
                   type="button"
@@ -289,6 +302,7 @@ export function DriverActiveDeliveries({
                   </a>
                 )}
               </div>
+              )}
             </article>
           );
         })}
