@@ -433,6 +433,7 @@ model Tenant {
   receptionKnowledge      ReceptionKnowledge?
   conversationSessions    ConversationSession[]
   preferences            UserPreference[]
+  deliveryRoutes         DeliveryRoute[]
 
   @@map("tenant")
 }
@@ -1623,6 +1624,8 @@ model OrderDelivery {
   receiverName      String?                  @db.VarChar(160)
   deliveryFee       Decimal                  @default(0) @db.Decimal(12, 2)
   notes             String?                  @db.Text
+  routeId           Int?
+  routeOrder        Int?
   createdAt         DateTime                 @default(now())
   createdById       Int?
   reversedAt        DateTime?
@@ -1633,6 +1636,7 @@ model OrderDelivery {
   customer          LoyaltyCustomer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
   driver            User?                    @relation("DeliveryDriver", fields: [driverId], references: [id], onDelete: SetNull)
   driverProfile     DriverProfile?           @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+  route             DeliveryRoute?          @relation(fields: [routeId], references: [id], onDelete: SetNull)
   createdBy         User?                    @relation("OrderDeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   reversedBy        User?                    @relation("OrderDeliveryReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
   items             OrderDeliveryItem[]
@@ -1643,6 +1647,7 @@ model OrderDelivery {
   invoices          InvoiceRecord[]         @relation("OrderDeliveryInvoices")
 
   @@unique([tenantId, number])
+  @@index([routeId, routeOrder])
   @@index([tenantId, orderId, createdAt])
   @@index([tenantId, customerId, createdAt])
   @@index([tenantId, branchId, status, createdAt])
@@ -2101,6 +2106,7 @@ model Branch {
   receivableDocuments ReceivableDocument[]
   receivablePayments ReceivablePayment[]
   conversationSessions ConversationSession[]
+  deliveryRoutes      DeliveryRoute[]
 
   @@map("branch")
 }
@@ -3168,6 +3174,7 @@ model DriverProfile {
   incidents     DriverIncident[]
   positions     DriverPosition[]
   deliveries    OrderDelivery[]
+  routes        DeliveryRoute[]
   statusLogs    OrderDeliveryStatusLog[]
 
   @@index([tenantId, userId])
@@ -3448,4 +3455,37 @@ model UserPreference {
   @@unique([userId, key])
   @@index([tenantId, userId])
   @@map("userpreference")
+}
+
+/**
+ * @summary Recorrido operativo del repartidor: agrupa entregas en una secuencia
+ * ordenada con inicio, progreso, métricas y estados. Cada recorrido es una
+ * unidad de trabajo diaria que el repartidor inicia y finaliza explícitamente.
+ */
+model DeliveryRoute {
+  id              Int            @id @default(autoincrement())
+  tenantId        Int
+  driverProfileId Int
+  branchId        Int?
+  status          String         @default("PREPARING") @db.VarChar(24)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  totalStops      Int            @default(0)
+  completedStops  Int            @default(0)
+  incidentCount   Int            @default(0)
+  totalDistanceM   Int?
+  totalDurationS  Int?
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driver          DriverProfile  @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  branch          Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  deliveries      OrderDelivery[]
+
+  @@index([tenantId, driverProfileId, status])
+  @@index([tenantId, branchId, status])
+  @@index([tenantId, createdAt])
+  @@map("deliveryroute")
 }

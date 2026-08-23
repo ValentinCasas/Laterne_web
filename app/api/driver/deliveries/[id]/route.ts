@@ -112,6 +112,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         );
       }
 
+      // Sincronizar progreso del recorrido si la entrega pertenece a uno
+      if (reloaded.status === "DELIVERED" && reloaded.routeId) {
+        const completedCount = await tx.orderDelivery.count({
+          where: { routeId: reloaded.routeId, status: "DELIVERED" },
+        });
+        await tx.deliveryRoute.update({
+          where: { id: reloaded.routeId },
+          data: { completedStops: completedCount },
+        });
+      }
+
       return reloaded;
     });
 

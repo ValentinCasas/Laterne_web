@@ -81,6 +81,7 @@ La geocodificación de Delivery está desactivada por defecto. Puede conectarse 
 - **Tenant / Branch / TenantMembership / AuthSession**: multi-tenancy, sucursales, acceso.
 - **CustomerOrder / OrderItem / OrderStatusHistory**: pedidos, líneas, trazabilidad.
 - **OrderDelivery / OrderDeliveryItem / CustomerPayment**: entregas y pagos de clientes.
+- **DeliveryRoute**: recorrido operativo del repartidor que agrupa entregas en secuencia ordenada con inicio, progreso, métricas y estados (PREPARING, IN_PROGRESS, COMPLETED, CANCELLED).
 - **InvoiceRecord / InvoiceRecordItem**: comprobantes (facturas) y sus líneas snapshot inmutables.
 - **Product / Category / ProductPrice / ProductVariant / ProductExtra**: catálogo y precios.
 - **RecipeIngredient / IngredientCostHistory / UnitConversion**: recetas y costos históricos.
