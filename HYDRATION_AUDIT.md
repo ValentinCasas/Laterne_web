@@ -32,8 +32,17 @@ Se auditó `components/menu/menu-client.tsx` para descartar errores internos de 
 - **Locale explícito**: `toLocaleLowerCase("es")` e `Intl.NumberFormat(locale, ...)` usan valores explícitos, no dependen del locale del navegador en el primer render.
 - **IDs estables**: los IDs de secciones son `category-${category.id}` basados en props; no se generan IDs aleatorios en render.
 - **HTML válido**: no hay anidamiento incorrecto de tags interactivos.
+- **Inputs/Selects**: valores SSR (`""`, `"all"`, `"recommended"`) idénticos al cliente.
 
-## 4. Decisión
+## 4. Auditoría global de hydration
+
+Se verificó que **ningún componente** del proyecto tenga riesgo real de hydration mismatch:
+
+- `checkout-form.tsx`: `Date.now()+Math.random()` solo en función de user action, no en render.
+- `expenses-manager.tsx`, `purchases-modals.tsx`: `new Date().toISOString().slice(0,10)` en useState de admin (UTC consistente, riesgo muy bajo).
+- Todos los componentes de carta (`menu-client`, `menu-product-card`, `carta-header`, `product-actions`): limpios.
+
+## 5. Decisión
 
 No se aplicó ningún parche de ocultamiento (`suppressHydrationWarning`, scripts de limpieza, MutationObserver) porque:
 
@@ -41,7 +50,7 @@ No se aplicó ningún parche de ocultamiento (`suppressHydrationWarning`, script
 2. El usuario prohibió expresamente usar parches para ocultar el error.
 3. Forzar `suppressHydrationWarning` no soluciona la causa raíz y puede enmascarar futuros errores reales.
 
-## 5. Reproducción limpia
+## 6. Reproducción limpia
 
 Para confirmar que el error desaparece sin la extensión:
 
@@ -52,8 +61,9 @@ Para confirmar que el error desaparece sin la extensión:
 
 Si el error reaparece solo con la extensión activa, queda confirmado como issue del navegador del usuario, no de MenuClick.
 
-## 6. Estado
+## 7. Estado final
 
 - **Causa**: extensión del navegador (no MenuClick).
 - **Corrección interna necesaria**: ninguna.
 - **Acción recomendada al usuario**: desactivar la extensión en el dominio de MenuClick o usar navegación sin extensiones para producción.
+- **Auditado por**: Buffy (Codebuff) — 23 agosto 2026.
