@@ -118,7 +118,7 @@ function popupButton(text: string, onClick: () => void) {
 }
 
 /** @summary Popup de parada con datos reales y acciones. */
-function buildStopPopup(stop: RouteStop, index: number, onSelect?: (id: number) => void) {
+function buildStopPopup(stop: RouteStop, index: number, onSelect?: (id: number) => void, onEditAddress?: (id: number) => void) {
   const content = document.createElement("div");
   content.className = "mc-map-popup";
   content.style.maxWidth = "280px";
@@ -145,10 +145,11 @@ function buildStopPopup(stop: RouteStop, index: number, onSelect?: (id: number) 
     content.append(popupText("mc-map-popup__row", `Total: ${new Intl.NumberFormat("es-AR", { style: "currency", currency: stop.currency ?? "ARS", maximumFractionDigits: 0 }).format(total)}`));
   }
   // Action buttons
-  if (onSelect) {
+  if (onSelect || onEditAddress) {
     const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;gap:6px;margin-top:10px;";
-    actions.appendChild(popupButton("Ver datos", () => onSelect(stop.id)));
+    actions.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;";
+    if (onSelect) actions.appendChild(popupButton("Ver datos", () => onSelect(stop.id)));
+    if (onEditAddress && !delivered) actions.appendChild(popupButton("Editar dirección", () => onEditAddress(stop.id)));
     content.appendChild(actions);
   }
   return content;
@@ -174,10 +175,12 @@ export function DriverRouteMap({
   deliveries,
   selectedId,
   onSelect,
+  onEditAddress,
 }: {
   deliveries: DriverDelivery[];
   selectedId?: number | null;
   onSelect?: (id: number) => void;
+  onEditAddress?: (id: number) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -221,7 +224,14 @@ export function DriverRouteMap({
       }];
     });
     const routeOrigin = origin ?? stops[0] ?? null;
-    const orderedStops = routeOrigin ? orderDeliveryRouteStops(routeOrigin, stops) : [];
+    // When deliveries have routeOrder (active route), respect that order.
+    // Only fall back to proximity sort for deliveries without routeOrder.
+    const hasRouteOrder = stops.some((s) => s.routeOrder != null);
+    const orderedStops = routeOrigin
+      ? hasRouteOrder
+        ? [...stops].sort((a, b) => (a.routeOrder ?? Infinity) - (b.routeOrder ?? Infinity))
+        : orderDeliveryRouteStops(routeOrigin, stops)
+      : [];
     return {
       origin: routeOrigin,
       originInfo,
@@ -351,7 +361,7 @@ export function DriverRouteMap({
       const isSelected = selectedId === stop.id;
       const mkElement = buildStopMarker(i + 1, stop.status, isSelected);
       const popup = new maplibregl.Popup({ offset: 18, closeButton: false }).setDOMContent(
-        buildStopPopup(stop, i + 1, onSelect)
+        buildStopPopup(stop, i + 1, onSelect, onEditAddress)
       );
       const mk = new maplibregl.Marker({ element: mkElement, anchor: "bottom" })
         .setLngLat([stop.longitude, stop.latitude])
@@ -374,7 +384,7 @@ export function DriverRouteMap({
     const bounds = new maplibregl.LngLatBounds();
     coords.forEach((p) => bounds.extend(p));
     if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 54, maxZoom: 15, duration: 500 });
-  }, [orderedStops, originInfo, routeOrigin, selectedId, onSelect]);
+  }, [orderedStops, originInfo, routeOrigin, selectedId, onSelect, onEditAddress]);
 
   /* ── Fly to selected marker ── */
   useEffect(() => {

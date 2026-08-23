@@ -157,3 +157,75 @@ function currentStatusFor(delivery: { status: string }) {
   if (delivery.status === "DELIVERED") return "ON_THE_WAY";
   return delivery.status;
 }
+
+const editAddressInput = z.object({
+  deliveryAddress: z.string().trim().min(1).max(500),
+  reference: z.string().trim().max(500).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
+
+/**
+ * @summary PUT: Permite al repartidor corregir la dirección/ubicación de una parada.
+ * Solo aplica a entregas propias y que no estén completadas.
+ * Registra auditoría del cambio.
+ */
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await authorize();
+  if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  const driverProfile = await prisma.driverProfile.findFirst({
+    where: { tenantId: auth.tenant.id, userId: auth.session.userId, active: true },
+  });
+  if (!driverProfile) return NextResponse.json({ error: "No tenés un perfil de repartidor activo vinculado" }, { status: 403 });
+
+  const deliveryId = Number((await context.params).id);
+  if (!Number.isInteger(deliveryId)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
+  const parsed = editAddressInput.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
+
+  try {
+    const current = await prisma.orderDelivery.findFirst({
+      where: { id: deliveryId, tenantId: auth.tenant.id, driverProfileId: driverProfile.id },
+      select: { status: true, deliveryAddress: true, addressSnapshot: true, latitude: true, longitude: true, notes: true },
+    });
+    if (!current) return NextResponse.json({ error: "La entrega no está asignada a vos" }, { status: 400 });
+    if (current.status === "DELIVERED") return NextResponse.json({ error: "No podés editar una entrega ya completada" }, { status: 400 });
+
+    const { deliveryAddress, reference, latitude, longitude } = parsed.data;
+
+    const updateData: Record<string, unknown> = {
+      deliveryAddress,
+      addressSnapshot: deliveryAddress,
+    };
+    if (latitude !== undefined) updateData.latitude = String(latitude);
+    if (longitude !== undefined) updateData.longitude = String(longitude);
+    if (reference !== undefined) {
+      // Update notes/reference if provided
+      const existingNotes = current.notes ?? "";
+      const refPrefix = "[Ref] ";
+      const cleanNotes = existingNotes.replace(/^\[Ref\] .*$/m, "").trim();
+      updateData.notes = reference ? `${refPrefix}${reference}${cleanNotes ? "\n" + cleanNotes : ""}` : cleanNotes || null;
+    }
+
+    const updated = await prisma.orderDelivery.update({
+      where: { id: deliveryId },
+      data: updateData,
+    });
+
+    await recordAudit({
+      context: auth,
+      action: "delivery-address-update",
+      entityType: "order-delivery",
+      entityId: deliveryId,
+      oldValues: toAuditValue({ deliveryAddress: current.deliveryAddress, latitude: current.latitude, longitude: current.longitude }),
+      newValues: toAuditValue({ deliveryAddress, latitude: latitude !== undefined ? String(latitude) : undefined, longitude: longitude !== undefined ? String(longitude) : undefined }),
+      request,
+    });
+
+    return NextResponse.json({ delivery: serialize(updated) });
+  } catch {
+    return NextResponse.json({ error: "No se pudo actualizar la dirección" }, { status: 500 });
+  }
+}

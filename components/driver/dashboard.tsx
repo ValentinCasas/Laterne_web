@@ -16,6 +16,7 @@ import { googleMapsRouteUrl, orderDeliveryRouteStops } from "@/lib/delivery-rout
 import { Icon } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
 import { formatTime, formatRelativeTime } from "@/lib/date-format";
+import { EditAddressModal } from "@/components/driver/edit-address-modal";
 import Swal from "sweetalert2";
 
 const SWAL_THEME = { background: "#18181b", color: "#fafafa" };
@@ -70,20 +71,35 @@ export function DriverDashboard({
   lastPosition: LastPosition;
   initialRoute?: ActiveRoute | null;
 }) {
-  const [deliveries, setDeliveries] = useState(initialDeliveries);
+  const [rawDeliveries, setRawDeliveries] = useState(initialDeliveries);
   const [completedToday, setCompletedToday] = useState(initialCompleted);
   const [deliveredTodayCount, setDeliveredTodayCount] = useState(initialCompleted.length);
   const [incidentCount, setIncidentCount] = useState(incidents);
   const [route, setRoute] = useState(initialRoute ?? null);
   const [working, setWorking] = useState(false);
 
+  /* ── Source of truth: when a route is active, route.deliveries includes ALL
+     stops (pending + delivered). The separate `rawDeliveries` state only has
+     active statuses and would drop DELIVERED stops on every poll. */
+  const hasActiveRoute = route?.status === "IN_PROGRESS" || route?.status === "PREPARING";
+  const deliveries = useMemo(() => {
+    if (hasActiveRoute && route?.deliveries?.length) return route.deliveries;
+    return rawDeliveries;
+  }, [hasActiveRoute, route?.deliveries, rawDeliveries]);
+  const setDeliveriesFromRoute = useCallback((updater: (prev: DriverDelivery[]) => DriverDelivery[]) => {
+    setRoute((prev) => {
+      if (!prev?.deliveries) return prev;
+      return { ...prev, deliveries: updater(prev.deliveries) };
+    });
+  }, []);
+
   /* ── Map ↔ List sync ── */
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectTarget, setSelectTarget] = useState<"map" | "list" | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filter, setFilter] = useState<"Todos" | "Pendientes" | "Entregados" | "Incidencias">("Todos");
+  const [editAddressId, setEditAddressId] = useState<number | null>(null);
   /* ── Route computed ── */
-  const hasActiveRoute = route?.status === "IN_PROGRESS" || route?.status === "PREPARING";
   const completedCount = deliveries.filter((d) => d.status === "DELIVERED").length;
   const pendingDeliveries = deliveries.filter((d) => d.status !== "DELIVERED");
   const nextStop = hasActiveRoute ? pendingDeliveries[0] ?? null : null;
@@ -170,13 +186,15 @@ export function DriverDashboard({
       const response = await scopedFetch("/api/driver/deliveries", { cache: "no-store" }).catch(() => null);
       if (!response?.ok || disposed) return;
       const body = (await response.json()) as { activeDeliveries?: DriverDelivery[]; completedToday?: CompletedDelivery[]; deliveredTodayCount?: number };
-      if (body.activeDeliveries) setDeliveries(body.activeDeliveries);
+      // When a route is active, route.deliveries is the source of truth.
+      // The /deliveries endpoint only returns active statuses and would drop DELIVERED stops.
+      if (!hasActiveRoute && body.activeDeliveries) setRawDeliveries(body.activeDeliveries);
       if (body.completedToday) setCompletedToday(body.completedToday);
       if (body.deliveredTodayCount !== undefined) setDeliveredTodayCount(body.deliveredTodayCount);
     }
     const timer = window.setInterval(() => void refresh(), 20_000);
     return () => { disposed = true; window.clearInterval(timer); };
-  }, []);
+  }, [hasActiveRoute]);
 
   /* ── Polling: recorrido activo ── */
   useEffect(() => {
@@ -220,9 +238,12 @@ export function DriverDashboard({
         return;
       }
       setRoute(body.route);
-      const delRes = await scopedFetch("/api/driver/deliveries", { cache: "no-store" });
-      const delBody = (await delRes.json().catch(() => ({}))) as { activeDeliveries?: DriverDelivery[] };
-      if (delBody.activeDeliveries) setDeliveries(delBody.activeDeliveries);
+      // Re-fetch full route with all deliveries to sync state
+      const routeRes = await scopedFetch(`/api/driver/routes/${body.route.id}`, { cache: "no-store" }).catch(() => null);
+      if (routeRes?.ok) {
+        const routeBody = (await routeRes.json().catch(() => ({}))) as { route?: ActiveRoute };
+        if (routeBody.route) setRoute(routeBody.route);
+      }
     } finally {
       setWorking(false);
     }
@@ -272,7 +293,7 @@ export function DriverDashboard({
       setSelectedId(null);
       const delRes = await scopedFetch("/api/driver/deliveries", { cache: "no-store" });
       const delBody = (await delRes.json().catch(() => ({}))) as { activeDeliveries?: DriverDelivery[]; completedToday?: CompletedDelivery[]; deliveredTodayCount?: number };
-      if (delBody.activeDeliveries) setDeliveries(delBody.activeDeliveries);
+      if (delBody.activeDeliveries) setRawDeliveries(delBody.activeDeliveries);
       if (delBody.completedToday) setCompletedToday(delBody.completedToday);
       if (delBody.deliveredTodayCount !== undefined) setDeliveredTodayCount(delBody.deliveredTodayCount);
       await Swal.fire({ title: "Recorrido completado", icon: "success", timer: 1500, showConfirmButton: false, ...SWAL_THEME });
@@ -285,7 +306,7 @@ export function DriverDashboard({
   return (
     <div className="space-y-4 overflow-x-hidden">
       {/* ── Hero KPIs ── */}
-      <DriverSummaryCards active={deliveries.length} deliveredToday={deliveredTodayCount} averageMinutes={averageMinutes} incidents={incidentCount} />
+      <DriverSummaryCards active={hasActiveRoute ? pendingDeliveries.length : deliveries.length} deliveredToday={deliveredTodayCount} averageMinutes={averageMinutes} incidents={incidentCount} />
 
       {/* ── Main layout: Map + Sidebar ── */}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,.8fr)] min-w-0">
@@ -296,6 +317,7 @@ export function DriverDashboard({
             deliveries={sortedDeliveries}
             selectedId={selectedId}
             onSelect={handleMarkerSelect}
+            onEditAddress={(id) => setEditAddressId(id)}
           />
 
           {/* ── Entregas ── */}
@@ -347,7 +369,7 @@ export function DriverDashboard({
             <DriverActiveDeliveries
               deliveries={filteredDeliveries}
               allDeliveries={sortedDeliveries}
-              onChange={setDeliveries}
+              onChange={hasActiveRoute ? (next) => setDeliveriesFromRoute(() => next) : setRawDeliveries}
               onDelivered={() => {
                 setDeliveredTodayCount((value) => value + 1);
                 setCompletedToday((current) => {
@@ -489,7 +511,7 @@ export function DriverDashboard({
 
           {/* GPS — SIEMPRE visible */}
           <DriverLocationSharing
-            deliveries={sortedDeliveries.map((delivery) => ({ id: delivery.id, branchId: delivery.branch?.id, status: delivery.status }))}
+            deliveries={sortedDeliveries.filter((d) => d.status !== "DELIVERED").map((delivery) => ({ id: delivery.id, branchId: delivery.branch?.id, status: delivery.status }))}
             fallbackBranchId={driver.branches?.[0]?.branch?.id}
             initialEnabled={driver.locationSharingEnabled}
             initialLastPosition={lastPosition}
@@ -530,6 +552,32 @@ export function DriverDashboard({
           )}
         </aside>
       </div>
+
+      {/* ── Edit Address Modal ── */}
+      {editAddressId !== null && (() => {
+        const editDelivery = deliveries.find((d) => d.id === editAddressId);
+        if (!editDelivery) return null;
+        return (
+          <EditAddressModal
+            deliveryId={editAddressId}
+            currentAddress={editDelivery.order?.deliveryAddress ?? editDelivery.deliveryAddress ?? ""}
+            currentReference={editDelivery.order?.notes ?? editDelivery.instructions}
+            currentLat={coordinate(editDelivery.latitude, 90)}
+            currentLng={coordinate(editDelivery.longitude, 180)}
+            onClose={() => setEditAddressId(null)}
+            onSaved={(updated) => {
+              if (hasActiveRoute) {
+                setDeliveriesFromRoute((prev) => prev.map((d) =>
+                  d.id === editAddressId
+                    ? { ...d, deliveryAddress: updated.deliveryAddress, latitude: String(updated.latitude), longitude: String(updated.longitude) }
+                    : d
+                ));
+              }
+              setEditAddressId(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
