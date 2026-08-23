@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DriverActiveDeliveries, type DriverDelivery } from "@/components/driver/active-deliveries";
 import { DriverLocationSharing } from "@/components/driver/location-sharing";
 import { DriverProfileCard } from "@/components/driver/profile-card";
@@ -89,8 +89,6 @@ export function DriverDashboard({
   const [selectTarget, setSelectTarget] = useState<"map" | "list" | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filter, setFilter] = useState<"Todos" | "Pendientes" | "Entregados" | "Incidencias">("Todos");
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
   /* ── Route computed ── */
   const hasActiveRoute = route?.status === "IN_PROGRESS" || route?.status === "PREPARING";
   const completedCount = deliveries.filter((d) => d.status === "DELIVERED").length;
@@ -298,12 +296,8 @@ export function DriverDashboard({
 
       {/* ── Main layout: Map + Sidebar ── */}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,.8fr)]">
-        {/* ── Left: Map + Deliveries (scrollable) ── */}
-        <div
-          ref={scrollContainerRef}
-          className="space-y-4 lg:col-start-1 lg:max-h-[calc(100vh-180px)] lg:overflow-y-auto lg:pr-1"
-          style={{ scrollbarGutter: "stable" }}
-        >
+        {/* ── Left: Map + Deliveries ── */}
+        <div className="space-y-4 lg:col-start-1">
           {/* Mapa */}
           <DriverRouteMap
             deliveries={sortedDeliveries}

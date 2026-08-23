@@ -284,9 +284,23 @@ export function DriverRouteMap({
       }
     }
 
+    // Pending segment: starts from the LAST delivered stop (or origin if none delivered)
+    const lastDeliveredIdx = (() => {
+      for (let i = orderedStops.length - 1; i >= 0; i--) {
+        if (orderedStops[i]!.status === "DELIVERED") return i;
+      }
+      return -1;
+    })();
+    const pendingCoords: [number, number][] = [
+      lastDeliveredIdx >= 0
+        ? [orderedStops[lastDeliveredIdx]!.longitude, orderedStops[lastDeliveredIdx]!.latitude]
+        : [currentOrigin.longitude, currentOrigin.latitude],
+      ...orderedStops.slice(lastDeliveredIdx + 1).map((s) => [s.longitude, s.latitude] as [number, number]),
+    ];
+
     // Draw route lines (completed = green, pending = pink)
     const drawLines = () => {
-      // Completed segment (green)
+      // Completed segment (solid green)
       if (completedCoords.length > 1) {
         const completedData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: completedCoords } };
         const src = m.getSource("route-completed") as maplibregl.GeoJSONSource | undefined;
@@ -302,19 +316,21 @@ export function DriverRouteMap({
           });
         }
       }
-      // Pending segment (pink, dashed)
-      const pendingData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: coords } };
-      const src2 = m.getSource("route-pending") as maplibregl.GeoJSONSource | undefined;
-      if (src2) src2.setData(pendingData);
-      else {
-        m.addSource("route-pending", { type: "geojson", data: pendingData });
-        m.addLayer({
-          id: "route-pending-line",
-          type: "line",
-          source: "route-pending",
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#ec4899", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [1.2, 1.4] },
-        });
+      // Pending segment (dashed pink, only from last delivered to remaining stops)
+      if (pendingCoords.length > 1) {
+        const pendingData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: pendingCoords } };
+        const src2 = m.getSource("route-pending") as maplibregl.GeoJSONSource | undefined;
+        if (src2) src2.setData(pendingData);
+        else {
+          m.addSource("route-pending", { type: "geojson", data: pendingData });
+          m.addLayer({
+            id: "route-pending-line",
+            type: "line",
+            source: "route-pending",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#ec4899", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [1.2, 1.4] },
+          });
+        }
       }
     };
 

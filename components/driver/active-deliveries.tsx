@@ -69,6 +69,29 @@ function actionLabel(status: string) {
   return deliveryStatusMeta(status).label;
 }
 
+/** @summary Agrupa eventos consecutivos del mismo tipo para no repetir "Asignado" N veces. */
+function groupStatusLogs(logs: Array<{ status: string; previousStatus: string | null; changedAt: string | Date; reason?: string | null; id?: number }> | undefined) {
+  if (!logs || logs.length === 0) return [];
+  const grouped: Array<{ status: string; previousStatus: string | null; changedAt: string | Date; reason: string | null; id: number; count: number }> = [];
+  for (const log of logs) {
+    const last = grouped[grouped.length - 1];
+    if (last && last.status === log.status) {
+      last.count += 1;
+      last.changedAt = log.changedAt; // Keep latest timestamp
+    } else {
+      grouped.push({
+        status: log.status,
+        previousStatus: log.previousStatus,
+        changedAt: log.changedAt,
+        reason: log.reason ?? null,
+        id: log.id ?? grouped.length,
+        count: 1,
+      });
+    }
+  }
+  return grouped;
+}
+
 function actionIcon(status: string) {
   if (status === "PICKED_UP") return "package" as const;
   if (status === "ON_THE_WAY") return "truck" as const;
@@ -344,9 +367,39 @@ export function DriverActiveDeliveries({
       </div>
 
       {/* ── Detail Drawer ── */}
-      <Drawer open={Boolean(drawerOpen && selected)} onClose={() => onCloseDrawer?.()} title={selected ? `Parada ${selected.routeOrder ?? selected.number} · Entrega ${selected.number}` : "Detalle"} width="560px">
+      <Drawer
+        open={Boolean(drawerOpen && selected)}
+        onClose={() => onCloseDrawer?.()}
+        title={selected ? `Parada ${selected.routeOrder ?? selected.number} · Entrega ${selected.number}` : "Detalle"}
+        width="560px"
+        footer={selected && (
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <button
+              type="button"
+              className="flex min-h-12 items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
+              onClick={() => setIncidentForId(selected.id)}
+            >
+              <Icon name="warning" className="h-4 w-4" />
+              Incidencia
+            </button>
+            {nextDriverStatus(selected.status) && (
+              <button
+                type="button"
+                className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${
+                  nextDriverStatus(selected.status) === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-sky-600 hover:bg-sky-500"
+                }`}
+                disabled={workingId === selected.id}
+                onClick={() => void advance(selected)}
+              >
+                {workingId === selected.id ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name={actionIcon(nextDriverStatus(selected.status)!)} className="h-4 w-4" />}
+                {actionLabel(nextDriverStatus(selected.status)!)}
+              </button>
+            )}
+          </div>
+        )}
+      >
         {selected && (
-          <div className="space-y-5 pb-24">
+          <div className="space-y-5">
             {/* Status + Route order */}
             <div className="flex items-center gap-3">
               {selected.routeOrder && (
@@ -427,46 +480,23 @@ export function DriverActiveDeliveries({
               </ul>
             </section>
 
-            {/* Timeline */}
+            {/* Timeline agrupado */}
             <section>
               <h3 className="mb-3 text-sm font-black text-white">Historial</h3>
               <Timeline
-                items={(selected.statusLogs ?? []).map((log, i) => ({
-                  id: log.id ?? i,
-                  date: log.changedAt,
-                  title: deliveryStatusMeta(log.status).label,
-                  description: log.reason,
-                  tone: log.status === "DELIVERED" ? "success" : log.status === "INCIDENT" ? "danger" : "info",
-                  icon: <Icon name={log.status === "DELIVERED" ? "check" : log.status === "INCIDENT" ? "warning" : "truck"} className="h-3.5 w-3.5" />,
+                items={groupStatusLogs(selected.statusLogs).map((group) => ({
+                  id: group.id,
+                  date: group.changedAt,
+                  title: group.count > 1
+                    ? `${deliveryStatusMeta(group.status).label} ×${group.count}`
+                    : deliveryStatusMeta(group.status).label,
+                  description: group.reason,
+                  tone: group.status === "DELIVERED" ? "success" : group.status === "INCIDENT" ? "danger" : "info",
+                  icon: <Icon name={group.status === "DELIVERED" ? "check" : group.status === "INCIDENT" ? "warning" : "truck"} className="h-3.5 w-3.5" />,
                 }))}
                 initialLimit={5}
               />
             </section>
-
-            {/* Sticky actions */}
-            <div className="sticky -bottom-5 -mx-5 -mb-5 z-20 grid grid-cols-[auto_1fr] gap-2 border-t border-white/10 bg-zinc-950/95 p-4 backdrop-blur-xl">
-              <button
-                type="button"
-                className="flex min-h-12 items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
-                onClick={() => setIncidentForId(selected.id)}
-              >
-                <Icon name="warning" className="h-4 w-4" />
-                Incidencia
-              </button>
-              {nextDriverStatus(selected.status) && (
-                <button
-                  type="button"
-                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${
-                    nextDriverStatus(selected.status) === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-sky-600 hover:bg-sky-500"
-                  }`}
-                  disabled={workingId === selected.id}
-                  onClick={() => void advance(selected)}
-                >
-                  {workingId === selected.id ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name={actionIcon(nextDriverStatus(selected.status)!)} className="h-4 w-4" />}
-                  {actionLabel(nextDriverStatus(selected.status)!)}
-                </button>
-              )}
-            </div>
           </div>
         )}
       </Drawer>

@@ -165,7 +165,7 @@ export function DriverDeliveriesHistory({ deliveries }: { deliveries: Delivery[]
       </div>
 
       {/* Detail drawer */}
-      <Drawer open={Boolean(selected)} onClose={() => setSelectedId(null)} title={selected ? `Historial ${selected.number}` : "Historial"} width="580px">
+      <Drawer open={Boolean(selected)} onClose={() => { /* keep selection on close */ }} title={selected ? `Historial ${selected.number}` : "Historial"} width="580px">
         {selected && (
           <div className="space-y-5">
             {/* Header info */}

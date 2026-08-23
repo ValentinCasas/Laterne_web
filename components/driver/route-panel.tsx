@@ -149,6 +149,29 @@ function actionIcon(status: string) {
   return "arrow-right" as const;
 }
 
+/** @summary Agrupa eventos consecutivos del mismo tipo para no repetir "Asignado" N veces. */
+function groupStatusLogs(logs: Array<{ status: string; previousStatus: string | null; changedAt: string | Date; reason?: string | null; id?: number }> | undefined) {
+  if (!logs || logs.length === 0) return [];
+  const grouped: Array<{ status: string; previousStatus: string | null; changedAt: string | Date; reason: string | null; id: number; count: number }> = [];
+  for (const log of logs) {
+    const last = grouped[grouped.length - 1];
+    if (last && last.status === log.status) {
+      last.count += 1;
+      last.changedAt = log.changedAt; // Keep latest timestamp
+    } else {
+      grouped.push({
+        status: log.status,
+        previousStatus: log.previousStatus,
+        changedAt: log.changedAt,
+        reason: log.reason ?? null,
+        id: log.id ?? grouped.length,
+        count: 1,
+      });
+    }
+  }
+  return grouped;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Map Helpers                                                        */
 /* ------------------------------------------------------------------ */
@@ -391,22 +414,69 @@ export function DriverRoutePanel({
       ...orderedStops.map((s) => [s.longitude, s.latitude] as [number, number]),
     ];
 
-    // Route line
-    const lineData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: coords } };
-    const drawLine = () => {
-      const src = m.getSource("route-line") as maplibregl.GeoJSONSource | undefined;
-      if (src) src.setData(lineData);
-      else {
-        m.addSource("route-line", { type: "geojson", data: lineData });
-        m.addLayer({
-          id: "route-line-layer",
-          type: "line",
-          source: "route-line",
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#ec4899", "line-width": 4, "line-opacity": 0.7, "line-dasharray": [1.2, 1.4] },
-        });
+    // Find where completed portion ends (last DELIVERED stop index)
+    const completedCoords: [number, number][] = [[routeOrigin.longitude, routeOrigin.latitude]];
+    for (let i = 0; i < orderedStops.length; i++) {
+      if (orderedStops[i]!.status === "DELIVERED") {
+        completedCoords.push([orderedStops[i]!.longitude, orderedStops[i]!.latitude]);
+      }
+    }
+
+    // Pending segment: starts from the LAST delivered stop (or origin if none delivered)
+    const lastDeliveredIdx = (() => {
+      for (let i = orderedStops.length - 1; i >= 0; i--) {
+        if (orderedStops[i]!.status === "DELIVERED") return i;
+      }
+      return -1;
+    })();
+    const pendingCoords: [number, number][] = [
+      lastDeliveredIdx >= 0
+        ? [orderedStops[lastDeliveredIdx]!.longitude, orderedStops[lastDeliveredIdx]!.latitude]
+        : [routeOrigin.longitude, routeOrigin.latitude],
+      ...orderedStops.slice(lastDeliveredIdx + 1).map((s) => [s.longitude, s.latitude] as [number, number]),
+    ];
+
+    // Draw route lines (completed = green solid, pending = pink dashed)
+    const drawLines = () => {
+      // Completed segment (solid green)
+      if (completedCoords.length > 1) {
+        const completedData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: completedCoords } };
+        const src = m.getSource("route-completed") as maplibregl.GeoJSONSource | undefined;
+        if (src) src.setData(completedData);
+        else {
+          m.addSource("route-completed", { type: "geojson", data: completedData });
+          m.addLayer({
+            id: "route-completed-line",
+            type: "line",
+            source: "route-completed",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#10b981", "line-width": 4, "line-opacity": 0.7 },
+          });
+        }
+      }
+      // Pending segment (dashed pink, only from last delivered to remaining stops)
+      if (pendingCoords.length > 1) {
+        const pendingData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: pendingCoords } };
+        const src2 = m.getSource("route-pending") as maplibregl.GeoJSONSource | undefined;
+        if (src2) src2.setData(pendingData);
+        else {
+          m.addSource("route-pending", { type: "geojson", data: pendingData });
+          m.addLayer({
+            id: "route-pending-line",
+            type: "line",
+            source: "route-pending",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#ec4899", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [1.2, 1.4] },
+          });
+        }
       }
     };
+
+    // Remove old single line if exists
+    if (m.getLayer("route-line-layer")) {
+      m.removeLayer("route-line-layer");
+      m.removeSource("route-line");
+    }
 
     // Markers
     markersRef.current.forEach((mk) => mk.remove());
@@ -427,8 +497,8 @@ export function DriverRoutePanel({
       );
     });
 
-    if (m.isStyleLoaded()) drawLine();
-    else m.once("load", drawLine);
+    if (m.isStyleLoaded()) drawLines();
+    else m.once("load", drawLines);
 
     // Fit bounds
     const bounds = new maplibregl.LngLatBounds();
@@ -959,9 +1029,39 @@ export function DriverRoutePanel({
       </div>
 
       {/* ── Detail Drawer ── */}
-      <Drawer open={Boolean(selected)} onClose={() => setSelectedId(null)} title={selected ? `Parada ${selected.routeOrder ?? selected.number}` : "Detalle"} width="560px">
+      <Drawer
+        open={Boolean(selected)}
+        onClose={() => { /* keep selection on close */ }}
+        title={selected ? `Parada ${selected.routeOrder ?? selected.number}` : "Detalle"}
+        width="560px"
+        footer={selected && (
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <button
+              type="button"
+              className="flex min-h-12 items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
+              onClick={() => setIncidentForId(selected.id)}
+            >
+              <Icon name="warning" className="h-4 w-4" />
+              Incidencia
+            </button>
+            {nextDriverStatus(selected.status) && (
+              <button
+                type="button"
+                className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${
+                  nextDriverStatus(selected.status) === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-sky-600 hover:bg-sky-500"
+                }`}
+                disabled={working}
+                onClick={() => void advanceDelivery(selected)}
+              >
+                {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name={actionIcon(nextDriverStatus(selected.status)!)} className="h-4 w-4" />}
+                {actionLabel(nextDriverStatus(selected.status)!)}
+              </button>
+            )}
+          </div>
+        )}
+      >
         {selected && (
-          <div className="space-y-5 pb-24">
+          <div className="space-y-5">
             {/* Client */}
             <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[.03] to-transparent p-5">
               <div className="flex items-start justify-between gap-3">
@@ -1035,42 +1135,19 @@ export function DriverRoutePanel({
             <section>
               <h3 className="mb-3 text-sm font-black text-white">Historial</h3>
               <Timeline
-                items={(selected.statusLogs ?? []).map((log, i) => ({
-                  id: log.id ?? i,
-                  date: log.changedAt,
-                  title: deliveryStatusMeta(log.status).label,
-                  description: log.reason,
-                  tone: log.status === "DELIVERED" ? "success" : log.status === "INCIDENT" ? "danger" : "info",
-                  icon: <Icon name={log.status === "DELIVERED" ? "check" : log.status === "INCIDENT" ? "warning" : "truck"} className="h-3.5 w-3.5" />,
+                items={groupStatusLogs(selected.statusLogs).map((group) => ({
+                  id: group.id,
+                  date: group.changedAt,
+                  title: group.count > 1
+                    ? `${deliveryStatusMeta(group.status).label} ×${group.count}`
+                    : deliveryStatusMeta(group.status).label,
+                  description: group.reason,
+                  tone: group.status === "DELIVERED" ? "success" : group.status === "INCIDENT" ? "danger" : "info",
+                  icon: <Icon name={group.status === "DELIVERED" ? "check" : group.status === "INCIDENT" ? "warning" : "truck"} className="h-3.5 w-3.5" />,
                 }))}
                 initialLimit={5}
               />
             </section>
-
-            {/* Sticky actions */}
-            <div className="sticky -bottom-5 -mx-5 -mb-5 z-20 grid grid-cols-[auto_1fr] gap-2 border-t border-white/10 bg-zinc-950/95 p-4 backdrop-blur-xl">
-              <button
-                type="button"
-                className="flex min-h-12 items-center gap-2 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 text-xs font-black text-orange-300 transition hover:bg-orange-500/20"
-                onClick={() => setIncidentForId(selected.id)}
-              >
-                <Icon name="warning" className="h-4 w-4" />
-                Incidencia
-              </button>
-              {nextDriverStatus(selected.status) && (
-                <button
-                  type="button"
-                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition active:scale-[.99] ${
-                    nextDriverStatus(selected.status) === "DELIVERED" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-sky-600 hover:bg-sky-500"
-                  }`}
-                  disabled={working}
-                  onClick={() => void advanceDelivery(selected)}
-                >
-                  {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name={actionIcon(nextDriverStatus(selected.status)!)} className="h-4 w-4" />}
-                  {actionLabel(nextDriverStatus(selected.status)!)}
-                </button>
-              )}
-            </div>
           </div>
         )}
       </Drawer>

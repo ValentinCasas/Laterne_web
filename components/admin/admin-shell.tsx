@@ -690,6 +690,7 @@ export function AdminShell({
         ref={headerRef}
         data-admin-navbar="true"
         className="fixed inset-x-0 top-0 z-50 border-b border-white/[.06] bg-zinc-950/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.03)_inset] print:hidden"
+        style={{ "--site-navbar-height": "56px" } as React.CSSProperties}
       >
         <div className="admin-shell-inner flex h-14 items-center gap-1.5 px-3 sm:gap-2 sm:px-4 lg:px-6">
           <button
