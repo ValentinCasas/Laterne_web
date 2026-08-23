@@ -135,10 +135,14 @@ export function SiteHeader({
 
   return (
     <>
-    <header data-site-navbar="true" className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/95 pt-[var(--site-safe-area-top)] backdrop-blur-md">
+    <header
+      data-site-navbar="true"
+      className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-md"
+      style={{ height: "calc(4rem + var(--site-safe-area-top))" }}
+    >
       <nav
         ref={headerRef}
-        className="shell flex h-16 items-center justify-between gap-4 px-2"
+        className="shell flex h-full items-center justify-between gap-4 px-2 pt-[var(--site-safe-area-top)]"
         aria-label="Navegación principal"
       >
         <Link

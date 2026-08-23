@@ -75,8 +75,8 @@ export function ComprasAlbaranDetailClient({
               "linear-gradient(90deg, var(--admin-success), color-mix(in srgb, var(--admin-success) 40%, transparent), transparent)",
           }}
         />
-        <div className="mx-auto max-w-[1600px] px-8 pt-6 pb-5">
-          <nav className="mb-5 flex items-center gap-2 text-xs" style={{ color: "var(--admin-muted)" }}>
+        <div className="mx-auto max-w-[1600px] px-4 pt-5 pb-4 sm:px-8 sm:pt-6 sm:pb-5">
+          <nav className="mb-5 flex items-center gap-2 text-xs sm:text-sm" style={{ color: "var(--admin-muted)" }}>
             <Link href={href("/admin/compras")} className="transition-colors hover:opacity-70">
               Compras
             </Link>
@@ -88,12 +88,12 @@ export function ComprasAlbaranDetailClient({
           <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div>
               <h1
-                className="text-3xl font-extrabold tracking-tight leading-none"
+                className="text-2xl font-extrabold tracking-tight leading-none sm:text-3xl"
                 style={{ color: "var(--admin-text)" }}
               >
                 {receipt.number}
               </h1>
-              <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>
+              <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--admin-muted)" }}>
                 {receipt.supplier.name} · {receipt.branch.name}
               </p>
             </div>
@@ -125,7 +125,7 @@ export function ComprasAlbaranDetailClient({
           background: "color-mix(in srgb, var(--admin-surface) 60%, var(--admin-background))",
         }}
       >
-        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center px-8 py-2 text-xs gap-0">
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center px-4 py-2 text-xs gap-0 sm:px-8 sm:py-2 sm:text-xs">
           {receipt.order && (
             <div
               className="flex items-center border-r px-3 py-1.5"
@@ -181,7 +181,7 @@ export function ComprasAlbaranDetailClient({
       </div>
 
       {/* ── Content ── */}
-      <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-8 py-6">
+      <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-4 py-5 sm:px-8 sm:py-6">
         <div className="flex-1 min-w-0 space-y-5">
           {/* GENERAL */}
           <div
@@ -189,17 +189,17 @@ export function ComprasAlbaranDetailClient({
             style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
           >
             <div
-              className="px-6 py-4"
+              className="px-4 py-4 sm:px-6 sm:py-4"
               style={{
                 borderBottom: "1px solid var(--admin-border)",
                 background: "color-mix(in srgb, var(--admin-surface-elevated) 30%, var(--admin-surface))",
               }}
             >
-              <h3 className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>
+              <h3 className="text-base font-bold sm:text-sm" style={{ color: "var(--admin-text)" }}>
                 General
               </h3>
             </div>
-            <div className="grid gap-x-12 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 p-6">
+            <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 p-4 sm:p-6">
               <FieldRow label="Proveedor" value={receipt.supplier.name} />
               <FieldRow label="Nº albaran" value={receipt.number} />
               <FieldRow label="Fecha recepcion" value={dateLabel(receipt.receivedAt)} />
@@ -247,7 +247,7 @@ export function ComprasAlbaranDetailClient({
               </h3>
             </div>
             <div className="overflow-x-auto" style={{ scrollbarColor: "var(--admin-border) transparent" }}>
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-base sm:text-xs">
                 <thead>
                   <tr
                     style={{
@@ -255,37 +255,37 @@ export function ComprasAlbaranDetailClient({
                       background:
                         "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))",
                     }}
-                    className="text-[10px] uppercase tracking-wider sticky top-0 z-10"
+                    className="text-base uppercase tracking-wider sticky top-0 z-10 sm:text-[10px] sm:tracking-wider"
                   >
-                    <th className="px-5 py-3 font-semibold" style={{ color: "var(--admin-muted)" }}>
+                    <th className="px-4 py-3 font-semibold sm:px-5 sm:py-3" style={{ color: "var(--admin-muted)" }}>
                       #
                     </th>
-                    <th className="px-5 py-3 font-semibold" style={{ color: "var(--admin-muted)" }}>
+                    <th className="px-4 py-3 font-semibold sm:px-5 sm:py-3" style={{ color: "var(--admin-muted)" }}>
                       Articulo
                     </th>
-                    <th className="px-5 py-3 font-semibold" style={{ color: "var(--admin-muted)" }}>
+                    <th className="px-4 py-3 font-semibold sm:px-5 sm:py-3" style={{ color: "var(--admin-muted)" }}>
                       UdM
                     </th>
                     <th
-                      className="px-5 py-3 text-right font-semibold"
+                      className="px-4 py-3 text-right font-semibold sm:px-5 sm:py-3"
                       style={{ color: "var(--admin-muted)" }}
                     >
                       Cantidad
                     </th>
                     <th
-                      className="px-5 py-3 text-right font-semibold"
+                      className="px-4 py-3 text-right font-semibold sm:px-5 sm:py-3"
                       style={{ color: "var(--admin-muted)" }}
                     >
                       Costo
                     </th>
                     <th
-                      className="px-5 py-3 text-right font-semibold"
+                      className="px-4 py-3 text-right font-semibold sm:px-5 sm:py-3"
                       style={{ color: "var(--admin-muted)" }}
                     >
                       Importe
                     </th>
                     {receipt.items.some((i) => i.orderItem) && (
-                      <th className="px-5 py-3 font-semibold" style={{ color: "var(--admin-muted)" }}>
+                      <th className="px-4 py-3 font-semibold sm:px-5 sm:py-3" style={{ color: "var(--admin-muted)" }}>
                         Origen
                       </th>
                     )}
@@ -306,35 +306,35 @@ export function ComprasAlbaranDetailClient({
                               : undefined,
                         }}
                       >
-                        <td className="px-5 py-3 tabular-nums" style={{ color: "var(--admin-muted)" }}>
+                        <td className="px-4 py-3 tabular-nums sm:px-5 sm:py-3" style={{ color: "var(--admin-muted)" }}>
                           {String((idx + 1) * 10000).padStart(5, "0")}
                         </td>
-                        <td className="px-5 py-3 font-semibold" style={{ color: "var(--admin-text)" }}>
+                        <td className="px-4 py-3 font-semibold sm:px-5 sm:py-3" style={{ color: "var(--admin-text)" }}>
                           {item.product?.name ?? "\u2014"}
                         </td>
-                        <td className="px-5 py-3" style={{ color: "var(--admin-muted)" }}>
+                        <td className="px-4 py-3 sm:px-5 sm:py-3" style={{ color: "var(--admin-muted)" }}>
                           {item.unit}
                         </td>
                         <td
-                          className="px-5 py-3 text-right tabular-nums font-semibold"
+                          className="px-4 py-3 text-right tabular-nums font-semibold sm:px-5 sm:py-3"
                           style={{ color: "var(--admin-text)" }}
                         >
                           {qty}
                         </td>
                         <td
-                          className="px-5 py-3 text-right tabular-nums"
+                          className="px-4 py-3 text-right tabular-nums sm:px-5 sm:py-3"
                           style={{ color: "var(--admin-muted)" }}
                         >
                           {money(cost, currency)}
                         </td>
                         <td
-                          className="px-5 py-3 text-right font-bold tabular-nums"
+                          className="px-4 py-3 text-right font-bold tabular-nums sm:px-5 sm:py-3"
                           style={{ color: "var(--admin-text)" }}
                         >
                           {money(qty * cost, currency)}
                         </td>
                         {receipt.items.some((i) => i.orderItem) && (
-                          <td className="px-5 py-3 text-xs">
+                          <td className="px-4 py-3 text-sm sm:px-5 sm:py-3">
                             {item.orderItem?.order ? (
                               <Link
                                 href={
@@ -370,14 +370,14 @@ export function ComprasAlbaranDetailClient({
                     }}
                   >
                     <td
-                      className="px-5 py-3.5 font-bold text-xs"
+                      className="px-4 py-3 font-bold text-sm sm:px-5 sm:py-3.5 sm:text-xs"
                       colSpan={receipt.items.some((i) => i.orderItem) ? 5 : 4}
                       style={{ color: "var(--admin-text)" }}
                     >
                       Total albaran
                     </td>
                     <td
-                      className="px-5 py-3.5 text-right font-extrabold tabular-nums text-xs"
+                      className="px-4 py-3 text-right font-extrabold tabular-nums text-sm sm:px-5 sm:py-3.5 sm:text-xs"
                       style={{ color: "var(--admin-text)" }}
                     >
                       {money(totalReceipt, currency)}
@@ -408,7 +408,7 @@ export function ComprasAlbaranDetailClient({
         {/* FactBox */}
         <div className="w-full lg:w-72 shrink-0 space-y-4">
           <div
-            className="rounded-xl p-5 space-y-5"
+            className="rounded-xl p-4 space-y-5 sm:p-5"
             style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
           >
             <FactBoxSection title="Resumen">
@@ -437,12 +437,12 @@ function FieldRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p
-        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+        className="text-xs font-semibold uppercase tracking-wider mb-1 sm:text-[10px]"
         style={{ color: "var(--admin-muted)" }}
       >
         {label}
       </p>
-      <p className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>
+      <p className="text-base font-bold sm:text-sm" style={{ color: "var(--admin-text)" }}>
         {value}
       </p>
     </div>
@@ -453,7 +453,7 @@ function FactBoxSection({ title, children }: { title: string; children: React.Re
   return (
     <div>
       <p
-        className="text-[10px] font-bold uppercase tracking-wider mb-2.5 pb-2"
+        className="text-xs font-bold uppercase tracking-wider mb-2.5 pb-2 sm:text-[10px]"
         style={{ color: "var(--admin-muted)", borderBottom: "1px solid var(--admin-border)" }}
       >
         {title}
@@ -475,7 +475,7 @@ function FactBoxRow({
   color?: string;
 }) {
   return (
-    <div className="flex items-center justify-between text-xs gap-2">
+    <div className="flex items-center justify-between text-sm gap-2 sm:text-xs">
       <span className="truncate" style={{ color: "var(--admin-muted)" }}>
         {label}
       </span>

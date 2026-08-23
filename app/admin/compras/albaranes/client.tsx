@@ -54,9 +54,9 @@ export function ComprasAlbaranesClient({
         <span className="text-white font-medium">Albaranes registrados</span>
       </nav>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5">
-        <SearchBox value={query} onChange={setQuery} placeholder="Buscar por número o proveedor…" className="min-w-[220px] flex-1" />
-        <span className="ml-auto text-sm text-[var(--admin-muted)]">{filtered.length} resultados</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2.5 sm:p-2.5">
+        <SearchBox value={query} onChange={setQuery} placeholder="Buscar por número o proveedor…" className="min-w-[200px] flex-1 sm:min-w-[220px]" />
+        <span className="ml-auto text-sm text-[var(--admin-muted)] sm:text-sm">{filtered.length} resultados</span>
       </div>
 
       {filtered.length === 0 ? (
@@ -68,38 +68,38 @@ export function ComprasAlbaranesClient({
       ) : (
         <div className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-base sm:text-sm">
               <thead>
-                <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
-                  <th className="px-4 py-3">Albarán</th>
-                  <th className="px-4 py-3">Proveedor</th>
-                  <th className="px-4 py-3">Pedido origen</th>
-                  <th className="px-4 py-3">Sucursal</th>
-                  <th className="px-4 py-3">Fecha recepción</th>
-                  <th className="px-4 py-3">Registrado por</th>
+                <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-base uppercase tracking-wider text-[var(--admin-muted)] sm:text-xs sm:tracking-wider">
+                  <th className="px-3 py-3 sm:px-4 sm:py-3">Albarán</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3">Proveedor</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3">Pedido origen</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3">Sucursal</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3">Fecha recepción</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3">Registrado por</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--admin-border)]/70">
                 {filtered.map((receipt) => (
                   <tr key={receipt.id} className="transition-colors hover:bg-white/[0.02]">
-                    <td className="px-4 py-3">
-                      <Link href={href(`/admin/compras/albaranes/${receipt.id}`)} className="font-black text-pink-300 hover:underline">
+                    <td className="px-3 py-3 sm:px-4 sm:py-3">
+                      <Link href={href(`/admin/compras/albaranes/${receipt.id}`)} className="font-black text-pink-300 hover:underline text-base sm:text-sm">
                         {receipt.number}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 font-semibold">{receipt.supplier.name}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3 font-semibold text-base sm:text-sm sm:px-4 sm:py-3">{receipt.supplier.name}</td>
+                    <td className="px-3 py-3 sm:px-4 sm:py-3">
                       {receipt.order ? (
-                        <Link href={href(`/admin/compras/pedidos/${receipt.order.id}`)} className="text-pink-300 hover:underline font-bold">
+                        <Link href={href(`/admin/compras/pedidos/${receipt.order.id}`)} className="text-pink-300 hover:underline font-bold text-base sm:text-sm">
                           {receipt.order.number}
                         </Link>
                       ) : (
                         <span className="text-[var(--admin-muted)]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-[var(--admin-muted)]">{receipt.branch.name}</td>
-                    <td className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(receipt.receivedAt)}</td>
-                    <td className="px-4 py-3 text-[var(--admin-muted)]">{receipt.createdBy?.name ?? "—"}</td>
+                    <td className="px-3 py-3 text-[var(--admin-muted)] text-base sm:text-sm sm:px-4 sm:py-3">{receipt.branch.name}</td>
+                    <td className="px-3 py-3 text-[var(--admin-muted)] text-base sm:text-sm sm:px-4 sm:py-3">{dateLabel(receipt.receivedAt)}</td>
+                    <td className="px-3 py-3 text-[var(--admin-muted)] text-base sm:text-sm sm:px-4 sm:py-3">{receipt.createdBy?.name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -138,21 +138,21 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
       {/* ── Header ── */}
       <div style={{ background: "var(--admin-surface)" }} className="relative">
         <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), var(--admin-primary), transparent)" }} />
-        <div className="mx-auto max-w-[1600px] px-8 pt-7 pb-6">
-          <nav className="mb-4 flex items-center gap-2 text-sm" style={{ color: "var(--admin-muted)" }}>
+        <div className="mx-auto max-w-[1600px] px-4 pt-5 pb-4 sm:px-8 sm:pt-7 sm:pb-6">
+          <nav className="mb-4 flex items-center gap-2 text-xs sm:text-sm" style={{ color: "var(--admin-muted)" }}>
             <Link href={href("/admin/compras")} className="transition-colors hover:opacity-70">Compras</Link>
             <span className="opacity-40">/</span>
             <span className="font-medium" style={{ color: "var(--admin-text)" }}>Pedidos</span>
           </nav>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-[28px] font-extrabold tracking-tight leading-none" style={{ color: "var(--admin-text)" }}>Pedidos de compra</h1>
-              <p className="mt-2.5 text-sm" style={{ color: "var(--admin-muted)" }}>Gestiona los pedidos a proveedores</p>
+              <h1 className="text-2xl font-extrabold tracking-tight leading-none sm:text-[28px]" style={{ color: "var(--admin-text)" }}>Pedidos de compra</h1>
+              <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--admin-muted)" }}>Gestiona los pedidos a proveedores</p>
             </div>
             <Link href={href("/admin/compras/pedidos/nuevo") as never}
-              className="rounded-lg px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 flex items-center gap-2"
+              className="rounded-lg px-5 py-3 text-base font-bold text-white transition-all hover:opacity-90 flex items-center gap-2 sm:py-2.5 sm:text-sm"
               style={{ background: "var(--admin-primary-strong)" }}>
-              <Icon name="plus" className="text-sm" /> Nuevo pedido
+              <Icon name="plus" className="text-base sm:text-sm" /> Nuevo pedido
             </Link>
           </div>
         </div>
@@ -160,49 +160,46 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
 
       {/* ── Toolbar ── */}
       <div className="sticky top-0 z-20 border-b" style={{ borderColor: "var(--admin-border)", background: "color-mix(in srgb, var(--admin-background) 85%, var(--admin-surface))", backdropFilter: "blur(12px)" }}>
-        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center gap-3 px-8 py-3">
-          {/* Search — fixed icon overlap */}
-          <div className="relative flex-1 min-w-[260px] max-w-md">
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-center gap-3 px-4 py-3 sm:px-8 sm:py-3">
+          <div className="relative min-w-[200px] flex-1 max-w-md sm:min-w-[260px] sm:max-w-md">
             <Icon name="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: "var(--admin-muted)" }} />
-            <input className="w-full py-2 pl-10 pr-4 text-sm rounded-lg outline-none transition-all focus:ring-2"
+            <input className="w-full py-2.5 pl-10 pr-4 text-base rounded-lg outline-none transition-all focus:ring-2 sm:py-2 sm:text-sm"
               style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", "--tw-ring-color": "color-mix(in srgb, var(--admin-primary) 40%, transparent)" } as React.CSSProperties}
               value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }}
               placeholder="Buscar por numero o proveedor..." />
           </div>
 
-          {/* Filters */}
-          <select className="py-2 px-3 text-sm rounded-lg outline-none"
-            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", minWidth: "140px" }}
+          <select className="py-2.5 px-3 text-base rounded-lg outline-none sm:py-2 sm:text-sm"
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", minWidth: "130px" }}
             value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
             <option value="">Todos los estados</option>
             {Object.entries(STATUS_CFG).map(([v, cfg]) => <option key={v} value={v}>{cfg.label}</option>)}
           </select>
-          <select className="py-2 px-3 text-sm rounded-lg outline-none"
-            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", minWidth: "160px" }}
+          <select className="py-2.5 px-3 text-base rounded-lg outline-none sm:py-2 sm:text-sm"
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", minWidth: "140px" }}
             value={supplierFilter} onChange={(e) => { setSupplierFilter(e.target.value); setPage(0); }}>
             <option value="">Todos los proveedores</option>
             {suppliers.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
           </select>
 
           {activeFilters > 0 && (
-            <button type="button" className="flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all"
+            <button type="button" className="flex items-center gap-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all sm:px-2.5 sm:py-2 sm:text-xs"
               style={{ color: "var(--admin-danger)" }} onClick={resetFilters}>
-              <Icon name="x" className="text-xs" /> Limpiar
+              <Icon name="x" className="text-sm sm:text-xs" /> Limpiar
             </button>
           )}
 
           <div className="w-px h-6" style={{ background: "var(--admin-border)" }} />
 
-          {/* Sort */}
           <div className="relative">
             <button type="button"
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all"
+              className="flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-base font-medium transition-all sm:px-3 sm:py-2 sm:text-sm"
               style={{ color: (sortKey !== "orderDate" || sortDir !== "desc") ? "var(--admin-primary)" : "var(--admin-muted)", background: (sortKey !== "orderDate" || sortDir !== "desc") ? "color-mix(in srgb, var(--admin-primary) 8%, transparent)" : "transparent" }}
               onClick={(e) => { e.stopPropagation(); setShowSortMenu(!showSortMenu); }}>
-              <Icon name="sort" className="text-sm" /> Ordenar
+              <Icon name="sort" className="text-base sm:text-sm" /> Ordenar
             </button>
             {showSortMenu && (
-              <div className="absolute right-0 top-full z-30 mt-1.5 rounded-xl p-2 shadow-2xl min-w-[200px]"
+              <div className="absolute right-0 top-full z-30 mt-1.5 rounded-xl p-2 shadow-2xl min-w-[180px] sm:min-w-[200px]"
                 style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
                 onClick={(e) => e.stopPropagation()}>
                 {([
@@ -215,11 +212,11 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                   const active = sortKey === opt.key && sortDir === opt.dir;
                   return (
                     <button key={i} type="button"
-                      className="w-full text-left rounded-lg px-3 py-2 text-sm font-medium transition-all flex items-center justify-between gap-2"
+                      className="w-full text-left rounded-lg px-3 py-2.5 text-base font-medium transition-all flex items-center justify-between gap-2 sm:px-3 sm:py-2 sm:text-sm"
                       style={{ color: active ? "var(--admin-primary)" : "var(--admin-text)", background: active ? "color-mix(in srgb, var(--admin-primary) 8%, transparent)" : "transparent" }}
                       onClick={() => { setSortKey(opt.key); setSortDir(opt.dir); setPage(0); setShowSortMenu(false); }}>
                       {opt.label}
-                      {active && <Icon name="check" className="text-xs" style={{ color: "var(--admin-primary)" }} />}
+                      {active && <Icon name="check" className="text-sm sm:text-xs" style={{ color: "var(--admin-primary)" }} />}
                     </button>
                   );
                 })}
@@ -227,19 +224,19 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
             )}
           </div>
 
-          <span className="ml-auto text-xs font-medium" style={{ color: "var(--admin-muted)" }} aria-live="polite">
+          <span className="ml-auto text-sm font-medium sm:text-xs" style={{ color: "var(--admin-muted)" }} aria-live="polite">
             {loading ? "Actualizando…" : `${resultTotal} resultado${resultTotal !== 1 ? "s" : ""}`}
           </span>
         </div>
       </div>
 
       {/* ── Table ── */}
-      <div className="mx-auto max-w-[1600px] px-8 py-5">
+      <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-8 sm:py-5">
         {sorted.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-white/15 p-12 text-center">
             <Icon name="package" className="mx-auto text-4xl text-zinc-600" />
-            <h3 className="mt-3 text-xl font-black" style={{ color: "var(--admin-text)" }}>No hay pedidos</h3>
-            <p className="mt-2 text-sm text-[var(--admin-muted)]">
+            <h3 className="mt-3 text-xl font-black sm:text-2xl" style={{ color: "var(--admin-text)" }}>No hay pedidos</h3>
+            <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--admin-muted)" }}>
               {activeFilters > 0 ? "No hay pedidos que coincidan con los filtros." : "Creá el primero para pedir mercadería a un proveedor."}
             </p>
             {activeFilters > 0 && (
@@ -249,28 +246,28 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
         ) : (
           <div className={`overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-xl shadow-black/10 transition-opacity ${loading ? "opacity-65" : "opacity-100"}`} aria-busy={loading}>
             <div ref={tableRef} className="overflow-x-auto">
-              <table className="w-full text-left text-sm" style={{ minWidth: "800px" }}>
+              <table className="w-full text-left text-base sm:text-sm" style={{ minWidth: "700px" }}>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-xs uppercase tracking-wider text-[var(--admin-muted)]">
+                  <tr className="border-b border-[var(--admin-border)] bg-white/[0.02] text-sm uppercase tracking-wider text-[var(--admin-muted)] sm:text-xs sm:tracking-wider">
                     {([
-                      { key: "number" as SortKey, label: "Pedido", w: "w-[180px]" },
+                      { key: "number" as SortKey, label: "Pedido", w: "w-[140px] sm:w-[180px]" },
                       { key: "supplier" as SortKey, label: "Proveedor", w: "" },
                       { key: "branch" as SortKey, label: "Sucursal", w: "" },
-                      { key: "orderDate" as SortKey, label: "Fecha", w: "w-[120px]" },
-                      { key: "status" as SortKey, label: "Estado", w: "w-[130px]" },
+                      { key: "orderDate" as SortKey, label: "Fecha", w: "w-[100px] sm:w-[120px]" },
+                      { key: "status" as SortKey, label: "Estado", w: "w-[110px] sm:w-[130px]" },
                     ]).map(({ key, label, w }) => (
                       <th key={key}
-                        className={`px-4 py-3 select-none cursor-pointer transition-colors ${w}`}
+                        className={`px-3 py-3 select-none cursor-pointer transition-colors sm:px-4 sm:py-3 ${w}`}
                         style={{ color: sortKey === key ? "var(--admin-primary)" : undefined }}
                         onClick={() => toggleSort(key)}>
                         <span className="flex items-center gap-1.5">
                           {label}
-                          {sortKey === key && <Icon name="arrow-down" className="text-[10px]" style={{ transform: sortDir === "asc" ? "rotate(180deg)" : undefined }} />}
+                          {sortKey === key && <Icon name="arrow-down" className="text-[10px] sm:text-[10px]" style={{ transform: sortDir === "asc" ? "rotate(180deg)" : undefined }} />}
                         </span>
                       </th>
                     ))}
-                    <th className="px-4 py-3">Recepción</th>
-                    <th className="px-4 py-3 w-16">&nbsp;</th>
+                    <th className="px-3 py-3 sm:px-4 sm:py-3">Recepción</th>
+                    <th className="px-3 py-3 w-16 sm:px-4 sm:py-3">&nbsp;</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--admin-border)]/70">
@@ -283,18 +280,18 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                       <tr key={order.id}
                         className="transition-colors hover:bg-white/[0.02] cursor-pointer"
                         onClick={() => { window.location.href = href(`/admin/compras/pedidos/${order.id}`); }}>
-                        <td className="px-4 py-3">
-                          <div className="font-black text-pink-300 text-sm">{order.number}</div>
+                        <td className="px-3 py-3 sm:px-4 sm:py-3">
+                          <div className="font-black text-pink-300 text-base sm:text-sm">{order.number}</div>
                           {order.externalReference && <p className="text-xs mt-0.5 text-[var(--admin-muted)]">{order.externalReference}</p>}
                         </td>
-                        <td className="px-4 py-3 font-semibold">{order.supplier.name}</td>
-                        <td className="px-4 py-3 text-[var(--admin-muted)]">{order.branch.name}</td>
-                        <td className="px-4 py-3 text-[var(--admin-muted)]">{dateLabel(order.orderDate)}</td>
-                        <td className="px-4 py-3">
-                          <span className="rounded-full px-2.5 py-1 text-[10px] font-black"
+                        <td className="px-3 py-3 font-semibold text-base sm:text-sm sm:px-4 sm:py-3">{order.supplier.name}</td>
+                        <td className="px-3 py-3 text-[var(--admin-muted)] text-base sm:text-sm sm:px-4 sm:py-3">{order.branch.name}</td>
+                        <td className="px-3 py-3 text-[var(--admin-muted)] text-base sm:text-sm sm:px-4 sm:py-3">{dateLabel(order.orderDate)}</td>
+                        <td className="px-3 py-3 sm:px-4 sm:py-3">
+                          <span className="rounded-full px-2.5 py-1 text-xs font-black sm:text-[10px]"
                             style={{ background: st.bg, color: st.color }}>{st.label}</span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 sm:px-4 sm:py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: "color-mix(in srgb, var(--admin-muted) 12%, transparent)" }}>
                               <div className="h-full rounded-full transition-all duration-300" style={{ width: `${receiptPct}%`, background: receiptPct === 100 ? "var(--admin-success)" : receiptPct > 0 ? "var(--admin-warning)" : "var(--admin-muted)" }} />
@@ -302,9 +299,9 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
                             <span className="text-xs tabular-nums font-medium text-[var(--admin-muted)]">{receiptPct}%</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 sm:px-4 sm:py-3">
                           <Link href={href(`/admin/compras/pedidos/${order.id}`) as never}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all opacity-0 group-hover:opacity-100"
+                            className="rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-all opacity-0 group-hover:opacity-100"
                             style={{ color: "var(--admin-primary)", background: "color-mix(in srgb, var(--admin-primary) 8%, transparent)" }}
                             onClick={(e) => e.stopPropagation()}>Abrir</Link>
                         </td>
@@ -316,25 +313,25 @@ export function ComprasPedidosClient({ initialOrders, total, suppliers }: { init
             </div>
 
             {/* Footer / Pagination */}
-            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3"
               style={{ borderTop: "1px solid var(--admin-border)", background: "color-mix(in srgb, var(--admin-surface-elevated) 40%, var(--admin-surface))" }}>
-              <div className="flex items-center gap-2.5 text-xs" style={{ color: "var(--admin-muted)" }}>
+              <div className="flex items-center gap-2.5 text-sm sm:text-xs" style={{ color: "var(--admin-muted)" }}>
                 <span>Filas por pagina:</span>
-                <select className="py-1 px-2 text-xs rounded-lg" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)" }}
+                <select className="py-1.5 px-2.5 text-sm rounded-lg sm:py-1 sm:px-2 sm:text-xs" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", color: "var(--admin-text)" }}
                   value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
                   {ROWS_PER_PAGE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-3 text-xs" style={{ color: "var(--admin-muted)" }}>
+              <div className="flex items-center gap-3 text-sm sm:text-xs" style={{ color: "var(--admin-muted)" }}>
                 <span className="tabular-nums">{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, resultTotal)} de {resultTotal}</span>
                 <div className="flex items-center gap-1">
-                  <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-white/5 disabled:opacity-30"
+                  <button type="button" className="rounded-lg p-2 transition-all hover:bg-white/5 disabled:opacity-30 sm:p-1.5"
                     disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                    <Icon name="arrow-down" className="text-sm" style={{ transform: "rotate(90deg)" }} />
+                    <Icon name="arrow-down" className="text-base sm:text-sm" style={{ transform: "rotate(90deg)" }} />
                   </button>
-                  <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-white/5 disabled:opacity-30"
+                  <button type="button" className="rounded-lg p-2 transition-all hover:bg-white/5 disabled:opacity-30 sm:p-1.5"
                     disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
-                    <Icon name="arrow-down" className="text-sm" style={{ transform: "rotate(-90deg)" }} />
+                    <Icon name="arrow-down" className="text-base sm:text-sm" style={{ transform: "rotate(-90deg)" }} />
                   </button>
                 </div>
               </div>

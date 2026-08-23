@@ -139,9 +139,9 @@ export function MenuClient({
     const toolbar = toolbarRef.current;
     const header = document.querySelector<HTMLElement>('[data-site-navbar="true"]');
     const update = () => {
-      const headerHeight = header?.getBoundingClientRect().height ?? 64;
+      const headerBottom = header?.getBoundingClientRect().bottom ?? 64;
       const toolbarHeight = toolbar?.getBoundingClientRect().height ?? 0;
-      setStickyOffset(headerHeight + toolbarHeight);
+      setStickyOffset(headerBottom + toolbarHeight);
     };
     update();
     const observer = new ResizeObserver(update);
@@ -383,6 +383,7 @@ export function MenuClient({
         data-menu-toolbar="true"
         aria-label="Navegación y búsqueda de la carta"
         className="sticky top-[var(--site-navbar-height)] z-30 border-b border-white/10 bg-black/95 py-3 shadow-lg shadow-black/20 md:backdrop-blur-xl md:py-4"
+        style={{ position: "-webkit-sticky", transform: "translate3d(0,0,0)" }}
       >
         <div className="shell">
           <div
@@ -550,16 +551,15 @@ export function MenuClient({
         )}
         {shownCategories.map((category) => (
           <section
-            className="scroll-mt-20 md:scroll-mt-[13rem]"
             id={`category-${category.id}`}
             key={category.id}
-            style={stickyOffset > 0 ? { scrollMarginTop: `${stickyOffset + 2}px` } : undefined}
+            style={{ scrollMarginTop: `${Math.max(stickyOffset + 2, 0)}px` }}
           >
             <header
               className="mb-6 mt-10 flex items-center justify-between gap-3 border-b border-white/10 px-1 pb-4 md:sticky md:top-[var(--menu-sticky-top)] md:z-20 md:-mx-2 md:mb-7 md:mt-14 md:rounded-2xl md:border md:bg-black/90 md:px-5 md:py-4 md:shadow-xl md:shadow-black/30 md:backdrop-blur-xl"
               style={
                 stickyOffset > 0
-                  ? ({ "--menu-sticky-top": `${stickyOffset}px` } as React.CSSProperties)
+                  ? ({ "--menu-sticky-top": `${stickyOffset}px`, position: "-webkit-sticky", transform: "translate3d(0,0,0)" } as React.CSSProperties)
                   : undefined
               }
             >

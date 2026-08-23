@@ -203,13 +203,13 @@ export function DataTable({
                   : undefined
               }
               tabIndex={onRowClick ? 0 : undefined}
-              className={`admin-row-enter rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-[var(--admin-shadow-sm)] transition-colors duration-150 hover:bg-[var(--admin-row-hover)] ${onRowClick ? "cursor-pointer" : ""}`}
+              className={`admin-row-enter rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-[var(--admin-shadow-sm)] transition-colors duration-150 hover:bg-[var(--admin-row-hover)] ${onRowClick ? "cursor-pointer" : ""}`}
             >
-              <div className="flex items-start justify-between gap-3 text-sm">
+              <div className="flex items-start justify-between gap-3 text-base">
                 <div className="font-bold">{row[titleColumn.key] as ReactNode}</div>
                 {renderRowActions(row)}
               </div>
-              <dl className="mt-1.5 space-y-1">{renderLabelValue(row)}</dl>
+              <dl className="mt-2 space-y-1">{renderLabelValue(row)}</dl>
             </div>
           ))}
         </div>

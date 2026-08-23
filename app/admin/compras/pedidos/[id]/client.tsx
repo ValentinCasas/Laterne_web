@@ -420,8 +420,8 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
               "linear-gradient(90deg, var(--admin-primary-strong), var(--admin-primary), transparent)",
           }}
         />
-        <div className="mx-auto max-w-[1600px] px-8 pt-6 pb-5">
-          <nav className="mb-5 flex items-center gap-2 text-xs" style={{ color: "var(--admin-muted)" }}>
+        <div className="mx-auto max-w-[1600px] px-4 pt-5 pb-4 sm:px-8 sm:pt-6 sm:pb-5">
+          <nav className="mb-5 flex items-center gap-2 text-xs sm:text-sm" style={{ color: "var(--admin-muted)" }}>
             <Link href={href("/admin/compras")} className="transition-colors hover:opacity-70">
               Compras
             </Link>
@@ -437,12 +437,12 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
           <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div>
               <h1
-                className="text-3xl font-extrabold tracking-tight leading-none"
+                className="text-2xl font-extrabold tracking-tight leading-none sm:text-3xl"
                 style={{ color: "var(--admin-text)" }}
               >
                 {order.number}
               </h1>
-              <p className="mt-2 text-sm" style={{ color: "var(--admin-muted)" }}>
+              <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--admin-muted)" }}>
                 {order.supplier.name} · {order.branch.name}
               </p>
             </div>
@@ -476,20 +476,20 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
       {/* ── Dirty bar ── */}
       {dirty && (
         <div
-          className="border-b px-8 py-2"
+          className="border-b px-4 py-2 sm:px-8 sm:py-2"
           style={{
             borderColor: "color-mix(in srgb, var(--admin-warning) 30%, transparent)",
             background: "color-mix(in srgb, var(--admin-warning) 5%, transparent)",
           }}
         >
-          <div className="mx-auto max-w-[1600px] flex items-center justify-between">
-            <span className="text-xs font-semibold" style={{ color: "var(--admin-warning)" }}>
+          <div className="mx-auto max-w-[1600px] flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold sm:text-xs" style={{ color: "var(--admin-warning)" }}>
               Cambios sin guardar
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80"
+                className="rounded-lg px-3 py-2 text-sm font-semibold transition-all hover:opacity-80 sm:px-3 sm:py-1.5 sm:text-xs"
                 style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}
                 onClick={() => {
                   setDirty(false);
@@ -501,7 +501,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
               </button>
               <button
                 type="button"
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                className="rounded-lg px-3 py-2 text-base font-semibold text-white transition-all hover:opacity-90 sm:px-3 sm:py-1.5 sm:text-xs"
                 style={{ background: "var(--admin-primary-strong)" }}
                 onClick={() => void saveLines()}
                 disabled={saving}
@@ -521,7 +521,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
           background: "color-mix(in srgb, var(--admin-surface) 60%, var(--admin-background))",
         }}
       >
-        <div className="mx-auto max-w-[1600px] flex flex-wrap items-stretch px-4 sm:px-8 py-1.5 gap-0 overflow-x-auto">
+        <div className="mx-auto max-w-[1600px] flex flex-wrap items-stretch px-4 py-1.5 gap-0 overflow-x-auto sm:px-8">
           {canEdit && (
             <CommandGroup label="PEDIDO">
               <CommandBtn
@@ -610,7 +610,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
       </div>
 
       {/* ── Content ── */}
-      <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-8 py-6">
+      <div className="mx-auto max-w-[1600px] flex flex-col lg:flex-row gap-6 px-4 py-5 sm:px-8 sm:py-6">
         <div className="flex-1 min-w-0 space-y-5">
           {/* GENERAL */}
           <CollapsibleSection
@@ -619,7 +619,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
             isOpen={openSections.general}
             onToggle={() => toggleSection("general")}
           >
-            <div className="grid gap-x-12 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 p-6">
+            <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 p-4 sm:p-6">
               <FieldRow label="Proveedor" value={order.supplier.name} />
               <FieldRow label="Nº documento" value={order.number} />
               <FieldRow label="Estado" value={purchaseStatusLabel(order.status)} />
@@ -677,10 +677,10 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
               <FieldRow label="Comprador" value={order.createdBy?.name ?? "—"} />
             </div>
             {editingHeader && (
-              <div className="flex justify-end gap-2 px-6 pb-5">
+              <div className="flex justify-end gap-2 px-4 pb-5 sm:px-6 sm:pb-5">
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80"
+                  className="rounded-lg px-3 py-2 text-sm font-semibold transition-all hover:opacity-80 sm:px-3 sm:py-1.5 sm:text-xs"
                   style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}
                   onClick={() => setEditingHeader(false)}
                   disabled={saving}
@@ -689,7 +689,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                  className="rounded-lg px-3 py-2 text-base font-semibold text-white transition-all hover:opacity-90 sm:px-3 sm:py-1.5 sm:text-xs"
                   style={{ background: "var(--admin-primary-strong)" }}
                   onClick={() => {
                     setDirty(true);
@@ -713,7 +713,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
             accentHeader
           >
             <div className="overflow-x-auto" style={{ scrollbarColor: "var(--admin-border) transparent" }}>
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-base sm:text-xs">
                 <thead>
                   <tr
                     style={{
@@ -721,25 +721,25 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                       background:
                         "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))",
                     }}
-                    className="text-[10px] uppercase tracking-wider sticky top-0 z-10"
+                    className="text-base uppercase tracking-wider sticky top-0 z-10 sm:text-[10px] sm:tracking-wider"
                     role="row"
                   >
-                    <Th>#</Th>
-                    <Th>Articulo</Th>
-                    <Th>UdM</Th>
-                    <Th r> cantidad</Th>
-                    <Th r>Recibida</Th>
-                    <Th r accent>
+                    <Th className="px-3 py-3 sm:px-4 sm:py-3">#</Th>
+                    <Th className="px-3 py-3 sm:px-4 sm:py-3">Articulo</Th>
+                    <Th className="px-3 py-3 sm:px-4 sm:py-3">UdM</Th>
+                    <Th r className="px-3 py-3 sm:px-4 sm:py-3"> cantidad</Th>
+                    <Th r className="px-3 py-3 sm:px-4 sm:py-3">Recibida</Th>
+                    <Th r accent className="px-3 py-3 sm:px-4 sm:py-3">
                       A recibir
                     </Th>
-                    <Th r>Facturada</Th>
-                    <Th r accent>
+                    <Th r className="px-3 py-3 sm:px-4 sm:py-3">Facturada</Th>
+                    <Th r accent className="px-3 py-3 sm:px-4 sm:py-3">
                       A facturar
                     </Th>
-                    <Th r>Costo</Th>
-                    <Th r>Dto %</Th>
-                    <Th r>Importe</Th>
-                    <Th c>Estado</Th>
+                    <Th r className="px-3 py-3 sm:px-4 sm:py-3">Costo</Th>
+                    <Th r className="px-3 py-3 sm:px-4 sm:py-3">Dto %</Th>
+                    <Th r className="px-3 py-3 sm:px-4 sm:py-3">Importe</Th>
+                    <Th c className="px-3 py-3 sm:px-4 sm:py-3">Estado</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -891,14 +891,14 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                     }}
                   >
                     <td
-                      className="px-5 py-3.5 font-bold text-xs"
+                      className="px-4 py-3 font-bold text-sm sm:px-5 sm:py-3.5 sm:text-xs"
                       colSpan={11}
                       style={{ color: "var(--admin-text)" }}
                     >
                       Total pedido
                     </td>
                     <td
-                      className="px-5 py-3.5 text-right font-extrabold tabular-nums text-xs"
+                      className="px-4 py-3 text-right font-extrabold tabular-nums text-sm sm:px-5 sm:py-3.5 sm:text-xs"
                       style={{ color: "var(--admin-text)" }}
                     >
                       {money(totalOrdered, currency)}
@@ -912,13 +912,13 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
           {/* INLINE RECEIPT FORM */}
           {receivingFor !== null && (
             <div
-              className="rounded-xl p-5"
+              className="rounded-xl p-4 sm:p-5"
               style={{
                 border: "1px solid color-mix(in srgb, var(--admin-primary) 25%, transparent)",
                 background: "color-mix(in srgb, var(--admin-primary) 4%, transparent)",
               }}
             >
-              <p className="text-sm font-bold mb-3" style={{ color: "var(--admin-primary)" }}>
+              <p className="text-base font-bold mb-3 sm:text-sm" style={{ color: "var(--admin-primary)" }}>
                 Registrar recepcion
               </p>
               <div className="grid gap-3 sm:grid-cols-4">
@@ -943,7 +943,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                 <div className="flex items-end gap-2">
                   <button
                     type="button"
-                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                    className="rounded-lg px-3 py-2 text-base font-semibold text-white transition-all hover:opacity-90 sm:px-3 sm:py-1.5 sm:text-xs"
                     style={{ background: "var(--admin-primary-strong)" }}
                     onClick={() => void confirmReceipt()}
                     disabled={saving}
@@ -952,7 +952,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80"
+                    className="rounded-lg px-3 py-2 text-base font-semibold transition-all hover:opacity-80 sm:px-3 sm:py-1.5 sm:text-xs"
                     style={{ border: "1px solid var(--admin-border)", color: "var(--admin-muted)" }}
                     onClick={() => setReceivingFor(null)}
                     disabled={saving}
@@ -972,7 +972,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
             onToggle={() => toggleSection("facturacion")}
             badge={totalInvoices > 0 ? String(totalInvoices) : undefined}
           >
-            <div className="grid gap-x-12 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 p-6">
+            <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 p-4 sm:p-6">
               <FieldRow label="Moneda" value="ARS" />
               <FieldRow label="Subtotal estimado" value={money(totalOrdered, currency)} />
               {order.supplier.paymentTerms && (
@@ -989,7 +989,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
             onToggle={() => toggleSection("envio")}
             badge={totalReceipts > 0 ? String(totalReceipts) : undefined}
           >
-            <div className="grid gap-x-12 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 p-6">
+            <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 p-4 sm:p-6">
               <FieldRow label="Sucursal destino" value={order.branch.name} />
               {order.expectedDate && (
                 <FieldRow label="Fecha recepcion prevista" value={dateLabel(order.expectedDate)} />
@@ -1004,17 +1004,17 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
             isOpen={openSections.notas}
             onToggle={() => toggleSection("notas")}
           >
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {editingHeader ? (
                 <textarea
-                  className="input min-h-20 w-full text-sm rounded-lg"
+                  className="input min-h-20 w-full text-base rounded-lg sm:text-sm"
                   value={headerDraft.notes}
                   onChange={(e) => setHeaderDraft((d) => ({ ...d, notes: e.target.value }))}
                   placeholder="Notas del pedido..."
                 />
               ) : (
                 <p
-                  className="text-sm whitespace-pre-wrap"
+                  className="text-base whitespace-pre-wrap sm:text-sm"
                   style={{ color: order.notes ? "var(--admin-muted)" : "var(--admin-border)" }}
                 >
                   {order.notes || "Sin notas"}
@@ -1028,7 +1028,7 @@ export function ComprasPedidoDetailClient({ order, currency }: { order: OrderDet
         {factBoxVisible && (
           <div className="w-full lg:w-72 shrink-0 space-y-4">
             <div
-              className="rounded-xl p-5 space-y-5"
+              className="rounded-xl p-4 space-y-5 sm:p-5"
               style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
             >
               <FactBoxSection title="Resumen">
@@ -1182,7 +1182,7 @@ function CommandBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 min-h-[36px]"
+      className="rounded-lg px-4 py-2.5 text-base font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 min-h-[44px] sm:px-3 sm:py-2 sm:text-xs sm:min-h-[36px]"
       style={{
         color: danger
           ? "var(--admin-danger)"
@@ -1215,11 +1215,11 @@ function CommandBtn({
             : "transparent";
       }}
     >
-      {icon && <Icon name={icon} className="text-sm" />}
+      {icon && <Icon name={icon} className="text-base sm:text-sm" />}
       <span className="hidden sm:inline">{label}</span>
       {badge !== undefined && badge > 0 && (
         <span
-          className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+          className="rounded-full px-2 py-0.5 text-xs font-bold sm:px-1.5 sm:py-0.5 sm:text-[9px]"
           style={{
             background: primary
               ? "rgba(255,255,255,0.2)"
@@ -1262,7 +1262,7 @@ function CollapsibleSection({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-6 py-4 text-left transition-colors duration-150 group"
+        className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors duration-150 group sm:px-6 sm:py-4"
         style={{
           background: isOpen
             ? "color-mix(in srgb, var(--admin-surface-elevated) 30%, var(--admin-surface))"
@@ -1278,12 +1278,12 @@ function CollapsibleSection({
         }}
       >
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>
+          <h3 className="text-base font-bold sm:text-sm" style={{ color: "var(--admin-text)" }}>
             {title}
           </h3>
           {badge && (
             <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+              className="rounded-full px-2 py-0.5 text-xs font-bold sm:text-[10px]"
               style={{
                 background: "color-mix(in srgb, var(--admin-primary) 15%, transparent)",
                 color: "var(--admin-primary)",
@@ -1293,7 +1293,7 @@ function CollapsibleSection({
             </span>
           )}
           {description && (
-            <span className="text-[11px] hidden sm:inline" style={{ color: "var(--admin-muted)" }}>
+            <span className="text-xs hidden sm:inline" style={{ color: "var(--admin-muted)" }}>
               {description}
             </span>
           )}
@@ -1318,15 +1318,17 @@ function Th({
   r,
   c,
   accent,
+  className,
 }: {
   children: React.ReactNode;
   r?: boolean;
   c?: boolean;
   accent?: boolean;
+  className?: string;
 }) {
   return (
     <th
-      className="px-4 py-3 font-semibold"
+      className={`px-3 py-3 font-semibold sm:px-4 sm:py-3 ${className ?? ""}`}
       style={{
         textAlign: r ? "right" : c ? "center" : "left",
         color: accent ? "var(--admin-primary)" : "var(--admin-muted)",
@@ -1344,6 +1346,7 @@ function Td({
   bold,
   muted,
   style,
+  className,
 }: {
   children: React.ReactNode;
   r?: boolean;
@@ -1351,10 +1354,11 @@ function Td({
   bold?: boolean;
   muted?: boolean;
   style?: React.CSSProperties;
+  className?: string;
 }) {
   return (
     <td
-      className="px-4 py-3 transition-colors"
+      className={`px-3 py-3 transition-colors sm:px-4 sm:py-3 ${className ?? ""}`}
       style={{
         textAlign: r ? "right" : c ? "center" : "left",
         fontWeight: bold ? 700 : 500,
@@ -1387,7 +1391,7 @@ function InlineInput({
       step="0.001"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border px-2 py-1 text-right text-xs tabular-nums outline-none transition-all duration-150 focus:ring-1"
+      className="rounded-lg border px-3 py-2 text-right text-base tabular-nums outline-none transition-all duration-150 focus:ring-1 sm:px-2 sm:py-1 sm:text-xs"
       style={
         {
           width: narrow ? "48px" : wide ? "80px" : "60px",
@@ -1397,6 +1401,7 @@ function InlineInput({
           background: accent ? "color-mix(in srgb, var(--admin-primary) 5%, transparent)" : "transparent",
           color: "var(--admin-text)",
           "--tw-ring-color": "var(--admin-primary)",
+          minHeight: "44px",
         } as React.CSSProperties
       }
     />
@@ -1407,12 +1412,12 @@ function FieldRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p
-        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+        className="text-xs font-semibold uppercase tracking-wider mb-1 sm:text-[10px]"
         style={{ color: "var(--admin-muted)" }}
       >
         {label}
       </p>
-      <p className="text-sm font-bold" style={{ color: "var(--admin-text)" }}>
+      <p className="text-base font-bold sm:text-sm" style={{ color: "var(--admin-text)" }}>
         {value}
       </p>
     </div>
@@ -1435,13 +1440,13 @@ function FieldInput({
   return (
     <div>
       <p
-        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+        className="text-xs font-semibold uppercase tracking-wider mb-1"
         style={{ color: "var(--admin-muted)" }}
       >
         {label}
       </p>
       <input
-        className="input w-full py-1.5 text-sm rounded-lg"
+        className="input w-full py-2.5 text-base rounded-lg sm:py-1.5 sm:text-sm"
         type={type ?? "text"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -1465,13 +1470,13 @@ function FieldSelect({
   return (
     <div>
       <p
-        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+        className="text-xs font-semibold uppercase tracking-wider mb-1"
         style={{ color: "var(--admin-muted)" }}
       >
         {label}
       </p>
       <select
-        className="input w-full py-1.5 text-sm rounded-lg"
+        className="input w-full py-2.5 text-base rounded-lg sm:py-1.5 sm:text-sm"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -1485,7 +1490,7 @@ function FactBoxSection({ title, children }: { title: string; children: React.Re
   return (
     <div>
       <p
-        className="text-[10px] font-bold uppercase tracking-wider mb-2.5 pb-2"
+        className="text-xs font-bold uppercase tracking-wider mb-2 pb-2 sm:text-[10px]"
         style={{ color: "var(--admin-muted)", borderBottom: "1px solid var(--admin-border)" }}
       >
         {title}
@@ -1507,7 +1512,7 @@ function FactBoxRow({
   color?: string;
 }) {
   return (
-    <div className="flex items-center justify-between text-xs gap-2">
+    <div className="flex items-center justify-between text-sm gap-2 sm:text-xs">
       <span className="truncate" style={{ color: "var(--admin-muted)" }}>
         {label}
       </span>
@@ -1556,7 +1561,7 @@ function DocsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
       onClick={onClose}
     >
@@ -1569,44 +1574,44 @@ function DocsModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative px-6 pt-5 pb-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+        <div className="relative px-5 pt-5 pb-4 sm:px-6 sm:pt-5 sm:pb-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
           <div
             className="absolute top-0 left-0 right-0 h-[2px]"
             style={{ background: "linear-gradient(90deg, var(--admin-primary-strong), transparent)" }}
           />
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold" style={{ color: "var(--admin-text)" }}>
+              <h2 className="text-xl font-bold sm:text-base" style={{ color: "var(--admin-text)" }}>
                 {title}
               </h2>
-              <p className="text-xs mt-0.5" style={{ color: "var(--admin-muted)" }}>
+              <p className="text-sm mt-0.5 sm:text-xs" style={{ color: "var(--admin-muted)" }}>
                 {subtitle}
-                {count > 0 ? ` \u00B7 ${count} documento${count !== 1 ? "s" : ""}` : ""}
+                {count > 0 ? ` · ${count} documento${count !== 1 ? "s" : ""}` : ""}
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 transition-colors"
+              className="rounded-lg p-2 transition-colors sm:p-1.5"
               style={{ color: "var(--admin-muted)" }}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.background = "color-mix(in srgb, var(--admin-muted) 10%, transparent)")
               }
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <Icon name="x" className="text-sm" />
+              <Icon name="x" className="text-lg sm:text-sm" />
             </button>
           </div>
         </div>
         <div
-          className="flex-1 overflow-y-auto p-4 space-y-2"
+          className="flex-1 overflow-y-auto p-4 space-y-2 sm:p-4"
           style={{ scrollbarColor: "var(--admin-border) transparent" }}
         >
           {items.map((item) => (
             <Link
               key={item.id}
               href={hrefFn(item.id) as never}
-              className="block rounded-xl px-5 py-4 transition-all duration-150 group"
+              className="block rounded-xl px-5 py-4 transition-all duration-150 group sm:px-5 sm:py-4"
               style={{ border: "1px solid var(--admin-border)" }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background =
@@ -1621,18 +1626,18 @@ function DocsModal({
               onClick={onClose}
             >
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-bold text-sm" style={{ color: "var(--admin-primary)" }}>
+                <span className="font-bold text-base sm:text-sm" style={{ color: "var(--admin-primary)" }}>
                   {item.number}
                 </span>
-                <span className="font-bold tabular-nums text-sm" style={{ color: "var(--admin-text)" }}>
+                <span className="font-bold tabular-nums text-base sm:text-sm" style={{ color: "var(--admin-text)" }}>
                   {money(item.total, currency)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "var(--admin-muted)" }}>
+                <span className="text-sm sm:text-xs" style={{ color: "var(--admin-muted)" }}>
                   {item.date}
                 </span>
-                <span className="text-[11px]" style={{ color: item.statusColor || "var(--admin-muted)" }}>
+                <span className="text-xs sm:text-[11px]" style={{ color: item.statusColor || "var(--admin-muted)" }}>
                   {item.subtitle}
                 </span>
               </div>
@@ -1640,15 +1645,15 @@ function DocsModal({
           ))}
           {count > 1 && (
             <div
-              className="flex items-center justify-between px-5 py-3 rounded-xl"
+              className="flex items-center justify-between px-5 py-3 rounded-xl sm:px-5 sm:py-3"
               style={{
                 background: "color-mix(in srgb, var(--admin-surface-elevated) 50%, var(--admin-surface))",
               }}
             >
-              <span className="text-xs font-semibold" style={{ color: "var(--admin-muted)" }}>
+              <span className="text-sm font-semibold sm:text-xs" style={{ color: "var(--admin-muted)" }}>
                 Total recibido
               </span>
-              <span className="text-sm font-bold tabular-nums" style={{ color: "var(--admin-text)" }}>
+              <span className="text-base font-bold tabular-nums sm:text-sm" style={{ color: "var(--admin-text)" }}>
                 {money(totalAll, currency)}
               </span>
             </div>

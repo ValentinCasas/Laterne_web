@@ -127,23 +127,23 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-3 text-sm font-semibold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white sm:h-9"
+        className="inline-flex h-12 items-center gap-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-3 text-base font-semibold text-zinc-300 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white sm:h-10"
       >
         <span>Columnas / Vista</span>
         <span className="text-xs text-zinc-500">▼</span>
       </button>
       {open && (
-        <div className="dropdown-enter fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] left-3 right-3 z-[150] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-4 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-50 sm:mt-2 sm:w-72 sm:overflow-hidden" role="dialog" aria-label="Columnas y opciones de vista">
-          <div className="space-y-4">
+        <div className="dropdown-enter fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] left-3 right-3 z-[150] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface-overlay)] p-5 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-50 sm:mt-2 sm:w-72 sm:overflow-hidden sm:p-4" role="dialog" aria-label="Columnas y opciones de vista">
+              <div className="space-y-4">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Densidad</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 sm:text-[10px]">Densidad</label>
               <div className="mt-2 flex rounded-lg bg-white/5 p-1">
                 {(["compact", "normal", "comfortable"] as const).map((d) => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => update({ density: d })}
-                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-colors ${
+                    className={`flex-1 rounded-md px-2 py-2.5 text-base font-bold transition-colors sm:px-2 sm:py-1.5 sm:text-xs ${
                       options.density === d ? "bg-pink-500 text-white" : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
@@ -153,13 +153,13 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 sm:text-[10px]">
                 Filas por página
               </label>
               <select
                 value={options.pageSize}
                 onChange={(e) => update({ pageSize: Number(e.target.value) })}
-                className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 outline-none focus:border-pink-500/50"
+                className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-base text-zinc-300 outline-none focus:border-pink-500/50 sm:py-2 sm:text-sm"
               >
                 {[10, 20, 50, 100].map((size) => (
                   <option key={size} value={size}>
@@ -170,13 +170,13 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 sm:text-[10px]">
                   Columnas
                 </label>
                 <button
                   type="button"
                   onClick={resetColumns}
-                  className="text-[10px] font-semibold text-pink-300 hover:text-pink-200"
+                  className="text-xs font-semibold text-pink-300 hover:text-pink-200 sm:text-[10px]"
                 >
                   Restablecer
                 </button>
@@ -189,7 +189,7 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
                   return (
                     <div
                       key={key}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5"
+                      className="flex items-center gap-2 rounded-lg px-2 py-2.5 hover:bg-white/5 sm:py-1.5"
                     >
                       <input
                         type="checkbox"
@@ -197,7 +197,7 @@ export function ViewOptions<T extends string>({ storageKey, columns, onChange }:
                         onChange={() => toggleColumn(key)}
                         className="h-4 w-4 rounded border-white/20 bg-white/5 text-pink-500 focus:ring-pink-500"
                       />
-                      <span className={`flex-1 text-sm ${visible ? "text-zinc-200" : "text-zinc-500"}`}>
+                      <span className={`flex-1 text-base sm:text-sm ${visible ? "text-zinc-200" : "text-zinc-500"}`}>
                         {column.label}
                       </span>
                       <div className="flex items-center gap-1">
