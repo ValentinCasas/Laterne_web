@@ -7,6 +7,7 @@ import { deliveryStatusMeta, nextDriverStatus } from "@/lib/delivery-drivers";
 import { Drawer } from "@/components/admin/ui/drawer";
 import { Icon } from "@/components/admin/ui/icons";
 import { Timeline } from "@/components/admin/ui/timeline";
+import { formatTime } from "@/lib/date-format";
 
 export type DriverDelivery = {
   id: number;
@@ -58,9 +59,7 @@ function formatMoney(value: unknown, currency = "ARS") {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 }
 
-function formatTime(value: string | Date) {
-  return new Date(value).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-}
+
 
 function actionLabel(status: string) {
   if (status === "PICKED_UP") return "Retirar";
@@ -412,7 +411,7 @@ export function DriverActiveDeliveries({
               </span>
               {selected.deliveredAt && (
                 <span className="text-xs text-zinc-500">
-                  Entregado {new Date(selected.deliveredAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                  Entregado {formatTime(selected.deliveredAt)}
                 </span>
               )}
             </div>

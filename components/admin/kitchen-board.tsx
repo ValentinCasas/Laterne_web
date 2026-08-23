@@ -18,6 +18,7 @@ import type { KdsOrder, KdsPayload, KdsStation } from "@/lib/kds-data";
 import { allowedTransitions, asOrderType, type OrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { Icon, type IconName } from "@/components/admin/ui/icons";
+import { formatTime } from "@/lib/date-format";
 
 /**
  * Monitor de cocina (KDS) de MenuClick.
@@ -186,9 +187,7 @@ function extrasText(value: unknown) {
 
 /** @summary Formatea un valor de fecha ISO para mostrarlo en el monitor. */
 function hourLabel(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return formatTime(value);
 }
 
 /** @summary Lee la configuración del monitor desde localStorage con valores seguros. */
@@ -966,10 +965,7 @@ function OrderDetailModal({
               {modality}
               {order.table ? ` · Mesa ${order.table.name}` : ""}
               {order.table?.sector ? ` · ${order.table.sector}` : ""} ·{" "}
-              {new Date(order.createdAt).toLocaleTimeString("es-AR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatTime(order.createdAt)}
             </p>
           </div>
           <div className="flex items-center gap-3">

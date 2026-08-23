@@ -5,6 +5,7 @@ import * as maplibregl from "maplibre-gl";
 import { avatarUrl } from "@/components/admin/profile-menu";
 import { gpsFreshness } from "@/lib/delivery-tracking";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
+import { formatDateTime } from "@/lib/date-format";
 
 export type DeliveryMapPosition = {
   id: number;
@@ -209,7 +210,7 @@ function deliveryPopup(delivery: DeliveryDestination) {
     content.append(
       popupText(
         "mc-map-popup__row",
-        `Horario: ${new Date(delivery.order.requestedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`,
+        `Horario: ${formatDateTime(delivery.order.requestedAt)}`,
       ),
     );
   }
@@ -418,7 +419,7 @@ export function DeliveryMap({
         popupText("mc-map-popup__eyebrow", "Repartidor"),
         popupText("mc-map-popup__title", profile.name),
         popupText("mc-map-popup__primary", `${profile.status ?? "Sin estado"} · ${freshness.label}`),
-        popupText("mc-map-popup__row", `Última posición: ${new Date(position.recordedAt).toLocaleString("es-AR")}`),
+        popupText("mc-map-popup__row", `Última posición: ${formatDateTime(position.recordedAt)}`),
       );
       if (position.accuracy) {
         detail.append(popupText("mc-map-popup__row", `Precisión: ±${Math.round(Number(position.accuracy))} m`));

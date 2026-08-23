@@ -23,6 +23,7 @@ import { adminHrefFromPathname, parseCanonicalPath, publicHrefForContext } from 
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/admin/ui/icons";
 import { CopyTrackingLink } from "@/components/orders/copy-tracking-link";
+import { formatDateTime } from "@/lib/date-format";
 
 export type AdminOrderItem = {
   id: number;
@@ -614,7 +615,7 @@ function OrderDetail({
             </div>
             <h2 className="mt-2 text-3xl font-black">{order.customerName}</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Recibido {elapsedLabel(order.createdAt)} · {new Date(order.createdAt).toLocaleString("es-AR")}
+              Recibido {elapsedLabel(order.createdAt)} · {formatDateTime(order.createdAt)}
             </p>
           </div>
         </header>
@@ -677,7 +678,7 @@ function OrderDetail({
                   {order.requestedAt && (
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Para</span>
-                      <strong>{new Date(order.requestedAt).toLocaleString("es-AR")}</strong>
+                      <strong>{formatDateTime(order.requestedAt)}</strong>
                     </div>
                   )}
                 </div>

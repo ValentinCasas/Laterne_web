@@ -3,6 +3,7 @@
 import { Icon, type IconName } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
 import { routeStatusMeta, formatDuration, formatDistance } from "@/lib/delivery-route-state";
+import { formatDateTimeShort } from "@/lib/date-format";
 
 type RouteHistoryItem = {
   id: number;
@@ -19,12 +20,7 @@ type RouteHistoryItem = {
 };
 
 function formatDate(value: string | Date) {
-  return new Date(value).toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeShort(value);
 }
 
 /** @summary Historial de recorridos del repartidor con KPIs personales y lista paginada. */

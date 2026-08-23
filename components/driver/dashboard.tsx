@@ -15,6 +15,7 @@ import {
 import { googleMapsRouteUrl, orderDeliveryRouteStops } from "@/lib/delivery-route";
 import { Icon } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
+import { formatTime, formatRelativeTime } from "@/lib/date-format";
 import Swal from "sweetalert2";
 
 const SWAL_THEME = { background: "#18181b", color: "#fafafa" };
@@ -45,15 +46,7 @@ function coordinate(value: unknown, limit: number) {
   return Number.isFinite(parsed) && Math.abs(parsed) <= limit ? parsed : null;
 }
 
-function formatRelativeTime(value: string | Date) {
-  const diff = Date.now() - new Date(value).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Hace ${hours}h`;
-  return `Hace ${Math.floor(hours / 24)}d`;
-}
+
 
 /* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
@@ -523,7 +516,7 @@ export function DriverDashboard({
                       <p className="mt-0.5 text-[11px] text-zinc-500">{delivery.order?.reference ?? delivery.number}</p>
                     </div>
                     <span className="shrink-0 text-[10px] font-bold text-emerald-400">
-                      {delivery.deliveredAt ? new Date(delivery.deliveredAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                      {delivery.deliveredAt ? formatTime(delivery.deliveredAt) : ""}
                     </span>
                   </li>
                 ))}

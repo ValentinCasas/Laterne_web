@@ -19,6 +19,7 @@ import { Icon } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
 import { Drawer } from "@/components/admin/ui/drawer";
 import { Timeline } from "@/components/admin/ui/timeline";
+import { formatTime as _formatTime, formatRelativeTime as _formatRelativeTime } from "@/lib/date-format";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -122,17 +123,11 @@ function formatMoney(value: unknown, currency = "ARS") {
 }
 
 function formatTime(value: string | Date) {
-  return new Date(value).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return _formatTime(value);
 }
 
 function formatRelativeTime(value: string | Date) {
-  const diff = Date.now() - new Date(value).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Hace ${hours}h`;
-  return `Hace ${Math.floor(hours / 24)}d`;
+  return _formatRelativeTime(value);
 }
 
 function actionLabel(status: string) {

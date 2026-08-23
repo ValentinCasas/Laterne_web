@@ -5,6 +5,7 @@ import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 import { Drawer } from "@/components/admin/ui/drawer";
 import { Icon, type IconName } from "@/components/admin/ui/icons";
 import { Timeline, type TimelineItem } from "@/components/admin/ui/timeline";
+import { formatDate, formatDateTime } from "@/lib/date-format";
 
 type StatusLog = {
   id: number;
@@ -33,7 +34,7 @@ type Delivery = {
 const MAJOR_STATUSES = ["ASSIGNED", "PICKED_UP", "ON_THE_WAY", "DELIVERED"];
 
 function shortDate(value: string | Date) {
-  return new Date(value).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return formatDate(value);
 }
 
 function formatMoney(value: unknown, currency = "ARS") {
@@ -201,7 +202,7 @@ export function DriverDeliveriesHistory({ deliveries }: { deliveries: Delivery[]
                   {selected.statusLogs!.filter((log) => log.status === "ASSIGNED" || log.status === "PENDING_ASSIGNMENT").map((log) => (
                     <li key={log.id} className="flex justify-between gap-3 text-xs text-zinc-400">
                       <span>{deliveryStatusMeta(log.status).label}{log.changedBy?.name ? ` · ${log.changedBy.name}` : ""}</span>
-                      <time className="shrink-0 tabular-nums">{new Date(log.changedAt).toLocaleString("es-AR")}</time>
+                      <time className="shrink-0 tabular-nums">{formatDateTime(log.changedAt)}</time>
                     </li>
                   ))}
                 </ul>

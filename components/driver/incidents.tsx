@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { scopedFetch } from "@/lib/client-routing";
 import { Drawer } from "@/components/admin/ui/drawer";
 import { Icon } from "@/components/admin/ui/icons";
+import { formatDateTimeShort } from "@/lib/date-format";
 
 type Incident = {
   id: number;
@@ -18,7 +19,7 @@ type ActiveDelivery = { id: number; number: string; customerName: string };
 const TYPES = ["cliente ausente", "dirección incorrecta", "rechazó el pedido", "problema de tránsito", "problema del vehículo", "otro"];
 
 function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return formatDateTimeShort(value);
 }
 
 function IncidentCard({ incident }: { incident: Incident }) {

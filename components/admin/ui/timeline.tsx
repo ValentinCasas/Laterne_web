@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { formatTime } from "@/lib/date-format";
 
 export type TimelineItem = {
   id: string | number;
@@ -23,18 +24,21 @@ const toneClass = {
 function dateKey(value: string | Date) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Sin fecha";
-  return date.toLocaleDateString("es-AR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  try {
+    return new Intl.DateTimeFormat("es-AR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour12: false,
+    }).format(date);
+  } catch {
+    return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+  }
 }
 
 function timeLabel(value: string | Date) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return formatTime(value);
 }
 
 function isoLabel(value: string | Date) {

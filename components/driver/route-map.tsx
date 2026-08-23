@@ -10,6 +10,7 @@ import {
 } from "@/lib/delivery-route";
 import { Icon } from "@/components/admin/ui/icons";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
+import { formatDateTime } from "@/lib/date-format";
 
 type RouteStop = DeliveryRouteCoordinate & {
   id: number;
@@ -136,7 +137,7 @@ function buildStopPopup(stop: RouteStop, index: number, onSelect?: (id: number) 
   if (stop.reference) content.append(popupText("mc-map-popup__row", `Pedido: ${stop.reference}`));
   if (stop.phone) content.append(popupText("mc-map-popup__row", `Tel: ${stop.phone}`));
   if (stop.requestedAt) {
-    content.append(popupText("mc-map-popup__row", `Horario: ${new Date(stop.requestedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`));
+    content.append(popupText("mc-map-popup__row", `Horario: ${formatDateTime(stop.requestedAt)}`));
   }
   content.append(popupText("mc-map-popup__row", `Productos: ${stop.itemCount}`));
   const total = Number(stop.total);

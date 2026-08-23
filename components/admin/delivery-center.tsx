@@ -22,6 +22,7 @@ import { adminHrefFromPathname } from "@/lib/routes";
 import { canRetireDelivery } from "@/lib/delivery-drivers";
 import { orderStatusLabel } from "@/lib/orders";
 import { normalizeDeliveryDetail, type DeliveryDetail } from "@/lib/delivery-detail";
+import { formatDateTime } from "@/lib/date-format";
 import { gpsFreshness } from "@/lib/delivery-tracking";
 import {
   DeliveryLocationPicker,
@@ -981,7 +982,7 @@ function DriverMapPreview({
       </div>
       {position && (
         <dl className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--admin-border)] p-4 text-xs">
-          <div><dt className="text-[var(--admin-muted)]">Última actualización</dt><dd className="mt-1 font-bold text-white">{new Date(position.recordedAt).toLocaleString("es-AR")}</dd></div>
+          <div><dt className="text-[var(--admin-muted)]">Última actualización</dt><dd className="mt-1 font-bold text-white">{formatDateTime(position.recordedAt)}</dd></div>
           <div><dt className="text-[var(--admin-muted)]">Precisión</dt><dd className="mt-1 font-bold text-white">{position.accuracy ? `±${Math.round(Number(position.accuracy))} m` : "No informada"}</dd></div>
         </dl>
       )}
