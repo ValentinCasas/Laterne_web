@@ -15,6 +15,7 @@ type RouteStop = {
   id: number;
   number: string;
   routeOrder?: number | null;
+  plannedOrder?: number | null;
   status: string;
   customerName: string;
   deliveryAddress?: string | null;
@@ -256,6 +257,7 @@ export function DriverRouteDetail({
 function StopDetail({ stop }: { stop: RouteStop }) {
   const isDelivered = stop.status === "DELIVERED";
   const hasIncident = stop.incidents && stop.incidents.length > 0;
+  const wasReordered = stop.plannedOrder != null && stop.routeOrder != null && stop.plannedOrder !== stop.routeOrder;
 
   return (
     <div className="space-y-5">
@@ -269,6 +271,18 @@ function StopDetail({ stop }: { stop: RouteStop }) {
           {deliveryStatusMeta(stop.status).label}
         </span>
       </div>
+
+      {/* Reorder info */}
+      {wasReordered && (
+        <div className="rounded-xl border border-violet-400/15 bg-violet-500/5 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-300/70">Cambio de orden</p>
+          <p className="mt-1 text-xs text-zinc-300">
+            Orden original: <span className="font-bold text-white">#{stop.plannedOrder}</span>
+            <span className="mx-2 text-zinc-600">→</span>
+            Orden real: <span className="font-bold text-white">#{stop.routeOrder}</span>
+          </p>
+        </div>
+      )}
 
       <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[.03] to-transparent p-5">
         <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Cliente</p>

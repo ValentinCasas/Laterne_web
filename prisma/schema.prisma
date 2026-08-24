@@ -1624,9 +1624,10 @@ model OrderDelivery {
   receiverName      String?                  @db.VarChar(160)
   deliveryFee       Decimal                  @default(0) @db.Decimal(12, 2)
   notes             String?                  @db.Text
-  routeId           Int?
-  routeOrder        Int?
-  createdAt         DateTime                 @default(now())
+   routeId           Int?
+   routeOrder        Int?
+   plannedOrder      Int?
+   createdAt         DateTime                 @default(now())
   createdById       Int?
   reversedAt        DateTime?
   reversedById      Int?
@@ -1646,9 +1647,10 @@ model OrderDelivery {
   statusLogs        OrderDeliveryStatusLog[]
   invoices          InvoiceRecord[]         @relation("OrderDeliveryInvoices")
 
-  @@unique([tenantId, number])
-  @@index([routeId, routeOrder])
-  @@index([tenantId, orderId, createdAt])
+   @@unique([tenantId, number])
+   @@index([routeId, routeOrder])
+   @@index([routeId, plannedOrder])
+   @@index([tenantId, orderId, createdAt])
   @@index([tenantId, customerId, createdAt])
   @@index([tenantId, branchId, status, createdAt])
   @@index([tenantId, driverId, status])

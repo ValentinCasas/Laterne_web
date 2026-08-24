@@ -8,6 +8,7 @@ import { Drawer } from "@/components/admin/ui/drawer";
 import { Icon } from "@/components/admin/ui/icons";
 import { Timeline } from "@/components/admin/ui/timeline";
 import { formatTime } from "@/lib/date-format";
+import { OutOfOrderConfirmModal } from "@/components/driver/out-of-order-modal";
 
 export type DriverDelivery = {
   id: number;
@@ -131,6 +132,8 @@ export function DriverActiveDeliveries({
   const [incidentType, setIncidentType] = useState(INCIDENT_TYPES[0]!);
   const [incidentDescription, setIncidentDescription] = useState("");
   const [workingId, setWorkingId] = useState<number | null>(null);
+  // Out-of-order delivery modal
+  const [oooTarget, setOooTarget] = useState<DriverDelivery | null>(null);
 
   const selected = allDeliveries.find((d) => d.id === selectedId) ?? null;
   const incidentFor = allDeliveries.find((d) => d.id === incidentForId) ?? null;
@@ -139,9 +142,58 @@ export function DriverActiveDeliveries({
     onChange(nextItems);
   }
 
+  /** @summary Detecta si una entrega está fuera del orden operativo (no es la próxima pendiente). */
+  function isOutOfOrder(delivery: DriverDelivery): DriverDelivery | null {
+    if (!routeActive) return null;
+    // Find the first pending (non-DELIVERED) delivery by routeOrder
+    const pendingSorted = allDeliveries
+      .filter((d) => d.status !== "DELIVERED" && d.status !== "INCIDENT" && d.status !== "FAILED")
+      .sort((a, b) => (a.routeOrder ?? Infinity) - (b.routeOrder ?? Infinity));
+    const nextPending = pendingSorted[0];
+    if (!nextPending || nextPending.id === delivery.id) return null;
+    return nextPending;
+  }
+
+  /** @summary Procesa la entrega fuera de orden confirmada por el usuario. */
+  async function confirmOutOfOrderDelivery() {
+    if (!oooTarget) return;
+    const delivery = oooTarget;
+    setOooTarget(null);
+    setWorkingId(delivery.id);
+    try {
+      const response = await scopedFetch(`/api/driver/deliveries/${delivery.id}/deliver-out-of-order`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "DELIVERED", confirmReorder: true }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { route?: { deliveries: DriverDelivery[] }; error?: string };
+      if (!response.ok || !body.route) {
+        await Swal.fire({ title: "No se pudo entregar", text: body.error ?? "Intentá de nuevo.", icon: "error", ...SWAL_THEME });
+        return;
+      }
+      // Update deliveries from the returned route
+      if (body.route.deliveries) {
+        commit(body.route.deliveries);
+      }
+      onDelivered?.();
+    } finally {
+      setWorkingId(null);
+    }
+  }
+
   async function advance(delivery: DriverDelivery) {
     const next = nextDriverStatus(delivery.status);
     if (!next) return;
+
+    // Detect out-of-order delivery attempt
+    if (next === "DELIVERED" && routeActive) {
+      const expectedStop = isOutOfOrder(delivery);
+      if (expectedStop) {
+        setOooTarget(delivery);
+        return;
+      }
+    }
+
     const confirmed = await Swal.fire({
       title: actionLabel(next),
       text: `La entrega avanzará a "${deliveryStatusMeta(next).label}".`,
@@ -549,6 +601,31 @@ export function DriverActiveDeliveries({
           </form>
         )}
       </Drawer>
+
+      {/* ── Out-of-order delivery confirmation ── */}
+      <OutOfOrderConfirmModal
+        open={Boolean(oooTarget)}
+        onClose={() => setOooTarget(null)}
+        onConfirm={() => void confirmOutOfOrderDelivery()}
+        targetStop={oooTarget ? {
+          stopNum: oooTarget.routeOrder ?? 0,
+          customerName: oooTarget.order?.customerName ?? oooTarget.customerName,
+          address: oooTarget.order?.deliveryAddress ?? oooTarget.deliveryAddress ?? undefined,
+        } : null}
+        expectedStop={(() => {
+          if (!oooTarget) return null;
+          const pendingSorted = allDeliveries
+            .filter((d) => d.status !== "DELIVERED" && d.status !== "INCIDENT" && d.status !== "FAILED")
+            .sort((a, b) => (a.routeOrder ?? Infinity) - (b.routeOrder ?? Infinity));
+          const next = pendingSorted[0];
+          if (!next) return null;
+          return {
+            stopNum: next.routeOrder ?? 0,
+            customerName: next.order?.customerName ?? next.customerName,
+            address: next.order?.deliveryAddress ?? next.deliveryAddress ?? undefined,
+          };
+        })()}
+      />
     </>
   );
 }

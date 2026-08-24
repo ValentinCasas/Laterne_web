@@ -19,6 +19,7 @@ import { Icon } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
 import { Drawer } from "@/components/admin/ui/drawer";
 import { Timeline } from "@/components/admin/ui/timeline";
+import { OutOfOrderConfirmModal } from "@/components/driver/out-of-order-modal";
 import { formatTime as _formatTime, formatRelativeTime as _formatRelativeTime } from "@/lib/date-format";
 
 /* ------------------------------------------------------------------ */
@@ -269,6 +270,9 @@ export function DriverRoutePanel({
   // Confirm drawer
   const [confirmForId, setConfirmForId] = useState<number | null>(null);
 
+  // Out-of-order delivery modal
+  const [oooTarget, setOooTarget] = useState<DeliveryItem | null>(null);
+
   // Driver position
   const [driverPos, setDriverPos] = useState<{ lat: number; lng: number } | null>(
     lastPosition ? { lat: lastPosition.latitude, lng: lastPosition.longitude } : null
@@ -285,7 +289,47 @@ export function DriverRoutePanel({
   const completedCount = deliveries.filter((d) => d.status === "DELIVERED").length;
   const pendingDeliveries = deliveries.filter((d) => d.status !== "DELIVERED");
   const nextStop = pendingDeliveries[0] ?? null;
-  const progress = routeProgress(completedCount, route?.totalStops ?? deliveries.length);
+   const progress = routeProgress(completedCount, route?.totalStops ?? deliveries.length);
+
+   /** @summary Detecta si una entrega está fuera del orden operativo (no es la próxima pendiente). */
+   function isOutOfOrder(delivery: DeliveryItem): DeliveryItem | null {
+     if (!isActive) return null;
+     const pendingSorted = deliveries
+       .filter((d) => d.status !== "DELIVERED" && d.status !== "INCIDENT" && d.status !== "FAILED")
+       .sort((a, b) => (a.routeOrder ?? Infinity) - (b.routeOrder ?? Infinity));
+     const nextPending = pendingSorted[0];
+     if (!nextPending || nextPending.id === delivery.id) return null;
+     return nextPending;
+   }
+
+   /** @summary Procesa la entrega fuera de orden confirmada por el usuario. */
+   async function confirmOutOfOrderDelivery() {
+     if (!oooTarget) return;
+     const delivery = oooTarget;
+     setOooTarget(null);
+     setWorking(true);
+     try {
+       const res = await scopedFetch(`/api/driver/deliveries/${delivery.id}/deliver-out-of-order`, {
+         method: "PATCH",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ status: "DELIVERED", confirmReorder: true }),
+       });
+       const body = (await res.json().catch(() => ({}))) as { route?: { deliveries: DeliveryItem[] }; error?: string };
+       if (!res.ok || !body.route) {
+         await Swal.fire({ title: "No se pudo entregar", text: body.error ?? "Intentá de nuevo.", icon: "error", ...SWAL_THEME });
+         return;
+       }
+       if (body.route.deliveries) {
+         setDeliveries(body.route.deliveries);
+         if (route) setRoute({ ...route, deliveries: body.route.deliveries, completedStops: body.route.deliveries.filter((d) => d.status === "DELIVERED").length });
+       }
+       setConfirmForId(null);
+       setSelectedId(null);
+       setLastSyncAt(new Date());
+     } finally {
+       setWorking(false);
+     }
+   }
 
   // Online/offline detection
   useEffect(() => {
@@ -594,6 +638,17 @@ export function DriverRoutePanel({
 
   async function confirmDeliveryAction() {
     if (!confirmForId) return;
+    const delivery = deliveries.find((d) => d.id === confirmForId);
+    if (!delivery) { setConfirmForId(null); return; }
+
+    // Detect out-of-order delivery attempt
+    const expectedStop = isOutOfOrder(delivery);
+    if (expectedStop) {
+      setConfirmForId(null);
+      setOooTarget(delivery);
+      return;
+    }
+
     setWorking(true);
     try {
       const res = await scopedFetch(`/api/driver/deliveries/${confirmForId}`, {
@@ -1215,6 +1270,31 @@ export function DriverRoutePanel({
           </form>
         )}
       </Drawer>
+
+      {/* ── Out-of-order delivery confirmation ── */}
+      <OutOfOrderConfirmModal
+        open={Boolean(oooTarget)}
+        onClose={() => setOooTarget(null)}
+        onConfirm={() => void confirmOutOfOrderDelivery()}
+        targetStop={oooTarget ? {
+          stopNum: oooTarget.routeOrder ?? 0,
+          customerName: oooTarget.order?.customerName ?? oooTarget.customerName,
+          address: oooTarget.order?.deliveryAddress ?? oooTarget.deliveryAddress ?? undefined,
+        } : null}
+        expectedStop={(() => {
+          if (!oooTarget) return null;
+          const pendingSorted = deliveries
+            .filter((d) => d.status !== "DELIVERED" && d.status !== "INCIDENT" && d.status !== "FAILED")
+            .sort((a, b) => (a.routeOrder ?? Infinity) - (b.routeOrder ?? Infinity));
+          const next = pendingSorted[0];
+          if (!next) return null;
+          return {
+            stopNum: next.routeOrder ?? 0,
+            customerName: next.order?.customerName ?? next.customerName,
+            address: next.order?.deliveryAddress ?? next.deliveryAddress ?? undefined,
+          };
+        })()}
+      />
     </div>
   );
 }

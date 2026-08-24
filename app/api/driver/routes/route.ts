@@ -172,6 +172,7 @@ export async function POST(request: Request) {
           data: {
             routeId: newRoute.id,
             routeOrder: index + 1,
+            plannedOrder: index + 1,
           },
         })
       )
