@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { authorize } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
-import { canRouteTransition } from "@/lib/delivery-route-state";
 
 /**
  * @summary GET: Devuelve el recorrido activo (si existe) y el historial reciente del repartidor.
@@ -107,8 +106,9 @@ export async function GET() {
 /**
  * @summary POST: Crea un nuevo recorrido asignando automáticamente las entregas pendientes del repartidor.
  * Si ya existe un recorrido activo, devuelve ese en lugar de crear uno nuevo.
+ * Si `draft: true`, crea el recorrido en estado PREPARING (sin startedAt) para permitir ordenar paradas antes de iniciar.
  */
-export async function POST() {
+export async function POST(request: Request) {
   const auth = await authorize();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
@@ -118,6 +118,10 @@ export async function POST() {
   if (!driverProfile) {
     return NextResponse.json({ error: "No tenés un perfil de repartidor activo vinculado" }, { status: 403 });
   }
+
+  // Parse optional body for draft mode
+  const body = await request.json().catch(() => ({}));
+  const isDraft = body === null ? false : (body as { draft?: boolean }).draft === true;
 
   // Verificar si ya hay un recorrido activo
   const existingActive = await prisma.deliveryRoute.findFirst({
@@ -154,8 +158,8 @@ export async function POST() {
         tenantId: auth.tenant.id,
         driverProfileId: driverProfile.id,
         branchId,
-        status: "IN_PROGRESS",
-        startedAt: new Date(),
+        status: isDraft ? "PREPARING" : "IN_PROGRESS",
+        startedAt: isDraft ? null : new Date(),
         totalStops: pendingDeliveries.length,
       },
     });

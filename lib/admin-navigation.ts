@@ -241,6 +241,13 @@ export const ADMIN_NAVIGATION = [
             description: "Entregas y ubicación del repartidor autenticado",
           },
           {
+            href: "/admin/delivery/recorridos",
+            label: "Recorridos",
+            icon: "RT",
+            permission: "driver.view",
+            description: "Historial de recorridos de repartidores",
+          },
+          {
             href: "/admin/integraciones#delivery-map",
             label: "Configuración de delivery",
             icon: "CF",

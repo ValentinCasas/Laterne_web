@@ -82,7 +82,10 @@ export function DriverDashboard({
   /* ── Source of truth: when a route is active, route.deliveries includes ALL
      stops (pending + delivered). The separate `rawDeliveries` state only has
      active statuses and would drop DELIVERED stops on every poll. */
-  const hasActiveRoute = route?.status === "IN_PROGRESS" || route?.status === "PREPARING";
+  /* ── Route computed ── */
+  const isPreparing = route?.status === "PREPARING";
+  const isInProgress = route?.status === "IN_PROGRESS";
+  const hasActiveRoute = isInProgress || isPreparing;
   const deliveries = useMemo(() => {
     if (hasActiveRoute && route?.deliveries?.length) return route.deliveries;
     return rawDeliveries;
@@ -102,7 +105,6 @@ export function DriverDashboard({
   const [editAddressId, setEditAddressId] = useState<number | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
   const [reorderKey, setReorderKey] = useState(0);
-  /* ── Route computed ── */
   const completedCount = deliveries.filter((d) => d.status === "DELIVERED").length;
   const pendingDeliveries = deliveries.filter((d) => d.status !== "DELIVERED");
   const nextStop = hasActiveRoute ? pendingDeliveries[0] ?? null : null;
@@ -217,7 +219,66 @@ export function DriverDashboard({
 
   /* ── Acciones de recorrido ── */
 
+  /** @summary Crea un recorrido en estado PREPARING para ordenar paradas antes de iniciar. */
+  async function prepareRoute() {
+    setWorking(true);
+    try {
+      const res = await scopedFetch("/api/driver/routes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: true }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { route?: ActiveRoute; error?: string };
+      if (!res.ok || !body.route) {
+        await Swal.fire({ title: "No se pudo crear", text: body.error ?? "Intentá de nuevo.", icon: "error", ...SWAL_THEME });
+        return;
+      }
+      setRoute(body.route);
+      setReorderOpen(true);
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function startRoute() {
+    // If a PREPARING route exists, transition it to IN_PROGRESS
+    if (route && route.status === "PREPARING") {
+      const confirmed = await Swal.fire({
+        title: "Iniciar recorrido",
+        text: `Se iniciará el recorrido con ${pendingDeliveries.length || "?"} entrega${pendingDeliveries.length === 1 ? "" : "s"} pendiente${pendingDeliveries.length === 1 ? "" : "s"} en el orden definido.`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Iniciar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#16a34a",
+        ...SWAL_THEME,
+      });
+      if (!confirmed.isConfirmed) return;
+      setWorking(true);
+      try {
+        const res = await scopedFetch(`/api/driver/routes/${route.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "IN_PROGRESS" }),
+        });
+        const body = (await res.json().catch(() => ({}))) as { route?: ActiveRoute; error?: string };
+        if (!res.ok || !body.route) {
+          await Swal.fire({ title: "No se pudo iniciar", text: body.error ?? "Intentá de nuevo.", icon: "error", ...SWAL_THEME });
+          return;
+        }
+        setRoute(body.route);
+        // Re-fetch full route with all deliveries to sync state
+        const routeRes = await scopedFetch(`/api/driver/routes/${body.route.id}`, { cache: "no-store" }).catch(() => null);
+        if (routeRes?.ok) {
+          const routeBody = (await routeRes.json().catch(() => ({}))) as { route?: ActiveRoute };
+          if (routeBody.route) setRoute(routeBody.route);
+        }
+      } finally {
+        setWorking(false);
+      }
+      return;
+    }
+
     const confirmed = await Swal.fire({
       title: "Iniciar recorrido",
       text: `Se asignarán las ${pendingDeliveries.length || "?"} entrega${pendingDeliveries.length === 1 ? "" : "s"} pendiente${pendingDeliveries.length === 1 ? "" : "s"} a tu recorrido.`,
@@ -396,100 +457,151 @@ export function DriverDashboard({
         <aside className="space-y-4 lg:col-start-2 lg:row-start-1 min-w-0">
           {/* ── Recorrido ── */}
           {hasActiveRoute && route ? (
-            <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-sky-500/[.06] via-zinc-900 to-zinc-950 p-4 sm:p-5 shadow-xl">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="grid h-9 w-9 place-items-center rounded-2xl bg-sky-500/15">
-                    <Icon name="truck" className="h-4 w-4 text-sky-300" />
+            isPreparing ? (
+              /* PREPARANDO: card para ordenar paradas antes de iniciar */
+              <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-violet-500/[.08] via-zinc-900 to-zinc-950 p-4 sm:p-5 shadow-xl">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-2xl bg-violet-500/15">
+                    <Icon name="menu" className="h-4 w-4 text-violet-300" />
                   </span>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-sky-300">Recorrido</p>
-                    <p className="text-xs text-zinc-500">
-                      {route.startedAt ? `Iniciado ${formatRelativeTime(route.startedAt)}` : "Preparando"}
-                    </p>
+                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">Recorrido</p>
+                    <p className="text-xs text-zinc-500">Preparando recorrido</p>
                   </div>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${routeStatusMeta(route.status).badge}`}>
-                  {routeStatusMeta(route.status).label}
-                </span>
-              </div>
-
-              {/* Barra de progreso */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-xs text-zinc-500">
-                  <span>Progreso</span>
-                  <span className="font-bold text-white">{routeProgressPct}%</span>
+                <p className="mt-3 text-xs sm:text-sm text-zinc-400">
+                  Tenés <span className="font-bold text-white">{pendingDeliveries.length}</span>{" "}
+                  parada{pendingDeliveries.length === 1 ? "" : "s"} para ordenar antes de iniciar.
+                </p>
+                {/* Próxima parada preview */}
+                {nextStop && (
+                  <div className="mt-3 rounded-xl border border-violet-400/15 bg-violet-500/[.06] p-3">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-violet-300/70">Próxima parada</p>
+                    <p className="mt-1 text-sm font-bold text-white truncate">
+                      #{nextStop.routeOrder ?? "?"} · {nextStop.order?.customerName ?? nextStop.customerName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-400 truncate">
+                      {nextStop.order?.deliveryAddress ?? nextStop.deliveryAddress ?? "Dirección no informada"}
+                    </p>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-violet-400/20 bg-violet-500/10 px-4 text-xs font-bold text-violet-300 transition hover:bg-violet-500/20 active:scale-[.99]"
+                    onClick={() => setReorderOpen(true)}
+                  >
+                    <Icon name="menu" className="h-4 w-4" />
+                    Editar orden
+                  </button>
+                  <button
+                    type="button"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-xs font-black text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 active:scale-[.99] disabled:opacity-50"
+                    onClick={() => void startRoute()}
+                    disabled={working}
+                  >
+                    {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="truck" className="h-4 w-4" />}
+                    Iniciar recorrido
+                  </button>
                 </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
-                    style={{ width: `${routeProgressPct}%` }}
-                  />
+              </section>
+            ) : (
+              /* EN CURSO: panel completo del recorrido */
+              <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-sky-500/[.06] via-zinc-900 to-zinc-950 p-4 sm:p-5 shadow-xl">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="grid h-9 w-9 place-items-center rounded-2xl bg-sky-500/15">
+                      <Icon name="truck" className="h-4 w-4 text-sky-300" />
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[.18em] text-sky-300">Recorrido</p>
+                      <p className="text-xs text-zinc-500">
+                        {route.startedAt ? `Iniciado ${formatRelativeTime(route.startedAt)}` : "En curso"}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${routeStatusMeta(route.status).badge}`}>
+                    {routeStatusMeta(route.status).label}
+                  </span>
                 </div>
-              </div>
 
-              <p className="mt-2 text-xs text-zinc-500">
-                <NumberFlow value={completedCount} /> de {route.totalStops} entregas
-                {route.totalDurationS != null && ` · ${formatDuration(route.totalDurationS)}`}
-              </p>
+                {/* Barra de progreso */}
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-xs text-zinc-500">
+                    <span>Progreso</span>
+                    <span className="font-bold text-white">{routeProgressPct}%</span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                      style={{ width: `${routeProgressPct}%` }}
+                    />
+                  </div>
+                </div>
 
-              {/* Próxima parada */}
-              {nextStop && (
-                <div className="mt-3 rounded-xl border border-pink-400/15 bg-pink-500/[.06] p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-pink-300/70">Próxima parada</p>
-                  <p className="mt-1 text-sm font-bold text-white truncate">
-                    #{nextStop.routeOrder ?? "?"} · {nextStop.order?.customerName ?? nextStop.customerName}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-400 truncate">
-                    {nextStop.order?.deliveryAddress ?? nextStop.deliveryAddress ?? "Dirección no informada"}
-                  </p>
-                  {nextStop.order?.reference && (
-                    <p className="mt-1 text-[11px] text-zinc-500">Pedido: {nextStop.order.reference}</p>
-                  )}
-                  {(nextStop.order?.phone ?? nextStop.contactPhone) && (
+                <p className="mt-2 text-xs text-zinc-500">
+                  <NumberFlow value={completedCount} /> de {route.totalStops} entregas
+                  {route.totalDurationS != null && ` · ${formatDuration(route.totalDurationS)}`}
+                </p>
+
+                {/* Próxima parada */}
+                {nextStop && (
+                  <div className="mt-3 rounded-xl border border-pink-400/15 bg-pink-500/[.06] p-3">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-pink-300/70">Próxima parada</p>
+                    <p className="mt-1 text-sm font-bold text-white truncate">
+                      #{nextStop.routeOrder ?? "?"} · {nextStop.order?.customerName ?? nextStop.customerName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-400 truncate">
+                      {nextStop.order?.deliveryAddress ?? nextStop.deliveryAddress ?? "Dirección no informada"}
+                    </p>
+                    {nextStop.order?.reference && (
+                      <p className="mt-1 text-[11px] text-zinc-500">Pedido: {nextStop.order.reference}</p>
+                    )}
+                    {(nextStop.order?.phone ?? nextStop.contactPhone) && (
+                      <a
+                        href={`tel:${encodeURIComponent(nextStop.order?.phone ?? nextStop.contactPhone ?? "")}`}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-sky-300 transition hover:bg-white/10"
+                      >
+                        <Icon name="phone" className="h-3 w-3" />
+                        {nextStop.order?.phone ?? nextStop.contactPhone}
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Acciones */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-xs font-bold text-white transition hover:bg-white/10 active:scale-[.99]"
+                    onClick={() => void completeRoute()}
+                    disabled={working}
+                  >
+                    {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="check-circle" className="h-4 w-4" />}
+                    Finalizar
+                  </button>
+                  <button
+                    type="button"
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20 active:scale-[.99]"
+                    onClick={() => setReorderOpen(true)}
+                  >
+                    <Icon name="menu" className="h-4 w-4" />
+                    Ordenar
+                  </button>
+                  {navUrl && (
                     <a
-                      href={`tel:${encodeURIComponent(nextStop.order?.phone ?? nextStop.contactPhone ?? "")}`}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-sky-300 transition hover:bg-white/10"
+                      href={navUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-pink-600 px-4 text-xs font-black text-white shadow-lg shadow-pink-950/30 transition hover:bg-pink-500 active:scale-[.98]"
                     >
-                      <Icon name="phone" className="h-3 w-3" />
-                      {nextStop.order?.phone ?? nextStop.contactPhone}
+                      <Icon name="external-link" className="h-4 w-4" />
+                      Navegar
                     </a>
                   )}
                 </div>
-              )}
-
-              {/* Acciones */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-xs font-bold text-white transition hover:bg-white/10 active:scale-[.99]"
-                  onClick={() => void completeRoute()}
-                  disabled={working}
-                >
-                  {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="check-circle" className="h-4 w-4" />}
-                  Finalizar
-                </button>
-                <button
-                  type="button"
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20 active:scale-[.99]"
-                  onClick={() => setReorderOpen(true)}
-                >
-                  <Icon name="menu" className="h-4 w-4" />
-                  Ordenar
-                </button>
-                {navUrl && (
-                  <a
-                    href={navUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-pink-600 px-4 text-xs font-black text-white shadow-lg shadow-pink-950/30 transition hover:bg-pink-500 active:scale-[.98]"
-                  >
-                    <Icon name="external-link" className="h-4 w-4" />
-                    Navegar
-                  </a>
-                )}
-              </div>
-            </section>
+              </section>
+            )
           ) : (
             /* Sin recorrido: card compacta para iniciar */
             <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-gradient-to-br from-zinc-800/30 to-zinc-900 p-4 sm:p-5 shadow-xl">
@@ -502,25 +614,38 @@ export function DriverDashboard({
                   <p className="text-xs text-zinc-500">Sin recorrido activo</p>
                 </div>
               </div>
-              {pendingDeliveries.length > 0 ? (                  <p className="mt-3 text-xs sm:text-sm text-zinc-400">
+              {pendingDeliveries.length > 0 ? (
+                <p className="mt-3 text-xs sm:text-sm text-zinc-400">
                   Tenés <span className="font-bold text-white">{pendingDeliveries.length}</span>{" "}
                   entrega{pendingDeliveries.length === 1 ? "" : "s"} disponible{pendingDeliveries.length === 1 ? "" : "s"} para incluir en el recorrido.
                 </p>
               ) : (
                 <p className="mt-3 text-sm text-zinc-500">No hay entregas pendientes por el momento.</p>
               )}
-              <button
-                type="button"
-                className="mt-4 flex min-h-11 sm:min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 active:scale-[.99] disabled:opacity-50"
-                onClick={() => void startRoute()}
-                disabled={working || pendingDeliveries.length === 0}
-              >
-                {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="truck" className="h-4 w-4" />}
-                Iniciar recorrido
-              </button>
+              {pendingDeliveries.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    className="flex min-h-11 sm:min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 text-xs sm:text-sm font-bold text-sky-300 shadow-lg shadow-sky-950/20 transition hover:bg-sky-500/20 active:scale-[.99] disabled:opacity-50"
+                    onClick={() => void prepareRoute()}
+                    disabled={working}
+                  >
+                    <Icon name="menu" className="h-4 w-4" />
+                    Ordenar paradas
+                  </button>
+                  <button
+                    type="button"
+                    className="flex min-h-11 sm:min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 active:scale-[.99] disabled:opacity-50"
+                    onClick={() => void startRoute()}
+                    disabled={working}
+                  >
+                    {working ? <Icon name="loader" className="h-4 w-4 animate-spin" /> : <Icon name="truck" className="h-4 w-4" />}
+                    Iniciar recorrido
+                  </button>
+                </div>
+              )}
             </section>
           )}
-
           {/* GPS — SIEMPRE visible */}
           <DriverLocationSharing
             deliveries={sortedDeliveries.filter((d) => d.status !== "DELIVERED").map((delivery) => ({ id: delivery.id, branchId: delivery.branch?.id, status: delivery.status }))}

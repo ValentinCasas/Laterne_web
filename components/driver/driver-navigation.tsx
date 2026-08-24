@@ -1,17 +1,37 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/admin/ui/icons";
 import { parseCanonicalPath } from "@/lib/routes";
+import { scopedFetch } from "@/lib/client-routing";
 
 type DriverNavItem = { href: Route; label: string; icon: IconName; logicalPath: string; badge?: number };
 
-/** @summary Navegación inferior premium con estado activo canónico, badges animados y safe area. */
-export function DriverNavigation({ items, activeDeliveries, todayCount }: { items: DriverNavItem[]; activeDeliveries: number; todayCount: number }) {
+/** @summary Navegación inferior premium con estado canónico, badges animados y safe area. */
+export function DriverNavigation({ items, activeDeliveries: initialActive }: { items: DriverNavItem[]; activeDeliveries: number; todayCount: number }) {
   const pathname = usePathname();
   const logicalPath = parseCanonicalPath(pathname).logicalPath;
+  const [activeDeliveries, setActiveDeliveries] = useState(initialActive);
+
+  /* ── Fetch badge data ── */
+  useEffect(() => {
+    let disposed = false;
+    async function fetchBadges() {
+      const res = await scopedFetch("/api/driver/routes", { cache: "no-store" }).catch(() => null);
+      if (!res?.ok || disposed) return;
+      const body = (await res.json().catch(() => ({}))) as { activeRoute?: { deliveries?: Array<{ status: string }> }; history?: unknown[] };
+      if (disposed) return;
+      if (body.activeRoute?.deliveries) {
+        setActiveDeliveries(body.activeRoute.deliveries.filter((d) => d.status !== "DELIVERED").length);
+      }
+    }
+    fetchBadges();
+    const timer = window.setInterval(() => void fetchBadges(), 30_000);
+    return () => { disposed = true; window.clearInterval(timer); };
+  }, []);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[.06] bg-zinc-950/95 backdrop-blur-2xl" aria-label="Navegación del repartidor">
@@ -42,4 +62,18 @@ export function DriverNavigation({ items, activeDeliveries, todayCount }: { item
       </div>
     </nav>
   );
+}
+
+/** @summary Construye los items de navegación del repartidor con las rutas canónicas apropiadas. */
+export function buildDriverNavItems(opts: { tenantSlug: string; tenantGuid?: string; activeDeliveries: number; todayCompleted: number }): DriverNavItem[] {
+  const base = opts.tenantGuid
+    ? (path: string) => `/t/${opts.tenantGuid}/${opts.tenantSlug}/driver${path === "/" ? "" : path}` as Route
+    : (path: string) => `/t/${opts.tenantSlug}/driver${path === "/" ? "" : path}` as Route;
+
+  return [
+    { href: base("/"), label: "Operación", icon: "grid" as IconName, logicalPath: "/driver" },
+    { href: base("/recorridos"), label: "Recorridos", icon: "truck" as IconName, logicalPath: "/driver/recorridos" },
+    { href: base("/entregas"), label: "Historial", icon: "package" as IconName, logicalPath: "/driver/entregas", badge: opts.todayCompleted || undefined },
+    { href: base("/incidencias"), label: "Incidencias", icon: "warning" as IconName, logicalPath: "/driver/incidencias", badge: opts.activeDeliveries || undefined },
+  ];
 }

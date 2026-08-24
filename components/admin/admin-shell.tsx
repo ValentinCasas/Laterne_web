@@ -37,6 +37,7 @@ import {
 } from "@/lib/admin-navigation";
 import { useNavigationMode } from "@/hooks/use-navigation-mode";
 import { AdminShellSidebar } from "@/components/admin/admin-shell-sidebar";
+import { DriverNavigation, buildDriverNavItems } from "@/components/driver/driver-navigation";
 
 type SearchResults = {
   products: Array<{ id: number; name: string; price: string | null; status: string }>;
@@ -1030,7 +1031,19 @@ export function AdminShell({
         </div>
       )}
 
-      <main className="admin-main admin-shell-inner px-3 pb-5 pt-[calc(4.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-6 sm:pt-[calc(5rem+env(safe-area-inset-top))] lg:px-0 lg:pb-8 lg:pt-[calc(5.5rem+env(safe-area-inset-top))]">{children}</main>
+      <main className={`admin-main admin-shell-inner px-3 pt-[calc(4.75rem+env(safe-area-inset-top))] sm:px-4 sm:pt-[calc(5rem+env(safe-area-inset-top))] lg:px-0 lg:pt-[calc(5.5rem+env(safe-area-inset-top))] ${isDriverSurface ? "pb-24 sm:pb-28" : "pb-5 sm:pb-6 lg:pb-8"}`}>{children}</main>
+
+      {/* ── Driver bottom navigation ── */}
+      {isDriverSurface && (() => {
+        const parsed = parseCanonicalPath(pathname);
+        const items = buildDriverNavItems({
+          tenantSlug: tenantSlug,
+          tenantGuid: parsed.tenantGuid,
+          activeDeliveries: 0,
+          todayCompleted: 0,
+        });
+        return <DriverNavigation items={items} activeDeliveries={0} todayCount={0} />;
+      })()}
 
       {mobileMenuOpen && (
         <>
