@@ -387,6 +387,7 @@ export function DriverDashboard({
               onMapSelect={handleVerEnMapa}
               drawerOpen={drawerOpen}
               onCloseDrawer={handleCloseDrawer}
+              onEditAddress={(id) => setEditAddressId(id)}
             />
           </section>
         </div>

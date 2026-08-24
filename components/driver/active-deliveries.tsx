@@ -111,6 +111,7 @@ export function DriverActiveDeliveries({
   onMapSelect,
   drawerOpen,
   onCloseDrawer,
+  onEditAddress,
 }: {
   deliveries: DriverDelivery[];
   allDeliveries: DriverDelivery[];
@@ -123,6 +124,7 @@ export function DriverActiveDeliveries({
   onMapSelect?: (id: number) => void;
   drawerOpen?: boolean;
   onCloseDrawer?: () => void;
+  onEditAddress?: (id: number) => void;
 }) {
   const items = deliveries;
   const [incidentForId, setIncidentForId] = useState<number | null>(null);
@@ -262,14 +264,12 @@ export function DriverActiveDeliveries({
               >
                 <div className="flex items-start gap-2 sm:gap-3 min-w-0">
                   {/* Stop number badge */}
-                  <span className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black ${
+                  <span className={`flex shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black ${
                     isDelivered && routeActive
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : isActive
-                        ? "bg-sky-500/20 text-sky-300"
-                        : "bg-pink-500/15 text-pink-300"
+                      ? "h-8 min-w-[2.5rem] px-1.5 sm:h-10 sm:min-w-[3rem] bg-emerald-500/20 text-emerald-300"
+                      : "h-8 w-8 sm:h-10 sm:w-10 " + (isActive ? "bg-sky-500/20 text-sky-300" : "bg-pink-500/15 text-pink-300")
                   }`}>
-                    {isDelivered && routeActive ? "✓" : stopNum ? `#${stopNum}` : `#${index + 1}`}
+                    {isDelivered && routeActive ? `#${stopNum ?? index + 1} ✓` : stopNum ? `#${stopNum}` : `#${index + 1}`}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -358,6 +358,17 @@ export function DriverActiveDeliveries({
                   >
                     <Icon name="phone" className="h-4 w-4" />
                   </a>
+                )}
+                {/* Editar dirección */}
+                {onEditAddress && !isDelivered && (
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-400/20 bg-amber-500/10 text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-300"
+                    onClick={() => onEditAddress(delivery.id)}
+                    aria-label="Editar dirección"
+                  >
+                    <Icon name="search" className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             </article>

@@ -66,7 +66,7 @@ function buildStopMarker(index: number, status: string, isSelected: boolean) {
     transform: isSelected ? "scale(1.15)" : "scale(1)",
     cursor: "pointer",
   });
-  el.textContent = delivered ? "✓" : incident ? "!" : String(index);
+  el.textContent = delivered ? `${index} ✓` : incident ? "!" : String(index);
   return el;
 }
 
