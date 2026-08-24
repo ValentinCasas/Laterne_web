@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/format";
+import { routeStatusMeta, formatDuration, getRouteStats } from "@/lib/delivery-route-state";
 import { PageHeader } from "@/components/admin/ui";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,12 @@ export default async function AdminRouteHistoryPage({
         createdAt: true,
         branch: { select: { id: true, name: true } },
         driver: { select: { id: true, name: true, userId: true } },
+        deliveries: {
+          select: {
+            status: true,
+            incidents: { select: { resolved: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" as const },
       skip: (page - 1) * pageSize,
@@ -133,21 +140,25 @@ export default async function AdminRouteHistoryPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {serialize(routes).map((route: { id: number; status: string; createdAt: string | Date; totalStops: number; completedStops: number; incidentCount: number; totalDurationS?: number | null; branch?: { name: string } | null; driver?: { name: string } | null }) => (
-                  <tr key={route.id} className="transition hover:bg-white/[.02]">
-                    <td className="px-4 py-3 font-bold text-white">#{route.id}</td>
-                    <td className="px-4 py-3 text-zinc-300">{route.driver?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-zinc-400">{route.branch?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-zinc-400">{new Date(route.createdAt).toLocaleDateString("es-AR")}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${routeStatusMeta(route.status).badge}`}>
-                        {routeStatusMeta(route.status).label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-300">{route.completedStops}/{route.totalStops}</td>
-                    <td className="px-4 py-3 text-zinc-400">{route.totalDurationS != null ? formatDuration(route.totalDurationS) : "—"}</td>
-                  </tr>
-                ))}
+                {serialize(routes).map((route: { id: number; status: string; createdAt: string | Date; totalStops: number; completedStops: number; incidentCount: number; totalDurationS?: number | null; branch?: { name: string } | null; driver?: { name: string } | null; deliveries: Array<{ status: string; incidents?: Array<{ resolved?: boolean }> }> }) => {
+                  const meta = routeStatusMeta(route.status);
+                  const stats = getRouteStats(route, route.deliveries);
+                  return (
+                    <tr key={route.id} className="transition hover:bg-white/[.02]">
+                      <td className="px-4 py-3 font-bold text-white">#{route.id}</td>
+                      <td className="px-4 py-3 text-zinc-300">{route.driver?.name ?? "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{route.branch?.name ?? "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{new Date(route.createdAt).toLocaleDateString("es-AR")}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${meta.badge}`}>
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">{stats.deliveredStops}/{stats.totalStops}</td>
+                      <td className="px-4 py-3 text-zinc-400">{stats.duration != null ? formatDuration(stats.duration) : "—"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -182,19 +193,4 @@ export default async function AdminRouteHistoryPage({
   );
 }
 
-function routeStatusMeta(status: string) {
-  const map: Record<string, { label: string; badge: string }> = {
-    PREPARING: { label: "Preparando", badge: "bg-zinc-500/15 text-zinc-300" },
-    IN_PROGRESS: { label: "En curso", badge: "bg-sky-500/15 text-sky-300" },
-    COMPLETED: { label: "Completado", badge: "bg-emerald-500/15 text-emerald-300" },
-    CANCELLED: { label: "Cancelado", badge: "bg-red-500/15 text-red-300" },
-  };
-  return map[status] ?? { label: status, badge: "bg-zinc-500/15 text-zinc-300" };
-}
 
-function formatDuration(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h === 0) return `${m} min`;
-  return `${h} h ${m} min`;
-}

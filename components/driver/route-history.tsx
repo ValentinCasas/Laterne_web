@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { Icon, type IconName } from "@/components/admin/ui/icons";
 import { NumberFlow } from "@/components/admin/ui/number-flow";
-import { routeStatusMeta, formatDuration, formatDistance } from "@/lib/delivery-route-state";
+import { routeStatusMeta, formatDuration, formatDistance, getRouteStats } from "@/lib/delivery-route-state";
 import { formatDate } from "@/lib/date-format";
 
 type RouteHistoryItem = {
@@ -20,6 +20,7 @@ type RouteHistoryItem = {
   totalDurationS?: number | null;
   createdAt: string | Date;
   branch?: { id: number; name: string } | null;
+  deliveries: Array<{ status: string; incidents?: Array<{ resolved?: boolean }> }>;
 };
 
 /** @summary Historial de recorridos del repartidor con KPIs personales, filtros, paginación y enlaces al detalle. */
@@ -149,9 +150,8 @@ export function DriverRouteHistory({
           <div className="space-y-2">
             {history.map((route) => {
               const meta = routeStatusMeta(route.status);
-              const duration = route.startedAt && (route.completedAt || route.cancelledAt)
-                ? Math.round(((new Date(route.completedAt ?? route.cancelledAt!)).getTime() - new Date(route.startedAt).getTime()) / 1000)
-                : route.totalDurationS ?? null;
+              const stats = getRouteStats(route, route.deliveries);
+              const duration = stats.duration;
               return (
                 <button
                   key={route.id}
@@ -168,11 +168,11 @@ export function DriverRouteHistory({
                     </div>
                     <p className="mt-1 text-sm font-bold text-white">{formatDate(route.createdAt)}</p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
-                      <span>{route.completedStops}/{route.totalStops} entregas</span>
+                      <span>{stats.deliveredStops}/{stats.totalStops} entregas</span>
                       {duration != null && <span>{formatDuration(duration)}</span>}
                       {route.totalDistanceM != null && <span>{formatDistance(route.totalDistanceM)}</span>}
-                      {route.incidentCount > 0 && (
-                        <span className="text-orange-300">{route.incidentCount} incidencia{route.incidentCount === 1 ? "" : "s"}</span>
+                      {stats.incidentStops > 0 && (
+                        <span className="text-orange-300">{stats.incidentStops} incidencia{stats.incidentStops === 1 ? "" : "s"}</span>
                       )}
                       {route.branch && <span className="text-zinc-500">{route.branch.name}</span>}
                     </div>

@@ -91,6 +91,12 @@ export default async function RouteHistoryPage({
         totalDurationS: true,
         createdAt: true,
         branch: { select: { id: true, name: true } },
+        deliveries: {
+          select: {
+            status: true,
+            incidents: { select: { resolved: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" as const },
       skip: (page - 1) * pageSize,

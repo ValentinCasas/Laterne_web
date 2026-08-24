@@ -66,3 +66,42 @@ export function routeProgress(completed: number, total: number): number {
 export function progressLabel(completed: number, total: number): string {
   return `${completed} de ${total} entregas`;
 }
+
+/** @summary Cálculo canónico de métricas de recorrido. Úsalo en lista, detalle y admin para evitar discrepancias entre vistas. */
+export function getRouteStats(
+  route: {
+    totalStops: number;
+    startedAt?: string | Date | null;
+    completedAt?: string | Date | null;
+    cancelledAt?: string | Date | null;
+    totalDurationS?: number | null;
+  },
+  deliveries: Array<{
+    status: string;
+    incidents?: Array<{ resolved?: boolean }>;
+  }>
+): {
+  totalStops: number;
+  deliveredStops: number;
+  incidentStops: number;
+  failedStops: number;
+  duration: number | null;
+  progress: number;
+} {
+  const totalStops = route.totalStops > 0 ? route.totalStops : deliveries.length;
+  const deliveredStops = deliveries.filter((d) => d.status === "DELIVERED").length;
+  const incidentStops = deliveries.filter((d) => d.incidents && d.incidents.length > 0).length;
+  const failedStops = deliveries.filter((d) => d.status === "FAILED" || d.status === "CANCELLED").length;
+  const duration =
+    route.startedAt && (route.completedAt || route.cancelledAt)
+      ? Math.round(((new Date(route.completedAt ?? route.cancelledAt!)).getTime() - new Date(route.startedAt).getTime()) / 1000)
+      : route.totalDurationS ?? null;
+  return {
+    totalStops,
+    deliveredStops,
+    incidentStops,
+    failedStops,
+    duration,
+    progress: routeProgress(deliveredStops, totalStops),
+  };
+}

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "next";
 import * as maplibregl from "maplibre-gl";
 import Link from "next/link";
 import { Icon } from "@/components/admin/ui/icons";
 import { Drawer } from "@/components/admin/ui/drawer";
 import { Timeline } from "@/components/admin/ui/timeline";
-import { routeStatusMeta, formatDuration, formatDistance } from "@/lib/delivery-route-state";
+import { routeStatusMeta, formatDuration, formatDistance, getRouteStats } from "@/lib/delivery-route-state";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
 import { formatTime, formatDate } from "@/lib/date-format";
 
@@ -73,13 +73,15 @@ export function DriverRouteDetail({
   const prefix = tenantGuid ? `/t/${tenantGuid}/${tenantSlug}` : `/t/${tenantSlug}`;
   const backUrl = `${prefix}/driver/recorridos` as Route;
 
-  // Compute duration
-  const duration = useMemo(() => {
-    if (route.startedAt && (route.completedAt || route.cancelledAt)) {
-      return Math.round(((new Date(route.completedAt ?? route.cancelledAt!)).getTime() - new Date(route.startedAt).getTime()) / 1000);
-    }
-    return route.totalDurationS ?? null;
-  }, [route]);
+  // Compute stats from actual deliveries (SSOT)
+  const stats = useMemo(() => getRouteStats(route, route.deliveries), [route]) as {
+    totalStops: number;
+    deliveredStops: number;
+    incidentStops: number;
+    failedStops: number;
+    duration: number | null;
+    progress: number;
+  };
 
   // Timeline events
   const timelineEvents = useMemo(() => {
@@ -150,10 +152,10 @@ export function DriverRouteDetail({
 
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { label: "Paradas", value: String(route.totalStops), icon: "map-pin" as const },
-            { label: "Entregadas", value: String(route.completedStops), icon: "check-circle" as const },
-            { label: "Incidencias", value: String(route.incidentCount), icon: "warning" as const },
-            { label: "Duración", value: duration != null ? formatDuration(duration) : "—", icon: "clock" as const },
+            { label: "Paradas", value: String(stats.totalStops), icon: "map-pin" as const },
+            { label: "Entregadas", value: String(stats.deliveredStops), icon: "check-circle" as const },
+            { label: "Incidencias", value: String(stats.incidentStops), icon: "warning" as const },
+            { label: "Duración", value: stats.duration != null ? formatDuration(stats.duration) : "—", icon: "clock" as const },
           ].map((kpi) => (
             <div key={kpi.label} className="rounded-xl bg-white/[.04] px-3 py-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-500">{kpi.label}</p>
@@ -172,7 +174,7 @@ export function DriverRouteDetail({
       </section>
 
       {/* Map */}
-      {route.deliveries.some((d) => d.latitude && d.longitude) && (
+      {(route.deliveries.some((d) => d.latitude && d.longitude) || (route.branch?.latitude != null && route.branch?.longitude != null)) && (
         <HistoricalRouteMap deliveries={route.deliveries} branch={route.branch} selectedId={selectedId} onSelect={setSelectedId} />
       )}
 
@@ -368,6 +370,9 @@ function HistoricalRouteMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const styleListenerRef = useRef<(() => void) | null>(null);
+  const syncScheduledRef = useRef(false);
+  const [loading, setLoading] = useState(true);
 
   const origin = useMemo(() => {
     const lat = Number(branch?.latitude);
@@ -395,8 +400,145 @@ function HistoricalRouteMap({
       }));
   }, [deliveries]);
 
+  const hasCoords = origin != null || stops.length > 0;
+
+  const syncRouteLayer = useCallback(
+    (m: maplibregl.Map) => {
+      if (!hasCoords || stops.length === 0) return;
+
+      const coords: [number, number][] = [];
+      if (origin) coords.push([origin.longitude, origin.latitude]);
+      stops.forEach((s) => coords.push([s.longitude, s.latitude]));
+
+      const lineData = {
+        type: "Feature" as const,
+        properties: {},
+        geometry: { type: "LineString" as const, coordinates: coords },
+      };
+
+      const src = m.getSource("historical-route") as maplibregl.GeoJSONSource | undefined;
+      if (src) {
+        src.setData(lineData);
+      } else {
+        m.addSource("historical-route", { type: "geojson", data: lineData });
+      }
+
+      if (!m.getLayer("historical-route-line")) {
+        m.addLayer({
+          id: "historical-route-line",
+          type: "line",
+          source: "historical-route",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#ec4899", "line-width": 3, "line-opacity": 0.6 },
+        });
+      }
+    },
+    [hasCoords, origin, stops]
+  );
+
+  const renderMarkers = useCallback(
+    (m: maplibregl.Map) => {
+      markersRef.current.forEach((mk) => mk.remove());
+      markersRef.current = [];
+
+      if (origin) {
+        const originEl = document.createElement("div");
+        Object.assign(originEl.style, {
+          width: "24px",
+          height: "24px",
+          borderRadius: "8px",
+          border: "3px solid white",
+          background: "linear-gradient(135deg, #10b981, #059669)",
+          boxShadow: "0 4px 12px rgba(0,0,0,.4)",
+          display: "grid",
+          placeItems: "center",
+        });
+        const dot = document.createElement("div");
+        Object.assign(dot.style, {
+          width: "6px",
+          height: "6px",
+          borderRadius: "2px",
+          background: "white",
+          transform: "rotate(45deg)",
+        });
+        originEl.appendChild(dot);
+        markersRef.current.push(
+          new maplibregl.Marker({ element: originEl }).setLngLat([origin.longitude, origin.latitude]).addTo(m)
+        );
+      }
+
+      stops.forEach((stop, i) => {
+        const isSelected = selectedId === stop.id;
+        const delivered = stop.status === "DELIVERED";
+        const incident = stop.status === "INCIDENT" || stop.status === "FAILED";
+        const el = document.createElement("div");
+        const size = isSelected ? 36 : 30;
+        Object.assign(el.style, {
+          width: `${size}px`,
+          height: `${size}px`,
+          display: "grid",
+          placeItems: "center",
+          borderRadius: "10px",
+          border: isSelected ? "3px solid #ec4899" : "3px solid white",
+          background: delivered ? "#10b981" : incident ? "#f59e0b" : "#ec4899",
+          color: "white",
+          fontSize: "12px",
+          fontWeight: "900",
+          boxShadow: isSelected
+            ? "0 0 0 4px rgba(236,72,153,.3), 0 6px 20px rgba(0,0,0,.5)"
+            : "0 6px 20px rgba(0,0,0,.5)",
+          opacity: delivered ? "0.7" : "1",
+          cursor: "pointer",
+        });
+        el.textContent = delivered ? "✓" : incident ? "!" : String(stop.routeOrder ?? i + 1);
+        el.addEventListener("click", () => onSelect(stop.id));
+        markersRef.current.push(
+          new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([stop.longitude, stop.latitude]).addTo(m)
+        );
+      });
+
+      const coords: [number, number][] = [];
+      if (origin) coords.push([origin.longitude, origin.latitude]);
+      stops.forEach((s) => coords.push([s.longitude, s.latitude]));
+      const bounds = new maplibregl.LngLatBounds();
+      coords.forEach((p) => bounds.extend(p));
+      if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 54, maxZoom: 15, duration: 500 });
+    },
+    [origin, stops, selectedId, onSelect]
+  );
+
+  const scheduleSync = useCallback(
+    (m: maplibregl.Map) => {
+      if (syncScheduledRef.current) return;
+      syncScheduledRef.current = true;
+
+      const trySync = () => {
+        if (!m.isStyleLoaded()) {
+          const onLoad = () => {
+            setLoading(false);
+            syncRouteLayer(m);
+            renderMarkers(m);
+            syncScheduledRef.current = false;
+          };
+          m.once("load", onLoad);
+          styleListenerRef.current = () => m.off("load", onLoad);
+          return;
+        }
+        setLoading(false);
+        syncRouteLayer(m);
+        renderMarkers(m);
+        syncScheduledRef.current = false;
+      };
+
+      trySync();
+    },
+    [syncRouteLayer, renderMarkers]
+  );
+
   // Init map
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
     if (!mapContainer.current || mapRef.current || !origin) return;
     maplibregl.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
     try {
@@ -408,89 +550,77 @@ function HistoricalRouteMap({
         cooperativeGestures: true,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      if (m.isStyleLoaded()) {
+        setLoading(false);
+      } else {
+        m.once("load", () => setLoading(false));
+      }
       mapRef.current = m;
-    } catch { /* ignore */ }
+    } catch {
+      setLoading(false);
+    }
     return () => {
+      if (styleListenerRef.current) {
+        styleListenerRef.current();
+        styleListenerRef.current = null;
+      }
+      syncScheduledRef.current = false;
       markersRef.current.forEach((mk) => mk.remove());
       markersRef.current = [];
-      try { mapRef.current?.remove(); } catch { /* */ }
+      try {
+        mapRef.current?.remove();
+      } catch {
+        /* ya removido */
+      }
       mapRef.current = null;
     };
   }, [Boolean(origin)]);
 
-  // Update markers and lines
+  // Sync layers when stops or origin change
   useEffect(() => {
     const m = mapRef.current;
-    if (!m || !origin || stops.length === 0) return;
+    if (!m || !origin) return;
+    if (stops.length === 0) return;
 
-    const coords: [number, number][] = [
-      [origin.longitude, origin.latitude],
-      ...stops.map((s) => [s.longitude, s.latitude] as [number, number]),
-    ];
-
-    // Draw route line
-    const lineData = { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: coords } };
-    const src = m.getSource("historical-route") as maplibregl.GeoJSONSource | undefined;
-    if (src) src.setData(lineData);
-    else {
-      m.addSource("historical-route", { type: "geojson", data: lineData });
-      m.addLayer({
-        id: "historical-route-line",
-        type: "line",
-        source: "historical-route",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ec4899", "line-width": 3, "line-opacity": 0.6 },
-      });
+    if (m.isStyleLoaded()) {
+      syncRouteLayer(m);
+      renderMarkers(m);
+    } else {
+      scheduleSync(m);
     }
+  }, [stops, origin, selectedId, onSelect, syncRouteLayer, renderMarkers, scheduleSync]);
 
-    // Markers
-    markersRef.current.forEach((mk) => mk.remove());
-    markersRef.current = [];
-
-    // Origin marker
-    const originEl = document.createElement("div");
-    Object.assign(originEl.style, {
-      width: "24px", height: "24px", borderRadius: "8px", border: "3px solid white",
-      background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 12px rgba(0,0,0,.4)",
-      display: "grid", placeItems: "center",
-    });
-    const dot = document.createElement("div");
-    Object.assign(dot.style, { width: "6px", height: "6px", borderRadius: "2px", background: "white", transform: "rotate(45deg)" });
-    originEl.appendChild(dot);
-    markersRef.current.push(new maplibregl.Marker({ element: originEl }).setLngLat([origin.longitude, origin.latitude]).addTo(m));
-
-    // Stop markers
-    stops.forEach((stop, i) => {
-      const isSelected = selectedId === stop.id;
-      const delivered = stop.status === "DELIVERED";
-      const incident = stop.status === "INCIDENT" || stop.status === "FAILED";
-      const el = document.createElement("div");
-      const size = isSelected ? 36 : 30;
-      Object.assign(el.style, {
-        width: `${size}px`, height: `${size}px`, display: "grid", placeItems: "center",
-        borderRadius: "10px", border: isSelected ? "3px solid #ec4899" : "3px solid white",
-        background: delivered ? "#10b981" : incident ? "#f59e0b" : "#ec4899",
-        color: "white", fontSize: "12px", fontWeight: "900",
-        boxShadow: isSelected ? "0 0 0 4px rgba(236,72,153,.3), 0 6px 20px rgba(0,0,0,.5)" : "0 6px 20px rgba(0,0,0,.5)",
-        opacity: delivered ? "0.7" : "1", cursor: "pointer",
-      });
-      el.textContent = delivered ? "✓" : incident ? "!" : String(stop.routeOrder ?? i + 1);
-      el.addEventListener("click", () => onSelect(stop.id));
-      markersRef.current.push(new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([stop.longitude, stop.latitude]).addTo(m));
-    });
-
-    // Fit bounds
-    const bounds = new maplibregl.LngLatBounds();
-    coords.forEach((p) => bounds.extend(p));
-    if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 54, maxZoom: 15, duration: 500 });
-  }, [stops, origin, selectedId, onSelect]);
-
-  if (!origin && stops.length === 0) {
+  // Empty / no-coords state
+  if (!hasCoords) {
     return (
       <div className="rounded-3xl border border-dashed border-white/10 bg-white/[.015] p-8 text-center">
         <Icon name="map-pin" className="mx-auto h-6 w-6 text-zinc-600" />
-        <p className="mt-2 text-sm text-zinc-500">No hay coordenadas disponibles para este recorrido.</p>
+        <p className="mt-2 text-sm text-zinc-500">No hay suficientes ubicaciones para reconstruir el mapa de este recorrido.</p>
       </div>
+    );
+  }
+
+  // Single coordinate (no line possible)
+  if (stops.length === 0 && origin) {
+    return (
+      <section className="overflow-hidden rounded-3xl border border-white/[.08] bg-zinc-900/70 shadow-xl">
+        <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+          <h3 className="text-sm font-black text-white">Mapa del recorrido</h3>
+        </header>
+        <div className="relative w-full h-72 sm:h-[400px]">
+          <div ref={mapContainer} className="w-full h-full" aria-label="Mapa del recorrido histórico" />
+          {loading && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-[1px]">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-pink-400" />
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black text-zinc-400 backdrop-blur-sm">
+              Solo punto de origen
+            </span>
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -499,7 +629,14 @@ function HistoricalRouteMap({
       <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
         <h3 className="text-sm font-black text-white">Mapa del recorrido</h3>
       </header>
-      <div ref={mapContainer} className="w-full h-72 sm:h-[400px]" aria-label="Mapa del recorrido histórico" />
+      <div className="relative w-full h-72 sm:h-[400px]">
+        <div ref={mapContainer} className="w-full h-full" aria-label="Mapa del recorrido histórico" />
+        {loading && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-[1px]">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-pink-400" />
+          </div>
+        )}
+      </div>
     </section>
   );
 }
