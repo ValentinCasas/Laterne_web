@@ -15,8 +15,9 @@ const deliverOutOfOrderInput = z.object({
 /**
  * @summary PATCH: Permite marcar como ENTREGADA una parada fuera del orden previsto.
  * Valida que la entrega pertenezca al repartidor y a un recorrido activo.
- * Reordena las paradas: la entregada toma el siguiente orden operativo,
+ * Reordena las paradas: las entregadas forman el prefijo del recorrido real,
  * las pendientes conservan su orden relativo. Conserva `plannedOrder` intacto.
+ * Usa actualización en dos fases para evitar colisiones de routeOrder.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await authorize();
@@ -37,7 +38,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Validar entrega pertenece al driver y está en un recorrido activo
+      // 1. Validar entrega pertenece al driver y está en un recorrido activo
       const current = await tx.orderDelivery.findFirst({
         where: {
           id: deliveryId,
@@ -50,31 +51,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           status: true,
           routeId: true,
           routeOrder: true,
-          plannedOrder: true,
           orderId: true,
-          order: { select: { status: true } },
         },
       });
       if (!current) throw new Error("NOT_MINE");
       if (!current.routeId) throw new Error("NO_ROUTE");
 
-      // Obtener todas las entregas del recorrido ordenadas por routeOrder
-      const routeDeliveries = await tx.orderDelivery.findMany({
-        where: { routeId: current.routeId, tenantId: auth.tenant.id },
-        select: { id: true, status: true, routeOrder: true, plannedOrder: true },
-        orderBy: { routeOrder: "asc" },
-      });
+      const routeId = current.routeId;
 
-      // Encontrar la próxima parada pendiente (primera no DELIVERED por routeOrder)
-      const nextPending = routeDeliveries.find((d) => d.status !== "DELIVERED");
-
-      // Verificar que realmente está fuera de orden
-      if (nextPending && nextPending.id === current.id) {
-        // Es la parada esperada, no debería usarse este endpoint, pero lo permitimos
-        // para simplificar el flujo (el cliente decide cuándo pedir confirmación)
-      }
-
-      // Marcar la entrega como ENTREGED
+      // 2. Marcar la entrega como ENTREGED con timestamp
       await tx.orderDelivery.update({
         where: { id: deliveryId },
         data: {
@@ -83,7 +68,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         },
       });
 
-      // Registrar log de estado
+      // 3. Registrar log de estado
       await tx.orderDeliveryStatusLog.create({
         data: {
           tenantId: auth.tenant.id,
@@ -96,35 +81,52 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         },
       });
 
-      // Reordenar: la entregada toma el último orden de las entregadas + 1
-      // Las pendientes conservan su orden relativo
-      const deliveredCount = routeDeliveries.filter((d) => d.status === "DELIVERED").length;
-      const newRouteOrder = deliveredCount + 1; // Posición siguiente a las ya entregadas
-
-      await tx.orderDelivery.update({
-        where: { id: deliveryId },
-        data: { routeOrder: newRouteOrder },
+      // 4. Obtener TODAS las entregas del recorrido (ya con status actualizado)
+      const allDeliveries = await tx.orderDelivery.findMany({
+        where: { routeId, tenantId: auth.tenant.id },
+        select: { id: true, status: true, routeOrder: true, deliveredAt: true },
+        orderBy: { routeOrder: "asc" },
       });
 
-      // Reordenar las pendientes: asignar orden secuencial después de las entregadas
-      const pendingDeliveries = routeDeliveries
-        .filter((d) => d.status !== "DELIVERED" && d.id !== deliveryId)
+      // 5. Separar en entregadas y pendientes
+      const delivered = allDeliveries
+        .filter((d) => d.status === "DELIVERED")
+        .sort((a, b) => {
+          // Ordenar por deliveredAt (timestamp de entrega), luego por routeOrder como fallback
+          if (a.deliveredAt && b.deliveredAt) return a.deliveredAt.getTime() - b.deliveredAt.getTime();
+          if (a.deliveredAt) return -1;
+          if (b.deliveredAt) return 1;
+          return (a.routeOrder ?? 0) - (b.routeOrder ?? 0);
+        });
+
+      const pending = allDeliveries
+        .filter((d) => d.status !== "DELIVERED")
         .sort((a, b) => (a.routeOrder ?? 0) - (b.routeOrder ?? 0));
 
-      for (let i = 0; i < pendingDeliveries.length; i++) {
+      // 6. Fase 1: Mover todos los routeOrder a valores temporales negativos para evitar colisiones
+      const tempOffset = 100000;
+      for (let i = 0; i < allDeliveries.length; i++) {
         await tx.orderDelivery.update({
-          where: { id: pendingDeliveries[i]!.id },
-          data: { routeOrder: newRouteOrder + i + 1 },
+          where: { id: allDeliveries[i]!.id },
+          data: { routeOrder: tempOffset + i },
         });
       }
 
-      // Actualizar progreso del recorrido
-      const completedCount = await tx.orderDelivery.count({
-        where: { routeId: current.routeId, status: "DELIVERED" },
-      });
+      // 7. Fase 2: Asignar routeOrder finales (1, 2, 3, ...)
+      // Primero las entregadas, luego las pendientes
+      const finalOrder = [...delivered, ...pending];
+      for (let i = 0; i < finalOrder.length; i++) {
+        await tx.orderDelivery.update({
+          where: { id: finalOrder[i]!.id },
+          data: { routeOrder: i + 1 },
+        });
+      }
+
+      // 8. Actualizar progreso del recorrido
+      const completedCount = delivered.length;
 
       const route = await tx.deliveryRoute.update({
-        where: { id: current.routeId },
+        where: { id: routeId },
         data: { completedStops: completedCount },
         include: {
           deliveries: {
@@ -148,7 +150,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         },
       });
 
-      // Sincronizar estado del pedido
+      // 9. Sincronizar estado del pedido
       await applyDeliveryStatusToOrder(
         tx,
         {
@@ -160,7 +162,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         { userId: auth.session.userId },
       );
 
-      return { route, previousStatus: current.status, oldRouteOrder: current.routeOrder, newRouteOrder };
+      return { route, previousStatus: current.status, oldRouteOrder: current.routeOrder };
     });
 
     await recordAudit({
@@ -169,18 +171,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       entityType: "order-delivery",
       entityId: deliveryId,
       oldValues: toAuditValue({ status: result.previousStatus, routeOrder: result.oldRouteOrder }),
-      newValues: toAuditValue({ status: "DELIVERED", routeOrder: result.newRouteOrder }),
+      newValues: toAuditValue({ status: "DELIVERED" }),
       request,
     });
 
     return NextResponse.json({ route: serialize(result.route) });
   } catch (error) {
+    // Log del error real para debugging en desarrollo
+    console.error("[deliver-out-of-order] Error:", error);
     if (error instanceof Error && error.message === "NOT_MINE") {
       return NextResponse.json({ error: "La entrega no está asignada a vos" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "NO_ROUTE") {
       return NextResponse.json({ error: "La entrega no pertenece a un recorrido activo" }, { status: 400 });
     }
-    return NextResponse.json({ error: "No se pudo procesar la entrega fuera de orden" }, { status: 500 });
+    // Incluir el mensaje real del error en desarrollo
+    const message = error instanceof Error ? error.message : "No se pudo procesar la entrega fuera de orden";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

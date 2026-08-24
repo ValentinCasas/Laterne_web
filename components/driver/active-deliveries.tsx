@@ -168,6 +168,8 @@ export function DriverActiveDeliveries({
       });
       const body = (await response.json().catch(() => ({}))) as { route?: { deliveries: DriverDelivery[] }; error?: string };
       if (!response.ok || !body.route) {
+        // Log real error for debugging
+        console.error("[OutOfOrder] API error:", response.status, body.error);
         await Swal.fire({ title: "No se pudo entregar", text: body.error ?? "Intentá de nuevo.", icon: "error", ...SWAL_THEME });
         return;
       }

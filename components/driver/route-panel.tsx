@@ -316,6 +316,7 @@ export function DriverRoutePanel({
        });
        const body = (await res.json().catch(() => ({}))) as { route?: { deliveries: DeliveryItem[] }; error?: string };
        if (!res.ok || !body.route) {
+         console.error("[OutOfOrder] API error:", res.status, body.error);
          await Swal.fire({ title: "No se pudo entregar", text: body.error ?? "Intentá de nuevo.", icon: "error", ...SWAL_THEME });
          return;
        }
