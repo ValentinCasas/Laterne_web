@@ -259,7 +259,7 @@ export function DriverRoutePanel({
   const [filter, setFilter] = useState<FilterKey>("Todos");
   const [working, setWorking] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [lastSyncAt, setLastSyncAt] = useState<Date>(new Date());
 
   // Incident drawer
@@ -338,7 +338,6 @@ export function DriverRoutePanel({
     function handleOffline() { setIsOnline(false); }
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    setIsOnline(navigator.onLine);
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);

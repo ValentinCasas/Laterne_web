@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { deliveryDetailInclude } from "@/lib/delivery-detail";
 import { listLatestDriverPositions } from "@/lib/delivery-positions";
 import { tenantDriverGuidPath } from "@/lib/routes";
+import { safeQuery } from "@/lib/safe-query";
 
 export const dynamic = "force-dynamic";
 
@@ -23,72 +24,119 @@ export default async function AdminDeliveryPage() {
   const context = await requirePermission("order.manage");
   const accessibleBranchIds = context.branches.map((branch) => branch.id);
   const canViewTeam = context.permissions.includes("user.manage");
+  const logCtx = { tenantId: context.tenant.id, module: "delivery.page" };
 
-  const [deliveries, branches, drivers, mapProvider, initialPositions, memberships] = await Promise.all([
-    prisma.orderDelivery.findMany({
-      where: {
-        tenantId: context.tenant.id,
-        branchId: { in: accessibleBranchIds },
-        order: { is: { tenantId: context.tenant.id } },
-      },
-      include: deliveryDetailInclude,
-      orderBy: { createdAt: "desc" },
-      take: 200,
+  // ── Queries críticas (si fallan, la página no puede funcionar) ──
+  const deliveries = await safeQuery({
+    name: "orderDelivery.findMany",
+    required: true,
+    fallback: [],
+    context: logCtx,
+    query: () =>
+      prisma.orderDelivery.findMany({
+        where: {
+          tenantId: context.tenant.id,
+          branchId: { in: accessibleBranchIds },
+          order: { is: { tenantId: context.tenant.id } },
+        },
+        include: deliveryDetailInclude,
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      }),
+  });
+
+  const branches = await safeQuery({
+    name: "branch.findMany",
+    required: true,
+    fallback: [],
+    context: logCtx,
+    query: () =>
+      prisma.branch.findMany({
+        where: { tenantId: context.tenant.id, id: { in: accessibleBranchIds }, active: true },
+        select: { id: true, name: true, slug: true, address: true, phone: true, latitude: true, longitude: true },
+        orderBy: { name: "asc" },
+      }),
+  });
+
+  const drivers = await safeQuery({
+    name: "driverProfile.findMany",
+    required: true,
+    fallback: [],
+    context: logCtx,
+    query: () =>
+      prisma.driverProfile.findMany({
+        where: {
+          tenantId: context.tenant.id,
+          active: true,
+          branches: { some: { branchId: { in: accessibleBranchIds }, tenantId: context.tenant.id } },
+        },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          status: true,
+          user: { select: { imageUrl: true } },
+          branches: { select: { branchId: true } },
+        },
+        orderBy: { name: "asc" },
+      }),
+  });
+
+  // ── Queries opcionales (si fallan, la página sigue funcionando) ──
+  const [mapProvider, initialPositions, memberships] = await Promise.allSettled([
+    safeQuery({
+      name: "deliveryProviderConfig.findUnique",
+      fallback: null,
+      context: logCtx,
+      query: () =>
+        prisma.deliveryProviderConfig.findUnique({
+          where: { tenantId_provider: { tenantId: context.tenant.id, provider: "openfreemap" } },
+          select: { enabled: true },
+        }),
     }),
-    prisma.branch.findMany({
-      where: { tenantId: context.tenant.id, id: { in: accessibleBranchIds }, active: true },
-      select: { id: true, name: true, slug: true, address: true, phone: true, latitude: true, longitude: true },
-      orderBy: { name: "asc" },
+    safeQuery({
+      name: "driverPositions.listLatest",
+      fallback: [],
+      context: logCtx,
+      query: () => listLatestDriverPositions(context.tenant.id, accessibleBranchIds),
     }),
-    prisma.driverProfile.findMany({
-      where: {
-        tenantId: context.tenant.id,
-        active: true,
-        branches: { some: { branchId: { in: accessibleBranchIds }, tenantId: context.tenant.id } },
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        status: true,
-        user: { select: { imageUrl: true } },
-        branches: { select: { branchId: true } },
-      },
-      orderBy: { name: "asc" },
-    }),
-    prisma.deliveryProviderConfig.findUnique({
-      where: { tenantId_provider: { tenantId: context.tenant.id, provider: "openfreemap" } },
-      select: { enabled: true },
-    }),
-    listLatestDriverPositions(context.tenant.id, accessibleBranchIds),
-    canViewTeam
-      ? prisma.tenantMembership.findMany({
-          where: { tenantId: context.tenant.id, status: "active" },
-          select: {
-            id: true,
-            role: { select: { key: true, name: true } },
-            user: {
+    safeQuery({
+      name: "tenantMembership.findMany",
+      fallback: [],
+      context: logCtx,
+      query: () =>
+        canViewTeam
+          ? prisma.tenantMembership.findMany({
+              where: { tenantId: context.tenant.id, status: "active" },
               select: {
                 id: true,
-                name: true,
-                email: true,
-                imageUrl: true,
-                driverProfiles: {
-                  where: { tenantId: context.tenant.id, active: true },
-                  select: { id: true, status: true },
-                  take: 1,
+                role: { select: { key: true, name: true } },
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    imageUrl: true,
+                    driverProfiles: {
+                      where: { tenantId: context.tenant.id, active: true },
+                      select: { id: true, status: true },
+                      take: 1,
+                    },
+                  },
                 },
               },
-            },
-          },
-          orderBy: [{ role: { name: "asc" } }, { user: { name: "asc" } }],
-        })
-      : Promise.resolve([]),
+              orderBy: [{ role: { name: "asc" } }, { user: { name: "asc" } }],
+            })
+          : ([] as never),
+    }),
   ]);
 
-  // OpenFreeMap es el default sin credenciales: solo una desactivación explícita lo oculta.
-  const mapEnabled = mapProvider?.enabled ?? true;
-  const hierarchy = memberships.reduce<
+  const mapEnabled =
+    mapProvider.status === "fulfilled" ? (mapProvider.value as { enabled?: boolean } | null)?.enabled ?? true : true;
+  const initialPositionsData = initialPositions.status === "fulfilled" ? initialPositions.value : [];
+  const membershipsData = memberships.status === "fulfilled" ? memberships.value : [];
+
+  const hierarchy = membershipsData.reduce<
     Array<{
       key: string;
       name: string;
@@ -127,14 +175,12 @@ export default async function AdminDeliveryPage() {
       }))}
       drivers={serialize(drivers)}
       mapEnabled={mapEnabled}
-      initialPositions={serialize(initialPositions)}
+      initialPositions={serialize(initialPositionsData)}
       teamHierarchy={serialize(hierarchy)}
       canViewTeam={canViewTeam}
       canViewDrivers={context.permissions.includes("driver.view")}
       canConfigureDelivery={context.permissions.includes("business.manage")}
-      driverPanelHref={
-        tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug)
-      }
+      driverPanelHref={tenantDriverGuidPath(context.tenant.publicGuid, context.tenant.slug)}
     />
   );
 }

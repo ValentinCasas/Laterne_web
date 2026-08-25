@@ -53,6 +53,8 @@ describe("definición centralizada de navegación administrativa", () => {
       "/admin/delivery",
       "/admin/repartidores",
       "/admin/driver",
+      "/admin/delivery/recorridos",
+      "/admin/integraciones#delivery-map",
       "/admin/cobros",
       "/admin/clientes",
       "/admin/finanzas",
@@ -114,6 +116,7 @@ describe("definición centralizada de navegación administrativa", () => {
       "Centro de delivery",
       "Repartidores",
       "Panel del repartidor",
+      "Recorridos",
       "Configuración de delivery",
     ]);
     const panel = delivery?.sections.flatMap((section) => section.items).find((item) => item.href === "/admin/driver");

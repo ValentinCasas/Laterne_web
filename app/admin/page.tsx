@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { activeBranchWhere, branchProductWhere } from "@/lib/branch";
 import { adminHrefForContext } from "@/lib/routes";
+import { safeQuery } from "@/lib/safe-query";
 
 export const dynamic = "force-dynamic";
 
@@ -83,176 +84,94 @@ export default async function Dashboard() {
   const prevPeriodStart = new Date(now);
   prevPeriodStart.setDate(now.getDate() - 60);
 
-  const [
-    products,
-    categories,
-    events,
-    pendingTestimonials,
-    newLeads,
-    pendingOrders,
-    pendingReservations,
-    lowStock,
-    incompleteProducts,
-    recentEvents,
-    recentTestimonials,
-    users,
-    branches,
-    files,
-    subscription,
-    salesTodayAgg,
-    salesYesterdayAgg,
-    salesPeriodAgg,
-    prevSalesPeriodAgg,
-    ordersPeriodCount,
-    avgTicketAgg,
-    ordersByStatus,
-    ordersByChannel,
-    topItems,
-    reservationsUpcoming,
-    tablesInUse,
-    pendingPurchases,
-    pendingPayablesAgg,
-    recentExpenses,
-  ] = await Promise.all([
-    prisma.product.count({ where: productFilter }),
-    prisma.category.count({ where: branchFilter }),
-    prisma.event.count({ where: branchFilter }),
-    prisma.testimonial.count({ where: { ...branchFilter, moderationStatus: "pending" } }),
-    context.permissions.includes("lead.manage")
-      ? prisma.salesLead.count({ where: { status: "new" } })
-      : Promise.resolve(0),
-    context.permissions.includes("order.manage")
-      ? prisma.customerOrder.count({
-          where: { ...branchFilter, status: { in: ["received", "confirmed", "preparing", "ready"] } },
-        })
-      : Promise.resolve(0),
-    context.permissions.includes("reservation.manage")
-      ? prisma.reservation.count({ where: { ...branchFilter, status: "pending" } })
-      : Promise.resolve(0),
-    context.permissions.includes("product.manage")
-      ? prisma.inventoryStock.count({
-          where: {
-            tenantId,
-            ...(context.activeBranchId && context.activeBranchId > 0
-              ? { branchId: context.activeBranchId }
-              : {}),
-            tracked: true,
-            current: { lte: prisma.inventoryStock.fields.minimum },
-          },
-        })
-      : Promise.resolve(0),
-    prisma.product.count({
-      where: {
-        ...productFilter,
-        OR: [{ price: null }, { imageUrl: "product_default.png" }, { categories: { none: {} } }],
-      },
-    }),
-    prisma.event.findMany({ where: branchFilter, orderBy: [{ date: "desc" }, { id: "desc" }], take: 3 }),
-    prisma.testimonial.findMany({ where: branchFilter, orderBy: { id: "desc" }, take: 3 }),
-    prisma.tenantMembership.count({ where: { tenantId, status: "active" } }),
-    prisma.branch.count({ where: { tenantId, active: true } }),
-    prisma.mediaAsset.aggregate({ where: { tenantId }, _sum: { sizeBytes: true } }),
-    prisma.tenantSubscription.findUnique({ where: { tenantId }, select: { status: true, endsAt: true } }),
-    // Ventas de hoy (estado vendido) y comparación con ayer.
-    prisma.customerOrder.aggregate({
-      where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: startOfToday } },
-      _sum: { total: true },
-    }),
-    prisma.customerOrder.aggregate({
-      where: {
-        ...branchFilter,
-        status: { in: SOLD_STATUSES },
-        createdAt: { gte: yesterdayStart, lt: startOfToday },
-      },
-      _sum: { total: true },
-    }),
-    // Ventas del período (30 días) y período anterior para comparar.
-    prisma.customerOrder.aggregate({
-      where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: periodStart } },
-      _sum: { total: true },
-    }),
-    prisma.customerOrder.aggregate({
-      where: {
-        ...branchFilter,
-        status: { in: SOLD_STATUSES },
-        createdAt: { gte: prevPeriodStart, lt: periodStart },
-      },
-      _sum: { total: true },
-    }),
-    prisma.customerOrder.count({ where: { ...branchFilter, createdAt: { gte: periodStart } } }),
-    prisma.customerOrder.aggregate({
-      where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: periodStart } },
-      _avg: { total: true },
-    }),
-    prisma.customerOrder.groupBy({
-      by: ["status"],
-      where: { ...branchFilter, createdAt: { gte: periodStart } },
-      _count: { _all: true },
-    }),
-    prisma.customerOrder.groupBy({
-      by: ["channel"],
-      where: { ...branchFilter, createdAt: { gte: periodStart } },
-      _count: { _all: true },
-    }),
-    prisma.orderItem.groupBy({
-      by: ["productId"],
-      where: { order: { ...branchFilter, createdAt: { gte: periodStart } } },
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: "desc" } },
-      take: 5,
-    }),
-    prisma.reservation.count({
-      where: {
-        ...branchFilter,
-        reservationDate: { gte: startOfToday },
-        status: { in: ["pending", "confirmed"] },
-      },
-    }),
-    prisma.tableSession.count({
-      where: {
-        tenantId,
-        ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}),
-        closedAt: null,
-      },
-    }),
-    prisma.purchaseOrder.count({
-      where: {
-        tenantId,
-        ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}),
-        status: { in: ["draft", "sent", "partial"] },
-      },
-    }),
-    prisma.expense.aggregate({
-      where: {
-        tenantId,
-        ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}),
-        status: { not: "paid" },
-      },
-      _sum: { total: true, paidAmount: true },
-    }),
-    prisma.expense.findMany({
-      where: { tenantId, ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}) },
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      select: {
-        number: true,
-        total: true,
-        expenseDate: true,
-        status: true,
-        supplier: { select: { name: true } },
-      },
-    }),
+  const logCtx = { tenantId, module: "admin.dashboard" };
+
+  // ── Catálogo y contenido (opcionales) ──
+  const [products, categories, events, pendingTestimonials, incompleteProducts] = await Promise.allSettled([
+    safeQuery({ name: "product.count", fallback: 0, context: logCtx, query: () => prisma.product.count({ where: productFilter }) }),
+    safeQuery({ name: "category.count", fallback: 0, context: logCtx, query: () => prisma.category.count({ where: branchFilter }) }),
+    safeQuery({ name: "event.count", fallback: 0, context: logCtx, query: () => prisma.event.count({ where: branchFilter }) }),
+    safeQuery({ name: "testimonial.pendingCount", fallback: 0, context: logCtx, query: () => prisma.testimonial.count({ where: { ...branchFilter, moderationStatus: "pending" } }) }),
+    safeQuery({ name: "product.incompleteCount", fallback: 0, context: logCtx, query: () => prisma.product.count({ where: { ...productFilter, OR: [{ price: null }, { imageUrl: "product_default.png" }, { categories: { none: {} } }] } }) }),
   ]);
 
-  const salesToday = Number(salesTodayAgg._sum.total ?? 0);
-  const salesYesterday = Number(salesYesterdayAgg._sum.total ?? 0);
-  const salesPeriod = Number(salesPeriodAgg._sum.total ?? 0);
-  const prevSalesPeriod = Number(prevSalesPeriodAgg._sum.total ?? 0);
-  const avgTicket = Number(avgTicketAgg._avg.total ?? 0);
-  const pendingPayables =
-    Number(pendingPayablesAgg._sum.total ?? 0) - Number(pendingPayablesAgg._sum.paidAmount ?? 0);
+  // ── KPIs de operación (opcionales) ──
+  const [pendingOrders, pendingReservations, lowStock] = await Promise.allSettled([
+    safeQuery({ name: "customerOrder.pendingCount", fallback: 0, context: logCtx, query: () => context.permissions.includes("order.manage") ? prisma.customerOrder.count({ where: { ...branchFilter, status: { in: ["received", "confirmed", "preparing", "ready"] } } }) : Promise.resolve(0) }),
+    safeQuery({ name: "reservation.pendingCount", fallback: 0, context: logCtx, query: () => context.permissions.includes("reservation.manage") ? prisma.reservation.count({ where: { ...branchFilter, status: "pending" } }) : Promise.resolve(0) }),
+    safeQuery({ name: "inventoryStock.lowCount", fallback: 0, context: logCtx, query: () => context.permissions.includes("product.manage") ? prisma.inventoryStock.count({ where: { tenantId, ...(context.activeBranchId && context.activeBranchId > 0 ? { branchId: context.activeBranchId } : {}), tracked: true, current: { lte: prisma.inventoryStock.fields.minimum } } }) : Promise.resolve(0) }),
+  ]);
 
-  const topProducts = topItems
+  // ── Contenido reciente (opcional) ──
+  const [recentEvents, recentTestimonials, users, branches, files, subscription] = await Promise.allSettled([
+    safeQuery({ name: "event.findMany", fallback: [], context: logCtx, query: () => prisma.event.findMany({ where: branchFilter, orderBy: [{ date: "desc" }, { id: "desc" }], take: 3 }) }),
+    safeQuery({ name: "testimonial.findMany", fallback: [], context: logCtx, query: () => prisma.testimonial.findMany({ where: branchFilter, orderBy: { id: "desc" }, take: 3 }) }),
+    safeQuery({ name: "tenantMembership.count", fallback: 0, context: logCtx, query: () => prisma.tenantMembership.count({ where: { tenantId, status: "active" } }) }),
+    safeQuery({ name: "branch.count", fallback: 0, context: logCtx, query: () => prisma.branch.count({ where: { tenantId, active: true } }) }),
+    safeQuery({ name: "mediaAsset.aggregate", fallback: { _sum: { sizeBytes: null } }, context: logCtx, query: () => prisma.mediaAsset.aggregate({ where: { tenantId }, _sum: { sizeBytes: true } }) }),
+    safeQuery({ name: "tenantSubscription.findUnique", fallback: null, context: logCtx, query: () => prisma.tenantSubscription.findUnique({ where: { tenantId }, select: { status: true, endsAt: true } }) }),
+  ]);
+
+  // ── Ventas y analytics (opcionales) ──
+  const [salesTodayAgg, salesYesterdayAgg, salesPeriodAgg, prevSalesPeriodAgg, ordersPeriodCount, avgTicketAgg, ordersByStatus, ordersByChannel, topItems] = await Promise.allSettled([
+    safeQuery({ name: "sales.today", fallback: { _sum: { total: null } }, context: logCtx, query: () => prisma.customerOrder.aggregate({ where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: startOfToday } }, _sum: { total: true } }) }),
+    safeQuery({ name: "sales.yesterday", fallback: { _sum: { total: null } }, context: logCtx, query: () => prisma.customerOrder.aggregate({ where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: yesterdayStart, lt: startOfToday } }, _sum: { total: true } }) }),
+    safeQuery({ name: "sales.period", fallback: { _sum: { total: null } }, context: logCtx, query: () => prisma.customerOrder.aggregate({ where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: periodStart } }, _sum: { total: true } }) }),
+    safeQuery({ name: "sales.prevPeriod", fallback: { _sum: { total: null } }, context: logCtx, query: () => prisma.customerOrder.aggregate({ where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: prevPeriodStart, lt: periodStart } }, _sum: { total: true } }) }),
+    safeQuery({ name: "orders.periodCount", fallback: 0, context: logCtx, query: () => prisma.customerOrder.count({ where: { ...branchFilter, createdAt: { gte: periodStart } } }) }),
+    safeQuery({ name: "orders.avgTicket", fallback: { _avg: { total: null } }, context: logCtx, query: () => prisma.customerOrder.aggregate({ where: { ...branchFilter, status: { in: SOLD_STATUSES }, createdAt: { gte: periodStart } }, _avg: { total: true } }) }),
+    safeQuery({ name: "orders.byStatus", fallback: [], context: logCtx, query: () => prisma.customerOrder.groupBy({ by: ["status"], where: { ...branchFilter, createdAt: { gte: periodStart } }, _count: { _all: true } }) }),
+    safeQuery({ name: "orders.byChannel", fallback: [], context: logCtx, query: () => prisma.customerOrder.groupBy({ by: ["channel"], where: { ...branchFilter, createdAt: { gte: periodStart } }, _count: { _all: true } }) }),
+    safeQuery({ name: "orderItems.topProducts", fallback: [], context: logCtx, query: () => prisma.orderItem.groupBy({ by: ["productId"], where: { order: { ...branchFilter, createdAt: { gte: periodStart } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: "desc" } }, take: 5 }) }),
+  ]);
+
+  // ── Reservas, mesas, compras, gastos (opcionales) ──
+  const [reservationsUpcoming, tablesInUse, pendingPurchases, pendingPayablesAgg, recentExpenses] = await Promise.allSettled([
+    safeQuery({ name: "reservation.upcomingCount", fallback: 0, context: logCtx, query: () => prisma.reservation.count({ where: { ...branchFilter, reservationDate: { gte: startOfToday }, status: { in: ["pending", "confirmed"] } } }) }),
+    safeQuery({ name: "tableSession.activeCount", fallback: 0, context: logCtx, query: () => prisma.tableSession.count({ where: { tenantId, ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}), closedAt: null } }) }),
+    safeQuery({ name: "purchaseOrder.pendingCount", fallback: 0, context: logCtx, query: () => prisma.purchaseOrder.count({ where: { tenantId, ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}), status: { in: ["draft", "sent", "partial"] } } }) }),
+    safeQuery({ name: "expense.pendingAgg", fallback: { _sum: { total: null, paidAmount: null } }, context: logCtx, query: () => prisma.expense.aggregate({ where: { tenantId, ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}), status: { not: "paid" } }, _sum: { total: true, paidAmount: true } }) }),
+    safeQuery({ name: "expense.findMany", fallback: [], context: logCtx, query: () => prisma.expense.findMany({ where: { tenantId, ...(context.activeBranchId ? { branchId: context.activeBranchId } : {}) }, orderBy: { createdAt: "desc" }, take: 4, select: { number: true, total: true, expenseDate: true, status: true, supplier: { select: { name: true } } } }) }),
+  ]);
+
+  const productsVal = products.status === "fulfilled" ? products.value : 0;
+  const categoriesVal = categories.status === "fulfilled" ? categories.value : 0;
+  const eventsVal = events.status === "fulfilled" ? events.value : 0;
+  const pendingTestimonialsVal = pendingTestimonials.status === "fulfilled" ? pendingTestimonials.value : 0;
+  const incompleteProductsVal = incompleteProducts.status === "fulfilled" ? incompleteProducts.value : 0;
+  const pendingOrdersVal = pendingOrders.status === "fulfilled" ? pendingOrders.value : 0;
+  const pendingReservationsVal = pendingReservations.status === "fulfilled" ? pendingReservations.value : 0;
+  const lowStockVal = lowStock.status === "fulfilled" ? lowStock.value : 0;
+  const recentEventsVal = recentEvents.status === "fulfilled" ? recentEvents.value : [];
+  const recentTestimonialsVal = recentTestimonials.status === "fulfilled" ? recentTestimonials.value : [];
+  const usersVal = users.status === "fulfilled" ? users.value : 0;
+  const branchesVal = branches.status === "fulfilled" ? branches.value : 0;
+  const filesVal = files.status === "fulfilled" ? files.value : { _sum: { sizeBytes: null } };
+  const subscriptionVal = subscription.status === "fulfilled" ? subscription.value : null;
+  const salesTodayAggVal = salesTodayAgg.status === "fulfilled" ? salesTodayAgg.value : { _sum: { total: null } };
+  const salesYesterdayAggVal = salesYesterdayAgg.status === "fulfilled" ? salesYesterdayAgg.value : { _sum: { total: null } };
+  const salesPeriodAggVal = salesPeriodAgg.status === "fulfilled" ? salesPeriodAgg.value : { _sum: { total: null } };
+  const prevSalesPeriodAggVal = prevSalesPeriodAgg.status === "fulfilled" ? prevSalesPeriodAgg.value : { _sum: { total: null } };
+  const ordersPeriodCountVal = ordersPeriodCount.status === "fulfilled" ? ordersPeriodCount.value : 0;
+  const avgTicketAggVal = avgTicketAgg.status === "fulfilled" ? avgTicketAgg.value : { _avg: { total: null } };
+  const ordersByStatusVal = ordersByStatus.status === "fulfilled" ? ordersByStatus.value : [];
+  const ordersByChannelVal = ordersByChannel.status === "fulfilled" ? ordersByChannel.value : [];
+  const topItemsVal = topItems.status === "fulfilled" ? topItems.value : [];
+  const reservationsUpcomingVal = reservationsUpcoming.status === "fulfilled" ? reservationsUpcoming.value : 0;
+  const tablesInUseVal = tablesInUse.status === "fulfilled" ? tablesInUse.value : 0;
+  const pendingPurchasesVal = pendingPurchases.status === "fulfilled" ? pendingPurchases.value : 0;
+  const pendingPayablesAggVal = pendingPayablesAgg.status === "fulfilled" ? pendingPayablesAgg.value : { _sum: { total: null, paidAmount: null } };
+  const recentExpensesVal = recentExpenses.status === "fulfilled" ? recentExpenses.value : [];
+
+  const salesToday = Number(salesTodayAggVal._sum.total ?? 0);
+  const salesYesterday = Number(salesYesterdayAggVal._sum.total ?? 0);
+  const salesPeriod = Number(salesPeriodAggVal._sum.total ?? 0);
+  const prevSalesPeriod = Number(prevSalesPeriodAggVal._sum.total ?? 0);
+  const avgTicket = Number(avgTicketAggVal._avg.total ?? 0);
+  const pendingPayables =
+    Number(pendingPayablesAggVal._sum.total ?? 0) - Number(pendingPayablesAggVal._sum.paidAmount ?? 0);
+
+  const topProducts = topItemsVal
     .filter((item) => item.productId)
     .map((item) => ({
       id: item.productId as number,
@@ -268,26 +187,26 @@ export default async function Dashboard() {
     .sort((a, b) => b.value - a.value);
   const topMax = Math.max(1, ...topProductsView.map((p) => p.value));
 
-  const statusView = ordersByStatus
+  const statusView = ordersByStatusVal
     .map((row) => ({ label: labelFor(STATUS_LABELS, row.status), value: row._count._all }))
     .sort((a, b) => b.value - a.value);
   const statusMax = Math.max(1, ...statusView.map((s) => s.value));
 
-  const channelView = ordersByChannel
+  const channelView = ordersByChannelVal
     .map((row) => ({ label: labelFor(CHANNEL_LABELS, row.channel), value: row._count._all }))
     .sort((a, b) => b.value - a.value);
   const channelMax = Math.max(1, ...channelView.map((c) => c.value));
 
   const catalogStats = [
-    { label: "Productos publicados", value: products, href: "/admin/productos" },
-    { label: "Categorías activas", value: categories, href: "/admin/categorias" },
-    { label: "Eventos cargados", value: events, href: "/admin/eventos" },
-    { label: "Opiniones pendientes", value: pendingTestimonials, href: "/admin/testimonios" },
-    { label: "Usuarios activos", value: users, href: "/admin/usuarios" },
-    { label: "Sucursales activas", value: branches, href: "/admin/sucursales" },
+    { label: "Productos publicados", value: productsVal, href: "/admin/productos" },
+    { label: "Categorías activas", value: categoriesVal, href: "/admin/categorias" },
+    { label: "Eventos cargados", value: eventsVal, href: "/admin/eventos" },
+    { label: "Opiniones pendientes", value: pendingTestimonialsVal, href: "/admin/testimonios" },
+    { label: "Usuarios activos", value: usersVal, href: "/admin/usuarios" },
+    { label: "Sucursales activas", value: branchesVal, href: "/admin/sucursales" },
     {
       label: "Almacenamiento",
-      value: `${(Number(files._sum.sizeBytes ?? 0) / 1_000_000).toFixed(1)} MB`,
+      value: `${(Number(filesVal._sum.sizeBytes ?? 0) / 1_000_000).toFixed(1)} MB`,
       href: "/admin/archivos",
     },
   ];
@@ -295,22 +214,22 @@ export default async function Dashboard() {
   const operationAlerts = [
     context.permissions.includes("order.manage") && {
       label: "Pedidos en curso",
-      value: pendingOrders,
+      value: pendingOrdersVal,
       href: "/admin/pedidos",
     },
     context.permissions.includes("reservation.manage") && {
       label: "Reservas pendientes",
-      value: pendingReservations,
+      value: pendingReservationsVal,
       href: "/admin/reservas",
     },
     context.permissions.includes("product.manage") && {
       label: "Alertas de stock",
-      value: lowStock,
+      value: lowStockVal,
       href: "/admin/inventario",
     },
     context.permissions.includes("product.manage") && {
       label: "Productos incompletos",
-      value: incompleteProducts,
+      value: incompleteProductsVal,
       href: "/admin/productos",
     },
   ].filter(Boolean) as { label: string; value: number; href: string }[];
@@ -330,7 +249,7 @@ export default async function Dashboard() {
     },
     {
       label: "Pedidos (30 días)",
-      value: ordersPeriodCount,
+      value: ordersPeriodCountVal,
       delta: null as number | null,
       href: "/admin/pedidos",
     },
@@ -493,7 +412,7 @@ export default async function Dashboard() {
             <div className="rounded-2xl bg-white/[.04] p-4">
               <p className="text-xs font-black uppercase tracking-wider text-amber-300">Reservas próximas</p>
               <strong className="mt-2 block text-3xl">
-                <NumberFlow value={reservationsUpcoming} />
+                <NumberFlow value={reservationsUpcomingVal} />
               </strong>
               <Link
                 className="mt-1 inline-block text-sm font-bold text-pink-300"
@@ -505,7 +424,7 @@ export default async function Dashboard() {
             <div className="rounded-2xl bg-white/[.04] p-4">
               <p className="text-xs font-black uppercase tracking-wider text-emerald-300">Mesas ocupadas</p>
               <strong className="mt-2 block text-3xl">
-                <NumberFlow value={tablesInUse} />
+                <NumberFlow value={tablesInUseVal} />
               </strong>
               <Link
                 className="mt-1 inline-block text-sm font-bold text-pink-300"
@@ -527,7 +446,7 @@ export default async function Dashboard() {
             <div className="rounded-2xl bg-white/[.04] p-4">
               <p className="text-xs font-black uppercase tracking-wider text-sky-300">Compras pendientes</p>
               <strong className="mt-2 block text-3xl">
-                <NumberFlow value={pendingPurchases} />
+                <NumberFlow value={pendingPurchasesVal} />
               </strong>
               <Link
                 className="mt-1 inline-block text-sm font-bold text-pink-300"
@@ -557,8 +476,8 @@ export default async function Dashboard() {
             </Link>
           </div>
           <div className="mt-4 space-y-2">
-            {recentExpenses.length === 0 && <p className="text-sm text-zinc-500">Sin gastos registrados.</p>}
-            {recentExpenses.map((expense) => (
+            {recentExpensesVal.length === 0 && <p className="text-sm text-zinc-500">Sin gastos registrados.</p>}
+            {recentExpensesVal.map((expense) => (
               <div
                 key={expense.number}
                 className="flex items-center justify-between gap-3 rounded-xl bg-white/[.04] px-4 py-3"
@@ -598,12 +517,12 @@ export default async function Dashboard() {
         </div>
       </section>
 
-      {subscription && subscription.status !== "ACTIVE" && (
+      {subscriptionVal && subscriptionVal.status !== "ACTIVE" && (
         <Link
           className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-amber-100"
           href={adminHref("/admin/soporte")}
         >
-          <strong>Estado de suscripción: {subscription.status}</strong>
+          <strong>Estado de suscripción: {subscriptionVal.status}</strong>
           <span className="ml-2 text-sm text-amber-200">Revisá la información de tu cuenta.</span>
         </Link>
       )}
@@ -623,7 +542,7 @@ export default async function Dashboard() {
             </Link>
           </div>
           <div className="mt-5 space-y-3">
-            {recentEvents.map((event) => (
+            {recentEventsVal.map((event) => (
               <article className="flex items-center gap-4 rounded-2xl bg-white/[.04] p-4" key={event.id}>
                 <time className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-violet-500/15 text-xs font-black text-violet-300">
                   {event.date?.toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) ?? "S/F"}
@@ -651,7 +570,7 @@ export default async function Dashboard() {
             </Link>
           </div>
           <div className="mt-5 space-y-3">
-            {recentTestimonials.map((testimonial) => (
+            {recentTestimonialsVal.map((testimonial) => (
               <article className="rounded-2xl bg-white/[.04] p-4" key={testimonial.id}>
                 <div className="flex items-center justify-between gap-3">
                   <span

@@ -13,6 +13,16 @@ export default function AdminError({
 }) {
   useEffect(() => {
     console.error("[AdminErrorBoundary] Falló una vista administrativa", error);
+    void fetch("/api/errors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source: "admin-boundary",
+        message: error.message || "Error administrativo",
+        path: window.location.pathname,
+        digest: error.digest,
+      }),
+    });
   }, [error]);
 
   return (

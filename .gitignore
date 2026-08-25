@@ -150,3 +150,23 @@ temp/
 *.db
 *.sqlite
 backup*
+
+# Temporary SQL diagnostics and ad-hoc dumps
+_check.sql
+dump_*.sql
+*_check.sql
+*_backup*.sql
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor swap files
+*.swp
+*.swo
+
+# direnv
+.envrc
+
+# Local configuration overrides
+*.local

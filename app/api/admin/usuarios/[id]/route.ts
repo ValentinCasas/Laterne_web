@@ -213,6 +213,8 @@ export async function PUT(
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
   }
 
+  const resolvedRole = role ?? membership.role;
+
   const branches = branchIds.length
     ? await prisma.branch.findMany({
         where: { tenantId: auth.tenant.id, id: { in: branchIds } },
@@ -227,7 +229,7 @@ export async function PUT(
         await assertMemberBranchCapacity({
           db: tx,
           tenantId: auth.tenant.id,
-          roleKey: role!.key,
+          roleKey: resolvedRole.key,
           allBranches,
           branchIds: branches.map((b) => b.id),
           excludeUserId: userId,
@@ -257,7 +259,7 @@ export async function PUT(
         if (data.email) userUpdate.email = data.email.toLocaleLowerCase("es");
         if (data.password) userUpdate.password = await bcrypt.hash(data.password, 12);
         if (data.roleId) {
-          userUpdate.role = ["owner", "administrator"].includes(role!.key) ? 1 : 0;
+          userUpdate.role = ["owner", "administrator"].includes(resolvedRole.key) ? 1 : 0;
         }
 
         if (Object.keys(userUpdate).length > 0) {

@@ -109,7 +109,8 @@ La geocodificación de Delivery está desactivada por defecto. Puede conectarse 
 - Capacidad de sucursal = suma de cupos de licencias activas vigentes.
 
 ## Migraciones
-- 57 migraciones incrementales en `prisma/migrations/`.
+- 58 migraciones incrementales en `prisma/migrations/`.
+- `20260824000000_add_delivery_fee_to_orderdelivery` está marcada como aplicada manualmente porque la columna `deliveryFee` ya existía en MariaDB antes de aplicar el historial versionado.
 - Estrategia: incremental, nunca `prisma migrate reset`.
 - `prisma/bootstrap.sql` es dump histórico (phpMyAdmin, 2023); NO usado por migraciones actuales.
 - Para modificar schema: migración incremental segura + `prisma generate`.
@@ -166,3 +167,9 @@ La geocodificación de Delivery está desactivada por defecto. Puede conectarse 
 ## Pendientes
 - Migración de analítica hacia dashboards de gestión comercial.
 - Consolidación opcional de migraciones históricas (evaluar impacto en despliegues).
+
+## Estado actual DB
+- MariaDB activa en localhost:3306.
+- Datos reales conservados: tenant Laterne (id 1) con 22 pedidos, 103 entregas, 3 repartidores, 3 recorridos; tenant Cafetería (id 5) también presente.
+- Usuarios y membresías intactos; sin borrados ni resets.
+- Migración `20260824000000_add_delivery_fee_to_orderdelivery` resuelta manualmente porque la columna `deliveryFee` ya existía en MariaDB.

@@ -1,6 +1,7 @@
 import { IngredientFicha } from "@/components/admin/ingredient-ficha";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { safeQuery } from "@/lib/safe-query";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -24,36 +25,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
  * @summary Carga el detalle completo de un ingrediente para la ficha.
  */
 async function loadIngredientDetail(context: Awaited<ReturnType<typeof requirePermission>>, id: number) {
-  const [product, stocks, costHistory, conversions, usedIn] = await Promise.all([
-    prisma.product.findFirst({
-      where: { id, tenantId: context.tenant.id },
-      select: { id: true, name: true, status: true, cost: true, costUnit: true },
-    }),
-    prisma.inventoryStock.findMany({
-      where: { tenantId: context.tenant.id, productId: id },
-      include: { branch: { select: { id: true, name: true } } },
-    }),
-    prisma.ingredientCostHistory.findMany({
-      where: { tenantId: context.tenant.id, productId: id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
-    prisma.unitConversion.findMany({
-      where: { tenantId: context.tenant.id },
-      select: { fromUnit: true, toUnit: true, factor: true },
-      orderBy: [{ fromUnit: "asc" }, { toUnit: "asc" }],
-    }),
-    prisma.recipeIngredient.findMany({
-      where: { tenantId: context.tenant.id, ingredientProductId: id },
-      select: { product: { select: { id: true, name: true, status: true } } },
-      distinct: ["productId"],
-    }),
+  const logCtx = { tenantId: context.tenant.id, module: "ingredientes.detail" };
+
+  const [product, stocks, costHistory, conversions, usedIn] = await Promise.allSettled([
+    safeQuery({ name: "product.findFirst", fallback: null, context: logCtx, query: () => prisma.product.findFirst({ where: { id, tenantId: context.tenant.id }, select: { id: true, name: true, status: true, cost: true, costUnit: true } }) }),
+    safeQuery({ name: "inventoryStock.findMany", fallback: [], context: logCtx, query: () => prisma.inventoryStock.findMany({ where: { tenantId: context.tenant.id, productId: id }, include: { branch: { select: { id: true, name: true } } } }) }),
+    safeQuery({ name: "ingredientCostHistory.findMany", fallback: [], context: logCtx, query: () => prisma.ingredientCostHistory.findMany({ where: { tenantId: context.tenant.id, productId: id }, orderBy: { createdAt: "desc" }, take: 20 }) }),
+    safeQuery({ name: "unitConversion.findMany", fallback: [], context: logCtx, query: () => prisma.unitConversion.findMany({ where: { tenantId: context.tenant.id }, select: { fromUnit: true, toUnit: true, factor: true }, orderBy: [{ fromUnit: "asc" }, { toUnit: "asc" }] }) }),
+    safeQuery({ name: "recipeIngredient.findMany", fallback: [], context: logCtx, query: () => prisma.recipeIngredient.findMany({ where: { tenantId: context.tenant.id, ingredientProductId: id }, select: { product: { select: { id: true, name: true, status: true } } }, distinct: ["productId"] }) }),
   ]);
 
-  if (!product) return null;
+  const productVal = product.status === "fulfilled" ? product.value : null;
+  const stocksVal = stocks.status === "fulfilled" ? stocks.value : [];
+  const costHistoryVal = costHistory.status === "fulfilled" ? costHistory.value : [];
+  const conversionsVal = conversions.status === "fulfilled" ? conversions.value : [];
+  const usedInVal = usedIn.status === "fulfilled" ? usedIn.value : [];
+
+  if (!productVal) return null;
 
   const branchIds = new Set(context.branches.map((branch) => branch.id));
-  const accessibleStocks = stocks
+  const accessibleStocks = stocksVal
     .filter((stock) => branchIds.has(stock.branchId))
     .map((stock) => ({
       branchId: stock.branchId,
@@ -66,21 +57,21 @@ async function loadIngredientDetail(context: Awaited<ReturnType<typeof requirePe
 
   return {
     product: {
-      id: product.id,
-      name: product.name,
-      status: product.status,
-      cost: product.cost === null || product.cost === undefined ? null : String(Number(product.cost)),
-      costUnit: product.costUnit,
+      id: productVal.id,
+      name: productVal.name,
+      status: productVal.status,
+      cost: productVal.cost === null || productVal.cost === undefined ? null : String(Number(productVal.cost)),
+      costUnit: productVal.costUnit,
     },
     stocks: accessibleStocks,
-    costHistory: costHistory.map((entry) => ({
+    costHistory: costHistoryVal.map((entry) => ({
       cost: String(Number(entry.cost)),
       unit: entry.unit,
       reason: entry.reason,
       createdAt: entry.createdAt.toISOString(),
     })),
-    conversions: conversions.map((row) => ({ fromUnit: row.fromUnit, toUnit: row.toUnit, factor: String(Number(row.factor)) })),
-    usedIn: usedIn.map((entry) => ({ id: entry.product.id, name: entry.product.name, status: entry.product.status })),
+    conversions: conversionsVal.map((row) => ({ fromUnit: row.fromUnit, toUnit: row.toUnit, factor: String(Number(row.factor)) })),
+    usedIn: usedInVal.map((entry) => ({ id: entry.product.id, name: entry.product.name, status: entry.product.status })),
   };
 }
 

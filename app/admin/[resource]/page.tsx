@@ -7,6 +7,7 @@ import { getAdminResource } from "@/lib/admin-resources";
 import { requirePermission } from "@/lib/auth";
 import { resourceScopedWhere } from "@/lib/branch";
 import { PRODUCT_IMAGE_FALLBACK, CATEGORY_IMAGE_FALLBACK } from "@/lib/image-fallback";
+import { safeQuery } from "@/lib/safe-query";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -896,93 +897,71 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
   const context = await requirePermission(resourceConfig.permission);
   const tenantId = context.tenant.id;
   const productFilter = resourceScopedWhere("product", tenantId, context.activeBranchId);
-  const [
-    categories,
-    products,
-    roles,
-    branches,
-    tenant,
-    mediaAssets,
-    events,
-    memberships,
-    promotions,
-    cases,
-    stations,
-  ] = await Promise.all([
-      prisma.category.findMany({
-        where: resourceScopedWhere("category", tenantId, context.activeBranchId),
-        orderBy: { name: "asc" },
-      }),
-      prisma.product.findMany({ where: productFilter, orderBy: { name: "asc" } }),
-      prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-      prisma.branch.findMany({
-        where: { id: { in: context.branches.map((branch) => branch.id) } },
-        select: { id: true, name: true },
-        orderBy: { name: "asc" },
-      }),
-      prisma.tenant.findUniqueOrThrow({
-        where: { id: tenantId },
-        select: { defaultCurrency: true, locale: true },
-      }),
-      prisma.mediaAsset.findMany({
-        where: { tenantId },
-        select: { folder: true, filename: true, url: true },
-        orderBy: { createdAt: "desc" },
-        take: 5000,
-      }),
-      prisma.event.findMany({ where: { tenantId }, select: { imageUrl: true } }),
-      prisma.tenantMembership.findMany({
-        where: { tenantId },
-        select: { user: { select: { imageUrl: true } } },
-      }),
-      prisma.promotion.findMany({ where: { tenantId }, select: { imageUrl: true } }),
-      prisma.successCase.findMany({
-        where: { tenantId },
-        select: { logoUrl: true, coverUrl: true },
-      }),
-      prisma.kitchenStation.findMany({
-        where: {
-          tenantId,
-          ...(context.activeBranchId && context.activeBranchId > 0
-            ? { branchId: context.activeBranchId }
-            : { branchId: { in: context.branches.map((branch) => branch.id) } }),
-        },
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      }),
-    ]);
+  const logCtx = { tenantId, module: "resource.page", resource };
+
+  // ── Datos críticos del formulario (categorías, productos, roles, branchs, tenant) ──
+  const [categories, products, roles, branches, tenant] = await Promise.allSettled([
+    safeQuery({ name: "category.findMany", fallback: [], context: logCtx, query: () => prisma.category.findMany({ where: resourceScopedWhere("category", tenantId, context.activeBranchId), orderBy: { name: "asc" } }) }),
+    safeQuery({ name: "product.findMany", fallback: [], context: logCtx, query: () => prisma.product.findMany({ where: productFilter, orderBy: { name: "asc" } }) }),
+    safeQuery({ name: "role.findMany", fallback: [], context: logCtx, query: () => prisma.role.findMany({ where: { tenantId }, orderBy: { name: "asc" } }) }),
+    safeQuery({ name: "branch.findMany", fallback: [], context: logCtx, query: () => prisma.branch.findMany({ where: { id: { in: context.branches.map((branch) => branch.id) } }, select: { id: true, name: true }, orderBy: { name: "asc" } }) }),
+    safeQuery({ name: "tenant.findUniqueOrThrow", fallback: { defaultCurrency: "ARS", locale: "es-AR" }, context: logCtx, query: () => prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { defaultCurrency: true, locale: true } }) }),
+  ]);
+
+  // ── Datos opcionales (solo para image picker, si fallan no rompen la página) ──
+  const [mediaAssets, events, memberships, promotions, cases, stations] = await Promise.allSettled([
+    safeQuery({ name: "mediaAsset.findMany", fallback: [], context: logCtx, query: () => prisma.mediaAsset.findMany({ where: { tenantId }, select: { folder: true, filename: true, url: true }, orderBy: { createdAt: "desc" }, take: 5000 }) }),
+    safeQuery({ name: "event.findMany.images", fallback: [], context: logCtx, query: () => prisma.event.findMany({ where: { tenantId }, select: { imageUrl: true } }) }),
+    safeQuery({ name: "tenantMembership.findMany.images", fallback: [], context: logCtx, query: () => prisma.tenantMembership.findMany({ where: { tenantId }, select: { user: { select: { imageUrl: true } } } }) }),
+    safeQuery({ name: "promotion.findMany.images", fallback: [], context: logCtx, query: () => prisma.promotion.findMany({ where: { tenantId }, select: { imageUrl: true } }) }),
+    safeQuery({ name: "successCase.findMany.images", fallback: [], context: logCtx, query: () => prisma.successCase.findMany({ where: { tenantId }, select: { logoUrl: true, coverUrl: true } }) }),
+    safeQuery({ name: "kitchenStation.findMany", fallback: [], context: logCtx, query: () => prisma.kitchenStation.findMany({ where: { tenantId, ...(context.activeBranchId && context.activeBranchId > 0 ? { branchId: context.activeBranchId } : { branchId: { in: context.branches.map((branch) => branch.id) } }) }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }) }),
+  ]);
+
+  const categoriesVal = categories.status === "fulfilled" ? categories.value : [];
+  const productsVal = products.status === "fulfilled" ? products.value : [];
+  const rolesVal = roles.status === "fulfilled" ? roles.value : [];
+  const branchesVal = branches.status === "fulfilled" ? branches.value : [];
+  const tenantVal = tenant.status === "fulfilled" ? tenant.value : { defaultCurrency: "ARS", locale: "es-AR" };
+  const mediaAssetsVal = mediaAssets.status === "fulfilled" ? mediaAssets.value : [];
+  const eventsVal = events.status === "fulfilled" ? events.value : [];
+  const membershipsVal = memberships.status === "fulfilled" ? memberships.value : [];
+  const promotionsVal = promotions.status === "fulfilled" ? promotions.value : [];
+  const casesVal = cases.status === "fulfilled" ? cases.value : [];
+  const stationsVal = stations.status === "fulfilled" ? stations.value : [];
 
   const productImages = tenantImageOptions(
     "images_product",
-    mediaAssets,
-    products.map((product) => product.imageUrl),
+    mediaAssetsVal,
+    productsVal.map((product) => product.imageUrl),
   );
   const categoryImages = tenantImageOptions(
     "images_categories",
-    mediaAssets,
-    categories.map((category) => category.imageUrl),
+    mediaAssetsVal,
+    categoriesVal.map((category) => category.imageUrl),
   );
   const eventImages = tenantImageOptions(
     "images_event",
-    mediaAssets,
-    events.map((event) => event.imageUrl),
+    mediaAssetsVal,
+    eventsVal.map((event) => event.imageUrl),
   );
   const userImages = tenantImageOptions(
     "images_profile",
-    mediaAssets,
-    memberships.map((membership) => membership.user.imageUrl),
+    mediaAssetsVal,
+    membershipsVal.map((membership) => membership.user.imageUrl),
   );
   const promotionImages = tenantImageOptions(
     "images_promotions",
-    mediaAssets,
-    promotions.map((promotion) => promotion.imageUrl),
+    mediaAssetsVal,
+    promotionsVal.map((promotion) => promotion.imageUrl),
   );
   const caseImages = tenantImageOptions(
     "images_cases",
-    mediaAssets,
-    cases.flatMap((item) => [item.logoUrl, item.coverUrl]),
+    mediaAssetsVal,
+    casesVal.flatMap((item) => [item.logoUrl, item.coverUrl]),
   );
 
-  const categoryOptions = categories.map((category) => ({
+  const categoryOptions = categoriesVal.map((category) => ({
     value: category.id.toString(),
     label: category.name,
     image: category.imageUrl?.trim()
@@ -1000,10 +979,10 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
       casos: caseImages,
     },
     categoryOptions,
-    products.map((product) => ({ value: product.id.toString(), label: product.name })),
-    roles.map((role) => ({ value: role.id.toString(), label: role.name })),
-    branches.map((branch) => ({ value: branch.id.toString(), label: branch.name })),
-    stations.map((station) => ({ value: station.id.toString(), label: station.name })),
+    productsVal.map((product) => ({ value: product.id.toString(), label: product.name })),
+    rolesVal.map((role) => ({ value: role.id.toString(), label: role.name })),
+    branchesVal.map((branch) => ({ value: branch.id.toString(), label: branch.name })),
+    stationsVal.map((station) => ({ value: station.id.toString(), label: station.name })),
   );
   if (!definition) notFound();
 
@@ -1032,8 +1011,8 @@ export default async function ResourcePage({ params }: { params: Promise<{ resou
       initialItems={serialize(items) as Array<Record<string, unknown> & { id: number }>}
       fields={definition.fields}
       singular={definition.singular}
-      currency={tenant.defaultCurrency}
-      locale={tenant.locale}
+      currency={tenantVal.defaultCurrency}
+      locale={tenantVal.locale}
     />
   );
 }

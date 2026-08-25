@@ -28,7 +28,7 @@ export default function ErrorPage({
         <p className="section-eyebrow">Error inesperado</p>
         <h1 className="mt-3 text-4xl font-black">No pudimos completar esta operación.</h1>
         <p className="mt-4 text-zinc-400">
-          Tus datos no fueron descartados. Podés reintentar de forma segura.
+          Ocurrió un error inesperado. Podés reintentar de forma segura.
         </p>
         <button className="btn mt-6" onClick={reset}>
           Reintentar
