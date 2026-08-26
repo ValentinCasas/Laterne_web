@@ -15,6 +15,7 @@
     "test:e2e": "node scripts/run-e2e.mjs",
     "generate:document-templates": "node --experimental-strip-types scripts/generate-document-template-examples.mjs",
     "seed:document-templates": "node --env-file=.env scripts/seed-document-templates.mjs",
+    "seed:laterne": "node --env-file=.env scripts/seed-laterne.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:pull": "prisma db pull",
