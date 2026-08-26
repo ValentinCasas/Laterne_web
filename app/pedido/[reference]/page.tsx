@@ -15,8 +15,9 @@ type OrderTrackingProps = {
 };
 
 /** @summary Formatea importes almacenados para la pantalla privada de seguimiento. */
-function formatPrice(value: number, currency: string) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(value);
+function formatPrice(value: number, currency?: string | null) {
+  const code = (currency || "ARS").trim().toUpperCase();
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: code }).format(value);
 }
 
 /** @summary Muestra el detalle y avance de un pedido únicamente a quien posee su token privado. */

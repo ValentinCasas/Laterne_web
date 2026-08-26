@@ -9,7 +9,7 @@ export function StatusBadge({
   tone,
   size = "default",
 }: {
-  status: string;
+  status?: string | null;
   tone?: "default" | "success" | "warning" | "danger" | "info";
   size?: "default" | "sm";
 }) {
@@ -43,7 +43,7 @@ export function StatusBadge({
     scheduled: "info",
   };
 
-  const normalized = tone ?? autoMap[status.toLowerCase()] ?? "default";
+  const normalized = tone ?? autoMap[(status || "").toLowerCase()] ?? "default";
   const style = styles[normalized] ?? styles.default;
   const isSmall = size === "sm";
 
@@ -54,7 +54,7 @@ export function StatusBadge({
       }`}
     >
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
-      {status}
+      {status || "—"}
     </span>
   );
 }

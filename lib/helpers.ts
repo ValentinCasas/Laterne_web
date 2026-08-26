@@ -38,11 +38,12 @@ export function formatMoney(value: number | string, currency: string): string {
   return money(value, currency);
 }
 
-/** @summary Formatea un importe para el tablero de pedidos sin fallback. */
-export function formatPrice(value: string | number, currency: string): string {
+/** @summary Formatea un importe para el tablero de pedidos con fallback a ARS. */
+export function formatPrice(value: string | number, currency?: string | null): string {
+  const code = (currency || "ARS").trim().toUpperCase();
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
-    currency,
+    currency: code,
   }).format(Number(value));
 }
 

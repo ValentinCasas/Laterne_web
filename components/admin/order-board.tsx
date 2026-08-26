@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import {
   PageHeader,
@@ -15,6 +15,10 @@ import {
   Timeline,
   Drawer,
 } from "@/components/admin/ui";
+import { BoardCard, type BoardCardVariant } from "@/components/admin/ui/board-card";
+import { BoardToolbar } from "@/components/admin/kanban/board-toolbar";
+import { KanbanBoard } from "@/components/admin/kanban/kanban-board";
+import type { BoardColumn, BoardItem, Density } from "@/components/admin/kanban/types";
 import { allowedTransitions, asOrderType } from "@/lib/order-status";
 import { orderStatuses, orderStatusLabel, type OrderStatus } from "@/lib/orders";
 import { deliveryStatusMeta } from "@/lib/delivery-drivers";
@@ -81,16 +85,6 @@ export type AdminOrder = {
   _count: { deliveries: number; payments: number };
 };
 
-const statusStyle: Record<string, string> = {
-  received: "border-sky-500/30 bg-sky-500/5",
-  confirmed: "border-indigo-500/30 bg-indigo-500/5",
-  preparing: "border-amber-500/30 bg-amber-500/5",
-  ready: "border-pink-500/30 bg-pink-500/5",
-  on_the_way: "border-violet-500/30 bg-violet-500/5",
-  delivered: "border-emerald-500/30 bg-emerald-500/5",
-  cancelled: "border-red-500/30 bg-red-500/5",
-};
-
 const modalityStyle: Record<string, string> = {
   takeaway: "bg-cyan-500/15 text-cyan-300",
   dine_in: "bg-orange-500/15 text-orange-300",
@@ -106,8 +100,9 @@ const modalityLabel: Record<string, string> = {
 type OrderTypeFilter = "all" | "dine_in" | "takeaway" | "delivery";
 
 /** @summary Formatea los importes del tablero según la moneda registrada en cada pedido. */
-function formatPrice(value: string | number, currency: string) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency }).format(Number(value));
+function formatPrice(value: string | number, currency?: string | null) {
+  const code = (currency || "ARS").trim().toUpperCase();
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: code }).format(Number(value));
 }
 
 /** @summary Traduce la modalidad técnica del pedido a una etiqueta operativa. */
@@ -138,6 +133,14 @@ function extrasText(value: unknown) {
     .join(" · ");
 }
 
+function toBoardItem(order: AdminOrder): BoardItem & { order: AdminOrder } {
+  return {
+    id: String(order.id),
+    columnId: order.status,
+    order,
+  };
+}
+
 /** @summary Gestiona pedidos en columnas, permite filtrarlos y avanzar su estado sin recargar. */
 export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const pathname = usePathname();
@@ -145,11 +148,26 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<OrderTypeFilter>("all");
   const [selected, setSelected] = useState<AdminOrder | null>(null);
-  const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null);
-  const [dragTarget, setDragTarget] = useState<OrderStatus | null>(null);
   const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<number>>(() => new Set());
   const [conflictNotice, setConflictNotice] = useState<{ orderId: number; message: string } | null>(null);
+  const [view, setView] = useState<"board" | "list">("board");
+  const [density, setDensity] = useState<Density>(() => {
+    if (typeof window === "undefined") return "comfortable";
+    try {
+      const raw = window.localStorage.getItem("kanban:density:pedidos");
+      if (raw === "compact" || raw === "comfortable") return raw;
+    } catch { /* noop */ }
+    return "comfortable";
+  });
   const inFlightOrderIds = useRef<Set<number>>(new Set());
+  const didDragRef = useRef(false);
+
+  const handleBoardDragEnd = useCallback(() => {
+    didDragRef.current = true;
+    window.setTimeout(() => {
+      didDragRef.current = false;
+    }, 0);
+  }, []);
 
   /** @summary Abre el detalle del pedido indicado por `?id=` al cargar la página. */
   useEffect(() => {
@@ -173,6 +191,20 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         .includes(normalized);
     });
   }, [orders, query, typeFilter]);
+
+  const columns: BoardColumn[] = useMemo(
+    () =>
+      orderStatuses.map((status) => ({
+        id: status,
+        title: orderStatusLabel(status),
+      })),
+    [],
+  );
+
+  const boardItems = useMemo(
+    () => visibleOrders.map(toBoardItem),
+    [visibleOrders],
+  );
 
   /** @summary Solicita un cambio de estado y sincroniza el resultado con todas las vistas del tablero. */
   async function updateStatus(order: AdminOrder, status: OrderStatus) {
@@ -237,17 +269,22 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
     }
   }
 
-  /** @summary Valida y aplica un cambio de columna iniciado por drag and drop. */
-  async function dropOrder(target: OrderStatus) {
-    const order = orders.find((item) => item.id === draggedOrderId);
-    setDragTarget(null);
-    setDraggedOrderId(null);
-    if (!order || order.status === target) return;
-    const valid = allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).includes(
-      target,
-    );
-    if (!valid) return;
-    await updateStatus(order, target);
+  /** @summary Mueve un pedido a una columna y persiste el cambio en el servidor. */
+  async function handleMove(itemId: string, fromColumnId: string, toColumnId: string) {
+    const order = orders.find((o) => String(o.id) === itemId);
+    if (!order) return;
+    const valid = allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).includes(toColumnId as OrderStatus);
+    if (!valid) {
+      await Swal.fire({
+        title: "Transición no permitida",
+        text: `No podés mover ${order.reference} a ${orderStatusLabel(toColumnId)}.`,
+        icon: "warning",
+        background: "#18181b",
+        color: "#fafafa",
+      });
+      return;
+    }
+    await updateStatus(order, toColumnId as OrderStatus);
   }
 
   /** @summary Crea un comprobante para el pedido y habilita la vista de impresión. */
@@ -336,6 +373,14 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
       (status) => status !== "cancelled",
     );
 
+  const typeFilterCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: orders.length };
+    for (const type of ["dine_in", "takeaway", "delivery"] as const) {
+      counts[type] = orders.filter((o) => o.orderType === type).length;
+    }
+    return counts;
+  }, [orders]);
+
   return (
     <section className="space-y-6">
       <PageHeader
@@ -348,18 +393,6 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
             <Link className="btn btn-secondary" href={adminHrefFromPathname(pathname, "/admin/cocina")}>
               Cocina
             </Link>
-            <div className="relative">
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar…"
-                className="w-48 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 pl-8 text-xs text-zinc-300 outline-none transition-colors placeholder:text-zinc-500 focus:border-white/20 focus:bg-white/[.07]"
-              />
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-zinc-500">
-                <Icon name="search" className="h-3.5 w-3.5" />
-              </span>
-            </div>
           </div>
         }
       />
@@ -373,36 +406,51 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {(
-          [
-            { value: "all", label: "Todos" },
-            { value: "dine_in", label: "Mesa" },
-            { value: "takeaway", label: "Retiro" },
-            { value: "delivery", label: "Delivery" },
-          ] as Array<{ value: OrderTypeFilter; label: string }>
-        ).map((option) => (
-          <button
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
-              typeFilter === option.value
-                ? "bg-[var(--admin-primary-strong)]/15 text-[var(--admin-primary-strong)] ring-1 ring-[var(--admin-primary-strong)]/30"
-                : "bg-white/5 text-zinc-400 hover:text-zinc-200"
-            }`}
-            key={option.value}
-            onClick={() => setTypeFilter(option.value)}
-            type="button"
-          >
-            {option.label}
-            <span className="ml-1.5 text-[10px] opacity-60">
-              <NumberFlow
-                value={
-                  orders.filter((order) => option.value === "all" || order.orderType === option.value).length
-                }
-              />
-            </span>
-          </button>
-        ))}
-      </div>
+      <BoardToolbar
+        title="Pedidos"
+        subtitle={`${visibleOrders.length} pedido${visibleOrders.length === 1 ? "" : "s"} visibles`}
+        searchPlaceholder="Buscar por referencia, cliente o teléfono…"
+        searchValue={query}
+        onSearchChange={setQuery}
+        density={density}
+        onDensityChange={setDensity}
+        view={view}
+        onViewChange={setView}
+        filters={
+          typeFilter !== "all"
+            ? [
+                {
+                  key: "type",
+                  label: modalityLabel[typeFilter] ?? typeFilter,
+                  onRemove: () => setTypeFilter("all"),
+                },
+              ]
+            : []
+        }
+        onClearFilters={() => setTypeFilter("all")}
+        actions={
+          <div className="flex rounded-lg bg-white/5 p-0.5" role="group" aria-label="Modalidad">
+            {(["all", "dine_in", "takeaway", "delivery"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setTypeFilter(option)}
+                className={`rounded-md px-2.5 py-1.5 text-xs font-bold transition ${
+                  typeFilter === option
+                    ? "bg-[var(--admin-primary-strong)] text-white"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+                title={option === "all" ? "Todos" : modalityLabel[option]}
+              >
+                {option === "all" ? "Todos" : modalityLabel[option]}
+                <span className="ml-1 text-[10px] opacity-70">
+                  <NumberFlow value={typeFilterCounts[option] ?? 0} />
+                </span>
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {orders.length === 0 ? (
         <EmptyState
@@ -414,143 +462,212 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
             </Link>
           }
         />
-      ) : (
-        <div className="flex snap-x gap-5 overflow-x-auto pb-5 [scrollbar-color:var(--admin-primary)_transparent]">
-          {" "}
-          {orderStatuses.map((status) => {
-            const statusOrders = visibleOrders.filter((order) => order.status === status);
+      ) : view === "board" ? (
+        <KanbanBoard
+          columns={columns}
+          initialItems={boardItems}
+          storageKey="pedidos"
+          emptyState={
+            <div className="text-center">
+              <p className="text-xs text-zinc-500">Todavía no hay pedidos en esta etapa.</p>
+            </div>
+          }
+          renderItem={(item, itemDensity, isDragging) => {
+            const order = (item as BoardItem & { order: AdminOrder }).order;
+            const variant: BoardCardVariant = order.status === "cancelled" ? "error" : "default";
+            const modality = orderTypeLabel(order.orderType);
+            const totalItems = (order.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+
             return (
-              <section
-                className={`flex max-h-[calc(100dvh-17rem)] w-[min(86vw,320px)] shrink-0 snap-start flex-col overflow-hidden rounded-xl border shadow-[var(--admin-shadow-sm)] transition-[border-color,background-color,box-shadow] duration-150 ${statusStyle[status]} ${
-                  dragTarget === status
-                    ? "border-[var(--admin-primary)]/70 bg-[var(--admin-primary-soft)] shadow-[0_0_0_3px_var(--admin-primary-soft)]"
-                    : ""
-                }`}
-                key={status}
-                onDragOver={(event) => {
-                  const order = orders.find((item) => item.id === draggedOrderId);
-                  if (!order) return;
-                  const valid = allowedTransitions(
-                    order.status as OrderStatus,
-                    asOrderType(order.orderType),
-                  ).includes(status);
-                  if (!valid) return;
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = "move";
-                  setDragTarget(status);
+              <BoardCard
+                variant={variant}
+                density={itemDensity}
+                onClick={() => {
+                  if (didDragRef.current) return;
+                  setSelected(order);
                 }}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragTarget(null);
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  void dropOrder(status);
-                }}
-              >
-                <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[.06] bg-[var(--admin-surface)] px-3 py-2.5">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                    {orderStatusLabel(status)}
-                  </h3>
-                  <span className="rounded-full border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] px-2 py-0.5 text-[10px] font-bold text-zinc-400">
-                    <NumberFlow value={statusOrders.length} />
-                  </span>
-                </header>
-                <div className="admin-custom-scroll min-h-28 flex-1 space-y-2 overflow-y-auto overscroll-contain p-2.5">
-                  {dragTarget === status && draggedOrderId !== null && (
-                    <div className="rounded-lg border border-dashed border-[var(--admin-primary)]/60 bg-[var(--admin-primary-soft)] p-3 text-center text-[11px] font-semibold text-[var(--admin-primary)]">
-                      Soltar para mover a {orderStatusLabel(status).toLocaleLowerCase("es")}
+                header={
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--admin-primary-strong)]">
+                          {order.reference}
+                        </p>
+                        <span className="text-[10px] text-zinc-500">
+                          {elapsedLabel(order.createdAt)}
+                        </span>
+                      </div>
+                      <h3 className="mt-0.5 truncate text-sm font-bold text-white">
+                        {order.customerName}
+                      </h3>
                     </div>
-                  )}
-                  {statusOrders.map((order) => (
-                    <article
-                      className={`admin-row-enter rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-[var(--admin-shadow-sm)] transition-[transform,opacity,border-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:shadow-[var(--admin-shadow-md)] ${
-                        draggedOrderId === order.id
-                          ? "scale-[1.02] border-[var(--admin-primary)]/60 opacity-55 shadow-xl"
-                          : ""
-                      }`}
-                      key={order.id}
-                      draggable={
-                        !updatingOrderIds.has(order.id) &&
-                        allowedTransitions(order.status as OrderStatus, asOrderType(order.orderType)).length >
-                        0
-                      }
-                      onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", String(order.id));
-                        setDraggedOrderId(order.id);
+                    <span className="shrink-0 text-sm font-bold tabular-nums text-white">
+                      {formatPrice(order.total, order.currency)}
+                    </span>
+                  </div>
+                }
+                content={
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}>
+                      {modality}
+                      {order.table ? ` · ${order.table.name}` : ""}
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      {totalItems} {totalItems === 1 ? "ítem" : "ítems"}
+                    </span>
+                  </div>
+                }
+                metadata={
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Icon name="clock" className="h-3 w-3" />
+                      {elapsedLabel(order.createdAt)}
+                    </span>
+                    {order.branch && (
+                      <span className="flex items-center gap-1">
+                        <Icon name="map-pin" className="h-3 w-3" />
+                        {order.branch.name}
+                      </span>
+                    )}
+                    {order.delivery && (
+                      <span className="flex items-center gap-1">
+                        <Icon name="truck" className="h-3 w-3" />
+                        {deliveryStatusMeta(order.delivery.status).label}
+                        {order.delivery.driverProfile?.name ? ` · ${order.delivery.driverProfile.name}` : ""}
+                      </span>
+                    )}
+                  </>
+                }
+                actions={
+                  nextStatus(order) && (
+                    <button
+                      className="w-full rounded-lg bg-[var(--admin-primary-strong)]/15 px-3 py-1.5 text-xs font-bold text-[var(--admin-primary-strong)] transition-colors hover:bg-[var(--admin-primary-strong)]/25 disabled:opacity-50"
+                      disabled={updatingOrderIds.has(order.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void updateStatus(order, nextStatus(order)!);
                       }}
-                      onDragEnd={() => {
-                        setDraggedOrderId(null);
-                        setDragTarget(null);
-                      }}
-                      aria-grabbed={draggedOrderId === order.id}
+                      type="button"
                     >
-                      <button
-                        className="block w-full text-left"
-                        onClick={() => setSelected(order)}
-                        type="button"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--admin-primary-strong)]">
-                                {order.reference}
-                              </p>
-                              <span className="text-[10px] text-zinc-500">
-                                {elapsedLabel(order.createdAt)}
-                              </span>
-                            </div>
-                            <h3 className="mt-0.5 truncate text-sm font-bold text-white">
-                              {order.customerName}
-                            </h3>
-                          </div>
-                          <span className="shrink-0 text-sm font-bold tabular-nums text-white">
-                            {formatPrice(order.total, order.currency)}
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}
-                          >
-                            {orderTypeLabel(order.orderType)}
-                            {order.table ? ` ${order.table.name}` : ""}
-                          </span>
-                          <span className="text-[10px] text-zinc-500">
-                            {order.items.reduce((sum, item) => sum + item.quantity, 0)} items
-                          </span>
-                        </div>
-                      </button>
-                      {nextStatus(order) && (
-                        <div className="mt-2.5">
-                          <button
-                            className="w-full rounded-lg bg-[var(--admin-primary-strong)]/15 px-3 py-1.5 text-xs font-bold text-[var(--admin-primary-strong)] transition-colors hover:bg-[var(--admin-primary-strong)]/25"
-                            disabled={updatingOrderIds.has(order.id)}
-                            onClick={() => void updateStatus(order, nextStatus(order)!)}
-                            type="button"
-                          >
-                            {nextStatus(order) === "confirmed"
-                              ? "Confirmar"
-                              : nextStatus(order) === "preparing"
-                                ? "Empezar"
-                                : nextStatus(order) === "ready"
-                                  ? "Listo"
-                                  : nextStatus(order) === "on_the_way"
-                                    ? "Enviar"
-                                    : "Entregar"}
-                          </button>
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                  {!statusOrders.length && (
-                    <p className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-zinc-600">
-                      No hay pedidos {orderStatusLabel(status).toLocaleLowerCase("es")}.
-                    </p>
-                  )}
-                </div>
-              </section>
+                      {nextStatus(order) === "confirmed"
+                        ? "Confirmar"
+                        : nextStatus(order) === "preparing"
+                          ? "Empezar"
+                          : nextStatus(order) === "ready"
+                            ? "Listo"
+                            : nextStatus(order) === "on_the_way"
+                              ? "Enviar"
+                              : "Entregar"}
+                    </button>
+                  )
+                }
+                badges={
+                  <>
+                    <StatusBadge status={orderStatusLabel(order.status)} />
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}>
+                      {modality}
+                    </span>
+                  </>
+                }
+                className={isDragging ? "ring-2 ring-[var(--admin-primary)]/40" : ""}
+              />
             );
-          })}
+          }}
+          renderOverlay={(item) => {
+            const order = (item as BoardItem & { order: AdminOrder }).order;
+            return (
+              <BoardCard
+                variant="default"
+                density={density}
+                header={
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--admin-primary-strong)]">
+                        {order.reference}
+                      </p>
+                      <h3 className="mt-0.5 truncate text-sm font-bold text-white">
+                        {order.customerName}
+                      </h3>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold tabular-nums text-white">
+                      {formatPrice(order.total, order.currency)}
+                    </span>
+                  </div>
+                }
+                content={
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}>
+                      {orderTypeLabel(order.orderType)}
+                    </span>
+                  </div>
+                }
+              />
+            );
+          }}
+          onMove={handleMove}
+          onDragEnd={handleBoardDragEnd}
+          boardTitle={
+            <div>
+              <h2 className="text-lg font-black text-white">Pedidos</h2>
+              <p className="text-xs text-[var(--admin-muted)]">Arrastrá los pedidos entre columnas para cambiar su estado.</p>
+            </div>
+          }
+        />
+      ) : (
+        <div className="space-y-2">
+          {visibleOrders.map((order) => (
+            <BoardCard
+              key={order.id}
+              variant={order.status === "cancelled" ? "error" : "default"}
+              density="compact"
+              onClick={() => setSelected(order)}
+              header={
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--admin-primary-strong)]">
+                      {order.reference}
+                    </p>
+                    <span className="text-[10px] text-zinc-500">{elapsedLabel(order.createdAt)}</span>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums text-white">{formatPrice(order.total, order.currency)}</span>
+                </div>
+              }
+              content={
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-zinc-100">{order.customerName}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${modalityStyle[order.orderType]}`}>
+                    {orderTypeLabel(order.orderType)}
+                    {order.table ? ` · ${order.table.name}` : ""}
+                  </span>
+                  <StatusBadge status={orderStatusLabel(order.status)} />
+                </div>
+              }
+              metadata={
+                <>
+                  <span className="flex items-center gap-1">
+                    <Icon name="phone" className="h-3 w-3" />
+                    {order.phone}
+                  </span>
+                  {order.branch && (
+                    <span className="flex items-center gap-1">
+                      <Icon name="map-pin" className="h-3 w-3" />
+                      {order.branch.name}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <Icon name="package" className="h-3 w-3" />
+                    {(order.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0)} ítems
+                  </span>
+                </>
+              }
+            />
+          ))}
+          {visibleOrders.length === 0 && (
+            <EmptyState
+              title="Sin resultados"
+              description="No hay pedidos que coincidan con los filtros actuales."
+            />
+          )}
         </div>
       )}
 
@@ -687,11 +804,11 @@ function OrderDetail({
               <section>
                 <SectionHeader
                   title="Productos"
-                  description={`${order.items.reduce((sum, item) => sum + item.quantity, 0)} productos en el pedido.`}
+                  description={`${(order.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0)} productos en el pedido.`}
                 />
                 <div className="mt-3">
                   <DocumentLines headers={["Producto", "Pedido", "Entregado", "Pendiente", "Importe"]}>
-                    {order.items.map((item) => {
+                    {(order.items || []).map((item) => {
                       const extras = extrasText(item.extras);
                       const pending =
                         item.pendingQuantity ?? Math.max(0, item.quantity - item.deliveredQuantity);
