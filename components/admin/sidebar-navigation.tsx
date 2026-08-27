@@ -254,7 +254,7 @@ export function SidebarNavigation({
           <Link
             href={adminHref("/admin")}
             onClick={onNavigate}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--admin-primary-strong)] text-sm font-black text-white transition-all duration-200 hover:bg-[var(--admin-primary-strong)]/90"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--admin-primary-strong)] text-sm font-black text-white transition-all duration-200 hover:bg-[var(--admin-primary-strong)]/90"
             title={tenantName}
           >
             {initials}
@@ -370,9 +370,9 @@ export function SidebarNavigation({
           className={`flex shrink-0 flex-col border-l border-white/[.04] bg-zinc-950/60 ${PANEL_WIDTH} sidebar-panel-enter`}
           aria-label={`Secciones de ${displayGroup.label}`}
         >
-          <div className="flex h-16 shrink-0 items-center justify-between px-4">
+          <div className="flex h-16 shrink-0 items-center justify-between px-5">
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-semibold text-white">{displayGroup.label}</h2>
+              <h2 className="truncate text-sm font-bold text-white">{displayGroup.label}</h2>
               {displayGroup.description && (
                 <p className="truncate text-xs text-zinc-500">{displayGroup.description}</p>
               )}

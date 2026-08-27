@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { NumberFlow } from "./number-flow";
 
-/** @summary Tarjeta KPI genérica para cualquier módulo del admin. */
+/** @summary Tarjeta KPI premium para métricas del admin. */
 export function KpiCard({
   label,
   value,
@@ -24,8 +24,8 @@ export function KpiCard({
   const compact = size === "compact";
   return (
     <div
-      className={`admin-kpi-card group relative overflow-hidden rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 shadow-[var(--admin-shadow-sm)] transition-[transform,border-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:shadow-[var(--admin-shadow-md)] sm:p-5 ${
-        compact ? "" : "sm:p-6"
+      className={`admin-kpi-card group relative overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-[var(--admin-shadow-sm)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[var(--admin-border-strong)] hover:shadow-[var(--admin-shadow-md)] sm:p-6 ${
+        compact ? "" : ""
       }`}
     >
       <div className="flex items-center justify-between gap-3">
@@ -33,12 +33,12 @@ export function KpiCard({
           {label}
         </p>
         {icon && (
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-[var(--admin-primary)]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-[var(--admin-primary)]">
             {icon}
           </span>
         )}
       </div>
-      <p className={`mt-3 truncate font-black tabular-nums ${tone} ${compact ? "text-2xl" : "text-3xl"}`}>
+      <p className={`mt-3 truncate font-black tabular-nums tracking-tight ${tone} ${compact ? "text-2xl" : "text-[2rem]"}`}>
         {typeof value === "number" ? <NumberFlow value={value} locale={locale} format={format} /> : value}
       </p>
       {change !== undefined && (

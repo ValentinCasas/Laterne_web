@@ -38,3 +38,4 @@ export { UserAvatar, type AvatarSize } from "./avatar";
 export { NumberFlow } from "./number-flow";
 export { AnimatedProgress } from "./animated-progress";
 export { HoverPreview } from "./hover-preview";
+export { Skeleton, SkeletonTable, SkeletonKpi, SkeletonBoardCards } from "./skeleton";

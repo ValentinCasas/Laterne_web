@@ -92,49 +92,49 @@ export function Drawer({
     <div className="fixed inset-0 z-[120]" role="presentation">
       {/* ── Backdrop ── */}
       <div
-        className="modal-backdrop-in absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        className="modal-backdrop-in absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* ── Panel ── */}
       <aside
-        className="salon-drawer fixed flex flex-col overflow-hidden bg-[var(--admin-surface-overlay)] shadow-2xl
+        className="salon-drawer fixed flex max-h-dvh flex-col overflow-hidden bg-[var(--admin-surface-overlay)] shadow-2xl duration-200
           inset-0 z-10
-          sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 sm:border-l sm:border-[var(--admin-border-strong)]"
+          sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[var(--drawer-width)] sm:max-w-[90vw] sm:border-l sm:border-[var(--admin-border-strong)]"
         style={panelStyle}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
         {/* ── Header ── */}
-        <header className="shrink-0 border-b border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] backdrop-blur">
-          {/* Spacer: safe-area on mobile, navbar-height on desktop */}
+        <header className="shrink-0 border-b border-[var(--admin-border)] bg-[var(--admin-surface-overlay)]">
           <div
             className="sm:h-[var(--site-navbar-height,56px)]"
-            style={{ height: "max(.75rem, env(safe-area-inset-top, 0px))" } as CSSProperties}
+            style={{ height: "max(.75rem, env(safe-area-inset-top, 0px))" }}
             aria-hidden
           />
-          {/* Actual header content */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4">
-            <h2 className="min-w-0 flex-1 truncate break-words text-base font-bold sm:text-lg">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6 sm:py-5">
+            <h2 className="min-w-0 flex-1 truncate break-words text-lg font-bold tracking-tight text-white sm:text-xl">
               {title}
             </h2>
             <button
               ref={closeButtonRef}
               type="button"
               onClick={onClose}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-lg text-zinc-400 transition-colors hover:text-white sm:h-9 sm:w-9 sm:rounded-lg sm:text-sm"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-elevated)] text-zinc-400 transition-colors hover:border-[var(--admin-border-strong)] hover:text-white sm:h-9 sm:w-9"
               aria-label="Cerrar"
             >
-              ×
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 sm:h-3.5 sm:w-3.5">
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
         </header>
 
         {/* ── Content (única zona scrollable) ── */}
         <div
-          className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5"
+          className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6"
           style={{
             paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
           } as CSSProperties}
@@ -145,7 +145,7 @@ export function Drawer({
         {/* ── Footer / Actions (sticky bottom, always visible) ── */}
         {footer && (
           <footer
-            className="shrink-0 border-t border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] backdrop-blur px-4 py-3 sm:px-5 sm:py-4"
+            className="shrink-0 border-t border-[var(--admin-border)] bg-[var(--admin-surface-overlay)] px-5 py-4 sm:px-6 sm:py-4"
             style={{
               paddingBottom: "max(.75rem, env(safe-area-inset-bottom, 0px))",
             } as CSSProperties}

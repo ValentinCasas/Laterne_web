@@ -259,7 +259,9 @@ export function KanbanBoard<T extends BoardItem>({
           easing: "cubic-bezier(0.2, 0, 0, 1)",
         }}>
           {activeItem && renderOverlay ? (
-            renderOverlay(activeItem)
+            <div className="rotate-1 scale-[1.02] opacity-90 shadow-2xl shadow-black/40">
+              {renderOverlay(activeItem)}
+            </div>
           ) : activeItem && !renderOverlay ? (
             <div className="rotate-1 scale-[1.02] opacity-90 shadow-2xl shadow-black/40">
               {renderItem(activeItem, currentDensity, true)}

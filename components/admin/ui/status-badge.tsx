@@ -1,8 +1,13 @@
 /**
- * @summary Badge de estado consistente con dot indicator y colores semánticos.
+ * @summary Badge de estado semántico con dot indicator y variantes compactas.
  *
- * Muestra un punto de color + texto para mejor jerarquía visual.
- * Los colores se resuelven automáticamente por status o por tone explícito.
+ * Mapa semántico global:
+ * - success: activo / entregado / pagado / disponible / completado
+ * - warning: pendiente
+ * - danger: cancelado / rechazado / fallido
+ * - info: en proceso / programado
+ * - neutral: borrador / oculto / archivado
+ * - processing: transitorio / iniciado
  */
 export function StatusBadge({
   status,
@@ -10,7 +15,7 @@ export function StatusBadge({
   size = "default",
 }: {
   status?: string | null;
-  tone?: "default" | "success" | "warning" | "danger" | "info";
+  tone?: "default" | "success" | "warning" | "danger" | "info" | "neutral" | "processing";
   size?: "default" | "sm";
 }) {
   const styles: Record<string, { badge: string; dot: string }> = {
@@ -19,6 +24,8 @@ export function StatusBadge({
     warning: { badge: "border-amber-400/20 bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
     danger: { badge: "border-red-400/20 bg-red-500/10 text-red-300", dot: "bg-red-400" },
     info: { badge: "border-sky-400/20 bg-sky-500/10 text-sky-300", dot: "bg-sky-400" },
+    neutral: { badge: "border-white/10 bg-white/5 text-zinc-300", dot: "bg-zinc-400" },
+    processing: { badge: "border-indigo-400/20 bg-indigo-500/10 text-indigo-300", dot: "bg-indigo-400" },
   };
 
   const autoMap: Record<string, string> = {
@@ -34,13 +41,20 @@ export function StatusBadge({
     rejected: "danger",
     failed: "danger",
     incident: "danger",
-    draft: "default",
-    hidden: "default",
-    archived: "default",
+    draft: "neutral",
+    hidden: "neutral",
+    archived: "neutral",
     pending: "warning",
     processing: "info",
     in_progress: "info",
     scheduled: "info",
+    assigned: "info",
+    picked_up: "processing",
+    on_the_way: "processing",
+    confirmed: "success",
+    preparing: "processing",
+    ready: "info",
+    received: "info",
   };
 
   const normalized = tone ?? autoMap[(status || "").toLowerCase()] ?? "default";

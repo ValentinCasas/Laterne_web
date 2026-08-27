@@ -467,6 +467,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
           columns={columns}
           initialItems={boardItems}
           storageKey="pedidos"
+          density={density}
           emptyState={
             <div className="text-center">
               <p className="text-xs text-zinc-500">Todavía no hay pedidos en esta etapa.</p>
@@ -579,6 +580,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
               <BoardCard
                 variant="default"
                 density={density}
+                className="rotate-1 scale-[1.02] shadow-2xl shadow-black/60 ring-1 ring-[var(--admin-primary)]/40"
                 header={
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -619,7 +621,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: AdminOrder[] }) {
             <BoardCard
               key={order.id}
               variant={order.status === "cancelled" ? "error" : "default"}
-              density="compact"
+              density={density}
               onClick={() => setSelected(order)}
               header={
                 <div className="flex items-center justify-between gap-2">
